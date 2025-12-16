@@ -26,6 +26,8 @@ import {NapierUniversalRouterFuse} from "../../../contracts/fuses/napier/NapierU
 import {NapierCombineFuse, NapierCombineFuseEnterData} from "../../../contracts/fuses/napier/NapierCombineFuse.sol";
 import {NapierSwapPtFuse, NapierSwapPtFuseData} from "../../../contracts/fuses/napier/NapierSwapPtFuse.sol";
 import {NapierSwapYtFuse, NapierSwapYtEnterFuseData, NapierSwapYtExitFuseData} from "../../../contracts/fuses/napier/NapierSwapYtFuse.sol";
+import {NapierZapDepositFuse, NapierZapDepositFuseEnterData, NapierZapDepositFuseExitData} from "../../../contracts/fuses/napier/NapierZapDepositFuse.sol";
+import {NapierDepositFuse, NapierDepositFuseEnterData, NapierDepositFuseExitData} from "../../../contracts/fuses/napier/NapierDepositFuse.sol";
 
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -108,6 +110,8 @@ contract NapierSupplyFuseTest is Test {
     address private _collectFuse;
     address private _swapPtFuse;
     address private _swapYtFuse;
+    address private _zapDepositFuse;
+    address private _depositFuse;
 
     function setUp() external {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 399992224);
@@ -323,15 +327,21 @@ contract NapierSupplyFuseTest is Test {
         _combineFuse = address(new NapierCombineFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER));
         _swapPtFuse = address(new NapierSwapPtFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER));
         _swapYtFuse = address(new NapierSwapYtFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER));
+        _zapDepositFuse = address(
+            new NapierZapDepositFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER)
+        );
+        _depositFuse = address(new NapierDepositFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER));
 
         vm.startPrank(ATOMIST);
-        address[] memory fuses = new address[](6);
+        address[] memory fuses = new address[](8);
         fuses[0] = _supplyFuse;
         fuses[1] = _redeemFuse;
         fuses[2] = _collectFuse;
         fuses[3] = _combineFuse;
         fuses[4] = _swapPtFuse;
         fuses[5] = _swapYtFuse;
+        fuses[6] = _zapDepositFuse;
+        fuses[7] = _depositFuse;
         _plasmaVault.addFusesToVault(fuses);
 
         // Add balance fuses
@@ -1117,6 +1127,228 @@ contract NapierSupplyFuseTest is Test {
 
         vm.prank(ALPHA);
         vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /*                    ZAP DEPOSIT FUSE TESTS                  */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_ZapDeposit_Enter() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        uint256 amountIn = 25 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amountIn);
+
+        address yt = IPrincipalToken(principalToken).i_yt();
+        uint256 poolBalanceBefore = ERC20(pool).balanceOf(address(_plasmaVault));
+        uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
+        uint256 ytBalanceBefore = ERC20(yt).balanceOf(address(_plasmaVault));
+        uint256 totalPtSupplyBefore = pt.totalSupply();
+
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: amountIn,
+            minLiquidity: 100
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        uint256 supplyIncrease = pt.totalSupply() - totalPtSupplyBefore;
+
+        assertEq(pt.balanceOf(address(_plasmaVault)), ptBalanceBefore, "PT balance should not change");
+        assertGt(ERC20(pool).balanceOf(address(_plasmaVault)), poolBalanceBefore, "Liquidity balance");
+        assertEq(ERC20(yt).balanceOf(address(_plasmaVault)), ytBalanceBefore + supplyIncrease, "YT balance");
+    }
+
+    function test_ZapDeposit_Enter_RevertWhen_PoolNotGranted() public {
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(makeAddr("badPool")),
+            amountIn: 1,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function testFuzz_ZapDeposit_Enter_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
+        address[3] memory tokens = [
+            principalToken,
+            IPrincipalToken(principalToken).i_yt(),
+            IPrincipalToken(principalToken).underlying()
+        ];
+        address omit = tokens[omitIndex % tokens.length];
+
+        _regrantNapierSubstrates(omit);
+
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 1,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_ZapDeposit_Exit_RevertWhen_PoolNotGranted() public {
+        NapierZapDepositFuseExitData memory data = NapierZapDepositFuseExitData({
+            pool: ITokiPoolToken(makeAddr("badPool")),
+            liquidity: 1,
+            amount1OutMin: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function testFuzz_ZapDeposit_Exit_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
+        address[2] memory tokens = [principalToken, IPrincipalToken(principalToken).underlying()];
+        address omit = tokens[omitIndex % tokens.length];
+
+        _regrantNapierSubstrates(omit);
+
+        NapierZapDepositFuseExitData memory data = NapierZapDepositFuseExitData({
+            pool: ITokiPoolToken(pool),
+            liquidity: 1,
+            amount1OutMin: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /*                     DEPOSIT FUSE TESTS                     */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_Deposit_Enter() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+
+        _test_Supply(
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 1_000 * 10 ** ERC20(USDC).decimals()
+            })
+        );
+
+        uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
+        uint256 amount1In = ptBalanceBefore / 2;
+        assertGt(amount1In, 0, "PT amount");
+
+        uint256 amount0In = 20 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amount0In);
+
+        uint256 poolBalanceBefore = ERC20(pool).balanceOf(address(_plasmaVault));
+
+        NapierDepositFuseEnterData memory data = NapierDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amount0In: amount0In,
+            amount1In: amount1In,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        assertGt(ERC20(pool).balanceOf(address(_plasmaVault)), poolBalanceBefore, "Liquidity balance");
+    }
+
+    function test_Deposit_Enter_RevertWhen_PoolNotGranted() public {
+        NapierDepositFuseEnterData memory data = NapierDepositFuseEnterData({
+            pool: ITokiPoolToken(makeAddr("badPool")),
+            amount0In: 1,
+            amount1In: 1,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function testFuzz_Deposit_Enter_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
+        address[2] memory tokens = [principalToken, IPrincipalToken(principalToken).underlying()];
+        address omit = tokens[omitIndex % tokens.length];
+
+        _regrantNapierSubstrates(omit);
+
+        NapierDepositFuseEnterData memory data = NapierDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amount0In: 1,
+            amount1In: 1,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_Deposit_Exit_RevertWhen_PoolNotGranted() public {
+        NapierDepositFuseExitData memory data = NapierDepositFuseExitData({
+            pool: ITokiPoolToken(makeAddr("badPool")),
+            liquidity: 1,
+            amount0OutMin: 0,
+            amount1OutMin: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function testFuzz_Deposit_Exit_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
+        address[2] memory tokens = [principalToken, IPrincipalToken(principalToken).underlying()];
+        address omit = tokens[omitIndex % tokens.length];
+
+        _regrantNapierSubstrates(omit);
+
+        NapierDepositFuseExitData memory data = NapierDepositFuseExitData({
+            pool: ITokiPoolToken(pool),
+            liquidity: 1,
+            amount0OutMin: 0,
+            amount1OutMin: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
