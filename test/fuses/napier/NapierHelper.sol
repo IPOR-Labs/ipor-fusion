@@ -3,16 +3,30 @@ pragma solidity ^0.8.24;
 
 import {Vm} from "forge-std/Vm.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {PoolKey, Currency} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {IUniversalRouter} from "../../../contracts/fuses/napier/ext/IUniversalRouter.sol";
+import {IV4Router} from "../../../contracts/fuses/napier/ext/IV4Router.sol";
+import {Commands} from "../../../contracts/fuses/napier/utils/Commands.sol";
+import {Actions} from "../../../contracts/fuses/napier/utils/Actions.sol";
 
 interface NapierFactory {
     function DEFAULT_SPLIT_RATIO_BPS() external pure returns (uint16);
 
-    function isValidImplementation(NapierHelper.ModuleIndex moduleType, address implementation)
-        external
-        view
-        returns (bool);
+    function isValidImplementation(
+        NapierHelper.ModuleIndex moduleType,
+        address implementation
+    ) external view returns (bool);
+}
+
+interface ITokiHook {
+    function increaseObservationsCardinalityNext(PoolKey calldata key, uint16 cardinalityNext) external;
+}
+
+interface ITokiOracle {
+    function checkTwapReadiness(
+        address liquidityToken,
+        uint32 twapWindow
+    ) external view returns (bool needsCapacityIncrease, uint16 cardinalityRequired, bool hasOldestData);
 }
 
 /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -33,7 +47,6 @@ library NapierHelper {
         REWARD_PROXY_MODULE_INDEX, // 1
         VERIFIER_MODULE_INDEX, // 2
         POOL_FEE_MODULE_INDEX // 3
-
     }
 
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -95,11 +108,10 @@ library NapierHelper {
     /// @param scalarRoot Scalar root value for the hook
     /// @param initialAnchor Initial anchor value for the hook
     /// @return encodedParams Encoded hook parameters
-    function encodeHookParams(uint256 scalarRoot, int256 initialAnchor)
-        internal
-        pure
-        returns (bytes memory encodedParams)
-    {
+    function encodeHookParams(
+        uint256 scalarRoot,
+        int256 initialAnchor
+    ) internal pure returns (bytes memory encodedParams) {
         return abi.encode(DEFAULT_CARDINALITY_NEXT, abi.encode(scalarRoot, initialAnchor));
     }
 
@@ -168,7 +180,9 @@ library NapierHelper {
 
         // Build commands: TP_CREATE_POOL + TP_SPLIT_INITIAL_LIQUIDITY + TP_ADD_LIQUIDITY
         bytes memory commands = abi.encodePacked(
-            bytes1(uint8(TP_CREATE_POOL)), bytes1(uint8(TP_SPLIT_INITIAL_LIQUIDITY)), bytes1(uint8(TP_ADD_LIQUIDITY))
+            bytes1(uint8(TP_CREATE_POOL)),
+            bytes1(uint8(TP_SPLIT_INITIAL_LIQUIDITY)),
+            bytes1(uint8(TP_ADD_LIQUIDITY))
         );
 
         // Build inputs array
@@ -207,8 +221,12 @@ library NapierHelper {
         uint16 postSettlementFeePct
     ) internal pure returns (uint256 packed) {
         uint256 splitFeePct = NapierFactory(factory).DEFAULT_SPLIT_RATIO_BPS();
-        packed = (uint256(postSettlementFeePct) << 64) | (uint256(redemptionFeePct) << 48)
-            | (uint256(performanceFeePct) << 32) | (uint256(issuanceFeePct) << 16) | uint256(splitFeePct);
+        packed =
+            (uint256(postSettlementFeePct) << 64) |
+            (uint256(redemptionFeePct) << 48) |
+            (uint256(performanceFeePct) << 32) |
+            (uint256(issuanceFeePct) << 16) |
+            uint256(splitFeePct);
     }
 
     /// @notice Pack pool fee parameters into a single uint256 (FeePctsPool)
@@ -216,11 +234,11 @@ library NapierHelper {
     /// @param ammFeeParams AMM fee parameters (128-bit encoded value)
     /// @param reserveFeePct Reserve fee percentage in basis points (0-10000)
     /// @return packed The packed pool fee parameters as uint256
-    function packFeePctsPool(address factory, uint128 ammFeeParams, uint16 reserveFeePct)
-        internal
-        pure
-        returns (uint256 packed)
-    {
+    function packFeePctsPool(
+        address factory,
+        uint128 ammFeeParams,
+        uint16 reserveFeePct
+    ) internal pure returns (uint256 packed) {
         uint256 splitFeePct = NapierFactory(factory).DEFAULT_SPLIT_RATIO_BPS();
         packed = (uint256(reserveFeePct) << 144) | (uint256(ammFeeParams) << 16) | uint256(splitFeePct);
     }
@@ -254,8 +272,13 @@ library NapierHelper {
                 startSalt++;
             }
 
-            address predictedAddress =
-                predictPrincipalTokenAddress(bytes32(startSalt), initCodeHash, factory, msgSender, router);
+            address predictedAddress = predictPrincipalTokenAddress(
+                bytes32(startSalt),
+                initCodeHash,
+                factory,
+                msgSender,
+                router
+            );
 
             // Check if predicted PT address > underlying address
             if (uint160(predictedAddress) > underlyingValue) {
@@ -285,6 +308,42 @@ library NapierHelper {
         bytes32 safeSalt = _hash(block.chainid, uint256(uint160(router)), intermediate);
         // Compute CREATE2 address
         return Create2.computeAddress(safeSalt, bytecodeHash, factory);
+    }
+
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /*                    V4 SWAP                         */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function swap(address router, PoolKey memory poolKey, bool zeroForOne, uint256 amount, uint256 timeJump) internal {
+        VM.warp(block.timestamp + timeJump);
+
+        bytes memory commands = abi.encodePacked(bytes1(uint8(Commands.V4_SWAP)));
+        bytes memory v4Actions = abi.encodePacked(
+            bytes1(uint8(Actions.SWAP_EXACT_IN_SINGLE)),
+            bytes1(uint8(Actions.SETTLE)),
+            bytes1(uint8(Actions.TAKE_ALL))
+        );
+        bytes[] memory v4Params = new bytes[](3);
+        v4Params[0] = abi.encode(
+            IV4Router.ExactInputSingleParams({
+                poolKey: poolKey,
+                zeroForOne: zeroForOne,
+                amountIn: amount,
+                amountOutMinimum: 0,
+                hookData: ""
+            })
+        );
+        (Currency currencyIn, Currency currencyOut) = (
+            zeroForOne ? poolKey.currency0 : poolKey.currency1,
+            zeroForOne ? poolKey.currency1 : poolKey.currency0
+        );
+        v4Params[1] = abi.encode(currencyIn, amount, true);
+        v4Params[2] = abi.encode(currencyOut, 0);
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(v4Actions, v4Params);
+
+        IUniversalRouter(router).execute(commands, inputs);
     }
 
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/

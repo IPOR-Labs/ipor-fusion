@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {console2} from "forge-std/console2.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
@@ -26,6 +27,8 @@ import {NapierUniversalRouterFuse} from "../../../contracts/fuses/napier/NapierU
 import {NapierCombineFuse, NapierCombineFuseEnterData} from "../../../contracts/fuses/napier/NapierCombineFuse.sol";
 import {NapierSwapPtFuse, NapierSwapPtFuseData} from "../../../contracts/fuses/napier/NapierSwapPtFuse.sol";
 import {NapierSwapYtFuse, NapierSwapYtEnterFuseData, NapierSwapYtExitFuseData} from "../../../contracts/fuses/napier/NapierSwapYtFuse.sol";
+import {NapierZapDepositFuse, NapierZapDepositFuseEnterData, NapierZapDepositFuseExitData} from "../../../contracts/fuses/napier/NapierZapDepositFuse.sol";
+import {NapierDepositFuse, NapierDepositFuseEnterData, NapierDepositFuseExitData} from "../../../contracts/fuses/napier/NapierDepositFuse.sol";
 
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -42,7 +45,7 @@ import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInit
 import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-import {NapierHelper} from "./NapierHelper.sol";
+import {NapierHelper, ITokiHook, ITokiOracle} from "./NapierHelper.sol";
 import {LogExpMath} from "@pendle/core-v2/contracts/core/libraries/math/LogExpMath.sol";
 import {NapierPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierPriceFeed.sol";
 import {ERC4626PriceFeed} from "../../../contracts/price_oracle/price_feed/ERC4626PriceFeed.sol";
@@ -90,24 +93,36 @@ contract NapierSupplyFuseTest is Test {
     address private ALPHA = makeAddr("alpha");
     address private PRICE_ORACLE_MIDDLEWARE_MANAGER = makeAddr("priceOracleMiddlewareManager");
     address private USER = makeAddr("user");
+    address private ALICE = makeAddr("alice");
+
+    uint256 private constant LP_TWAP_WINDOW = 1 hours;
 
     ///  Napier V2 Toki pool
     address private pool;
     address private principalToken;
+    uint256 private expiry;
 
+    /// Plasma Vault
     PlasmaVault private _plasmaVault;
     address private _priceOracle;
     IporFusionAccessManager private _accessManager;
     PriceOracleMiddleware private _priceOracleMiddleware;
 
-    address private _tokiChainlinkOracle;
-    address private _napierPriceFeed;
+    // Price feeds
+    address private _ptLinarOracle;
+    address private _napierPtPriceFeed;
+    address private _napierLpPriceFeed;
+    address private _lpTwapOracle;
+
+    // Fuses
     address private _supplyFuse;
     address private _redeemFuse;
     address private _combineFuse;
     address private _collectFuse;
     address private _swapPtFuse;
     address private _swapYtFuse;
+    address private _zapDepositFuse;
+    address private _depositFuse;
 
     function setUp() external {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 399992224);
@@ -121,10 +136,6 @@ contract NapierSupplyFuseTest is Test {
         vm.label(GAUNTLET_USDC_PRIME, "gauntletUSDC");
         vm.label(USDC, "USDC");
         vm.label(WETH, "WETH");
-        vm.label(pool, "pool");
-        vm.label(address(_plasmaVault), "plasma");
-        vm.label(address(_priceOracleMiddleware), "priceOracleMiddleware");
-        vm.label(address(_accessManager), "accessManager");
 
         // Deploy price oracle middleware
         vm.startPrank(ATOMIST);
@@ -163,6 +174,10 @@ contract NapierSupplyFuseTest is Test {
         // Grant ALPHA_ROLE to ALPHA so it can call execute()
         _accessManager.grantRole(Roles.ALPHA_ROLE, ALPHA, 0);
         vm.stopPrank();
+
+        vm.label(address(_plasmaVault), "plasma");
+        vm.label(address(_priceOracleMiddleware), "priceOracleMiddleware");
+        vm.label(address(_accessManager), "accessManager");
 
         _setupNapierPool();
         _setupNapierMarket();
@@ -218,7 +233,7 @@ contract NapierSupplyFuseTest is Test {
             )
         });
 
-        uint256 expiry = block.timestamp + 365 days;
+        expiry = block.timestamp + 365 days;
         uint256 desiredImpliedRate = 0.05e18;
 
         // Convert USDC to gauntletUSDC shares via ERC4626 deposit
@@ -262,8 +277,93 @@ contract NapierSupplyFuseTest is Test {
 
         principalToken = deployedPt;
         pool = deployedPool;
+        vm.stopPrank();
+
+        vm.label(pool, "pool");
+        vm.label(principalToken, "principalToken");
+
+        PoolKey memory poolKey = ITokiPoolToken(pool).i_poolKey();
+        (bool needsCapacityIncrease, uint16 cardinalityRequired, ) = ITokiOracle(NapierConstants.ARB_TOKI_ORACLE)
+            .checkTwapReadiness(pool, uint32(LP_TWAP_WINDOW));
+
+        // Increase cardinality for LP Twap Oracle dependency
+        if (needsCapacityIncrease) {
+            ITokiHook(address(poolKey.hooks)).increaseObservationsCardinalityNext(poolKey, cardinalityRequired);
+        }
+
+        // Record some historical price data for oracle
+        vm.startPrank(ALICE);
+        deal(GAUNTLET_USDC_PRIME, ALICE, 1000 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals());
+
+        ERC20(GAUNTLET_USDC_PRIME).approve(principalToken, type(uint256).max);
+        IPrincipalToken(principalToken).supply(100 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(), ALICE);
+
+        ERC20(GAUNTLET_USDC_PRIME).approve(PERMIT2, type(uint256).max);
+        ERC20(principalToken).approve(PERMIT2, type(uint256).max);
+        IPermit2(PERMIT2).approve(
+            GAUNTLET_USDC_PRIME,
+            NapierConstants.ARB_UNIVERSAL_ROUTER,
+            type(uint160).max,
+            type(uint48).max
+        );
+        IPermit2(PERMIT2).approve(
+            principalToken,
+            NapierConstants.ARB_UNIVERSAL_ROUTER,
+            type(uint160).max,
+            type(uint48).max
+        );
+
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: false,
+            amount: 2 * 10 ** ERC20(principalToken).decimals(),
+            timeJump: 3 minutes
+        });
+
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: false,
+            amount: 10 ** ERC20(principalToken).decimals(),
+            timeJump: 15 minutes
+        });
+
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: false,
+            amount: 10 ** ERC20(principalToken).decimals(),
+            timeJump: 15 minutes
+        });
+
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: true,
+            amount: 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(),
+            timeJump: 14 minutes
+        });
+
+        NapierHelper.swap({
+            router: NapierConstants.ARB_UNIVERSAL_ROUTER,
+            poolKey: poolKey,
+            zeroForOne: true,
+            amount: 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(),
+            timeJump: 17 minutes
+        });
+
+        vm.warp(block.timestamp + 30 minutes);
 
         vm.stopPrank();
+
+        // Check if oldest data is available
+        (, , bool hasOldestData) = ITokiOracle(NapierConstants.ARB_TOKI_ORACLE).checkTwapReadiness(
+            pool,
+            uint32(LP_TWAP_WINDOW)
+        );
+
+        require(hasOldestData, "Oldest data not available after capacity increase");
     }
 
     function _setupNapierMarket() private {
@@ -301,17 +401,24 @@ contract NapierSupplyFuseTest is Test {
         // By default, on Ethereum the system uses Chainlink registry for price feeds.
         // On all chains, it uses a general priceOracleMiddleware predefined by IPOR DAO.
         // However, any price feed can be overridden in the PriceOracleMiddlewareManager.
-        _tokiChainlinkOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
+        _ptLinarOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
             NapierConstants.ARB_TOKI_LINEAR_PRICE_ORACLE_IMPL,
             abi.encode(pool, principalToken, USDC, 100), // liquidityToken, base, quote, discountRatePerYearBps
             ""
         );
-        _napierPriceFeed = address(new NapierPriceFeed(address(_priceOracleMiddleware), _tokiChainlinkOracle));
-        address customAsset = principalToken;
-        address[] memory assets = new address[](1);
-        assets[0] = customAsset;
-        address[] memory sources = new address[](1); // Price feed contract address
-        sources[0] = _napierPriceFeed;
+        _lpTwapOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
+            NapierConstants.ARB_TOKI_TWAP_ORACLE_IMPL,
+            abi.encode(pool, pool, USDC, LP_TWAP_WINDOW), // liquidityToken, base, quote, twapWindow
+            ""
+        );
+        _napierPtPriceFeed = address(new NapierPriceFeed(address(_priceOracleMiddleware), _ptLinarOracle));
+        _napierLpPriceFeed = address(new NapierPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
+        address[] memory assets = new address[](2);
+        assets[0] = principalToken;
+        assets[1] = pool;
+        address[] memory sources = new address[](2); // Price feed contract address
+        sources[0] = _napierPtPriceFeed;
+        sources[1] = _napierLpPriceFeed;
         vm.startPrank(_priceOracleMiddleware.owner());
         _priceOracleMiddleware.setAssetsPricesSources(assets, sources);
         vm.stopPrank();
@@ -323,15 +430,21 @@ contract NapierSupplyFuseTest is Test {
         _combineFuse = address(new NapierCombineFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER));
         _swapPtFuse = address(new NapierSwapPtFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER));
         _swapYtFuse = address(new NapierSwapYtFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER));
+        _zapDepositFuse = address(
+            new NapierZapDepositFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER)
+        );
+        _depositFuse = address(new NapierDepositFuse(IporFusionMarkets.NAPIER, NapierConstants.ARB_UNIVERSAL_ROUTER));
 
         vm.startPrank(ATOMIST);
-        address[] memory fuses = new address[](6);
+        address[] memory fuses = new address[](8);
         fuses[0] = _supplyFuse;
         fuses[1] = _redeemFuse;
         fuses[2] = _collectFuse;
         fuses[3] = _combineFuse;
         fuses[4] = _swapPtFuse;
         fuses[5] = _swapYtFuse;
+        fuses[6] = _zapDepositFuse;
+        fuses[7] = _depositFuse;
         _plasmaVault.addFusesToVault(fuses);
 
         // Add balance fuses
@@ -1117,6 +1230,388 @@ contract NapierSupplyFuseTest is Test {
 
         vm.prank(ALPHA);
         vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /*                    ZAP DEPOSIT FUSE TESTS                  */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_ZapDeposit_Enter() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        uint256 amountIn = 25 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amountIn);
+
+        address yt = IPrincipalToken(principalToken).i_yt();
+        uint256 poolBalanceBefore = ERC20(pool).balanceOf(address(_plasmaVault));
+        uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
+        uint256 ytBalanceBefore = ERC20(yt).balanceOf(address(_plasmaVault));
+        uint256 totalPtSupplyBefore = pt.totalSupply();
+
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: amountIn,
+            minLiquidity: 100
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        uint256 supplyIncrease = pt.totalSupply() - totalPtSupplyBefore;
+
+        assertEq(pt.balanceOf(address(_plasmaVault)), ptBalanceBefore, "PT balance should not change");
+        assertGt(ERC20(pool).balanceOf(address(_plasmaVault)), poolBalanceBefore, "Liquidity balance");
+        assertEq(ERC20(yt).balanceOf(address(_plasmaVault)), ytBalanceBefore + supplyIncrease, "YT balance");
+    }
+
+    function test_ZapDeposit_Enter_RevertWhen_PoolNotGranted() public {
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(makeAddr("badPool")),
+            amountIn: 1,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function testFuzz_ZapDeposit_Enter_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
+        address[3] memory tokens = [
+            principalToken,
+            IPrincipalToken(principalToken).i_yt(),
+            IPrincipalToken(principalToken).underlying()
+        ];
+        address omit = tokens[omitIndex % tokens.length];
+
+        _regrantNapierSubstrates(omit);
+
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 1,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_ZapDeposit_Exit_WhenPreMaturity() public {
+        // Arrange
+        uint256 amountIn = 25 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amountIn);
+
+        NapierZapDepositFuseEnterData memory enterData = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: amountIn,
+            minLiquidity: 100
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, enterData)});
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        uint256 liquidity = ERC20(pool).balanceOf(address(_plasmaVault));
+        assertGt(liquidity, 0, "liquidity minted");
+
+        // Act
+        NapierZapDepositFuseExitData memory exitData = NapierZapDepositFuseExitData({
+            pool: ITokiPoolToken(pool),
+            liquidity: liquidity,
+            amount1OutMin: 0
+        });
+
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.exit, exitData)});
+
+        uint256 underlyingBalanceBeforeExit = ERC20(GAUNTLET_USDC_PRIME).balanceOf(address(_plasmaVault));
+        uint256 poolBalanceBeforeExit = ERC20(pool).balanceOf(address(_plasmaVault));
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        // Assert
+        assertApproxEqAbs(
+            poolBalanceBeforeExit - ERC20(pool).balanceOf(address(_plasmaVault)),
+            liquidity,
+            2,
+            "liquidity"
+        );
+
+        uint256 underlyingBalanceAfterExit = ERC20(GAUNTLET_USDC_PRIME).balanceOf(address(_plasmaVault));
+        assertGt(underlyingBalanceAfterExit, underlyingBalanceBeforeExit, "underlying received");
+    }
+
+    function test_ZapDeposit_Exit_WhenPostMaturity() public {
+        // Arrange
+        uint256 amountIn = 25 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amountIn);
+
+        NapierZapDepositFuseEnterData memory enterData = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: amountIn,
+            minLiquidity: 100
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, enterData)});
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        uint256 liquidity = ERC20(pool).balanceOf(address(_plasmaVault));
+        assertGt(liquidity, 0, "liquidity minted");
+
+        // Act
+        vm.warp(expiry + 1 days);
+
+        NapierZapDepositFuseExitData memory exitData = NapierZapDepositFuseExitData({
+            pool: ITokiPoolToken(pool),
+            liquidity: liquidity,
+            amount1OutMin: 0
+        });
+
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.exit, exitData)});
+
+        uint256 underlyingBalanceBeforeExit = ERC20(GAUNTLET_USDC_PRIME).balanceOf(address(_plasmaVault));
+        uint256 poolBalanceBeforeExit = ERC20(pool).balanceOf(address(_plasmaVault));
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        // Assert
+        assertApproxEqAbs(
+            poolBalanceBeforeExit - ERC20(pool).balanceOf(address(_plasmaVault)),
+            liquidity,
+            2,
+            "liquidity"
+        );
+
+        uint256 underlyingBalanceAfterExit = ERC20(GAUNTLET_USDC_PRIME).balanceOf(address(_plasmaVault));
+        assertGt(underlyingBalanceAfterExit, underlyingBalanceBeforeExit, "underlying received");
+    }
+
+    function test_ZapDeposit_Exit_RevertWhen_PoolNotGranted() public {
+        NapierZapDepositFuseExitData memory data = NapierZapDepositFuseExitData({
+            pool: ITokiPoolToken(makeAddr("badPool")),
+            liquidity: 1,
+            amount1OutMin: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function testFuzz_ZapDeposit_Exit_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
+        address[2] memory tokens = [principalToken, IPrincipalToken(principalToken).underlying()];
+        address omit = tokens[omitIndex % tokens.length];
+
+        _regrantNapierSubstrates(omit);
+
+        NapierZapDepositFuseExitData memory data = NapierZapDepositFuseExitData({
+            pool: ITokiPoolToken(pool),
+            liquidity: 1,
+            amount1OutMin: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /*                     DEPOSIT FUSE TESTS                     */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function test_Deposit_Enter() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+
+        _test_Supply(
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 1_000 * 10 ** ERC20(USDC).decimals()
+            })
+        );
+
+        uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
+        uint256 amount1In = ptBalanceBefore / 2;
+        assertGt(amount1In, 0, "PT amount");
+
+        uint256 amount0In = 20 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amount0In);
+
+        uint256 poolBalanceBefore = ERC20(pool).balanceOf(address(_plasmaVault));
+
+        NapierDepositFuseEnterData memory data = NapierDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amount0In: amount0In,
+            amount1In: amount1In,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        assertGt(ERC20(pool).balanceOf(address(_plasmaVault)), poolBalanceBefore, "Liquidity balance");
+    }
+
+    function test_Deposit_Enter_RevertWhen_PoolNotGranted() public {
+        NapierDepositFuseEnterData memory data = NapierDepositFuseEnterData({
+            pool: ITokiPoolToken(makeAddr("badPool")),
+            amount0In: 1,
+            amount1In: 1,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function testFuzz_Deposit_Enter_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
+        address[2] memory tokens = [principalToken, IPrincipalToken(principalToken).underlying()];
+        address omit = tokens[omitIndex % tokens.length];
+
+        _regrantNapierSubstrates(omit);
+
+        NapierDepositFuseEnterData memory data = NapierDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amount0In: 1,
+            amount1In: 1,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_Deposit_Exit() public {
+        // Arrange
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        _test_Supply(
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 1_000 * 10 ** ERC20(USDC).decimals()
+            })
+        );
+
+        uint256 amount1In = pt.balanceOf(address(_plasmaVault)) / 2;
+        assertGt(amount1In, 0, "PT amount");
+
+        uint256 amount0In = 20 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amount0In);
+
+        uint256 poolBalanceBefore = ERC20(pool).balanceOf(address(_plasmaVault));
+
+        NapierDepositFuseEnterData memory enterData = NapierDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amount0In: amount0In,
+            amount1In: amount1In,
+            minLiquidity: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, enterData)});
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        uint256 poolBalanceAfterEnter = ERC20(pool).balanceOf(address(_plasmaVault));
+        uint256 liquidity = poolBalanceAfterEnter - poolBalanceBefore;
+        assertGt(liquidity, 0, "Minted liquidity");
+
+        // Act
+        NapierDepositFuseExitData memory exitData = NapierDepositFuseExitData({
+            pool: ITokiPoolToken(pool),
+            liquidity: liquidity,
+            amount0OutMin: 0,
+            amount1OutMin: 0
+        });
+
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.exit, exitData)});
+
+        uint256 underlyingBalanceBeforeExit = ERC20(GAUNTLET_USDC_PRIME).balanceOf(address(_plasmaVault));
+        uint256 ptBalanceBeforeExit = pt.balanceOf(address(_plasmaVault));
+        uint256 poolBalanceBeforeExit = poolBalanceAfterEnter;
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        uint256 poolBalanceAfterExit = ERC20(pool).balanceOf(address(_plasmaVault));
+        assertApproxEqAbs(poolBalanceBeforeExit - poolBalanceAfterExit, liquidity, 2, "Liquidity burned");
+
+        assertGt(
+            ERC20(GAUNTLET_USDC_PRIME).balanceOf(address(_plasmaVault)),
+            underlyingBalanceBeforeExit,
+            "Underlying received"
+        );
+        assertGt(pt.balanceOf(address(_plasmaVault)), ptBalanceBeforeExit, "PT received");
+    }
+
+    function test_Deposit_Exit_RevertWhen_PoolNotGranted() public {
+        NapierDepositFuseExitData memory data = NapierDepositFuseExitData({
+            pool: ITokiPoolToken(makeAddr("badPool")),
+            liquidity: 1,
+            amount0OutMin: 0,
+            amount1OutMin: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function testFuzz_Deposit_Exit_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
+        address[2] memory tokens = [principalToken, IPrincipalToken(principalToken).underlying()];
+        address omit = tokens[omitIndex % tokens.length];
+
+        _regrantNapierSubstrates(omit);
+
+        NapierDepositFuseExitData memory data = NapierDepositFuseExitData({
+            pool: ITokiPoolToken(pool),
+            liquidity: 1,
+            amount0OutMin: 0,
+            amount1OutMin: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
