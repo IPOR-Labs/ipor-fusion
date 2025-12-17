@@ -108,6 +108,7 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
         ERC20(underlying).safeTransfer(address(ROUTER), data_.amountIn);
         ROUTER.execute(commands, inputs);
 
+        // The issued YTs are the same amount as the issued PTs
         uint256 liquidity = data_.pool.balanceOf(address(this)) - balanceBefore;
         uint256 principals = ERC20(yt).balanceOf(address(this)) - principalsBefore;
 
