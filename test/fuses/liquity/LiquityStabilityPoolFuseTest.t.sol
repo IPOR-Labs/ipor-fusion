@@ -103,6 +103,8 @@ contract LiquityStabilityPoolFuseTest is Test {
             )
         );
 
+        _setupRoles();
+
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             address(this),

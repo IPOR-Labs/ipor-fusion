@@ -439,7 +439,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
         IActivePool activePool = reg.activePool();
 
         IActivePool.TroveChange memory change;
-        change.collIncrease = data_.collAmount;
+        change.collIncrease = data_.collAmount + data_.flashLoanAmount;
         change.debtIncrease = data_.ebusdAmount;
         change.newWeightedRecordedDebt = change.debtIncrease * data_.annualInterestRate;
 
@@ -459,7 +459,7 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             revert NewOracleFailureDetected();
         }
 
-        uint256 icr = LiquityMath.computeCR(data_.collAmount, newDebt, price);
+        uint256 icr = LiquityMath.computeCR(change.collIncrease, newDebt, price);
         if (icr < mcr) {
             revert ICRBelowMCR(icr, mcr);
         }

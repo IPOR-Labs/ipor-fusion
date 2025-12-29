@@ -216,9 +216,9 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
 
-        assertEq(userOneBalanceOfAssets, 108496109);
-        assertEq(userTwoBalanceOfAssets, 108496109);
-        assertEq(plasmaVault.balanceOf(performanceFeeManager), 89834000);
+        assertEq(userOneBalanceOfAssets, 108536115);
+        assertEq(userTwoBalanceOfAssets, 108536115);
+        assertEq(plasmaVault.balanceOf(performanceFeeManager), 82429067);
     }
 
     function testShouldExitFromTwoMarketsAaveV3SupplyAndCompoundV3SupplyAndCalculatePerformanceFeeTimeIsNotChanged()
@@ -496,9 +496,9 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
 
-        assertEq(userOneBalanceOfAssets, 28791034, "userOneBalanceOfAssets");
-        assertEq(userTwoBalanceOfAssets, 103791034, "userTwoBalanceOfAssets");
-        assertEq(plasmaVault.balanceOf(performanceFeeManager), 39985000, "daoBalanceOfAssets");
+        assertEq(userOneBalanceOfAssets, 28798997, "userOneBalanceOfAssets");
+        assertEq(userTwoBalanceOfAssets, 103798997, "userTwoBalanceOfAssets");
+        assertEq(plasmaVault.balanceOf(performanceFeeManager), 38447669, "daoBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1057,9 +1057,9 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
 
-        assertEq(userOneBalanceOfAssets, 32270080, "userOneBalanceOfAssets on plasma vault");
-        assertEq(userTwoBalanceOfAssets, 107566934, "userTwoBalanceOfAssets on plasma vault");
-        assertApproxEqAbs(plasmaVault.balanceOf(performanceFeeManager), 79970000, 1, "daoBalanceOfAssets aprox");
+        assertEq(userOneBalanceOfAssets, 32279599, "userOneBalanceOfAssets on plasma vault");
+        assertEq(userTwoBalanceOfAssets, 107598665, "userTwoBalanceOfAssets on plasma vault");
+        assertApproxEqAbs(plasmaVault.balanceOf(performanceFeeManager), 74048353, 1, "daoBalanceOfAssets aprox");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 

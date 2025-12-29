@@ -87,7 +87,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     error InvalidAddress();
 
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 40;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
@@ -786,6 +786,13 @@ library IporFusionAccessManagerInitializerLibV1 {
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.GUARDIAN_ROLE,
             functionSelector: IporFusionAccessManager.updateTargetClosed.selector,
+            minimalExecutionDelay: 0
+        });
+
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.accessManager,
+            roleId: Roles.TECH_PLASMA_VAULT_ROLE,
+            functionSelector: IporFusionAccessManager.canCallAndUpdate.selector,
             minimalExecutionDelay: 0
         });
 

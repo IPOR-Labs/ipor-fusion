@@ -93,7 +93,7 @@ contract ExchangeRateValidatorPreHook is IPreHook {
         for (uint256 i; i < length; ++i) {
             address implementation = hooks_[i].hookAddress;
             if (implementation == address(0)) {
-                break;
+                continue;
             }
             Address.functionDelegateCall(implementation, abi.encodeWithSelector(IPreHook.run.selector, selector_));
         }
