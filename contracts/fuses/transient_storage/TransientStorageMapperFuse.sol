@@ -100,6 +100,11 @@ contract TransientStorageMapperFuse is IFuseCommon {
             return value_;
         }
 
+        // If types and decimals are identical, no conversion needed
+        if (fromType_ == toType_ && fromDecimals_ == toDecimals_) {
+            return value_;
+        }
+
         // Extract numeric value based on fromType
         uint256 numericValue = _extractNumericValue(value_, fromType_);
 
