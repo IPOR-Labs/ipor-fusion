@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @notice FuseAction is a struct that represents a single action that can be executed by an Alpha
 struct FuseAction {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -422,7 +422,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function generateEnterCallsData(
         uint256 amount_,
         bytes32[] memory data_
-    ) private returns (FuseAction[] memory enterCalls) {
+    ) internal returns (FuseAction[] memory enterCalls) {
         bytes[] memory enterData = getEnterFuseData(amount_, data_);
 
         uint256 len = enterData.length;
@@ -438,7 +438,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
     function generateExitCallsData(
         uint256 amount_,
         bytes32[] memory data_
-    ) private view returns (FuseAction[] memory exitCalls) {
+    ) internal view returns (FuseAction[] memory exitCalls) {
         (address[] memory fusesSetup, bytes[] memory exitData) = getExitFuseData(amount_, data_);
 
         uint256 len = exitData.length;

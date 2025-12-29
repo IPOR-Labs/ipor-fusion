@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {IFuseCommon} from "../IFuseCommon.sol";
-import {INonfungiblePositionManager, IUniswapV3Pool, IUniswapV3Factory} from "./ext/INonfungiblePositionManager.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {IFuseCommon} from "../IFuseCommon.sol";
+import {INonfungiblePositionManager, IUniswapV3Factory, IUniswapV3Pool} from "./ext/INonfungiblePositionManager.sol";
 import {PositionValue} from "./ext/PositionValue.sol";
 
 /// @notice Data for entering new position in Uniswap V3
@@ -40,10 +44,16 @@ struct UniswapV3NewPositionFuseExitData {
     uint256[] tokenIds;
 }
 
-/// @title Fuse responsible for create new Uniswap V3 positions.
-/// @dev Associated with fuse balance UniswapV3Balance.
+/// @title UniswapV3NewPositionFuse
+/// @notice Fuse for creating and managing new Uniswap V3 liquidity positions
+/// @dev This fuse allows the PlasmaVault to create new Uniswap V3 positions by providing liquidity to pools.
+///      It handles position creation (minting NFTs) and position closure (burning NFTs).
+///      Associated with fuse balance UniswapV3Balance.
 contract UniswapV3NewPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
+    using Address for address;
+
+    error InvalidReturnData();
 
     event UniswapV3NewPositionFuseEnter(
         address version,
@@ -72,7 +82,33 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
     }
 
-    function enter(UniswapV3NewPositionFuseEnterData calldata data_) public {
+    /// @notice Enters a new Uniswap V3 position.
+    /// @param data_ The data required to enter the new position.
+    /// @return tokenId The ID of the NFT token representing the position
+    /// @return liquidity The amount of liquidity minted
+    /// @return amount0 The amount of token0 used
+    /// @return amount1 The amount of token1 used
+    /// @return token0 The address of token0
+    /// @return token1 The address of token1
+    /// @return fee The fee tier of the pool
+    /// @return tickLower The lower tick of the position
+    /// @return tickUpper The upper tick of the position
+    function enter(
+        UniswapV3NewPositionFuseEnterData memory data_
+    )
+        public
+        returns (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper
+        )
+    {
         if (
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
@@ -84,24 +120,22 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
 
         // Note that the pool defined by token0/token1 and fee tier must already be created and initialized in order to mint
-        (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).mint(
-                /// @dev The values for tickLower and tickUpper may not work for all tick spacings. Setting amount0Min and amount1Min to 0 is unsafe.
-                INonfungiblePositionManager.MintParams({
-                    token0: data_.token0,
-                    token1: data_.token1,
-                    fee: data_.fee,
-                    tickLower: data_.tickLower,
-                    tickUpper: data_.tickUpper,
-                    amount0Desired: data_.amount0Desired,
-                    amount1Desired: data_.amount1Desired,
-                    amount0Min: data_.amount0Min,
-                    amount1Min: data_.amount1Min,
-                    recipient: address(this),
-                    deadline: data_.deadline
-                })
-            );
+        (tokenId, liquidity, amount0, amount1) = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).mint(
+            /// @dev The values for tickLower and tickUpper may not work for all tick spacings. Setting amount0Min and amount1Min to 0 is unsafe.
+            INonfungiblePositionManager.MintParams({
+                token0: data_.token0,
+                token1: data_.token1,
+                fee: data_.fee,
+                tickLower: data_.tickLower,
+                tickUpper: data_.tickUpper,
+                amount0Desired: data_.amount0Desired,
+                amount1Desired: data_.amount1Desired,
+                amount0Min: data_.amount0Min,
+                amount1Min: data_.amount1Min,
+                recipient: address(this),
+                deadline: data_.deadline
+            })
+        );
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
@@ -110,52 +144,128 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
         tokensIds.tokenIds.push(tokenId);
 
+        token0 = data_.token0;
+        token1 = data_.token1;
+        fee = data_.fee;
+        tickLower = data_.tickLower;
+        tickUpper = data_.tickUpper;
+
         emit UniswapV3NewPositionFuseEnter(
             VERSION,
             tokenId,
             liquidity,
             amount0,
             amount1,
-            data_.token0,
-            data_.token1,
-            data_.fee,
-            data_.tickLower,
-            data_.tickUpper
+            token0,
+            token1,
+            fee,
+            tickLower,
+            tickUpper
         );
     }
 
-    function exit(UniswapV3NewPositionFuseExitData calldata closePositions) public {
+    /// @notice Exits one or more Uniswap V3 positions.
+    /// @param closePositions The data required to exit the positions.
+    /// @return tokenIds The array of token IDs that were closed
+    function exit(UniswapV3NewPositionFuseExitData memory closePositions) public returns (uint256[] memory tokenIds) {
         FuseStorageLib.UniswapV3TokenIds storage tokensIds = FuseStorageLib.getUniswapV3TokenIds();
 
         uint256 len = tokensIds.tokenIds.length;
         uint256 tokenIndex;
+        uint256 closedCount;
 
-        for (uint256 i; i < len; i++) {
+        // First pass: count how many positions will be closed
+        for (uint256 i; i < closePositions.tokenIds.length; ++i) {
+            if (_canExit(closePositions.tokenIds[i])) {
+                ++closedCount;
+            }
+        }
+
+        // Initialize return array
+        tokenIds = new uint256[](closedCount);
+        uint256 closedIndex;
+        uint256 tokenId;
+        uint256 lastTokenId;
+
+        // Second pass: close positions and collect tokenIds
+        for (uint256 i; i < closePositions.tokenIds.length; ++i) {
             if (!_canExit(closePositions.tokenIds[i])) {
                 continue;
             }
 
-            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
+            tokenId = closePositions.tokenIds[i];
+            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
 
-            tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
+            tokenIndex = tokensIds.indexes[tokenId];
+            
             if (tokenIndex != len - 1) {
-                tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];
+                lastTokenId = tokensIds.tokenIds[len - 1];
+                tokensIds.tokenIds[tokenIndex] = lastTokenId;
+                tokensIds.indexes[lastTokenId] = tokenIndex;
             }
-            tokensIds.tokenIds.pop();
 
-            emit UniswapV3NewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
+            tokensIds.tokenIds.pop();
+            delete tokensIds.indexes[tokenId];
+            
+            --len;
+
+            tokenIds[closedIndex] = tokenId;
+            ++closedIndex;
+
+            emit UniswapV3NewPositionFuseExit(VERSION, tokenId);
+        }
+    }
+
+    /// @notice Extracts token0, token1, and fee from a position using assembly for gas optimization.
+    /// @param tokenId_ The ID of the token that represents the position
+    /// @return token0 The address of the token0 for a specific pool
+    /// @return token1 The address of the token1 for a specific pool
+    /// @return fee The fee associated with the pool
+    function getPositionInfo(uint256 tokenId_) private view returns (address token0, address token1, uint24 fee) {
+        bytes memory returnData = NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
+            abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_)
+        );
+
+        if (returnData.length < 160) revert InvalidReturnData();
+
+        assembly {
+            token0 := mload(add(returnData, 96))
+            token1 := mload(add(returnData, 128))
+            let feeValue := mload(add(returnData, 160))
+            fee := and(feeValue, 0xFFFFFF)
+        }
+    }
+
+    /// @notice Gets sqrtPriceX96 from a pool using assembly for gas optimization.
+    /// @param factory_ The Uniswap V3 factory address
+    /// @param token0_ The address of the token0 for a specific pool
+    /// @param token1_ The address of the token1 for a specific pool
+    /// @param fee_ The fee associated with the pool
+    /// @return sqrtPriceX96 The current price of the pool as a sqrt(token1/token0) Q64.96 value
+    function getSqrtPriceX96(
+        address factory_,
+        address token0_,
+        address token1_,
+        uint24 fee_
+    ) private view returns (uint160 sqrtPriceX96) {
+        address pool = IUniswapV3Factory(factory_).getPool(token0_, token1_, fee_);
+
+        bytes memory returnData = pool.functionStaticCall(abi.encodeWithSelector(IUniswapV3Pool.slot0.selector));
+
+        if (returnData.length < 64) revert InvalidReturnData();
+
+        assembly {
+            let sqrtPriceValue := mload(add(returnData, 32))
+            sqrtPriceX96 := and(sqrtPriceValue, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
         }
     }
 
     function _canExit(uint256 tokenId) private view returns (bool) {
-        (, , address token0, address token1, uint24 fee, , , , , , , ) = INonfungiblePositionManager(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).positions(tokenId);
+        (address token0, address token1, uint24 fee) = getPositionInfo(tokenId);
 
         address factory = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).factory();
 
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(IUniswapV3Factory(factory).getPool(token0, token1, fee))
-            .slot0();
+        uint160 sqrtPriceX96 = getSqrtPriceX96(factory, token0, token1, fee);
 
         (uint256 amount0, uint256 amount1) = PositionValue.total(
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER),
@@ -164,5 +274,75 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         );
 
         return amount0 < IERC20Metadata(token0).decimals() / 2 && amount1 < IERC20Metadata(token1).decimals() / 2;
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    /// @dev Reads all parameters from transient storage and writes returned values to outputs
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        UniswapV3NewPositionFuseEnterData memory data_ = UniswapV3NewPositionFuseEnterData({
+            token0: TypeConversionLib.toAddress(inputs[0]),
+            token1: TypeConversionLib.toAddress(inputs[1]),
+            fee: uint24(TypeConversionLib.toUint256(inputs[2])),
+            tickLower: int24(TypeConversionLib.toInt256(inputs[3])),
+            tickUpper: int24(TypeConversionLib.toInt256(inputs[4])),
+            amount0Desired: TypeConversionLib.toUint256(inputs[5]),
+            amount1Desired: TypeConversionLib.toUint256(inputs[6]),
+            amount0Min: TypeConversionLib.toUint256(inputs[7]),
+            amount1Min: TypeConversionLib.toUint256(inputs[8]),
+            deadline: TypeConversionLib.toUint256(inputs[9])
+        });
+
+        (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1,
+            address returnedToken0,
+            address returnedToken1,
+            uint24 returnedFee,
+            int24 returnedTickLower,
+            int24 returnedTickUpper
+        ) = enter(data_);
+
+        bytes32[] memory outputs = new bytes32[](9);
+        outputs[0] = TypeConversionLib.toBytes32(tokenId);
+        outputs[1] = TypeConversionLib.toBytes32(uint256(liquidity));
+        outputs[2] = TypeConversionLib.toBytes32(amount0);
+        outputs[3] = TypeConversionLib.toBytes32(amount1);
+        outputs[4] = TypeConversionLib.toBytes32(returnedToken0);
+        outputs[5] = TypeConversionLib.toBytes32(returnedToken1);
+        outputs[6] = TypeConversionLib.toBytes32(uint256(returnedFee));
+        outputs[7] = TypeConversionLib.toBytes32(uint256(int256(returnedTickLower)));
+        outputs[8] = TypeConversionLib.toBytes32(uint256(int256(returnedTickUpper)));
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    /// @dev Reads tokenIds array from transient storage (first element is length, subsequent elements are tokenIds)
+    /// @dev Writes returned tokenIds array length to transient storage outputs
+    function exitTransient() external {
+        bytes32 lengthBytes32 = TransientStorageLib.getInput(VERSION, 0);
+        uint256 len = TypeConversionLib.toUint256(lengthBytes32);
+
+        bytes32[] memory outputs = new bytes32[](1);
+
+        if (len == 0) {
+            outputs[0] = TypeConversionLib.toBytes32(uint256(0));
+            TransientStorageLib.setOutputs(VERSION, outputs);
+            return;
+        }
+
+        uint256[] memory tokenIds = new uint256[](len);
+        for (uint256 i; i < len; ++i) {
+            bytes32 tokenIdBytes32 = TransientStorageLib.getInput(VERSION, i + 1);
+            tokenIds[i] = TypeConversionLib.toUint256(tokenIdBytes32);
+        }
+
+        uint256[] memory returnedTokenIds = exit(UniswapV3NewPositionFuseExitData({tokenIds: tokenIds}));
+
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenIds.length);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

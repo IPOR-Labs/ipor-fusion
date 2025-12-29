@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -7,6 +7,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ICurveStableswapNG} from "./ext/ICurveStableswapNG.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 
 struct CurveStableswapNGSingleSideSupplyFuseEnterData {
     /// @notice Curve pool contract to enter
@@ -70,7 +72,9 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
-    function enter(CurveStableswapNGSingleSideSupplyFuseEnterData memory data_) external {
+    function enter(
+        CurveStableswapNGSingleSideSupplyFuseEnterData memory data_
+    ) public returns (address curveStableswapNG, uint256 lpTokenAmountReceived) {
         ICurveStableswapNG curvePool = ICurveStableswapNG(data_.curveStableswapNG);
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(curvePool))) {
@@ -79,7 +83,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
         }
 
         if (data_.assetAmount == 0) {
-            return;
+            return (address(data_.curveStableswapNG), 0);
         }
 
         uint256 nCoins = curvePool.N_COINS();
@@ -98,11 +102,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
 
-        uint256 lpTokenAmountReceived = curvePool.add_liquidity(
-            coinsAmounts,
-            data_.minLpTokenAmountReceived,
-            address(this)
-        );
+        lpTokenAmountReceived = curvePool.add_liquidity(coinsAmounts, data_.minLpTokenAmountReceived, address(this));
 
         emit CurveSupplyStableswapNGSingleSideSupplyFuseEnter(
             VERSION,
@@ -111,9 +111,35 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
             data_.assetAmount,
             lpTokenAmountReceived
         );
+
+        return (address(curvePool), lpTokenAmountReceived);
     }
 
-    function exit(CurveStableswapNGSingleSideSupplyFuseExitData calldata data_) external {
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address curveStableswapNG = TypeConversionLib.toAddress(inputs[0]);
+        address asset = TypeConversionLib.toAddress(inputs[1]);
+        uint256 assetAmount = TypeConversionLib.toUint256(inputs[2]);
+        uint256 minLpTokenAmountReceived = TypeConversionLib.toUint256(inputs[3]);
+
+        (address curveStableswapNGUsed, uint256 lpTokenAmountReceived) = enter(
+            CurveStableswapNGSingleSideSupplyFuseEnterData({
+                curveStableswapNG: ICurveStableswapNG(curveStableswapNG),
+                asset: asset,
+                assetAmount: assetAmount,
+                minLpTokenAmountReceived: minLpTokenAmountReceived
+            })
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(curveStableswapNGUsed);
+        outputs[1] = TypeConversionLib.toBytes32(lpTokenAmountReceived);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    function exit(
+        CurveStableswapNGSingleSideSupplyFuseExitData memory data_
+    ) public returns (address curveStableswapNG, uint256 coinAmountReceived) {
         ICurveStableswapNG curvePool = ICurveStableswapNG(data_.curveStableswapNG);
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(curvePool))) {
@@ -122,7 +148,7 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
         }
 
         if (data_.lpTokenAmount == 0) {
-            return;
+            return (address(data_.curveStableswapNG), 0);
         }
 
         uint256 nCoins = curvePool.N_COINS();
@@ -143,7 +169,8 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
 
         try
             curvePool.remove_liquidity_one_coin(data_.lpTokenAmount, index, data_.minCoinAmountReceived, address(this))
-        returns (uint256 coinAmountReceived) {
+        returns (uint256 amount) {
+            coinAmountReceived = amount;
             emit CurveSupplyStableswapNGSingleSideSupplyFuseExit(
                 VERSION,
                 address(curvePool),
@@ -160,6 +187,31 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
                 data_.asset,
                 data_.minCoinAmountReceived
             );
+            coinAmountReceived = 0;
         }
+
+        return (address(curvePool), coinAmountReceived);
+    }
+
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address curveStableswapNG = TypeConversionLib.toAddress(inputs[0]);
+        address asset = TypeConversionLib.toAddress(inputs[1]);
+        uint256 lpTokenAmount = TypeConversionLib.toUint256(inputs[2]);
+        uint256 minCoinAmountReceived = TypeConversionLib.toUint256(inputs[3]);
+
+        (address curveStableswapNGUsed, uint256 coinAmountReceived) = exit(
+            CurveStableswapNGSingleSideSupplyFuseExitData({
+                curveStableswapNG: ICurveStableswapNG(curveStableswapNG),
+                lpTokenAmount: lpTokenAmount,
+                asset: asset,
+                minCoinAmountReceived: minCoinAmountReceived
+            })
+        );
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(curveStableswapNGUsed);
+        outputs[1] = TypeConversionLib.toBytes32(coinAmountReceived);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

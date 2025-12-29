@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {PreHooksLib} from "../handlers/pre_hooks/PreHooksLib.sol";
 import {UniversalReader, ReadResult} from "../universal_reader/UniversalReader.sol";

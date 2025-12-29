@@ -17,7 +17,8 @@
         "solhint:all": "npm-run-all --parallel solhint:contract solhint:test",
         "prettier:contracts": "./node_modules/.bin/prettier --write 'contracts/**/*.sol'",
         "prettier:test": "./node_modules/.bin/prettier --write 'test/**/*.sol'",
-        "prettier:all": "npm-run-all --parallel prettier:contracts prettier:test"
+        "prettier:all": "npm-run-all --parallel prettier:contracts prettier:test",
+        "coverage:file": "./tools/check_coverage.sh"
     },
     "dependencies": {
         "@chainlink/contracts": "^1.2.0",

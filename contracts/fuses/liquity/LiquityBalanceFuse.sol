@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -17,9 +17,18 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 contract LiquityBalanceFuse is IMarketBalanceFuse {
     uint256 public immutable MARKET_ID;
 
-    error InvalidMarketId();
+    /// @notice Thrown when market ID is zero
+    /// @custom:error LiquityBalanceFuseInvalidMarketId
+    error LiquityBalanceFuseInvalidMarketId();
 
+    /// @notice Constructor to initialize the fuse with a market ID
+    /// @param marketId_ The unique identifier for the market configuration
+    /// @dev The market ID is used to retrieve the list of substrates (address registries) that this fuse will track.
+    ///      Reverts if marketId_ is zero.
     constructor(uint256 marketId_) {
+        if (marketId_ == 0) {
+            revert LiquityBalanceFuseInvalidMarketId();
+        }
         MARKET_ID = marketId_;
     }
 
@@ -80,6 +89,12 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
 
     /**
      * @notice Calculates the total collateral value (stashed + unrealized gains) for a single registry
+     * @param stabilityPool_ The stability pool contract interface
+     * @param collToken_ The address of the collateral token
+     * @param plasmaVault_ The address of the Plasma Vault
+     * @param priceOracleMiddleware_ The address of the price oracle middleware
+     * @return The total collateral value in USD (scaled to 18 decimals)
+     * @dev Calculates both stashed collateral (claimed but not sent) and unrealized collateral gains from liquidations
      */
     function _calculateCollateralValue(
         IStabilityPool stabilityPool_,
@@ -106,7 +121,14 @@ contract LiquityBalanceFuse is IMarketBalanceFuse {
     }
 
     /**
-     * @dev Calculates the total BOLD value (compounded deposits + unrealized yield gains) for a single registry
+     * @notice Calculates the total BOLD value (compounded deposits + unrealized yield gains) for a single registry
+     * @param stabilityPool_ The stability pool contract interface
+     * @param plasmaVault_ The address of the Plasma Vault
+     * @param boldPrice_ The price of BOLD token (from price oracle)
+     * @param boldDecimals_ The number of decimals for BOLD token
+     * @param boldPriceDecimals_ The number of decimals for BOLD price from oracle
+     * @return The total BOLD value in USD (scaled to 18 decimals)
+     * @dev Calculates both compounded BOLD deposits and unrealized yield gains from interest
      */
     function _calculateBoldValue(
         IStabilityPool stabilityPool_,

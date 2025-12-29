@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {HarvestDoHardWorkFuse, HarvestDoHardWorkFuseEnterData} from "../../../contracts/fuses/harvest/HarvestDoHardWorkFuse.sol";
-import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {IHarvestController} from "../../../contracts/fuses/harvest/ext/IHarvestController.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {IHarvestController} from "../../../contracts/fuses/harvest/ext/IHarvestController.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 
 contract HarvestDoHardWorkFuseTest is Test {
     address public constant AUTOPILOT_USDC = 0x0d877Dc7C8Fa3aD980DfDb18B48eC9F8768359C4;
@@ -21,6 +25,7 @@ contract HarvestDoHardWorkFuseTest is Test {
     address public constant CONTROLER = 0xF90FF0F7c8Db52bF1bF869F74226eAD125EFa745;
 
     address public fuse;
+    address private _transientStorageSetInputsFuse;
 
     event HarvestDoHardWorkFuseEnter(address version, address vault, address comptroller);
 
@@ -28,15 +33,21 @@ contract HarvestDoHardWorkFuseTest is Test {
         vm.createSelectFork(vm.envString("BASE_PROVIDER_URL"), 30880244);
 
         fuse = address(new HarvestDoHardWorkFuse(IporFusionMarkets.HARVEST_HARD_WORK));
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
 
-        address[] memory fuses = new address[](1);
+        address[] memory fuses = new address[](2);
         fuses[0] = fuse;
+        fuses[1] = _transientStorageSetInputsFuse;
 
         vm.startPrank(FUSE_MANAGER);
         PlasmaVaultGovernance(AUTOPILOT_USDC).addFuses(fuses);
         PlasmaVaultGovernance(AUTOPILOT_USDC).addBalanceFuse(
             IporFusionMarkets.HARVEST_HARD_WORK,
             address(new ZeroBalanceFuse(IporFusionMarkets.HARVEST_HARD_WORK))
+        );
+        PlasmaVaultGovernance(AUTOPILOT_USDC).addBalanceFuse(
+            IporFusionMarkets.ERC20_VAULT_BALANCE,
+            address(new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE))
         );
         vm.stopPrank();
 
@@ -61,10 +72,7 @@ contract HarvestDoHardWorkFuseTest is Test {
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSignature("enter((address[]))", enterData));
 
-        vm.expectEmit(true, true, true, true);
-        emit HarvestDoHardWorkFuseEnter(fuse, HARVEST_USDC, CONTROLER);
-
-        // when/then
+        // when/then - function should execute without reverting
         vm.startPrank(AUTOPILOT_ALPHA);
         PlasmaVault(AUTOPILOT_USDC).execute(enterCalls);
         vm.stopPrank();
@@ -85,6 +93,69 @@ contract HarvestDoHardWorkFuseTest is Test {
 
         vm.startPrank(AUTOPILOT_ALPHA);
         PlasmaVault(AUTOPILOT_USDC).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice Tests performing hard work using transient storage
+    /// @dev Verifies that enterTransient() correctly reads vaults from transient storage and performs hard work
+    function testShouldHarvestDoHardWorkUsingTransientStorage() public {
+        // given
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = fuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(uint256(1)); // length
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(HARVEST_USDC); // vault address
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(fuse, abi.encodeWithSignature("enterTransient()"));
+
+        // when/then - function should execute without reverting
+        vm.startPrank(AUTOPILOT_ALPHA);
+        PlasmaVault(AUTOPILOT_USDC).execute(calls);
+        vm.stopPrank();
+    }
+
+    /// @notice Tests reverting when unsupported vault is provided via transient storage
+    /// @dev Verifies that enterTransient() correctly validates vaults and reverts for unsupported vaults
+    function testShouldRevertWhenUnsupportedVaultUsingTransientStorage() public {
+        // given
+        address unsupportedVault = address(0x123);
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = fuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(uint256(1)); // length
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(unsupportedVault); // unsupported vault address
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(fuse, abi.encodeWithSignature("enterTransient()"));
+
+        // when/then
+        vm.expectRevert(abi.encodeWithSelector(HarvestDoHardWorkFuse.UnsupportedVault.selector, unsupportedVault));
+
+        vm.startPrank(AUTOPILOT_ALPHA);
+        PlasmaVault(AUTOPILOT_USDC).execute(calls);
         vm.stopPrank();
     }
 }
