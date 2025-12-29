@@ -19,6 +19,17 @@ import {IporFusionAccessControl} from "./IporFusionAccessControl.sol";
 /// @dev Supports both custom price feeds and Chainlink Feed Registry as fallback.
 /// @dev When CHAINLINK_FEED_REGISTRY is set to address(0), Chainlink fallback is disabled
 /// @dev and only custom price feeds will be supported
+///
+/// @dev Access Control:
+/// @dev This contract uses role-based access control (OpenZeppelin AccessControl), NOT Ownable.
+/// @dev Three main roles:
+/// @dev - DEFAULT_ADMIN_ROLE: Can grant/revoke other roles and authorize contract upgrades
+/// @dev - SET_ASSETS_PRICES_SOURCES: Can set/update price feed sources for assets
+/// @dev - ADD_PT_TOKEN_PRICE: Can add Pendle PT token price feeds
+/// @dev Role management:
+/// @dev - Grant role: grantRole(ROLE, address) - only DEFAULT_ADMIN_ROLE can call
+/// @dev - Revoke role: revokeRole(ROLE, address) - only DEFAULT_ADMIN_ROLE can call
+/// @dev - Check role: hasRole(ROLE, address) - returns true if address has the role
 contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradeable {
     using SafeCast for int256;
 
@@ -42,7 +53,11 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     }
 
     /// @notice Initializes the contract
-    /// @param initialAdmin_ The address that will own the contract
+    /// @param initialAdmin_ The address that will be granted the DEFAULT_ADMIN_ROLE
+    /// @dev The initialAdmin will have permission to manage all roles including granting/revoking:
+    /// @dev - SET_ASSETS_PRICES_SOURCES role (for managing price feed sources)
+    /// @dev - ADD_PT_TOKEN_PRICE role (for adding Pendle PT token price feeds)
+    /// @dev - DEFAULT_ADMIN_ROLE to other addresses
     /// @dev Should be a multi-sig wallet for security
     function initialize(address initialAdmin_) external initializer {
         __IporFusionAccessControl_init();
@@ -97,7 +112,11 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @param assets_ Array of asset addresses
     /// @param sources_ Array of corresponding price feed sources
     /// @dev Arrays must be equal length and non-empty
-    /// @dev Only callable by owner
+    /// @dev Only callable by addresses with the SET_ASSETS_PRICES_SOURCES role
+    /// @dev Role can be granted via: grantRole(SET_ASSETS_PRICES_SOURCES, <address>)
+    /// @dev Role can be revoked via: revokeRole(SET_ASSETS_PRICES_SOURCES, <address>)
+    /// @dev Role administration is controlled by DEFAULT_ADMIN_ROLE
+    /// @custom:access SET_ASSETS_PRICES_SOURCES
     function setAssetsPricesSources(
         address[] calldata assets_,
         address[] calldata sources_
@@ -120,6 +139,7 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice Adds a new Pendle Principal Token (PT) to the price oracle system
     /// @dev Creates and configures a new PtPriceFeed contract for the PT token
     /// @dev Validates the initial price against expected price with 1% tolerance
+    /// @dev Only callable by addresses with the ADD_PT_TOKEN_PRICE role
     /// @dev The function will revert if:
     /// @dev - Expected price is <= 0
     /// @dev - Price delta between actual and expected price is > 1%
@@ -138,6 +158,7 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @param twapWindow_ Time window in seconds for TWAP calculations
     /// @param expextedPriceAfterDeployment_ Expected initial price of PT token (used for validation)
     /// @param usePendleOracleMethod_ Configuration parameter for the PtPriceFeed's oracle method
+    /// @custom:access ADD_PT_TOKEN_PRICE
     function createAndAddPtTokenPriceFeed(
         address pendleOracle_,
         address pendleMarket_,
@@ -230,6 +251,7 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     }
 
     /// @dev Required by the OZ UUPS module
+    /// @dev Only addresses with DEFAULT_ADMIN_ROLE can authorize contract upgrades
     /// @param newImplementation Address of the new implementation
     //solhint-disable-next-line
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
