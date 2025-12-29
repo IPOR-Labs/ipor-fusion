@@ -919,8 +919,8 @@ contract EbisuZapperTest is Test {
         // Lever Up
         EbisuZapperLeverModifyFuseEnterData memory leverUpData = EbisuZapperLeverModifyFuseEnterData({
             zapper: SUSDE_ZAPPER,
-            flashLoanAmount: 100 * 1e18,
-            ebusdAmount: 500 * 1e18,
+            flashLoanAmount: 500 * 1e18,
+            ebusdAmount: 700 * 1e18,
             maxUpfrontFee: 2 * 1e18
         });
 
