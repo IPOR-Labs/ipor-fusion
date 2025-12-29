@@ -367,6 +367,53 @@ contract TransientStorageSetInputsFuseTest is Test {
         mock.enter(data);
     }
 
+    /// @notice Test revert when array lengths don't match (fuses longer than inputsByFuse)
+    function testEnterRevertArrayLengthMismatchFusesLonger() public {
+        address[] memory fuses = new address[](3);
+        fuses[0] = address(0x1);
+        fuses[1] = address(0x2);
+        fuses[2] = address(0x3);
+
+        // inputsByFuse has only 2 elements, but fuses has 3
+        bytes32[][] memory inputsByFuse = new bytes32[][](2);
+        inputsByFuse[0] = new bytes32[](1);
+        inputsByFuse[0][0] = bytes32(uint256(1));
+        inputsByFuse[1] = new bytes32[](1);
+        inputsByFuse[1][0] = bytes32(uint256(2));
+
+        TransientStorageSetInputsFuseEnterData memory data = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        vm.expectRevert(TransientStorageSetInputsFuse.WrongInputsLength.selector);
+        mock.enter(data);
+    }
+
+    /// @notice Test revert when array lengths don't match (inputsByFuse longer than fuses)
+    function testEnterRevertArrayLengthMismatchInputsLonger() public {
+        address[] memory fuses = new address[](2);
+        fuses[0] = address(0x1);
+        fuses[1] = address(0x2);
+
+        // inputsByFuse has 3 elements, but fuses has only 2
+        bytes32[][] memory inputsByFuse = new bytes32[][](3);
+        inputsByFuse[0] = new bytes32[](1);
+        inputsByFuse[0][0] = bytes32(uint256(1));
+        inputsByFuse[1] = new bytes32[](1);
+        inputsByFuse[1][0] = bytes32(uint256(2));
+        inputsByFuse[2] = new bytes32[](1);
+        inputsByFuse[2][0] = bytes32(uint256(3));
+
+        TransientStorageSetInputsFuseEnterData memory data = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        vm.expectRevert(TransientStorageSetInputsFuse.WrongInputsLength.selector);
+        mock.enter(data);
+    }
+
     /// @notice Test data isolation between different fuses
     function testDataIsolationBetweenFuses() public {
         address fuse1 = address(0x1);
