@@ -8,8 +8,6 @@ import {FusionFactoryLogicLib} from "./lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryLib} from "./lib/FusionFactoryLib.sol";
 
 import {FusionFactoryAccessControl} from "./FusionFactoryAccessControl.sol";
-import {FusionFactoryLib} from "./lib/FusionFactoryLib.sol";
-import {FusionFactoryStorageLib} from "./lib/FusionFactoryStorageLib.sol";
 
 /// @title FusionFactory
 /// @notice Factory contract for creating and managing Fusion Managers

@@ -184,6 +184,8 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
         // Initialize return array
         tokenIds = new uint256[](closedCount);
         uint256 closedIndex;
+        uint256 tokenId;
+        uint256 lastTokenId;
 
         // Second pass: close positions and collect tokenIds
         for (uint256 i; i < closePositions.tokenIds.length; ++i) {
@@ -191,17 +193,20 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
                 continue;
             }
 
-            uint256 tokenId = closePositions.tokenIds[i];
+            tokenId = closePositions.tokenIds[i];
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
 
             tokenIndex = tokensIds.indexes[tokenId];
+            
             if (tokenIndex != len - 1) {
-                uint256 lastTokenId = tokensIds.tokenIds[len - 1];
+                lastTokenId = tokensIds.tokenIds[len - 1];
                 tokensIds.tokenIds[tokenIndex] = lastTokenId;
                 tokensIds.indexes[lastTokenId] = tokenIndex;
             }
+
             tokensIds.tokenIds.pop();
             delete tokensIds.indexes[tokenId];
+            
             --len;
 
             tokenIds[closedIndex] = tokenId;

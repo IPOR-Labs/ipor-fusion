@@ -137,11 +137,13 @@ contract AsyncActionFuse is IFuseCommon {
         }
 
         uint256 targetsLength = data_.targets.length;
+
         if (targetsLength != data_.callDatas.length || targetsLength != data_.ethAmounts.length) {
             revert AsyncActionFuseInvalidArrayLength();
         }
 
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+
         (AllowedAmountToOutside[] memory allowedAmounts, AllowedTargets[] memory allowedTargets, ) = AsyncActionFuseLib
             .decodeAsyncActionFuseSubstrates(substrates);
 
@@ -201,6 +203,7 @@ contract AsyncActionFuse is IFuseCommon {
         uint256 targetsLength = TypeConversionLib.toUint256(targetsLengthBytes32);
 
         address[] memory targets = new address[](targetsLength);
+        
         for (uint256 i; i < targetsLength; ++i) {
             bytes32 targetBytes32 = TransientStorageLib.getInput(VERSION, 3 + i);
             targets[i] = PlasmaVaultConfigLib.bytes32ToAddress(targetBytes32);

@@ -115,8 +115,10 @@ contract AreodromeSlipstreamCollectFuse is IFuseCommon {
             totalAmount1 = 0;
         } else {
             uint256[] memory tokenIds = new uint256[](len);
+            bytes32 tokenIdBytes32;
+            
             for (uint256 i; i < len; ++i) {
-                bytes32 tokenIdBytes32 = TransientStorageLib.getInput(VERSION, i + 1);
+                tokenIdBytes32 = TransientStorageLib.getInput(VERSION, i + 1);
                 tokenIds[i] = TypeConversionLib.toUint256(tokenIdBytes32);
             }
 
