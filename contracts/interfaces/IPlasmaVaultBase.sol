@@ -7,7 +7,7 @@ interface IPlasmaVaultBase {
     /// @dev Method is executed only once during the Plasma Vault construction in context of Plasma Vault (delegatecall used)
     /// @param assetName_ The name of the asset
     /// @param accessManager_ The address of the Ipor Fusion Access Manager
-    /// @param totalSupplyCap_ The total supply cap of the shares
+    /// @param totalSupplyCap_ The total supply cap denominated in shares (not in underlying asset decimals)
     function init(string memory assetName_, address accessManager_, uint256 totalSupplyCap_) external;
 
     /// @notice When token are transferring, updates data in storage required for functionalities included in PlasmaVaultBase but in context of Plasma Vault (delegatecall used)

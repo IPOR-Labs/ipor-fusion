@@ -722,7 +722,7 @@ library PlasmaVaultLib {
     }
 
     /// @notice Gets the total supply cap for the vault
-    /// @return uint256 The maximum allowed total supply in underlying asset decimals
+    /// @return uint256 The maximum allowed total supply denominated in shares
     /// @dev Retrieves the configured supply cap that limits total vault shares
     ///
     /// Supply cap usage:
@@ -753,14 +753,12 @@ library PlasmaVaultLib {
     }
 
     /// @notice Sets the total supply cap for the vault
-    /// @param cap_ The new maximum total supply in underlying asset decimals
+    /// @param cap_ The new maximum total supply in shares
     /// @dev Updates the vault's total supply limit and validates input
     ///
     /// Validation requirements:
     /// - Must be non-zero value
     /// - Must be sufficient for expected vault operations
-    /// - Should consider asset decimals
-    /// - Must accommodate fee minting
     ///
     /// Security considerations:
     /// - Only callable by authorized governance
