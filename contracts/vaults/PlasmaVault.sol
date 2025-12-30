@@ -381,7 +381,7 @@ contract PlasmaVault is
     ///
     /// @param marketIds_ Array of market IDs to update
     /// @return uint256 Updated total assets after balance refresh
-    /// @custom:access Public function, no role restrictions
+    /// @custom:access Restricted to UPDATE_MARKETS_BALANCES_ROLE (Roles.UPDATE_MARKETS_BALANCES_ROLE = 1000)
     function updateMarketsBalances(uint256[] calldata marketIds_) external restricted returns (uint256) {
         if (marketIds_.length == 0) {
             return totalAssets();
