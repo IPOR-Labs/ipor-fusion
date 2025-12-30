@@ -95,6 +95,7 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuse is IMarketBalanceFuse {
         address variableDebtTokenAddress;
         address plasmaVault = address(this);
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+        address poolDataProvider = IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPoolDataProvider();
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
@@ -108,9 +109,8 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuse is IMarketBalanceFuse {
                 revert AaveV3WithPriceOracleMiddlewareBalanceFuseZeroPrice(asset);
             }
 
-            (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(
-                IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPoolDataProvider()
-            ).getReserveTokensAddresses(asset);
+            (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(poolDataProvider)
+                .getReserveTokensAddresses(asset);
 
             if (aTokenAddress != address(0)) {
                 balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(plasmaVault));
