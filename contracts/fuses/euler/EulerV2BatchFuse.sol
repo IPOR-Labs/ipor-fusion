@@ -111,7 +111,12 @@ contract EulerV2BatchFuse is IFuseCommon {
     /// @dev Reads ABI-encoded EulerV2BatchFuseData from transient storage inputs as concatenated bytes32 chunks,
     ///      calls enter(), and writes outputs to transient storage.
     ///      Input format: inputs[0..n] = bytes32 chunks of ABI-encoded EulerV2BatchFuseData
-    ///      Output format: outputs[0] = batchSize, outputs[1..n] = assets, outputs[n+1..m] = vaults
+    ///      Output format: [batchSize, assetsLength, assets[0], assets[1], ..., vaultsLength, vaults[0], vaults[1], ...]
+    ///      - outputs[0] = batchSize (uint256)
+    ///      - outputs[1] = assetsLength (uint256)
+    ///      - outputs[2..2+assetsLength-1] = assets (address[])
+    ///      - outputs[2+assetsLength] = vaultsLength (uint256)
+    ///      - outputs[3+assetsLength..3+assetsLength+vaultsLength-1] = vaults (address[])
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 
