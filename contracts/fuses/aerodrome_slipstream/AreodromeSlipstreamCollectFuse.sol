@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
@@ -22,17 +20,12 @@ struct AreodromeSlipstreamCollectFuseEnterData {
 ///      Supports both standard function calls and transient storage-based calls.
 /// @author IPOR Labs
 contract AreodromeSlipstreamCollectFuse is IFuseCommon {
-    using SafeERC20 for IERC20;
-
     /// @notice Emitted when fees are collected from an NFT position
     /// @param version The address of the fuse contract version (VERSION immutable)
     /// @param tokenId The NFT token ID representing the liquidity position
     /// @param amount0 The amount of token0 collected as fees
     /// @param amount1 The amount of token1 collected as fees
     event AreodromeSlipstreamCollectFuseEnter(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
-
-    /// @notice Thrown when an unsupported method is called
-    error UnsupportedMethod();
 
     /// @notice Thrown when an invalid address (zero address) is provided
     error InvalidAddress();
@@ -116,7 +109,7 @@ contract AreodromeSlipstreamCollectFuse is IFuseCommon {
         } else {
             uint256[] memory tokenIds = new uint256[](len);
             bytes32 tokenIdBytes32;
-            
+
             for (uint256 i; i < len; ++i) {
                 tokenIdBytes32 = TransientStorageLib.getInput(VERSION, i + 1);
                 tokenIds[i] = TypeConversionLib.toUint256(tokenIdBytes32);
