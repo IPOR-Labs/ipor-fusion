@@ -39,9 +39,9 @@ contract EulerV2SupplyFuse is IFuseCommon {
     /// @notice Emitted when assets are successfully deposited into an Euler V2 vault
     /// @param version The address of this fuse contract version
     /// @param eulerVault The address of the Euler V2 vault receiving the deposit
-    /// @param supplyAmount The amount of assets deposited into the vault
+    /// @param sharesMinted The number of vault shares minted from the deposit (per ERC-4626)
     /// @param subAccount The sub-account address used for the deposit
-    event EulerV2SupplyEnterFuse(address version, address eulerVault, uint256 supplyAmount, address subAccount);
+    event EulerV2SupplyEnterFuse(address version, address eulerVault, uint256 sharesMinted, address subAccount);
 
     /// @notice Emitted when assets are successfully withdrawn from an Euler V2 vault
     /// @param version The address of this fuse contract version
@@ -81,7 +81,8 @@ contract EulerV2SupplyFuse is IFuseCommon {
 
     /// @notice Enters the Euler V2 Supply Fuse with the specified parameters
     /// @param data_ The data structure containing the parameters for entering the Euler V2 Supply Fuse
-    function enter(EulerV2SupplyFuseEnterData memory data_) public returns (uint256 depositedAmount) {
+    /// @return sharesMinted The number of vault shares minted from the deposit (per ERC-4626)
+    function enter(EulerV2SupplyFuseEnterData memory data_) public returns (uint256 sharesMinted) {
         if (data_.maxAmount == 0) {
             return 0;
         }
@@ -102,7 +103,7 @@ contract EulerV2SupplyFuse is IFuseCommon {
         ERC20(eulerVaultAsset).forceApprove(data_.eulerVault, transferAmount);
 
         /* solhint-disable avoid-low-level-calls */
-        depositedAmount = abi.decode(
+        sharesMinted = abi.decode(
             EVC.call(
                 data_.eulerVault,
                 plasmaVault,
@@ -112,7 +113,8 @@ contract EulerV2SupplyFuse is IFuseCommon {
             (uint256)
         );
         /* solhint-enable avoid-low-level-calls */
-        emit EulerV2SupplyEnterFuse(VERSION, data_.eulerVault, depositedAmount, subAccount);
+
+        emit EulerV2SupplyEnterFuse(VERSION, data_.eulerVault, sharesMinted, subAccount);
     }
 
     function enterTransient() external {
@@ -121,10 +123,10 @@ contract EulerV2SupplyFuse is IFuseCommon {
         uint256 maxAmount = TypeConversionLib.toUint256(inputs[1]);
         bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[2])));
 
-        uint256 depositedAmount = enter(EulerV2SupplyFuseEnterData(eulerVault, maxAmount, subAccount));
+        uint256 sharesMinted = enter(EulerV2SupplyFuseEnterData(eulerVault, maxAmount, subAccount));
 
         bytes32[] memory outputs = new bytes32[](1);
-        outputs[0] = TypeConversionLib.toBytes32(depositedAmount);
+        outputs[0] = TypeConversionLib.toBytes32(sharesMinted);
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
