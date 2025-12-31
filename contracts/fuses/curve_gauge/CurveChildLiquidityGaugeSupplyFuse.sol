@@ -93,7 +93,7 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
     }
 
     /// @dev Could be used only if lpToken is ERC4626.
-    /// @dev params[0] - amount in underlying asset, params[1] - vault address
+    /// @dev params[0] - amount in underlying asset, params[1] - gauge address
     function instantWithdraw(bytes32[] calldata params_) external {
         uint256 amount = uint256(params_[0]);
 
