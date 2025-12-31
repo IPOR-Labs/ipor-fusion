@@ -121,7 +121,7 @@ contract BurnRequestFeeFuse is IFuseCommon, ERC20Upgradeable {
     }
 
     /// @notice Burns request fee shares using transient storage for input parameters
-    /// @dev Reads inputs from transient storage, calls enter(), and writes outputs to transient storage
+    /// @dev Reads inputs from transient storage and calls enter(). No outputs are written to transient storage.
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 
