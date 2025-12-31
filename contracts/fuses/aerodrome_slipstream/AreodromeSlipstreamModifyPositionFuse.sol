@@ -46,7 +46,8 @@ struct AreodromeSlipstreamModifyPositionFuseExitData {
 /// @title AreodromeSlipstreamModifyPositionFuse
 /// @notice Fuse for modifying (increasing or decreasing) liquidity in existing Aerodrome Slipstream NFT positions
 /// @dev This fuse allows users to add or remove liquidity from existing NFT positions in Aerodrome Slipstream pools.
-///      It validates that tokens are granted assets and that the pool is granted as a substrate.
+///      It validates that the pool is granted as a substrate. Token addresses are derived from the position
+///      (not user input) to ensure correct approvals and avoid mismatches.
 ///      Supports both standard function calls and transient storage-based calls.
 /// @author IPOR Labs
 contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
@@ -77,10 +78,6 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     /// @notice Thrown when attempting to modify a position in a pool that is not granted as a substrate
     /// @param pool The address of the pool that is not supported
     error AreodromeSlipstreamModifyPositionFuseUnsupportedPool(address pool);
-
-    /// @notice Thrown when attempting to use a token that is not granted as an asset
-    /// @param asset The address of the token that is not supported
-    error AreodromeSlipstreamModifyPositionFuseUnsupportedAsset(address asset);
 
     /// @notice Thrown when an invalid address (zero address) is provided
     error InvalidAddress();
@@ -130,14 +127,15 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
 
     /// @notice Validates that the pool associated with a token ID is granted as a substrate
     /// @param tokenId The NFT token ID to validate
+    /// @return token0 The address of token0 in the position
+    /// @return token1 The address of token1 in the position
     /// @dev Reads position data from the NonfungiblePositionManager to extract token0, token1, and tickSpacing.
     ///      Computes the pool address and validates it against granted substrates.
     ///      Uses assembly to efficiently extract data from the return value.
+    ///      Returns the actual tokens from the position to ensure correct approvals.
     /// @custom:revert InvalidReturnData When return data from positions() call is insufficient
     /// @custom:revert AreodromeSlipstreamModifyPositionFuseUnsupportedPool When pool is not granted as a substrate
-    function validatePool(uint256 tokenId) internal view {
-        address token0;
-        address token1;
+    function validatePool(uint256 tokenId) internal view returns (address token0, address token1) {
         int24 tickSpacing;
 
         // INonfungiblePositionManager.positions(tokenId) selector: 0x99fbab88
@@ -194,26 +192,30 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
         ) {
             revert AreodromeSlipstreamModifyPositionFuseUnsupportedPool(pool);
         }
+
+        return (token0, token1);
     }
 
     /// @notice Increases liquidity in an existing position
-    /// @dev Validates amounts, assets, and pool before approving tokens and increasing liquidity.
-    ///      Resets token approvals to zero after the operation completes.
-    /// @param data_ The data containing token addresses, tokenId, amounts, and deadline
+    /// @dev Validates that the position's pool is granted as a substrate.
+    ///      Derives actual token0/token1 from the position to ensure correct approvals and avoid user input mismatches.
+    ///      Approves tokens, increases liquidity, and resets approvals to zero after the operation completes.
+    /// @param data_ The data containing tokenId, amounts, and deadline (token0/token1 fields are ignored; actual tokens derived from position)
     /// @return tokenId The ID of the token position
     /// @return liquidity The amount of liquidity added to the position
     /// @return amount0 The amount of token0 actually used to increase liquidity
     /// @return amount1 The amount of token1 actually used to increase liquidity
-    /// @custom:revert InvalidAmount When both amount0Desired and amount1Desired are zero
-    /// @custom:revert AreodromeSlipstreamModifyPositionFuseUnsupportedAsset When token0 or token1 is not granted as an asset
     /// @custom:revert AreodromeSlipstreamModifyPositionFuseUnsupportedPool When pool is not granted as a substrate
     function enter(
         AreodromeSlipstreamModifyPositionFuseEnterData memory data_
     ) public returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
-        validatePool(data_.tokenId);
+        // Validate pool and assets, and get the actual tokens from the position
+        (address actualToken0, address actualToken1) = validatePool(data_.tokenId);
 
-        IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
-        IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
+        // Use the actual tokens from the position for approvals (not user-provided tokens)
+        // This prevents mismatches between user input and the position's actual tokens
+        IERC20(actualToken0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
+        IERC20(actualToken1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
 
         INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
             .IncreaseLiquidityParams({
@@ -229,8 +231,9 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
             params
         );
 
-        IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
-        IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
+        // Reset approvals to zero using the actual tokens
+        IERC20(actualToken0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
+        IERC20(actualToken1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
         emit AreodromeSlipstreamModifyPositionFuseEnter(VERSION, data_.tokenId, liquidity, amount0, amount1);
 
@@ -297,6 +300,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
             revert InvalidAmount();
         }
 
+        // Validate pool and assets (tokens are validated but not needed for decreaseLiquidity)
         validatePool(data_.tokenId);
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
