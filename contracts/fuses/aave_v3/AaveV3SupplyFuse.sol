@@ -105,6 +105,10 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         uint256 finalAmount = IporMath.min(ERC20(data_.asset).balanceOf(address(this)), data_.amount);
 
+        if (finalAmount == 0) {
+            return (data_.asset, 0);
+        }
+
         ERC20(data_.asset).forceApprove(address(aavePool), finalAmount);
 
         aavePool.supply(data_.asset, finalAmount, address(this), 0);
