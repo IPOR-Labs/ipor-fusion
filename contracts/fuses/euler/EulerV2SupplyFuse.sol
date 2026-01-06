@@ -39,16 +39,16 @@ contract EulerV2SupplyFuse is IFuseCommon {
     /// @notice Emitted when assets are successfully deposited into an Euler V2 vault
     /// @param version The address of this fuse contract version
     /// @param eulerVault The address of the Euler V2 vault receiving the deposit
-    /// @param supplyAmount The amount of assets deposited into the vault
+    /// @param mintedShares The number of vault shares minted (NOT asset amount)
     /// @param subAccount The sub-account address used for the deposit
-    event EulerV2SupplyEnterFuse(address version, address eulerVault, uint256 supplyAmount, address subAccount);
+    event EulerV2SupplyEnterFuse(address version, address eulerVault, uint256 mintedShares, address subAccount);
 
     /// @notice Emitted when assets are successfully withdrawn from an Euler V2 vault
     /// @param version The address of this fuse contract version
     /// @param eulerVault The address of the Euler V2 vault from which assets are withdrawn
-    /// @param withdrawnAmount The amount of assets withdrawn from the vault
+    /// @param withdrawnAssets The amount of underlying assets withdrawn from the vault (NOT shares)
     /// @param subAccount The sub-account address used for the withdrawal
-    event EulerV2SupplyExitFuse(address version, address eulerVault, uint256 withdrawnAmount, address subAccount);
+    event EulerV2SupplyExitFuse(address version, address eulerVault, uint256 withdrawnAssets, address subAccount);
 
     /// @notice Thrown when attempting to supply to an unsupported Euler V2 vault or sub-account combination
     /// @param vault The address of the vault that is not supported
@@ -80,8 +80,11 @@ contract EulerV2SupplyFuse is IFuseCommon {
     }
 
     /// @notice Enters the Euler V2 Supply Fuse with the specified parameters
+    /// @dev Returns the number of vault shares minted, NOT the asset amount deposited.
+    ///      This follows ERC-4626 deposit semantics where deposit() returns shares minted.
     /// @param data_ The data structure containing the parameters for entering the Euler V2 Supply Fuse
-    function enter(EulerV2SupplyFuseEnterData memory data_) public returns (uint256 depositedAmount) {
+    /// @return mintedShares The number of vault shares minted (NOT asset amount)
+    function enter(EulerV2SupplyFuseEnterData memory data_) public returns (uint256 mintedShares) {
         if (data_.maxAmount == 0) {
             return 0;
         }
@@ -102,7 +105,7 @@ contract EulerV2SupplyFuse is IFuseCommon {
         ERC20(eulerVaultAsset).forceApprove(data_.eulerVault, transferAmount);
 
         /* solhint-disable avoid-low-level-calls */
-        depositedAmount = abi.decode(
+        mintedShares = abi.decode(
             EVC.call(
                 data_.eulerVault,
                 plasmaVault,
@@ -112,7 +115,7 @@ contract EulerV2SupplyFuse is IFuseCommon {
             (uint256)
         );
         /* solhint-enable avoid-low-level-calls */
-        emit EulerV2SupplyEnterFuse(VERSION, data_.eulerVault, depositedAmount, subAccount);
+        emit EulerV2SupplyEnterFuse(VERSION, data_.eulerVault, mintedShares, subAccount);
     }
 
     function enterTransient() external {
@@ -121,16 +124,19 @@ contract EulerV2SupplyFuse is IFuseCommon {
         uint256 maxAmount = TypeConversionLib.toUint256(inputs[1]);
         bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[2])));
 
-        uint256 depositedAmount = enter(EulerV2SupplyFuseEnterData(eulerVault, maxAmount, subAccount));
+        uint256 mintedShares = enter(EulerV2SupplyFuseEnterData(eulerVault, maxAmount, subAccount));
 
         bytes32[] memory outputs = new bytes32[](1);
-        outputs[0] = TypeConversionLib.toBytes32(depositedAmount);
+        outputs[0] = TypeConversionLib.toBytes32(mintedShares);
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @notice Exits the Euler V2 Supply Fuse with the specified parameters
+    /// @dev Returns the amount of underlying assets withdrawn, NOT the number of shares burned.
+    ///      This follows ERC-4626 withdraw semantics where withdraw() specifies asset amount.
     /// @param data_ The data structure containing the parameters for exiting the Euler V2 Supply Fuse
-    function exit(EulerV2SupplyFuseExitData memory data_) public returns (uint256 withdrawnAmount) {
+    /// @return withdrawnAssets The amount of underlying assets withdrawn (NOT shares burned)
+    function exit(EulerV2SupplyFuseExitData memory data_) public returns (uint256 withdrawnAssets) {
         if (data_.maxAmount == 0) {
             return 0;
         }
@@ -158,9 +164,9 @@ contract EulerV2SupplyFuse is IFuseCommon {
         );
         /* solhint-enable avoid-low-level-calls */
 
-        withdrawnAmount = finalVaultAssetAmount;
+        withdrawnAssets = finalVaultAssetAmount;
 
-        emit EulerV2SupplyExitFuse(VERSION, data_.eulerVault, withdrawnAmount, subAccount);
+        emit EulerV2SupplyExitFuse(VERSION, data_.eulerVault, withdrawnAssets, subAccount);
     }
 
     function exitTransient() external {
@@ -169,10 +175,10 @@ contract EulerV2SupplyFuse is IFuseCommon {
         uint256 maxAmount = TypeConversionLib.toUint256(inputs[1]);
         bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[2])));
 
-        uint256 withdrawnAmount = exit(EulerV2SupplyFuseExitData(eulerVault, maxAmount, subAccount));
+        uint256 withdrawnAssets = exit(EulerV2SupplyFuseExitData(eulerVault, maxAmount, subAccount));
 
         bytes32[] memory outputs = new bytes32[](1);
-        outputs[0] = TypeConversionLib.toBytes32(withdrawnAmount);
+        outputs[0] = TypeConversionLib.toBytes32(withdrawnAssets);
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
