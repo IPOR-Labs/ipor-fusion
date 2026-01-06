@@ -163,12 +163,15 @@ contract MorphoSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         uint256 assetsMax = shares.toAssetsDown(totalSupplyAssets, totalSupplyShares);
 
-        if (assetsMax == 0) {
-            return (address(0), bytes32(0), 0);
-        }
-
         asset = marketParams.loanToken;
         market = data_.morphoMarketId;
+
+        if (assetsMax == 0) {
+            // Even if asset conversion rounds to 0, burn the shares to clear dust
+            _performWithdraw(marketParams, data_.morphoMarketId, 0, shares, catchExceptions_);
+            // amount remains 0 since no assets are withdrawn
+            return (asset, market, 0);
+        }
 
         if (data_.amount >= assetsMax) {
             amount = _performWithdraw(marketParams, data_.morphoMarketId, 0, shares, catchExceptions_);
