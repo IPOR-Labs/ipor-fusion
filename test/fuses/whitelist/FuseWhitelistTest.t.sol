@@ -27,6 +27,7 @@ contract FuseWhitelistTest is Test {
     address UPDATE_FUSE_STATE_ROLE = TestAddresses.ATOMIST;
     address UPDATE_FUSE_METADATA_ROLE = TestAddresses.ATOMIST;
     address UPDATE_FUSE_TYPE_ROLE = TestAddresses.ATOMIST;
+    address UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE = TestAddresses.ATOMIST;
 
     function setUp() public {
         // Setup code will be added here
@@ -44,6 +45,10 @@ contract FuseWhitelistTest is Test {
         _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_STATE_MANAGER_ROLE(), UPDATE_FUSE_STATE_ROLE);
         _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_METADATA_MANAGER_ROLE(), UPDATE_FUSE_METADATA_ROLE);
         _fuseWhitelist.grantRole(_fuseWhitelist.UPDATE_FUSE_TYPE_MANAGER_ROLE(), UPDATE_FUSE_TYPE_ROLE);
+        _fuseWhitelist.grantRole(
+            _fuseWhitelist.UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE(),
+            UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE
+        );
         vm.stopPrank();
     }
 
@@ -2025,6 +2030,264 @@ contract FuseWhitelistTest is Test {
             (, uint16 fuseTypeAfter, , ) = _fuseWhitelist.getFuseByAddress(fuseAddress1);
             assertEq(fuseTypeAfter, newFuseType, "Fuse type should be updated");
         }
+    }
+
+    function test_UpdateFuseDeploymentTimestamp_Success() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint32 initialTimestamp = uint32(block.timestamp);
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = initialTimestamp;
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Verify initial timestamp
+        {
+            (, , , uint32 timestamp) = _fuseWhitelist.getFuseByAddress(fuseAddress);
+            assertEq(timestamp, initialTimestamp, "Initial timestamp should match");
+        }
+
+        // Act
+        uint32 newTimestamp = uint32(block.timestamp + 1000);
+        vm.startPrank(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE);
+        bool result = _fuseWhitelist.updateFuseDeploymentTimestamp(fuseAddress, newTimestamp);
+        vm.stopPrank();
+
+        // Assert
+        assertTrue(result, "Function should return true");
+        {
+            (, , , uint32 timestampAfter) = _fuseWhitelist.getFuseByAddress(fuseAddress);
+            assertEq(timestampAfter, newTimestamp, "Timestamp should be updated");
+        }
+    }
+
+    function test_UpdateFuseDeploymentTimestamp_NonExistentFuse() public {
+        // Arrange
+        addFuseTypesAndStates();
+        address nonExistentFuse = address(0x999);
+        uint32 newTimestamp = uint32(block.timestamp);
+
+        // Act & Assert
+        vm.startPrank(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseDeploymentTimestamp(nonExistentFuse, newTimestamp);
+        vm.stopPrank();
+    }
+
+    function test_UpdateFuseDeploymentTimestamp_ZeroTimestamp() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert
+        vm.startPrank(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE);
+        vm.expectRevert(FuseWhitelistLib.ZeroDeploymentTimestamp.selector);
+        _fuseWhitelist.updateFuseDeploymentTimestamp(fuseAddress, 0);
+        vm.stopPrank();
+    }
+
+    function test_UpdateFuseDeploymentTimestamp_Unauthorized() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert
+        uint32 newTimestamp = uint32(block.timestamp + 1000);
+        vm.prank(address(0x123)); // Random address without role
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                address(0x123),
+                keccak256("UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE")
+            )
+        );
+        _fuseWhitelist.updateFuseDeploymentTimestamp(fuseAddress, newTimestamp);
+    }
+
+    function test_UpdateFuseDeploymentTimestamp_EventEmitted() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint32 initialTimestamp = uint32(block.timestamp);
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = initialTimestamp;
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert
+        uint32 newTimestamp = uint32(block.timestamp + 1000);
+        vm.startPrank(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE);
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseDeploymentTimestampUpdated(fuseAddress, initialTimestamp, newTimestamp);
+        bool result = _fuseWhitelist.updateFuseDeploymentTimestamp(fuseAddress, newTimestamp);
+        vm.stopPrank();
+
+        assertTrue(result, "Function should return true");
+    }
+
+    function test_UpdateFusesDeploymentTimestamps_Success() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress1 = address(new Erc4626SupplyFuse(1));
+        address fuseAddress2 = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint32 initialTimestamp1 = uint32(block.timestamp);
+        uint32 initialTimestamp2 = uint32(block.timestamp + 100);
+
+        // Add fuses first
+        address[] memory fuses = new address[](2);
+        fuses[0] = fuseAddress1;
+        fuses[1] = fuseAddress2;
+        uint16[] memory types = new uint16[](2);
+        types[0] = fuseType;
+        types[1] = fuseType;
+        uint16[] memory states = new uint16[](2);
+        states[0] = 0;
+        states[1] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](2);
+        deploymentTimestamps[0] = initialTimestamp1;
+        deploymentTimestamps[1] = initialTimestamp2;
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Verify initial timestamps
+        {
+            (, , , uint32 timestamp1) = _fuseWhitelist.getFuseByAddress(fuseAddress1);
+            (, , , uint32 timestamp2) = _fuseWhitelist.getFuseByAddress(fuseAddress2);
+            assertEq(timestamp1, initialTimestamp1, "Initial timestamp1 should match");
+            assertEq(timestamp2, initialTimestamp2, "Initial timestamp2 should match");
+        }
+
+        // Act
+        uint32[] memory newTimestamps = new uint32[](2);
+        newTimestamps[0] = uint32(block.timestamp + 1000);
+        newTimestamps[1] = uint32(block.timestamp + 2000);
+
+        vm.startPrank(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE);
+        bool result = _fuseWhitelist.updateFusesDeploymentTimestamps(fuses, newTimestamps);
+        vm.stopPrank();
+
+        // Assert
+        assertTrue(result, "Function should return true");
+        {
+            (, , , uint32 timestamp1After) = _fuseWhitelist.getFuseByAddress(fuseAddress1);
+            (, , , uint32 timestamp2After) = _fuseWhitelist.getFuseByAddress(fuseAddress2);
+            assertEq(timestamp1After, newTimestamps[0], "Timestamp1 should be updated");
+            assertEq(timestamp2After, newTimestamps[1], "Timestamp2 should be updated");
+        }
+    }
+
+    function test_UpdateFusesDeploymentTimestamps_InvalidInputLength() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address[] memory fuses = new address[](2);
+        fuses[0] = address(0x1);
+        fuses[1] = address(0x2);
+        uint32[] memory timestamps = new uint32[](1);
+        timestamps[0] = uint32(block.timestamp);
+
+        // Act & Assert
+        vm.startPrank(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE);
+        vm.expectRevert(FuseWhitelist.FuseWhitelistInvalidInputLength.selector);
+        _fuseWhitelist.updateFusesDeploymentTimestamps(fuses, timestamps);
+        vm.stopPrank();
+    }
+
+    function test_UpdateFusesDeploymentTimestamps_Unauthorized() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+
+        // Add fuse first
+        address[] memory fuses = new address[](1);
+        fuses[0] = fuseAddress;
+        uint16[] memory types = new uint16[](1);
+        types[0] = fuseType;
+        uint16[] memory states = new uint16[](1);
+        states[0] = 0;
+        uint32[] memory deploymentTimestamps = new uint32[](1);
+        deploymentTimestamps[0] = uint32(block.timestamp);
+
+        vm.startPrank(ADD_FUSE_MANAGER_ROLE);
+        _fuseWhitelist.addFuses(fuses, types, states, deploymentTimestamps);
+        vm.stopPrank();
+
+        // Act & Assert
+        uint32[] memory newTimestamps = new uint32[](1);
+        newTimestamps[0] = uint32(block.timestamp + 1000);
+
+        vm.prank(address(0x123)); // Random address without role
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                address(0x123),
+                keccak256("UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE")
+            )
+        );
+        _fuseWhitelist.updateFusesDeploymentTimestamps(fuses, newTimestamps);
     }
 
     function addFuseTypesAndStates() public {
