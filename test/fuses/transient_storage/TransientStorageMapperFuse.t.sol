@@ -618,6 +618,78 @@ contract TransientStorageMapperFuseTest is Test {
         assertEq(uint256(mock.getInput(fuseTo, 0)), amount);
     }
 
+    /// @notice Test that same type and decimals returns value unchanged (early return optimization)
+    function testEnterSameTypeAndDecimalsReturnsUnchanged() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        // Test with a complex bytes32 value (hash) to ensure no conversion cycle occurs
+        bytes32 complexValue = keccak256("test value that should not be modified");
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = complexValue;
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BYTES32,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BYTES32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        mock.enter(data);
+
+        // Should be exactly the same (early return, no conversion cycle)
+        assertEq(mock.getInput(fuseTo, 0), complexValue);
+    }
+
+    /// @notice Test that same decimals but different types still performs conversion
+    function testEnterSameDecimalsDifferentTypesPerformsConversion() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        // Use a uint128 value
+        uint128 value = 123456789;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT128,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        mock.enter(data);
+
+        // Should convert properly even though decimals are the same
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value));
+    }
+
     /// @notice Test decimal conversion with zero value
     function testEnterDecimalConversionZeroValue() public {
         address fuseFrom = address(0x1);
