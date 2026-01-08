@@ -19,7 +19,7 @@ import {ITokiPoolToken} from "../../../contracts/fuses/napier/ext/ITokiPoolToken
 /// - Expects at least one TWAP snapshot (observation) to be populated for the pool
 /// - Uses a TWAP window to smooth YT price reads; constructor checks oracle readiness for that window
 /// @dev If the deployment fails with `PriceOracleOracleNotReady` error,
-contract NapierYtPriceFeed is IPriceFeed {
+contract NapierYtTwapPriceFeed is IPriceFeed {
     using SafeCast for *;
 
     uint32 internal constant MIN_TWAP_WINDOW = 5 minutes;
