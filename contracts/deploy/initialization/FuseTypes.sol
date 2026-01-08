@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 library FuseTypes {
     uint16 public constant AAVE_V2_BALANCE_FUSE_ID = 1;

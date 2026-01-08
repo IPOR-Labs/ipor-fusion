@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
@@ -39,21 +39,56 @@ import {ILiquidityGauge} from "./ext/ILiquidityGauge.sol";
  * - Relies on trusted price oracle middleware for accurate pricing
  */
 contract BalancerBalanceFuse is IMarketBalanceFuse {
-    error InvalidAddress();
+    /// @notice Thrown when router address is zero
+    /// @custom:error BalancerBalanceFuseInvalidRouterAddress
+    error BalancerBalanceFuseInvalidRouterAddress();
 
+    /// @notice Thrown when price oracle middleware is not configured
+    /// @custom:error BalancerBalanceFusePriceOracleNotConfigured
+    error BalancerBalanceFusePriceOracleNotConfigured();
+
+    /// @notice The address of this fuse version for tracking purposes
+    address public immutable VERSION;
+
+    /// @notice The market ID associated with this fuse
+    /// @dev This ID is used to retrieve the list of substrates (pools/gauges) configured for this market
     uint256 public immutable MARKET_ID;
+
+    /// @notice The Balancer router address
+    /// @dev This address is used for Balancer protocol interactions
     address public immutable BALANCER_ROUTER;
 
+    /// @notice Constructor to initialize the fuse with a market ID and Balancer router address
+    /// @param marketId_ The unique identifier for the market configuration
+    /// @param router_ The address of the Balancer router contract
+    /// @dev The market ID is used to retrieve the list of substrates (pools/gauges) that this fuse will track.
+    ///      VERSION is set to the address of this contract instance for tracking purposes.
     constructor(uint256 marketId_, address router_) {
         if (router_ == address(0)) {
-            revert InvalidAddress();
+            revert BalancerBalanceFuseInvalidRouterAddress();
         }
 
+        VERSION = address(this);
         MARKET_ID = marketId_;
         BALANCER_ROUTER = router_;
     }
 
-    function balanceOf() external view override returns (uint256) {
+    /// @notice Calculates the total balance of the Plasma Vault in Balancer protocol
+    /// @dev This function iterates through all substrates (pools/gauges) configured for the MARKET_ID and calculates:
+    ///      1. For each substrate, retrieves the underlying pool address:
+    ///         - If substrate is a Pool: uses the pool address directly
+    ///         - If substrate is a Gauge: retrieves the LP token (pool) from the gauge
+    ///      2. Gets the LP token balance held by the vault for that pool/gauge
+    ///      3. Calculates proportional token amounts based on LP token holdings relative to total supply
+    ///      4. Converts all token amounts to USD using the price oracle middleware
+    ///      5. Sums all balances and returns the total USD value
+    ///      The calculation methodology ensures that:
+    ///      - Both direct pool positions and gauge-staked positions are included
+    ///      - Proportional token amounts are calculated accurately based on LP token share
+    ///      - All token amounts are converted to USD using oracle prices
+    ///      - Final result is normalized to WAD precision (18 decimals) for consistency
+    /// @return The total balance of the Plasma Vault in Balancer protocol, normalized to WAD (18 decimals)
+    function balanceOf() external override returns (uint256) {
         bytes32[] memory grantedSubstrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 len = grantedSubstrates.length;
 
@@ -67,6 +102,9 @@ contract BalancerBalanceFuse is IMarketBalanceFuse {
         uint256 balance;
 
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+        if (priceOracleMiddleware == address(0)) {
+            revert BalancerBalanceFusePriceOracleNotConfigured();
+        }
 
         for (uint256 i; i < len; i++) {
             substrate = BalancerSubstrateLib.bytes32ToSubstrate(grantedSubstrates[i]);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -7,11 +7,17 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IStabilityPool} from "./ext/IStabilityPool.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 /**
- * @dev data structure used for entering the Liquity Stability Pool by providing BOLD to it
- * @param registry The registry to which the stability pool is registered
- * @param amount The amount of BOLD to provide
+ * @notice Data structure used for entering the Liquity Stability Pool by providing BOLD to it
+ * @dev This structure contains the registry address and amount of BOLD tokens to deposit into the stability pool.
+ *      The registry address must be granted as a substrate for the market and will be validated before execution.
+ * @param registry The address of the Liquity AddressesRegistry contract that contains the stability pool configuration.
+ *                 This registry must be granted as a substrate for the MARKET_ID.
+ * @param amount The amount of BOLD tokens to deposit into the stability pool (in BOLD token decimals).
+ *               If zero, the function will return early without executing any operations.
  */
 struct LiquityStabilityPoolFuseEnterData {
     address registry;
@@ -19,9 +25,15 @@ struct LiquityStabilityPoolFuseEnterData {
 }
 
 /**
- * @dev data structure used for exiting the Liquity Stability Pool by withdrawing BOLD and rewards from it
- * @param registry The registry to which the stability pool is registered
- * @param amount The amount of BOLD to withdraw (collateral is always totally withdrawn)
+ * @notice Data structure used for exiting the Liquity Stability Pool by withdrawing BOLD and rewards from it
+ * @dev This structure contains the registry address and amount of BOLD tokens to withdraw from the stability pool.
+ *      When exiting, all collateral rewards are automatically claimed and withdrawn regardless of the BOLD amount.
+ *      The registry address must be granted as a substrate for the market and will be validated before execution.
+ * @param registry The address of the Liquity AddressesRegistry contract that contains the stability pool configuration.
+ *                 This registry must be granted as a substrate for the MARKET_ID.
+ * @param amount The amount of BOLD tokens to withdraw from the stability pool (in BOLD token decimals).
+ *               If zero and there are no deposits, only collateral rewards will be claimed.
+ *               Collateral rewards are always fully withdrawn regardless of this amount.
  */
 struct LiquityStabilityPoolFuseExitData {
     address registry;
@@ -37,8 +49,8 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
     uint256 public immutable MARKET_ID;
+    address public immutable VERSION;
 
-    error InvalidMarketId();
     error UnsupportedSubstrate();
 
     event LiquityStabilityPoolFuseEnter(address stabilityPool, uint256 amount);
@@ -46,56 +58,105 @@ contract LiquityStabilityPoolFuse is IFuseCommon {
 
     constructor(uint256 marketId) {
         MARKET_ID = marketId;
+        VERSION = address(this);
     }
 
     /**
      * @notice Enters the Liquity Stability Pool by providing a specified amount of BOLD.
      *         Collateral rewards are not claimed during this operation.
      * @param data_ Contains the registry address and amount of BOLD to deposit.
+     * @return stabilityPool The address of the stability pool
+     * @return amount The amount of BOLD deposited
      */
-
-    function enter(LiquityStabilityPoolFuseEnterData memory data_) external {
+    function enter(
+        LiquityStabilityPoolFuseEnterData memory data_
+    ) public returns (address stabilityPool, uint256 amount) {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.registry)) {
             revert UnsupportedSubstrate();
         }
 
-        if (data_.amount == 0) return;
+        amount = data_.amount;
         IAddressesRegistry registry = IAddressesRegistry(data_.registry);
-        IStabilityPool stabilityPool = IStabilityPool(registry.stabilityPool());
+        IStabilityPool stabilityPoolContract = IStabilityPool(registry.stabilityPool());
+        stabilityPool = address(stabilityPoolContract);
+
+        if (amount == 0) {
+            emit LiquityStabilityPoolFuseEnter(stabilityPool, amount);
+            return (stabilityPool, amount);
+        }
+
         address boldToken = registry.boldToken();
 
-        ERC20(boldToken).forceApprove(address(stabilityPool), data_.amount);
+        ERC20(boldToken).forceApprove(stabilityPool, amount);
         /// @dev do not claim collateral when entering so to avoid to swap them now
         /// the principle is that we can empty the vault by entering the stability pool
-        stabilityPool.provideToSP(data_.amount, false);
-        ERC20(boldToken).forceApprove(address(stabilityPool), 0);
+        stabilityPoolContract.provideToSP(amount, false);
+        ERC20(boldToken).forceApprove(stabilityPool, 0);
 
-        emit LiquityStabilityPoolFuseEnter(address(stabilityPool), data_.amount);
+        emit LiquityStabilityPoolFuseEnter(stabilityPool, amount);
     }
 
     /**
      * @notice Exits the Liquity Stability Pool by withdrawing a specified amount of BOLD and claiming all collateral rewards.
      *         If the amount is zero and there are no deposits, it will only claim any remaining collateral rewards.
      * @param data_ Contains the registry address and amount of BOLD to withdraw.
+     * @return stabilityPool The address of the stability pool
+     * @return amount The amount of BOLD withdrawn
      */
-
-    function exit(LiquityStabilityPoolFuseExitData memory data_) external {
+    function exit(
+        LiquityStabilityPoolFuseExitData memory data_
+    ) public returns (address stabilityPool, uint256 amount) {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.registry)) {
             revert UnsupportedSubstrate();
         }
-        IStabilityPool stabilityPool = IStabilityPool(IAddressesRegistry(data_.registry).stabilityPool());
+        IAddressesRegistry registry = IAddressesRegistry(data_.registry);
+        IStabilityPool stabilityPoolContract = IStabilityPool(registry.stabilityPool());
+        stabilityPool = address(stabilityPoolContract);
+        amount = data_.amount;
 
-        if (data_.amount == 0) {
-            if (stabilityPool.deposits(address(this)) == 0) {
-                stabilityPool.claimAllCollGains();
-                return;
+        if (amount == 0) {
+            if (stabilityPoolContract.deposits(address(this)) == 0) {
+                stabilityPoolContract.claimAllCollGains();
             }
-            return;
+            emit LiquityStabilityPoolFuseExit(stabilityPool, amount);
+            return (stabilityPool, amount);
         }
         /// @dev always claim collateral when exiting
         /// the principle is that we can close our stability pool position by exiting it
-        stabilityPool.withdrawFromSP(data_.amount, true);
+        stabilityPoolContract.withdrawFromSP(amount, true);
 
-        emit LiquityStabilityPoolFuseExit(address(stabilityPool), data_.amount);
+        emit LiquityStabilityPoolFuseExit(stabilityPool, amount);
+    }
+
+    /**
+     * @notice Enters the Liquity Stability Pool using transient storage for parameters
+     */
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address registry = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address stabilityPool, uint256 returnedAmount) = enter(LiquityStabilityPoolFuseEnterData(registry, amount));
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(stabilityPool);
+        outputs[1] = TypeConversionLib.toBytes32(returnedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /**
+     * @notice Exits the Liquity Stability Pool using transient storage for parameters
+     */
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address registry = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address stabilityPool, uint256 returnedAmount) = exit(LiquityStabilityPoolFuseExitData(registry, amount));
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(stabilityPool);
+        outputs[1] = TypeConversionLib.toBytes32(returnedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IUniversalRouter} from "./ext/IUniversalRouter.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 
@@ -85,29 +87,37 @@ contract UniswapV3SwapFuse is IFuseCommon {
      * - Each token in the `path` must be a supported asset according to `PlasmaVaultConfigLib`.
      * - The contract must have enough balance of the input token to perform the swap.
      *
-     * Emits an `UniswapV2SwapFuseEnter` event indicating the details of the swap.
+     * Emits an `UniswapV3SwapFuseEnter` event indicating the details of the swap.
+     * @param data_ The swap data containing tokenInAmount, minOutAmount, and path
+     * @return tokenInAmount The amount of input tokens used for the swap
+     * @return path The encoded path used for the swap
+     * @return minOutAmount The minimum amount of output tokens expected from the swap
      */
-    function enter(UniswapV3SwapFuseEnterData calldata data_) external {
+    function enter(
+        UniswapV3SwapFuseEnterData memory data_
+    ) public returns (uint256 tokenInAmount, bytes memory path, uint256 minOutAmount) {
         address[] memory tokens;
-        bytes calldata path = data_.path;
+        bytes memory pathCalldata = data_.path;
         bytes memory memoryPath = data_.path;
         uint256 numberOfTokens;
 
-        if (_hasMultiplePools(path)) {
-            numberOfTokens = ((path.length.toInt256() - ADDR_SIZE.toInt256()).toUint256() / NEXT_V3_POOL_OFFSET) + 1;
+        if (_hasMultiplePools(pathCalldata)) {
+            numberOfTokens =
+                ((pathCalldata.length.toInt256() - ADDR_SIZE.toInt256()).toUint256() / NEXT_V3_POOL_OFFSET) +
+                1;
             tokens = new address[](numberOfTokens);
             for (uint256 i; i < numberOfTokens; ++i) {
-                tokens[i] = _decodeFirstToken(path);
+                tokens[i] = _decodeFirstToken(pathCalldata);
                 if (i != numberOfTokens - 1) {
-                    path = _skipTokenAndFee(path);
+                    pathCalldata = _skipTokenAndFee(pathCalldata);
                 }
             }
         } else {
             numberOfTokens = 2;
             tokens = new address[](numberOfTokens);
-            tokens[0] = _decodeFirstToken(path);
-            path = _skipTokenAndFee(path);
-            tokens[1] = _decodeFirstToken(path);
+            tokens[0] = _decodeFirstToken(pathCalldata);
+            pathCalldata = _skipTokenAndFee(pathCalldata);
+            tokens[1] = _decodeFirstToken(pathCalldata);
         }
 
         for (uint256 i; i < numberOfTokens; ++i) {
@@ -121,7 +131,7 @@ contract UniswapV3SwapFuse is IFuseCommon {
         uint256 inputAmount = data_.tokenInAmount <= vaultBalance ? data_.tokenInAmount : vaultBalance;
 
         if (inputAmount == 0) {
-            return;
+            return (data_.tokenInAmount, memoryPath, data_.minOutAmount);
         }
 
         IERC20(tokens[0]).safeTransfer(UNIVERSAL_ROUTER, inputAmount);
@@ -139,34 +149,134 @@ contract UniswapV3SwapFuse is IFuseCommon {
 
         IUniversalRouter(UNIVERSAL_ROUTER).execute(commands, inputs);
 
-        emit UniswapV3SwapFuseEnter(VERSION, data_.tokenInAmount, memoryPath, data_.minOutAmount);
+        tokenInAmount = data_.tokenInAmount;
+        path = memoryPath;
+        minOutAmount = data_.minOutAmount;
+
+        emit UniswapV3SwapFuseEnter(VERSION, tokenInAmount, path, minOutAmount);
     }
 
     /// @notice Returns true iff the path contains two or more pools
     /// @param path_ The encoded swap path
     /// @return True if path contains two or more pools, otherwise false
-    function _hasMultiplePools(bytes calldata path_) private pure returns (bool) {
+    function _hasMultiplePools(bytes memory path_) private pure returns (bool) {
         return path_.length >= MULTIPLE_V3_POOLS_MIN_LENGTH;
     }
 
-    function _decodeFirstToken(bytes calldata path_) private pure returns (address tokenA) {
+    /// @notice Decodes the first token from a path
+    /// @param path_ The encoded swap path
+    /// @return tokenA The first token address
+    function _decodeFirstToken(bytes memory path_) private pure returns (address tokenA) {
         tokenA = _toAddress(path_);
     }
 
     /// @notice Skips a token + fee element
     /// @param path_ The swap path
-    function _skipTokenAndFee(bytes calldata path_) private pure returns (bytes calldata) {
-        return path_[NEXT_V3_POOL_OFFSET:];
+    /// @return The path with the first token and fee skipped
+    function _skipTokenAndFee(bytes memory path_) private pure returns (bytes memory) {
+        if (path_.length < NEXT_V3_POOL_OFFSET) revert SliceOutOfBounds();
+        bytes memory result = new bytes(path_.length - NEXT_V3_POOL_OFFSET);
+        for (uint256 i; i < result.length; ++i) {
+            result[i] = path_[i + NEXT_V3_POOL_OFFSET];
+        }
+        return result;
     }
 
     /// @notice Returns the address starting at byte 0
     /// @dev length and overflow checks must be carried out before calling
     /// @param bytes_ The input bytes string to slice
     /// @return _address The address starting at byte 0
-    function _toAddress(bytes calldata bytes_) private pure returns (address _address) {
+    function _toAddress(bytes memory bytes_) private pure returns (address _address) {
         if (bytes_.length < ADDR_SIZE) revert SliceOutOfBounds();
         assembly {
-            _address := shr(96, calldataload(bytes_.offset))
+            _address := shr(96, mload(add(bytes_, 0x20)))
         }
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    /// @dev Reads inputs from transient storage: tokenInAmount (inputs[0]), minOutAmount (inputs[1]),
+    ///      pathLength (inputs[2]), path chunks (inputs[3]...). Writes returned tokenInAmount, path length,
+    ///      path chunks, and minOutAmount to transient storage outputs.
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        uint256 tokenInAmount_ = TypeConversionLib.toUint256(inputs[0]);
+        uint256 minOutAmount_ = TypeConversionLib.toUint256(inputs[1]);
+        uint256 pathLength = TypeConversionLib.toUint256(inputs[2]);
+
+        bytes memory path_ = _buildBytesFromInputs(inputs, 3, pathLength);
+
+        UniswapV3SwapFuseEnterData memory data_ = UniswapV3SwapFuseEnterData({
+            tokenInAmount: tokenInAmount_,
+            minOutAmount: minOutAmount_,
+            path: path_
+        });
+
+        (uint256 returnedTokenInAmount, bytes memory returnedPath, uint256 returnedMinOutAmount) = enter(data_);
+
+        _storeOutputs(returnedTokenInAmount, returnedPath, returnedMinOutAmount);
+    }
+
+    /// @notice Helper function to build bytes from transient storage inputs
+    /// @param inputs_ Array of input values from transient storage
+    /// @param startIndex_ Starting index where bytes data begins
+    /// @param length_ Length of the bytes array to build
+    /// @return The constructed bytes array
+    function _buildBytesFromInputs(
+        bytes32[] memory inputs_,
+        uint256 startIndex_,
+        uint256 length_
+    ) private pure returns (bytes memory) {
+        if (length_ == 0) {
+            return "";
+        }
+
+        bytes memory result = new bytes(length_);
+        uint256 chunksCount = (length_ + 31) / 32; // ceil(length_ / 32)
+
+        for (uint256 i; i < chunksCount; ++i) {
+            bytes32 chunk = inputs_[startIndex_ + i];
+            uint256 chunkStart = i * 32;
+            uint256 chunkEnd = chunkStart + 32;
+            if (chunkEnd > length_) {
+                chunkEnd = length_;
+            }
+
+            assembly {
+                let dataPtr := add(add(result, 0x20), chunkStart)
+                mstore(dataPtr, chunk)
+            }
+        }
+
+        return result;
+    }
+
+    /// @notice Helper function to store outputs including bytes path to transient storage
+    /// @param tokenInAmount_ The amount of input tokens used for the swap
+    /// @param path_ The encoded path used for the swap
+    /// @param minOutAmount_ The minimum amount of output tokens expected from the swap
+    function _storeOutputs(uint256 tokenInAmount_, bytes memory path_, uint256 minOutAmount_) private {
+        uint256 pathLength = path_.length;
+        uint256 chunksCount = (pathLength + 31) / 32; // ceil(pathLength / 32)
+        // Outputs: [tokenInAmount, pathLength, pathChunks..., minOutAmount]
+        uint256 outputsLength = 2 + chunksCount + 1;
+        bytes32[] memory outputs = new bytes32[](outputsLength);
+
+        outputs[0] = TypeConversionLib.toBytes32(tokenInAmount_);
+        outputs[1] = TypeConversionLib.toBytes32(pathLength);
+
+        // Store path chunks
+        for (uint256 i; i < chunksCount; ++i) {
+            uint256 chunkStart = i * 32;
+            bytes32 chunk;
+            assembly {
+                chunk := mload(add(add(path_, 0x20), chunkStart))
+            }
+            outputs[2 + i] = chunk;
+        }
+
+        outputs[outputsLength - 1] = TypeConversionLib.toBytes32(minOutAmount_);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

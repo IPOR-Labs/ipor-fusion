@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title Context Manager Storage Library
 /// @notice Library managing storage for approved addresses and nonces in the Context Manager system

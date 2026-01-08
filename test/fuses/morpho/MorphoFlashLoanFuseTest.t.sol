@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -14,6 +14,7 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {MorphoFlashLoanFuse, MorphoFlashLoanFuseEnterData} from "../../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";
 import {MockInnerBalance} from "./MockInnerBalance.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {CallbackHandlerMorpho} from "../../../contracts/handlers/callbacks/CallbackHandlerMorpho.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -22,6 +23,8 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 contract MorphoFlashLoanFuseTest is Test {
     address private constant _MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
@@ -38,6 +41,7 @@ contract MorphoFlashLoanFuseTest is Test {
     address private _accessManager;
     address private _flashLoanFuse;
     address private _mockInnerBalance;
+    address private _transientStorageSetInputsFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20818075);
@@ -47,6 +51,14 @@ contract MorphoFlashLoanFuseTest is Test {
         _createPriceOracle();
         _createPlasmaVault();
         _initAccessManager();
+
+        // Add TransientStorageSetInputsFuse to vault after initialization
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
+        address[] memory transientFuses = new address[](1);
+        transientFuses[0] = _transientStorageSetInputsFuse;
+        vm.startPrank(_ATOMIST);
+        PlasmaVaultGovernance(_plasmaVault).addFuses(transientFuses);
+        vm.stopPrank();
 
         vm.startPrank(_USER);
         ERC20(_USDC).approve(_plasmaVault, 10_000e6);
@@ -74,11 +86,12 @@ contract MorphoFlashLoanFuseTest is Test {
 
         vm.stopPrank();
 
+        address[] memory fuses = _createFuse();
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
             _ATOMIST,
             address(_plasmaVault),
-            _createFuse(),
+            fuses,
             _setupBalanceFuses(),
             _setupMarketConfigs()
         );
@@ -96,10 +109,14 @@ contract MorphoFlashLoanFuseTest is Test {
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses) {
-        balanceFuses = new MarketBalanceFuseConfig[](1);
+        balanceFuses = new MarketBalanceFuseConfig[](2);
         balanceFuses[0] = MarketBalanceFuseConfig({
             marketId: IporFusionMarkets.MORPHO_FLASH_LOAN,
             fuse: address(new ZeroBalanceFuse(IporFusionMarkets.MORPHO_FLASH_LOAN))
+        });
+        balanceFuses[1] = MarketBalanceFuseConfig({
+            marketId: IporFusionMarkets.ERC20_VAULT_BALANCE,
+            fuse: address(new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE))
         });
     }
 
@@ -278,5 +295,123 @@ contract MorphoFlashLoanFuseTest is Test {
                 break;
             }
         }
+    }
+
+    function testShouldHandleZeroAmountFlashLoan() external {
+        // given
+        FuseAction[] memory callbackCalls = new FuseAction[](1);
+        callbackCalls[0] = FuseAction(_mockInnerBalance, abi.encodeWithSignature("enter()"));
+
+        MorphoFlashLoanFuseEnterData memory dataFlashLoan = MorphoFlashLoanFuseEnterData({
+            token: _DAI,
+            tokenAmount: 0,
+            callbackFuseActionsData: abi.encode(callbackCalls)
+        });
+
+        FuseAction[] memory morphoFlashCalls = new FuseAction[](1);
+        morphoFlashCalls[0] = FuseAction(
+            address(_flashLoanFuse),
+            abi.encodeWithSignature("enter((address,uint256,bytes))", dataFlashLoan)
+        );
+
+        // when
+        vm.recordLogs();
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(morphoFlashCalls);
+        vm.stopPrank();
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        // then - should emit event with zero amount and not execute flash loan
+        bool foundEvent = false;
+        for (uint256 i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == keccak256("MorphoFlashLoanFuseEvent(address,address,uint256)")) {
+                foundEvent = true;
+                break;
+            }
+        }
+        assertTrue(foundEvent, "MorphoFlashLoanFuseEvent should be emitted");
+    }
+
+    /// @notice Tests entering Morpho Flash Loan Fuse using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and executes flash loan
+    function testShouldGetAndRepayFlashLoanUsingTransientStorage() external {
+        // given
+        CallbackHandlerMorpho callbackHandler = new CallbackHandlerMorpho();
+
+        vm.startPrank(_ATOMIST);
+        PlasmaVaultGovernance(_plasmaVault).updateCallbackHandler(
+            address(callbackHandler),
+            _MORPHO,
+            CallbackHandlerMorpho.onMorphoFlashLoan.selector
+        );
+        vm.stopPrank();
+
+        FuseAction[] memory callbackCalls = new FuseAction[](1);
+        callbackCalls[0] = FuseAction(_mockInnerBalance, abi.encodeWithSignature("enter()"));
+
+        bytes memory callbackFuseActionsData = abi.encode(callbackCalls);
+        uint256 callbackDataLength = callbackFuseActionsData.length;
+        uint256 chunksCount = (callbackDataLength + 31) / 32; // ceil(callbackDataLength / 32)
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = _flashLoanFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3 + chunksCount);
+        inputsByFuse[0][0] = PlasmaVaultConfigLib.addressToBytes32(_DAI);
+        uint256 tokenAmount = 100e18;
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(tokenAmount);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(callbackDataLength);
+
+        // Add chunks of callbackFuseActionsData
+        for (uint256 i; i < chunksCount; ++i) {
+            uint256 chunkStart = i * 32;
+            bytes32 chunk;
+            if (chunkStart + 32 <= callbackDataLength) {
+                assembly {
+                    chunk := mload(add(add(callbackFuseActionsData, 0x20), chunkStart))
+                }
+            } else {
+                // Last chunk - pad with zeros
+                uint256 remainingBytes = callbackDataLength - chunkStart;
+                bytes memory paddedChunk = new bytes(32);
+                for (uint256 j; j < remainingBytes; ++j) {
+                    paddedChunk[j] = callbackFuseActionsData[chunkStart + j];
+                }
+                assembly {
+                    chunk := mload(add(paddedChunk, 0x20))
+                }
+            }
+            inputsByFuse[0][3 + i] = chunk;
+        }
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call enterTransient()
+        calls[1] = FuseAction({fuse: _flashLoanFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        // when
+        vm.recordLogs();
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(calls);
+        vm.stopPrank();
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        // then
+        (address token, uint256 amount) = _extractMockInnerBalanceEvent(entries);
+
+        assertEq(token, _DAI, "Token should be DAI");
+        assertEq(amount, 100e18, "Amount should be 100e18");
     }
 }

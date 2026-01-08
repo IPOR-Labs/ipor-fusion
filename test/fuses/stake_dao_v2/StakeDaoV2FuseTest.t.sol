@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
 import {PlasmaVault, PlasmaVaultInitData, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -23,7 +23,6 @@ import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFacto
 import {MockERC20} from "../../test_helpers/MockERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {BurnRequestFeeFuse} from "../../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IPriceFeed} from "../../../contracts/price_oracle/price_feed/IPriceFeed.sol";
@@ -48,6 +47,9 @@ import {IRewardVault} from "../../../contracts/fuses/stake_dao_v2/ext/IRewardVau
 import {SimpleMockAccountant} from "./mocks/SimpleMockAccountant.sol";
 import {MockRewardVault} from "./mocks/MockRewardVault.sol";
 import {BalanceFusesReader} from "../../../contracts/readers/BalanceFusesReader.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 contract StakeDaoV2FuseTest is Test {
     address constant FUSION_FACTORY = 0x134fCAce7a2C7Ef3dF2479B62f03ddabAEa922d5;
@@ -87,6 +89,7 @@ contract StakeDaoV2FuseTest is Test {
 
     bytes32[] substrates;
     address stakeDaoV2SupplyFuse;
+    address _transientStorageSetInputsFuse;
 
     address CRV_USD_HOLDER = 0xB5c6082d3307088C98dA8D79991501E113e6365d;
     address USDC_HOLDER = 0x2Df1c51E09aECF9cacB7bc98cB1742757f163dF7;
@@ -384,8 +387,6 @@ contract StakeDaoV2FuseTest is Test {
             IporFusionMarkets.STAKE_DAO_V2
         );
 
-        uint256 plasmaVaultTotalAssetsBefore = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssets();
-
         // when - Alpha executes deposit to single vault
         vm.startPrank(alpha);
         PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).execute(actions);
@@ -433,6 +434,158 @@ contract StakeDaoV2FuseTest is Test {
         );
     }
 
+    /// @notice Tests entering Stake DAO V2 Supply Fuse using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and supplies assets
+    function testShouldEnterUsingTransientStorage() public {
+        // given
+        uint256 depositAmountCrvUSD = 1000e18; // 1000 crvUSD
+
+        // @dev Simulate that Vault has some crvUSD
+        vm.prank(CRV_USD_HOLDER);
+        IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
+
+        uint256 crvUsdVaultBalanceBefore = IERC20(CRV_USD).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
+        assertEq(
+            crvUsdVaultBalanceBefore,
+            depositAmountCrvUSD,
+            "CRV_USD vault balance should be equal to transferred amount"
+        );
+
+        uint256 balanceInMarketBefore = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssetsInMarket(
+            IporFusionMarkets.STAKE_DAO_V2
+        );
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = stakeDaoV2SupplyFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(depositAmountCrvUSD);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32((depositAmountCrvUSD * 99) / 100); // 1% slippage tolerance
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call enterTransient()
+        calls[1] = FuseAction({fuse: stakeDaoV2SupplyFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        // when - Alpha executes deposit via transient storage
+        vm.startPrank(alpha);
+        PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 crvUsdVaultBalanceAfter = IERC20(CRV_USD).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
+        uint256 balanceInMarketAfter = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssetsInMarket(
+            IporFusionMarkets.STAKE_DAO_V2
+        );
+        uint256 rewardVaultSharesAfter = IERC20(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC).balanceOf(
+            FUSION_PLASMA_VAULT_sdSaveUSDC
+        );
+
+        assertEq(crvUsdVaultBalanceAfter, 0, "CRV_USD vault balance should be 0 after deposit");
+        assertGt(balanceInMarketAfter, balanceInMarketBefore, "Balance in market should increase after deposit");
+        assertGt(rewardVaultSharesAfter, 0, "Vault should have shares in the reward vault after deposit");
+    }
+
+    /// @notice Tests exiting Stake DAO V2 Supply Fuse using transient storage
+    /// @dev Verifies that exitTransient() correctly reads inputs from transient storage and withdraws assets
+    function testShouldExitUsingTransientStorage() public {
+        // Setup: First supply 1000 crvUSD
+        uint256 depositAmountCrvUSD = 1000e18;
+
+        // @dev Simulate that Vault has some crvUSD
+        vm.prank(CRV_USD_HOLDER);
+        IERC20(CRV_USD).transfer(FUSION_PLASMA_VAULT_sdSaveUSDC, depositAmountCrvUSD);
+
+        // Supply using regular enter method
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(
+            stakeDaoV2SupplyFuse,
+            abi.encodeWithSignature(
+                "enter((address,uint256,uint256))",
+                StakeDaoV2SupplyFuseEnterData({
+                    rewardVault: STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC,
+                    lpTokenUnderlyingAmount: depositAmountCrvUSD,
+                    minLpTokenUnderlyingAmount: (depositAmountCrvUSD * 99) / 100
+                })
+            )
+        );
+
+        vm.startPrank(alpha);
+        PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).execute(supplyActions);
+        vm.stopPrank();
+
+        uint256 balanceInMarketAfterSupply = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssetsInMarket(
+            IporFusionMarkets.STAKE_DAO_V2
+        );
+        assertGt(balanceInMarketAfterSupply, 0, "Should have balance after supply");
+
+        // Setup for withdrawal via transient storage
+        uint256 rewardVaultShares = IERC20(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC).balanceOf(
+            FUSION_PLASMA_VAULT_sdSaveUSDC
+        );
+        uint256 withdrawShares = rewardVaultShares / 2; // Withdraw half
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = stakeDaoV2SupplyFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(withdrawShares);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(withdrawShares); // minRewardVaultShares same as withdrawShares
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call exitTransient()
+        calls[1] = FuseAction({fuse: stakeDaoV2SupplyFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        // when - Alpha executes withdrawal via transient storage
+        vm.startPrank(alpha);
+        PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 balanceInMarketAfter = PlasmaVault(FUSION_PLASMA_VAULT_sdSaveUSDC).totalAssetsInMarket(
+            IporFusionMarkets.STAKE_DAO_V2
+        );
+        uint256 rewardVaultSharesAfter = IERC20(STAKEDAO_V2_REWARD_VAULT_LLAMALEND_WBTC).balanceOf(
+            FUSION_PLASMA_VAULT_sdSaveUSDC
+        );
+        uint256 crvUsdVaultBalanceAfter = IERC20(CRV_USD).balanceOf(FUSION_PLASMA_VAULT_sdSaveUSDC);
+
+        assertLt(
+            balanceInMarketAfter,
+            balanceInMarketAfterSupply,
+            "Balance in market should decrease after withdrawal"
+        );
+        assertLt(rewardVaultSharesAfter, rewardVaultShares, "Reward vault shares should decrease after withdrawal");
+        assertGt(crvUsdVaultBalanceAfter, 0, "CRV_USD vault balance should increase after withdrawal");
+    }
+
     function _configureRewardsSubstrates() private {
         vm.startPrank(atomist);
         substrates = new bytes32[](4);
@@ -463,10 +616,12 @@ contract StakeDaoV2FuseTest is Test {
     }
 
     function _addStakeDaoV2Fuses() private {
-        address[] memory fuses = new address[](1);
+        address[] memory fuses = new address[](2);
 
         stakeDaoV2SupplyFuse = address(new StakeDaoV2SupplyFuse(IporFusionMarkets.STAKE_DAO_V2));
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
         fuses[0] = stakeDaoV2SupplyFuse;
+        fuses[1] = _transientStorageSetInputsFuse;
 
         vm.startPrank(atomist);
         PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).addFuses(fuses);
@@ -474,6 +629,13 @@ contract StakeDaoV2FuseTest is Test {
         PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).addBalanceFuse(
             IporFusionMarkets.STAKE_DAO_V2,
             address(new StakeDaoV2BalanceFuse(IporFusionMarkets.STAKE_DAO_V2))
+        );
+
+        // Add balance fuse for ERC20_VAULT_BALANCE (required for TransientStorageSetInputsFuse)
+        ERC20BalanceFuse erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
+        PlasmaVaultGovernance(address(FUSION_PLASMA_VAULT_sdSaveUSDC)).addBalanceFuse(
+            IporFusionMarkets.ERC20_VAULT_BALANCE,
+            address(erc20BalanceFuse)
         );
 
         // Set up substrates for supply fuse (as assets)
