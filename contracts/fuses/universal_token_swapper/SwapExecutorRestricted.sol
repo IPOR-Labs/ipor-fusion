@@ -47,7 +47,7 @@ contract SwapExecutorRestricted {
      * @param data_ The `SwapExecutorData` struct which contains all the necessary data for executing swaps.
      * It includes:
      * - `dexs`: An array of DEX contract addresses.
-     * - `dexData`: An array of encoded function call data corresponding to each DEX.
+     * - `dexsData`: An array of encoded function call data corresponding to each DEX.
      * - `tokenIn`: The address of the input token.
      * - `tokenOut`: The address of the output token.
      */
