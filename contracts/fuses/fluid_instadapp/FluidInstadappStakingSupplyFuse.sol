@@ -15,7 +15,7 @@ import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.s
 
 /// @notice Data structure for entering - supplying - the Fluid Instadapp Staking protocol
 struct FluidInstadappStakingSupplyFuseEnterData {
-    /// @dev max fluidTokenAmount to deposit, in fluidTokenAmount decimals
+    /// @dev max fluidTokenAmount to deposit, in staking token units
     uint256 fluidTokenAmount;
     /// @dev stakingPool address where fluidToken is staked and farmed token ARB
     address stakingPool;
@@ -23,7 +23,7 @@ struct FluidInstadappStakingSupplyFuseEnterData {
 
 /// @notice Data structure for exiting - withdrawing - the Fluid Instadapp Staking protocol
 struct FluidInstadappStakingSupplyFuseExitData {
-    /// @dev fluidTokenAmount to deposit, in fluidTokenAmount decimals
+    /// @dev fluidTokenAmount to withdraw, in staking token share units
     uint256 fluidTokenAmount;
     /// @dev stakingPool address where fluidToken is staked and farmed token ARB
     address stakingPool;
