@@ -69,7 +69,7 @@ contract StEthWrapperFuse is IFuseCommon {
         }
         _validateSubstrates("enter");
 
-        uint256 finalAmount = IporMath.min(ERC20(ST_ETH).balanceOf(address(this)), stEthAmount);
+        finalAmount = IporMath.min(ERC20(ST_ETH).balanceOf(address(this)), stEthAmount);
 
         if (finalAmount == 0) {
             return (0, 0);
@@ -109,7 +109,7 @@ contract StEthWrapperFuse is IFuseCommon {
         }
         _validateSubstrates("exit");
 
-        uint256 finalAmount = IporMath.min(ERC20(WST_ETH).balanceOf(address(this)), wstEthAmount);
+        finalAmount = IporMath.min(ERC20(WST_ETH).balanceOf(address(this)), wstEthAmount);
 
         if (finalAmount == 0) {
             return (0, 0);
