@@ -118,7 +118,7 @@ contract PtPriceFeed is IPriceFeed {
             ASSET_ADDRESS
         );
 
-        uint256 scalingFactor = FEED_DECIMALS + priceDecimals - _decimals();
+        uint256 scalingFactor = FEED_DECIMALS + priceDecimals - decimals;
         price = SafeCast.toInt256((unitPrice * assetPrice) / 10 ** scalingFactor);
 
         if (price <= 0) {
@@ -126,10 +126,6 @@ contract PtPriceFeed is IPriceFeed {
         }
 
         time = block.timestamp;
-    }
-
-    function _decimals() internal pure returns (uint8) {
-        return 8;
     }
 
     /// @notice Returns the raw PT to asset rate without price adjustment
