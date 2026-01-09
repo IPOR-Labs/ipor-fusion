@@ -152,26 +152,4 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
 
         return balanceInUsd;
     }
-
-    function substratesToBytes32(
-        VelodromeSuperchainSubstrate[] memory substrates_
-    ) private pure returns (bytes32[] memory) {
-        bytes32[] memory bytes32Substrates = new bytes32[](substrates_.length);
-        for (uint256 i; i < substrates_.length; ++i) {
-            bytes32Substrates[i] = VelodromeSuperchainSubstrateLib.substrateToBytes32(substrates_[i]);
-        }
-        return bytes32Substrates;
-    }
-
-    function bytes32ToSubstrate(
-        bytes32[] memory bytes32Substrates_
-    ) private pure returns (VelodromeSuperchainSubstrate[] memory) {
-        VelodromeSuperchainSubstrate[] memory substrates = new VelodromeSuperchainSubstrate[](
-            bytes32Substrates_.length
-        );
-        for (uint256 i; i < bytes32Substrates_.length; ++i) {
-            substrates[i] = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(bytes32Substrates_[i]);
-        }
-        return substrates;
-    }
 }

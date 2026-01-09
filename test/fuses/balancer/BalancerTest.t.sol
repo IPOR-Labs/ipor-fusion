@@ -94,7 +94,7 @@ contract BalancerTest is Test {
         IERC20(_FW_ETH).approve(_fusionInstance.plasmaVault, type(uint256).max);
         vm.stopPrank();
 
-        _balancerBalanceFuse = new BalancerBalanceFuse(IporFusionMarkets.BALANCER, _BALANCER_ROUTER);
+        _balancerBalanceFuse = new BalancerBalanceFuse(IporFusionMarkets.BALANCER);
         _balancerGaugeFuse = new BalancerGaugeFuse(IporFusionMarkets.BALANCER);
         _balancerLiquidityProportionalFuse = new BalancerLiquidityProportionalFuse(
             IporFusionMarkets.BALANCER,
