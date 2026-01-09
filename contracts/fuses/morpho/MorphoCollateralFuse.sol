@@ -23,12 +23,12 @@ struct MorphoCollateralFuseEnterData {
 
 /// @notice Structure for exiting (withdrawCollateral) from the Morpho protocol
 /// @param morphoMarketId The Morpho market ID (bytes32) to withdraw collateral from
-/// @param maxCollateralAmount The maximum amount of collateral tokens to withdraw (in collateral token decimals)
+/// @param collateralAmount The exact amount of collateral tokens to withdraw (in collateral token decimals)
 struct MorphoCollateralFuseExitData {
     /// @notice The Morpho market ID to withdraw collateral from
     bytes32 morphoMarketId;
-    /// @notice The maximum amount of collateral tokens to withdraw (in collateral token decimals)
-    uint256 maxCollateralAmount;
+    /// @notice The exact amount of collateral tokens to withdraw (in collateral token decimals)
+    uint256 collateralAmount;
 }
 
 /// @title MorphoCollateralFuse
@@ -111,14 +111,15 @@ contract MorphoCollateralFuse is IFuseCommon {
     }
 
     /// @notice Withdraws collateral from the Morpho protocol
-    /// @param data_ The data structure containing market ID and max collateral amount
+    /// @dev Will revert if the requested amount exceeds available collateral or violates position health
+    /// @param data_ The data structure containing market ID and collateral amount
     /// @return asset The address of the collateral token
     /// @return market The Morpho market ID
     /// @return amount The amount of collateral withdrawn
     function exit(
         MorphoCollateralFuseExitData memory data_
     ) public returns (address asset, bytes32 market, uint256 amount) {
-        if (data_.maxCollateralAmount == 0) {
+        if (data_.collateralAmount == 0) {
             return (address(0), bytes32(0), 0);
         }
 
@@ -128,11 +129,11 @@ contract MorphoCollateralFuse is IFuseCommon {
 
         MarketParams memory marketParams = MORPHO.idToMarketParams(Id.wrap(data_.morphoMarketId));
 
-        MORPHO.withdrawCollateral(marketParams, data_.maxCollateralAmount, address(this), address(this));
+        MORPHO.withdrawCollateral(marketParams, data_.collateralAmount, address(this), address(this));
 
         asset = marketParams.collateralToken;
         market = data_.morphoMarketId;
-        amount = data_.maxCollateralAmount;
+        amount = data_.collateralAmount;
 
         emit MorphoCollateralFuseExit(VERSION, asset, market, amount);
     }
@@ -158,10 +159,10 @@ contract MorphoCollateralFuse is IFuseCommon {
     function exitTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
         bytes32 morphoMarketId = inputs[0];
-        uint256 maxCollateralAmount = TypeConversionLib.toUint256(inputs[1]);
+        uint256 collateralAmount = TypeConversionLib.toUint256(inputs[1]);
 
         (address returnedAsset, bytes32 returnedMarket, uint256 returnedAmount) = exit(
-            MorphoCollateralFuseExitData(morphoMarketId, maxCollateralAmount)
+            MorphoCollateralFuseExitData(morphoMarketId, collateralAmount)
         );
 
         bytes32[] memory outputs = new bytes32[](3);
