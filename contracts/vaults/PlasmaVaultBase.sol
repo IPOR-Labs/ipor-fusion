@@ -78,7 +78,7 @@ contract PlasmaVaultBase is
     /// @notice Initializes the PlasmaVaultBase contract
     /// @param assetName_ The name of the asset
     /// @param accessManager_ The address of the access manager contract
-    /// @param totalSupplyCap_ The maximum total supply cap for the vault
+    /// @param totalSupplyCap_ The maximum total supply cap denominated in shares (not in underlying asset decimals)
     /// @dev Validates access manager address and total supply cap
     /// @custom:access Only during initialization
     function init(
@@ -110,7 +110,7 @@ contract PlasmaVaultBase is
     ///
     /// Supply Cap System:
     /// - Enforces maximum vault size limit
-    /// - Stored in underlying asset decimals
+    /// - Stored in shares (not in underlying asset decimals)
     /// - Critical for deposit control
     /// - Part of risk management
     ///
@@ -138,7 +138,7 @@ contract PlasmaVaultBase is
     /// - Deposit Validation
     /// - Risk Management
     ///
-    /// @return uint256 The maximum total supply cap in underlying asset decimals
+    /// @return uint256 The maximum total supply cap denominated in shares (not in underlying asset decimals)
     /// @custom:access Public view
     /// @custom:security Non-privileged view function
     function cap() public view virtual returns (uint256) {
