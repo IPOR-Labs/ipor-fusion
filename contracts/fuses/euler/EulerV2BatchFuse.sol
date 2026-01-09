@@ -52,11 +52,12 @@ contract EulerV2BatchFuse is IFuseCommon {
 
     /// @notice Executes a batch of Euler V2 operations including supply, borrow, repay, and flash loan operations
     /// @dev This function validates all batch items, sets up approvals, executes the batch via EVC, and cleans up approvals
+    /// @dev Reentrancy protection inherited from PlasmaVault.execute() via delegatecall execution pattern
     /// @param data_ The data structure containing batch items and approval configurations
     /// @return batchSize The number of batch items executed
     /// @return assets The array of assets used for approvals
     /// @return vaults The array of Euler vaults used for approvals
-    /// @custom:security This function includes reentrancy protection and comprehensive validation
+    /// @custom:security Reentrancy protection via PlasmaVault.execute() and comprehensive validation of all batch items
     function enter(
         EulerV2BatchFuseData memory data_
     ) public returns (uint256 batchSize, address[] memory assets, address[] memory vaults) {
