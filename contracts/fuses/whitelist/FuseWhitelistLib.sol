@@ -94,8 +94,6 @@ library FuseWhitelistLib {
     error FuseNotFound(address fuseAddress);
     /// @notice Thrown when attempting to add a fuse info with a zero deployment timestamp
     error ZeroDeploymentTimestamp();
-    /// @notice Thrown when attempting to update a fuse type that does not have a MARKET_ID() method
-    error FuseDoesNotHaveMarketId(address fuseAddress);
 
     /// @notice Emitted when a new fuse type is added
     /// @param fuseId The ID of the added fuse type
