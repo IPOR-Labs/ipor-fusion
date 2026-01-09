@@ -88,13 +88,20 @@ library TypeConversionLib {
     }
 
     /// @notice Converts bytes to bytes32
-    /// @dev Reads the first 32 bytes of the input array. Returns 0 if empty.
+    /// @dev Reads up to the first 32 bytes of the input array, zero-padding if shorter. Returns 0 if empty.
     /// @param value_ The bytes to convert
-    /// @return result The bytes32 representation
+    /// @return result The bytes32 representation (left-aligned, zero-padded on the right)
     function toBytes32(bytes memory value_) internal pure returns (bytes32 result) {
         if (value_.length == 0) return 0x0;
         assembly {
             result := mload(add(value_, 32))
+            let len := mload(value_)
+            // If input is shorter than 32 bytes, mask out the trailing bytes to prevent dirty memory leakage
+            if lt(len, 32) {
+                let shift := mul(8, sub(32, len))
+                let mask := not(sub(shl(shift, 1), 1))
+                result := and(result, mask)
+            }
         }
     }
 }
