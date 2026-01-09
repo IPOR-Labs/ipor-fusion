@@ -36,15 +36,23 @@ contract SwapExecutor {
             data_.dexs[i].functionCall(data_.dexsData[i]);
         }
 
-        uint256 balanceTokenIn = IERC20(data_.tokenIn).balanceOf(address(this));
-        uint256 balanceTokenOut = IERC20(data_.tokenOut).balanceOf(address(this));
+        // Handle tokenIn == tokenOut case to avoid double transfer revert
+        if (data_.tokenIn == data_.tokenOut) {
+            uint256 balance = IERC20(data_.tokenIn).balanceOf(address(this));
+            if (balance > 0) {
+                IERC20(data_.tokenIn).safeTransfer(msg.sender, balance);
+            }
+        } else {
+            uint256 balanceTokenIn = IERC20(data_.tokenIn).balanceOf(address(this));
+            uint256 balanceTokenOut = IERC20(data_.tokenOut).balanceOf(address(this));
 
-        if (balanceTokenIn > 0) {
-            IERC20(data_.tokenIn).safeTransfer(msg.sender, balanceTokenIn);
-        }
+            if (balanceTokenIn > 0) {
+                IERC20(data_.tokenIn).safeTransfer(msg.sender, balanceTokenIn);
+            }
 
-        if (balanceTokenOut > 0) {
-            IERC20(data_.tokenOut).safeTransfer(msg.sender, balanceTokenOut);
+            if (balanceTokenOut > 0) {
+                IERC20(data_.tokenOut).safeTransfer(msg.sender, balanceTokenOut);
+            }
         }
     }
 }
