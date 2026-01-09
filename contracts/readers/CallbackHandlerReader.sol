@@ -47,19 +47,25 @@ contract CallbackHandlerReader {
     }
 
     /**
-     * @notice Retrieves callback handler information for a specific sender and signature
+     * @notice Internal helper that retrieves callback handler information for a specific sender and signature
+     * @dev WARNING: This function MUST be called via UniversalReader (delegatecall in PlasmaVault context).
+     *      Direct external calls will return incorrect data as it reads from the caller's storage context.
+     *      Use getCallbackHandler(address plasmaVault_, address sender_, bytes4 sig_) for safe external access.
      * @dev Queries the callback handler mapping using the same key generation as CallbackHandlerLib
      * @param sender_ Address of the protocol contract that triggers callbacks
      * @param sig_ Function signature that identifies the callback
      * @return handler Address of the callback handler implementation contract
      */
-    function getCallbackHandler(address sender_, bytes4 sig_) external view returns (address handler) {
+    function getCallbackHandler(address sender_, bytes4 sig_) public view returns (address handler) {
         bytes32 key = keccak256(abi.encodePacked(sender_, sig_));
         handler = CallbackHandlerLib.getCallbackHandlerStorage().callbackHandler[key];
     }
 
     /**
-     * @notice Retrieves callback handler information for multiple sender-signature pairs
+     * @notice Internal helper that retrieves callback handler information for multiple sender-signature pairs
+     * @dev WARNING: This function MUST be called via UniversalReader (delegatecall in PlasmaVault context).
+     *      Direct external calls will return incorrect data as it reads from the caller's storage context.
+     *      Use getCallbackHandlers(address plasmaVault_, address[] senders_, bytes4[] sigs_) for safe external access.
      * @dev Batch query for multiple callback handler configurations
      * @param senders_ Array of protocol contract addresses that trigger callbacks
      * @param sigs_ Array of function signatures that identify the callbacks
@@ -68,7 +74,7 @@ contract CallbackHandlerReader {
     function getCallbackHandlers(
         address[] calldata senders_,
         bytes4[] calldata sigs_
-    ) external view returns (address[] memory handlers) {
+    ) public view returns (address[] memory handlers) {
         if (senders_.length != sigs_.length) {
             revert CallbackHandlerReaderInvalidArrayLength();
         }
