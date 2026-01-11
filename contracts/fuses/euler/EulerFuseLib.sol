@@ -105,6 +105,27 @@ library EulerFuseLib {
         return false;
     }
 
+    /// @notice Checks if instant withdraw is allowed for given substrate configuration
+    /// @param marketId The market identifier
+    /// @param vault The address of the Euler vault
+    /// @param subAccount The sub-account identifier
+    /// @return True if isCollateral == false AND canBorrow == false
+    function canInstantWithdraw(uint256 marketId, address vault, bytes1 subAccount) internal view returns (bool) {
+        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(marketId);
+        uint256 len = substrates.length;
+
+        EulerSubstrate memory substrate;
+
+        for (uint256 i; i < len; ++i) {
+            substrate = bytes32ToSubstrate(substrates[i]);
+            if (substrate.eulerVault == vault && substrate.subAccounts == subAccount) {
+                // Both flags must be false for instant withdraw
+                return !substrate.isCollateral && !substrate.canBorrow;
+            }
+        }
+        return false;
+    }
+
     /// @notice Generates a sub-account address for a given plasma vault and sub-account identifier
     /// @param plasmaVault The address of the plasma vault
     /// @param subAccountId The sub-account identifier

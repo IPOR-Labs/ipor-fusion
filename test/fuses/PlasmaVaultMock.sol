@@ -88,6 +88,11 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(msg.data);
     }
 
+    //solhint-disable-next-line
+    function instantWithdraw(bytes32[] calldata params) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("instantWithdraw(bytes32[])", params));
+    }
+
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
         PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket(marketId, assets);
     }
