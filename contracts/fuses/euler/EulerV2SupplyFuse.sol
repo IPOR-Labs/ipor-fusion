@@ -2,8 +2,8 @@
 pragma solidity 0.8.26;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
@@ -49,12 +49,21 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     error EulerV2SupplyFuseUnsupportedEnterAction(address vault, bytes1 subAccount);
     error EulerV2SupplyFuseUnsupportedVault(address vault, bytes1 subAccount);
+    error EulerV2SupplyFuseWrongAddress();
+    error EulerV2SupplyFuseWrongValue();
+    error EulerV2SupplyFuseInvalidParams();
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
     IEVC public immutable EVC;
 
     constructor(uint256 marketId_, address eulerV2EVC_) {
+        if (marketId_ == 0) {
+            revert EulerV2SupplyFuseWrongValue();
+        }
+        if (eulerV2EVC_ == address(0)) {
+            revert EulerV2SupplyFuseWrongAddress();
+        }
         VERSION = address(this);
         MARKET_ID = marketId_;
         EVC = IEVC(eulerV2EVC_);
@@ -93,6 +102,9 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             (uint256)
         );
         /* solhint-enable avoid-low-level-calls */
+
+        ERC20(eulerVaultAsset).forceApprove(data_.eulerVault, 0);
+
         emit EulerV2SupplyEnterFuse(VERSION, data_.eulerVault, depositedAmount, subAccount);
     }
 
@@ -109,6 +121,10 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     ///        params_[2] - subAccount identifier (bytes1 encoded as bytes32)
     /// @dev Only allowed when substrate has isCollateral == false AND canBorrow == false
     function instantWithdraw(bytes32[] calldata params_) external override {
+        if (params_.length < 3) {
+            revert EulerV2SupplyFuseInvalidParams();
+        }
+
         uint256 amount = uint256(params_[0]);
         address eulerVault = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
         bytes1 subAccount = bytes1(params_[2]);

@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
-import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
 import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
@@ -24,8 +23,8 @@ contract PlasmaVaultMock {
         balanceFuse = balanceFuse_;
     }
 
-    function enterCompoundV3Supply(CompoundV3SupplyFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+    function enterCompoundV3Supply(CompoundV3SupplyFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data_));
     }
 
     function enterCompoundV2Supply(CompoundV2SupplyFuseEnterData memory data) external {
@@ -79,12 +78,12 @@ contract PlasmaVaultMock {
     }
 
     //solhint-disable-next-line
-    function enter(bytes calldata data) external {
+    function enter(bytes calldata data_) external {
         address(fuse).functionDelegateCall(msg.data);
     }
 
     //solhint-disable-next-line
-    function exit(bytes calldata data) external {
+    function exit(bytes calldata data_) external {
         address(fuse).functionDelegateCall(msg.data);
     }
 
