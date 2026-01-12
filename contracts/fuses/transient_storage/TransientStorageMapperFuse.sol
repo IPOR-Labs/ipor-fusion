@@ -45,6 +45,7 @@ contract TransientStorageMapperFuse is IFuseCommon {
     error TransientStorageMapperFuseInvalidDataFromAddress();
     error TransientStorageMapperFuseInvalidDataToAddress();
     error TransientStorageMapperFuseUnsupportedDataType();
+    error TransientStorageMapperFuseValueOutOfRange(uint256 value, DataType targetType);
 
     /// @notice Maps transient storage data between fuses with optional type and decimal conversion
     /// @param data_ The data containing mapping instructions
@@ -97,6 +98,11 @@ contract TransientStorageMapperFuse is IFuseCommon {
     ) internal pure returns (bytes32) {
         // If types are UNKNOWN or the same with same decimals, return value unchanged
         if (fromType_ == DataType.UNKNOWN || toType_ == DataType.UNKNOWN) {
+            return value_;
+        }
+
+        // If types and decimals are identical, no conversion needed
+        if (fromType_ == toType_ && fromDecimals_ == toDecimals_) {
             return value_;
         }
 
@@ -177,6 +183,7 @@ contract TransientStorageMapperFuse is IFuseCommon {
     }
 
     /// @notice Packs numeric value into bytes32 based on data type
+    /// @dev Validates that value fits within the target type's range before conversion
     /// @param value_ The numeric value
     /// @param dataType_ The target data type
     /// @return The packed bytes32 value
@@ -184,30 +191,67 @@ contract TransientStorageMapperFuse is IFuseCommon {
         if (dataType_ == DataType.UINT256 || dataType_ == DataType.BYTES32) {
             return bytes32(value_);
         } else if (dataType_ == DataType.UINT128) {
+            if (value_ > type(uint128).max) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(uint128(value_)));
         } else if (dataType_ == DataType.UINT64) {
+            if (value_ > type(uint64).max) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(uint64(value_)));
         } else if (dataType_ == DataType.UINT32) {
+            if (value_ > type(uint32).max) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(uint32(value_)));
         } else if (dataType_ == DataType.UINT16) {
+            if (value_ > type(uint16).max) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(uint16(value_)));
         } else if (dataType_ == DataType.UINT8) {
+            if (value_ > type(uint8).max) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(uint8(value_)));
         } else if (dataType_ == DataType.ADDRESS) {
+            if (value_ > type(uint160).max) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(uint160(value_)));
         } else if (dataType_ == DataType.BOOL) {
             return bytes32(uint256(value_ != 0 ? 1 : 0));
         } else if (dataType_ == DataType.INT256) {
+            // INT256 can represent the full uint256 range in its positive domain up to int256.max
+            if (value_ > uint256(type(int256).max)) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(value_);
         } else if (dataType_ == DataType.INT128) {
+            if (value_ > uint128(type(int128).max)) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(int256(int128(uint128(value_)))));
         } else if (dataType_ == DataType.INT64) {
+            if (value_ > uint64(type(int64).max)) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(int256(int64(uint64(value_)))));
         } else if (dataType_ == DataType.INT32) {
+            if (value_ > uint32(type(int32).max)) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(int256(int32(uint32(value_)))));
         } else if (dataType_ == DataType.INT16) {
+            if (value_ > uint16(type(int16).max)) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(int256(int16(uint16(value_)))));
         } else if (dataType_ == DataType.INT8) {
+            if (value_ > uint8(type(int8).max)) {
+                revert TransientStorageMapperFuseValueOutOfRange(value_, dataType_);
+            }
             return bytes32(uint256(int256(int8(uint8(value_)))));
         }
         revert TransientStorageMapperFuseUnsupportedDataType();

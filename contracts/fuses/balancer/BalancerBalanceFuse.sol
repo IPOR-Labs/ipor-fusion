@@ -26,23 +26,18 @@ import {ILiquidityGauge} from "./ext/ILiquidityGauge.sol";
  * - Handles multiple substrates (pools/gauges) per market
  *
  * Architecture:
- * - Each fuse is tied to a specific market ID and Balancer router address
+ * - Each fuse is tied to a specific market ID
  * - Retrieves granted substrates (pools/gauges) from the vault configuration
  * - For each substrate, calculates the proportional token amounts from LP holdings
  * - Converts all token amounts to USD using the price oracle middleware
  * - Returns the total aggregated USD value
  *
  * Security Considerations:
- * - Immutable market ID and router address prevent configuration changes
- * - Input validation ensures router address is not zero
+ * - Immutable market ID prevents configuration changes
  * - Uses view functions for balance calculations to prevent state changes
  * - Relies on trusted price oracle middleware for accurate pricing
  */
 contract BalancerBalanceFuse is IMarketBalanceFuse {
-    /// @notice Thrown when router address is zero
-    /// @custom:error BalancerBalanceFuseInvalidRouterAddress
-    error BalancerBalanceFuseInvalidRouterAddress();
-
     /// @notice Thrown when price oracle middleware is not configured
     /// @custom:error BalancerBalanceFusePriceOracleNotConfigured
     error BalancerBalanceFusePriceOracleNotConfigured();
@@ -54,23 +49,13 @@ contract BalancerBalanceFuse is IMarketBalanceFuse {
     /// @dev This ID is used to retrieve the list of substrates (pools/gauges) configured for this market
     uint256 public immutable MARKET_ID;
 
-    /// @notice The Balancer router address
-    /// @dev This address is used for Balancer protocol interactions
-    address public immutable BALANCER_ROUTER;
-
-    /// @notice Constructor to initialize the fuse with a market ID and Balancer router address
+    /// @notice Constructor to initialize the fuse with a market ID
     /// @param marketId_ The unique identifier for the market configuration
-    /// @param router_ The address of the Balancer router contract
     /// @dev The market ID is used to retrieve the list of substrates (pools/gauges) that this fuse will track.
     ///      VERSION is set to the address of this contract instance for tracking purposes.
-    constructor(uint256 marketId_, address router_) {
-        if (router_ == address(0)) {
-            revert BalancerBalanceFuseInvalidRouterAddress();
-        }
-
+    constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
-        BALANCER_ROUTER = router_;
     }
 
     /// @notice Calculates the total balance of the Plasma Vault in Balancer protocol
