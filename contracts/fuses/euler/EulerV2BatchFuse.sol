@@ -30,12 +30,9 @@ contract EulerV2BatchFuse is IFuseCommon {
 
     error EmptyBatchItems();
     error ZeroAddress();
-    error EVCInvalidSelector();
     error EVCInvalidCollateral();
     error EulerVaultInvalidPermissions();
     error ArrayLengthMismatch();
-    error DuplicateAsset();
-    error InvalidBatchItem();
     error UnsupportedOperation();
 
     event BatchExecuted(uint256 indexed batchSize, address[] assets, address[] vaults);
