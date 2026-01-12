@@ -115,11 +115,20 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     /// @notice Instant withdraw assets from Euler V2 vault
-    /// @param params_ Array of parameters:
-    ///        params_[0] - amount in underlying asset (uint256)
-    ///        params_[1] - euler vault address (address encoded as bytes32)
-    ///        params_[2] - subAccount identifier (bytes1 encoded as bytes32)
+    /// @param params_ Array of parameters encoded as bytes32:
+    ///        params_[0] - amount in underlying asset (uint256 cast to bytes32)
+    ///        params_[1] - euler vault address (address left-padded with zeros to bytes32)
+    ///        params_[2] - subAccount identifier (bytes1 right-padded with zeros to bytes32)
     /// @dev Only allowed when substrate has isCollateral == false AND canBorrow == false
+    /// @dev Parameter encoding examples:
+    ///      - amount: bytes32(uint256(1000e18))
+    ///      - eulerVault: bytes32(uint256(uint160(vaultAddress)))
+    ///      - subAccount: bytes32(bytes1(0x01))
+    /// @dev In Solidity:
+    ///      bytes32[] memory params = new bytes32[](3);
+    ///      params[0] = bytes32(amount);
+    ///      params[1] = bytes32(uint256(uint160(eulerVault)));
+    ///      params[2] = bytes32(subAccount);
     function instantWithdraw(bytes32[] calldata params_) external override {
         if (params_.length < 3) {
             revert EulerV2SupplyFuseInvalidParams();
