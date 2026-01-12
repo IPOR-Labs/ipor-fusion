@@ -130,6 +130,11 @@ library FuseWhitelistLib {
     /// @param fuseType The type of the fuse
     /// @param timestamp When the fuse was added
     event FuseInfoAdded(address fuseAddress, uint16 fuseType, uint32 timestamp);
+    /// @notice Emitted when fuse deployment timestamp is updated
+    /// @param fuseAddress The address of the updated fuse
+    /// @param oldTimestamp The old deployment timestamp
+    /// @param newTimestamp The new deployment timestamp
+    event FuseDeploymentTimestampUpdated(address fuseAddress, uint32 oldTimestamp, uint32 newTimestamp);
     /// @notice Emitted when a fuse type is updated
     /// @param fuseAddress The address of the updated fuse
     /// @param oldFuseType The old type of the fuse
@@ -416,6 +421,28 @@ library FuseWhitelistLib {
 
         fuseInfo.fuseState = fuseState_;
         emit FuseStateUpdated(fuseAddress_, fuseState_, fuseInfo.fuseType);
+    }
+
+    /// @notice Updates the deployment timestamp of a fuse
+    /// @param fuseAddress_ The address of the fuse to update
+    /// @param deploymentTimestamp_ The new deployment timestamp
+    /// @dev Reverts if:
+    /// - deploymentTimestamp_ is zero
+    /// - fuseAddress_ is not found
+    function updateFuseDeploymentTimestamp(address fuseAddress_, uint32 deploymentTimestamp_) internal {
+        if (deploymentTimestamp_ == 0) {
+            revert ZeroDeploymentTimestamp();
+        }
+
+        FuseInfo storage fuseInfo = _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
+
+        if (fuseInfo.fuseAddress == address(0)) {
+            revert FuseNotFound(fuseAddress_);
+        }
+
+        uint32 oldTimestamp = fuseInfo.timestamp;
+        fuseInfo.timestamp = deploymentTimestamp_;
+        emit FuseDeploymentTimestampUpdated(fuseAddress_, oldTimestamp, deploymentTimestamp_);
     }
 
     /// @notice Updates metadata for a fuse
