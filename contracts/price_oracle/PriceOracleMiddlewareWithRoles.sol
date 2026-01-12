@@ -4,25 +4,38 @@ pragma solidity 0.8.30;
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
-import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
-import {IPriceFeed} from "./price_feed/IPriceFeed.sol";
-import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
-import {IporMath} from "../libraries/math/IporMath.sol";
-
 import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
-import {PtPriceFeed} from "./price_feed/PtPriceFeed.sol";
+
+import {IporMath} from "../libraries/math/IporMath.sol";
 import {IporFusionAccessControl} from "./IporFusionAccessControl.sol";
+import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
+import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
+import {IPriceFeed} from "./price_feed/IPriceFeed.sol";
+import {PtPriceFeed} from "./price_feed/PtPriceFeed.sol";
 
 /// @title Price Oracle Middleware
 /// @notice Contract responsible for providing standardized asset price feeds in USD
 /// @dev Supports both custom price feeds and Chainlink Feed Registry as fallback.
 /// @dev When CHAINLINK_FEED_REGISTRY is set to address(0), Chainlink fallback is disabled
 /// @dev and only custom price feeds will be supported
+///
+/// @dev Access Control:
+/// @dev This contract uses role-based access control (OpenZeppelin AccessControl), NOT Ownable.
+/// @dev Three main roles:
+/// @dev - DEFAULT_ADMIN_ROLE: Can grant/revoke other roles and authorize contract upgrades
+/// @dev - SET_ASSETS_PRICES_SOURCES: Can set/update price feed sources for assets
+/// @dev - ADD_PT_TOKEN_PRICE: Can add Pendle PT token price feeds
+/// @dev Role management:
+/// @dev - Grant role: grantRole(ROLE, address) - only DEFAULT_ADMIN_ROLE can call
+/// @dev - Revoke role: revokeRole(ROLE, address) - only DEFAULT_ADMIN_ROLE can call
+/// @dev - Check role: hasRole(ROLE, address) - returns true if address has the role
 contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradeable {
     using SafeCast for int256;
 
-    event NewPtPriceFeedDeployedEvent(address ptPriceFeed);
+    /// @notice Emitted when a new PT price feed is deployed
+    /// @param ptPriceFeed Address of the newly deployed PT price feed
+    event NewPtPriceFeedDeployedEvent(address indexed ptPriceFeed);
 
     /// @dev Quote currency address representing USD (Chainlink standard)
     /// @notice This is the standard Chainlink USD address used for price feeds
@@ -37,12 +50,18 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice If set to address(0), Chainlink Registry fallback is disabled and only custom price feeds will work
     address public immutable CHAINLINK_FEED_REGISTRY;
 
+    /// @notice Constructs the PriceOracleMiddlewareWithRoles contract
+    /// @param chainlinkFeedRegistry_ Address of the Chainlink Feed Registry (set to address(0) to disable Chainlink fallback)
     constructor(address chainlinkFeedRegistry_) {
         CHAINLINK_FEED_REGISTRY = chainlinkFeedRegistry_;
     }
 
     /// @notice Initializes the contract
-    /// @param initialAdmin_ The address that will own the contract
+    /// @param initialAdmin_ The address that will be granted the DEFAULT_ADMIN_ROLE
+    /// @dev The initialAdmin will have permission to manage all roles including granting/revoking:
+    /// @dev - SET_ASSETS_PRICES_SOURCES role (for managing price feed sources)
+    /// @dev - ADD_PT_TOKEN_PRICE role (for adding Pendle PT token price feeds)
+    /// @dev - DEFAULT_ADMIN_ROLE to other addresses
     /// @dev Should be a multi-sig wallet for security
     function initialize(address initialAdmin_) external initializer {
         __IporFusionAccessControl_init();
@@ -53,7 +72,8 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice Gets the USD price for a single asset
     /// @param asset_ The address of the asset to price
     /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
-    /// @return decimals The number of decimals in the returned price
+    /// @return decimals The number of decimals in the returned price (always QUOTE_CURRENCY_DECIMALS)
+    /// @dev Price is automatically normalized to WAD (18 decimals) regardless of feed's native decimals
     function getAssetPrice(address asset_) external view returns (uint256 assetPrice, uint256 decimals) {
         (assetPrice, decimals) = _getAssetPrice(asset_);
     }
@@ -61,11 +81,11 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice Gets USD prices for multiple assets in a single call
     /// @param assets_ Array of asset addresses to price
     /// @return assetPrices Array of prices in USD (with QUOTE_CURRENCY_DECIMALS decimals)
-    /// @return decimalsList Array of decimals for each returned price
+    /// @return decimalsList Array of decimals for each returned price (always QUOTE_CURRENCY_DECIMALS)
+    /// @dev All prices are automatically normalized to WAD (18 decimals) regardless of feed's native decimals
     /// @dev Reverts if:
     /// @dev - assets_ array is empty
-    /// @dev - any asset price feed returns price <= 0
-    /// @dev - any price feed has incorrect decimals
+    /// @dev - any asset price feed returns price <= 0 (after conversion to WAD)
     /// @dev - any asset is unsupported (no custom feed and no Chainlink support)
     /// @dev - zero address is provided as an asset
     /// @dev Note: This is a batch operation - if any asset price fetch fails, the entire call reverts
@@ -97,7 +117,11 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @param assets_ Array of asset addresses
     /// @param sources_ Array of corresponding price feed sources
     /// @dev Arrays must be equal length and non-empty
-    /// @dev Only callable by owner
+    /// @dev Only callable by addresses with the SET_ASSETS_PRICES_SOURCES role
+    /// @dev Role can be granted via: grantRole(SET_ASSETS_PRICES_SOURCES, <address>)
+    /// @dev Role can be revoked via: revokeRole(SET_ASSETS_PRICES_SOURCES, <address>)
+    /// @dev Role administration is controlled by DEFAULT_ADMIN_ROLE
+    /// @custom:access SET_ASSETS_PRICES_SOURCES
     function setAssetsPricesSources(
         address[] calldata assets_,
         address[] calldata sources_
@@ -120,6 +144,7 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice Adds a new Pendle Principal Token (PT) to the price oracle system
     /// @dev Creates and configures a new PtPriceFeed contract for the PT token
     /// @dev Validates the initial price against expected price with 1% tolerance
+    /// @dev Only callable by addresses with the ADD_PT_TOKEN_PRICE role
     /// @dev The function will revert if:
     /// @dev - Expected price is <= 0
     /// @dev - Price delta between actual and expected price is > 1%
@@ -138,6 +163,8 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @param twapWindow_ Time window in seconds for TWAP calculations
     /// @param expextedPriceAfterDeployment_ Expected initial price of PT token (used for validation)
     /// @param usePendleOracleMethod_ Configuration parameter for the PtPriceFeed's oracle method
+    /// @custom:access ADD_PT_TOKEN_PRICE
+    /// @return ptPriceFeed Address of the newly deployed PT price feed contract
     function createAndAddPtTokenPriceFeed(
         address pendleOracle_,
         address pendleMarket_,
@@ -179,12 +206,13 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice Internal function to get asset price from either custom feed or Chainlink
     /// @param asset_ The address of the asset to price
     /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
-    /// @return decimals The number of decimals in the returned price
+    /// @return decimals The number of decimals in the returned price (always QUOTE_CURRENCY_DECIMALS)
     /// @dev Tries custom price feed first, falls back to Chainlink Registry if no custom feed is set
+    /// @dev Automatically normalizes price to WAD (18 decimals) regardless of feed's native decimals
+    /// @dev Uses IporMath.convertToWad to handle decimal conversion from any feed decimal format
     /// @dev Reverts if:
     /// @dev - asset_ is zero address
-    /// @dev - price <= 0
-    /// @dev - decimals don't match QUOTE_CURRENCY_DECIMALS
+    /// @dev - price <= 0 (after conversion to WAD)
     /// @dev - no custom price feed is set and CHAINLINK_FEED_REGISTRY is address(0)
     /// @dev - asset is not supported in Chainlink Registry when using it as fallback
     /// @dev - Chainlink Registry call fails
@@ -207,11 +235,11 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
             }
 
             try FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).latestRoundData(asset_, QUOTE_CURRENCY) returns (
-                uint80 roundIdChainlink,
+                uint80,
                 int256 chainlinkPrice,
-                uint256 startedAtChainlink,
-                uint256 timeChainlink,
-                uint80 answeredInRoundChainlink
+                uint256,
+                uint256,
+                uint80
             ) {
                 priceFeedDecimals = FeedRegistryInterface(CHAINLINK_FEED_REGISTRY).decimals(asset_, QUOTE_CURRENCY);
                 priceFeedPrice = chainlinkPrice;
@@ -220,8 +248,13 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
             }
         }
 
+        if (priceFeedPrice <= 0) {
+            revert IPriceOracleMiddleware.UnexpectedPriceResult();
+        }
+
         assetPrice = IporMath.convertToWad(priceFeedPrice.toUint256(), priceFeedDecimals);
 
+        /// @dev rechecking because conversion may cause loss of precision which can result in price being equal to zero
         if (assetPrice <= 0) {
             revert IPriceOracleMiddleware.UnexpectedPriceResult();
         }
@@ -230,6 +263,7 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     }
 
     /// @dev Required by the OZ UUPS module
+    /// @dev Only addresses with DEFAULT_ADMIN_ROLE can authorize contract upgrades
     /// @param newImplementation Address of the new implementation
     //solhint-disable-next-line
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
