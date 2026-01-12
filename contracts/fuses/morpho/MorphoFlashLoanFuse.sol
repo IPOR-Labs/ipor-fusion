@@ -95,8 +95,6 @@ contract MorphoFlashLoanFuse is IFuseCommon {
             revert MorphoFlashLoanFuseUnsupportedToken(data_.token);
         }
 
-        ERC20(data_.token).forceApprove(address(MORPHO), data_.tokenAmount);
-
         MORPHO.flashLoan(
             data_.token,
             data_.tokenAmount,

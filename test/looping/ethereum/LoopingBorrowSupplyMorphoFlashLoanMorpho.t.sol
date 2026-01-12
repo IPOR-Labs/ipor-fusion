@@ -634,7 +634,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
 
         MorphoCollateralFuseExitData memory withdrawData = MorphoCollateralFuseExitData({
             morphoMarketId: _MORPHO_WETH_WBTC_MARKET_ID,
-            maxCollateralAmount: 20 * 1e8
+            collateralAmount: 20 * 1e8
         });
 
         // Swap WBTC back to WETH to repay loan
