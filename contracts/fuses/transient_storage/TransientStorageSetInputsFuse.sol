@@ -25,8 +25,16 @@ contract TransientStorageSetInputsFuse is IFuseCommon {
 
     /// @notice Sets the inputs for specific fuses in transient storage
     /// @param data_ The data containing the fuse addresses and inputs
+    /// @dev Reverts with WrongInputsLength if array lengths don't match or if any inputsByFuse element is empty
+    /// @dev Reverts with WrongFuseAddress if any fuse address is zero
     function enter(TransientStorageSetInputsFuseEnterData calldata data_) external {
         uint256 len = data_.fuse.length;
+
+        // Validate array lengths match to prevent out-of-bounds panic
+        if (data_.inputsByFuse.length != len) {
+            revert WrongInputsLength();
+        }
+
         for (uint256 i; i < len; ++i) {
             if (data_.fuse[i] == address(0)) {
                 revert WrongFuseAddress();
