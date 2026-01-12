@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
@@ -19,8 +18,6 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
  *      and converts to USD using price oracle middleware. The result is normalized to WAD (18 decimals).
  */
 contract FluidInstadappStakingBalanceFuse is IMarketBalanceFuse {
-    using SafeCast for uint256;
-
     /// @notice Address of this fuse contract version
     /// @dev Immutable value set in constructor, used for tracking and versioning
     address public immutable VERSION;
