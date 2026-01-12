@@ -67,7 +67,7 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuse is IMarketBalanceFuse {
     ///      4. Normalizes the result to WAD (18 decimals) using IporMath.convertToWadInt
     ///      5. Sums all asset balances and returns the total
     ///      The calculation methodology ensures that:
-    ///      - Only granted substrates are processed (security validation)
+    ///      - Only configured substrates from getMarketSubstrates() are processed (relies on proper configuration)
     ///      - Positive balances represent supplied assets (aTokens)
     ///      - Negative balances represent borrowed assets (debt tokens)
     ///      - All balances are converted to a common USD-denominated value using oracle prices

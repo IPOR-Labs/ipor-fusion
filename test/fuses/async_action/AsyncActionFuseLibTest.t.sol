@@ -40,6 +40,28 @@ contract AsyncActionFuseLibTest is Test {
         assertEq(uint32(decoded_.selector), uint32(input_.selector), "selector");
     }
 
+    function test_encodeAllowedTargetsUpperBytesAreZero() public {
+        // Test that the 7 most significant bytes are always zero after encoding
+        AllowedTargets memory input_ = AllowedTargets({
+            target: address(0x1234567890AbcdEF1234567890aBcdef12345678),
+            selector: bytes4(0xabcdef01)
+        });
+
+        bytes31 encoded_ = AsyncActionFuseLib.encodeAllowedTargets(input_);
+        uint248 packed = uint248(encoded_);
+
+        // Extract the 7 most significant bytes (bits 192-247) by shifting right 192 bits
+        uint256 upperBytes = uint256(packed >> 192);
+
+        // Assert that the upper 7 bytes are zero
+        assertEq(upperBytes, 0, "Upper 7 bytes should be zero");
+
+        // Verify round-trip still works correctly
+        AllowedTargets memory decoded_ = AsyncActionFuseLib.decodeAllowedTargets(encoded_);
+        assertEq(decoded_.target, input_.target, "target should match after round-trip");
+        assertEq(uint32(decoded_.selector), uint32(input_.selector), "selector should match after round-trip");
+    }
+
     function test_encodeAllowedSlippageRoundTrip() public {
         AllowedSlippage memory input_ = AllowedSlippage({slippage: 123456789});
 

@@ -30,12 +30,9 @@ contract EulerV2BatchFuse is IFuseCommon {
 
     error EmptyBatchItems();
     error ZeroAddress();
-    error EVCInvalidSelector();
     error EVCInvalidCollateral();
     error EulerVaultInvalidPermissions();
     error ArrayLengthMismatch();
-    error DuplicateAsset();
-    error InvalidBatchItem();
     error UnsupportedOperation();
 
     event BatchExecuted(uint256 indexed batchSize, address[] assets, address[] vaults);
@@ -50,13 +47,16 @@ contract EulerV2BatchFuse is IFuseCommon {
         EVC = IEVC(eulerV2EVC_);
     }
 
-    /// @notice Executes a batch of Euler V2 operations including supply, borrow, repay, and flash loan operations
+    /// @notice Executes a batch of Euler V2 operations including supply (deposit), borrow, repay, and withdraw operations
     /// @dev This function validates all batch items, sets up approvals, executes the batch via EVC, and cleans up approvals
+    /// @dev Reentrancy protection inherited from PlasmaVault.execute() via delegatecall execution pattern
+    /// @dev Supported operations: deposit, withdraw, borrow, repay, repayWithShares, disableController, enableController
+    /// @dev Flash loan operations are NOT supported by this fuse - use dedicated flash loan fuses instead
     /// @param data_ The data structure containing batch items and approval configurations
     /// @return batchSize The number of batch items executed
     /// @return assets The array of assets used for approvals
     /// @return vaults The array of Euler vaults used for approvals
-    /// @custom:security This function includes reentrancy protection and comprehensive validation
+    /// @custom:security Reentrancy protection via PlasmaVault.execute() and comprehensive validation of all batch items
     function enter(
         EulerV2BatchFuseData memory data_
     ) public returns (uint256 batchSize, address[] memory assets, address[] memory vaults) {
@@ -111,7 +111,12 @@ contract EulerV2BatchFuse is IFuseCommon {
     /// @dev Reads ABI-encoded EulerV2BatchFuseData from transient storage inputs as concatenated bytes32 chunks,
     ///      calls enter(), and writes outputs to transient storage.
     ///      Input format: inputs[0..n] = bytes32 chunks of ABI-encoded EulerV2BatchFuseData
-    ///      Output format: outputs[0] = batchSize, outputs[1..n] = assets, outputs[n+1..m] = vaults
+    ///      Output format: [batchSize, assetsLength, assets[0], assets[1], ..., vaultsLength, vaults[0], vaults[1], ...]
+    ///      - outputs[0] = batchSize (uint256)
+    ///      - outputs[1] = assetsLength (uint256)
+    ///      - outputs[2..2+assetsLength-1] = assets (address[])
+    ///      - outputs[2+assetsLength] = vaultsLength (uint256)
+    ///      - outputs[3+assetsLength..3+assetsLength+vaultsLength-1] = vaults (address[])
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 
@@ -183,7 +188,8 @@ contract EulerV2BatchFuse is IFuseCommon {
     }
 
     /// @notice Validates EVC (Ethereum Vault Connector) batch items
-    /// @dev Currently only supports enableController selector with proper collateral validation
+    /// @dev Supported operations: enableController
+    /// @dev Includes collateral permission checks and account validation
     /// @param item_ The batch item to validate
     function _validateEvc(EulerV2BatchItem memory item_) internal view {
         bytes4 selector = bytes4(_slice(item_.data, 0, 4));
@@ -206,6 +212,8 @@ contract EulerV2BatchFuse is IFuseCommon {
 
     /// @notice Validates Plasma Vault callback batch items
     /// @dev Currently only supports onEulerFlashLoan callback selector
+    /// @dev Note: While the callback handler exists, initiating flash loans via this fuse is not supported
+    /// @dev The callback handler is reserved for external flash loan integrations
     /// @param item_ The batch item to validate
     function _validatePlasmaVaultCallback(EulerV2BatchItem memory item_) internal view {
         bytes4 selector = bytes4(_slice(item_.data, 0, 4));
@@ -216,7 +224,9 @@ contract EulerV2BatchFuse is IFuseCommon {
     }
 
     /// @notice Validates Euler Vault batch items for various operations
-    /// @dev Supports borrow, repay, deposit, withdraw, and disableController operations with proper permission checks
+    /// @dev Supported operations: borrow, repay, repayWithShares, deposit, withdraw, disableController
+    /// @dev Flash loan operations are NOT supported - any flashLoan selector will revert with UnsupportedOperation
+    /// @dev All operations include permission checks and subaccount validation
     /// @param item_ The batch item to validate
     function _validateEulerVault(EulerV2BatchItem memory item_) internal view {
         bytes4 selector = bytes4(_slice(item_.data, 0, 4));

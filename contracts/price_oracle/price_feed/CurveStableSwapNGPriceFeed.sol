@@ -15,7 +15,6 @@ contract CurveStableSwapNGPriceFeed is IPriceFeed {
     error ZeroAddress();
     error PriceOracleMiddleware_InvalidPrice();
     error CurveStableSwapNG_InvalidTotalSupply();
-    error CurveStableSwapNG_InvalidBalance();
 
     address public immutable CURVE_STABLE_SWAP_NG;
     address public immutable PRICE_ORACLE_MIDDLEWARE;
@@ -47,7 +46,7 @@ contract CurveStableSwapNGPriceFeed is IPriceFeed {
         if (totalSupply == 0) {
             revert CurveStableSwapNG_InvalidTotalSupply();
         }
-        uint256 coinBalance;
+
         uint256[] memory coinAmountForOneShareArray = new uint256[](N_COINS);
         for (uint256 i; i < N_COINS; i++) {
             coinAmountForOneShareArray[i] = Math.mulDiv(

@@ -59,4 +59,89 @@ contract TypeConversionLibTest is Test {
         bytes32 result = TypeConversionLib.toBytes32(value);
         assertEq(result, 0x1122334455667788990011223344556677889900112233445566778899001122);
     }
+
+    function test_bytesToBytes32_ShortInput_1Byte() public pure {
+        bytes memory value = hex"aa";
+        bytes32 result = TypeConversionLib.toBytes32(value);
+        // Should be left-aligned with zeros on the right
+        assertEq(result, 0xaa00000000000000000000000000000000000000000000000000000000000000);
+    }
+
+    function test_bytesToBytes32_ShortInput_3Bytes() public pure {
+        bytes memory value = hex"112233";
+        bytes32 result = TypeConversionLib.toBytes32(value);
+        // Should be left-aligned with zeros on the right
+        assertEq(result, 0x1122330000000000000000000000000000000000000000000000000000000000);
+    }
+
+    function test_bytesToBytes32_ShortInput_15Bytes() public pure {
+        bytes memory value = hex"112233445566778899aabbccddeeff";
+        bytes32 result = TypeConversionLib.toBytes32(value);
+        // Should be left-aligned with zeros on the right (17 zero bytes)
+        assertEq(result, 0x112233445566778899aabbccddeeff0000000000000000000000000000000000);
+    }
+
+    function test_bytesToBytes32_ShortInput_31Bytes() public pure {
+        bytes memory value = hex"112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+        bytes32 result = TypeConversionLib.toBytes32(value);
+        // Should be left-aligned with 1 zero byte on the right
+        assertEq(result, 0x112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00);
+    }
+
+    function test_bytesToBytes32_ShortInput_NoDirtyMemoryLeak() public pure {
+        // Allocate some memory with known values to potentially pollute memory
+        bytes memory polluter = hex"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+        // Use polluter to prevent optimizer from removing it
+        require(polluter.length == 32, "polluter check");
+
+        // Now create a short input - should NOT contain any 0xff from previous allocation
+        bytes memory shortValue = hex"aabb";
+        bytes32 result = TypeConversionLib.toBytes32(shortValue);
+
+        // Result must have zeros in trailing bytes, not 0xff from polluter
+        assertEq(result, 0xaabb000000000000000000000000000000000000000000000000000000000000);
+    }
+
+    function test_bytesToBytes32_ShortInput_ConsistentAcrossCalls() public pure {
+        bytes memory value = hex"deadbeef";
+
+        // Call multiple times - should always return the same canonical value
+        bytes32 result1 = TypeConversionLib.toBytes32(value);
+        bytes32 result2 = TypeConversionLib.toBytes32(value);
+        bytes32 result3 = TypeConversionLib.toBytes32(value);
+
+        assertEq(result1, result2);
+        assertEq(result2, result3);
+        assertEq(result1, 0xdeadbeef00000000000000000000000000000000000000000000000000000000);
+    }
+
+    function test_bytesToBytes32_FuzzShortInput(bytes memory value) public pure {
+        vm.assume(value.length > 0 && value.length < 32);
+
+        bytes32 result = TypeConversionLib.toBytes32(value);
+
+        // Verify that trailing bytes are zero - mask covers the last (32 - length) bytes
+        bytes32 mask = bytes32(type(uint256).max >> (value.length * 8));
+
+        // (result & mask) should be 0 - meaning all trailing bytes are zero
+        assertEq(result & mask, bytes32(0), "Trailing bytes should be zero");
+
+        // Verify that the first `length` bytes match the input
+        for (uint256 i = 0; i < value.length; i++) {
+            assertEq(uint8(result[i]), uint8(value[i]), "Leading bytes should match input");
+        }
+    }
+
+    function test_bytesToBytes32_ExactlyThirtyTwoBytes_NoMasking() public pure {
+        bytes memory value = hex"0102030405060708091011121314151617181920212223242526272829303132";
+        bytes32 result = TypeConversionLib.toBytes32(value);
+        assertEq(result, 0x0102030405060708091011121314151617181920212223242526272829303132);
+    }
+
+    function test_bytesToBytes32_LongerThanThirtyTwoBytes_TruncatesToFirst32() public pure {
+        // Input is 40 bytes - should only read first 32
+        bytes memory value = hex"01020304050607080910111213141516171819202122232425262728293031320000000000000000";
+        bytes32 result = TypeConversionLib.toBytes32(value);
+        assertEq(result, 0x0102030405060708091011121314151617181920212223242526272829303132);
+    }
 }
