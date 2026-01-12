@@ -61,12 +61,11 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuse is IMarketBalanceFuse {
 
     /// @notice Calculates the total balance of the Plasma Vault in Aave V3 protocol
     /// @dev This function iterates through all substrates (assets) configured for the MARKET_ID and calculates:
-    ///      1. Validates each asset using PlasmaVaultConfigLib.isSubstrateAsAssetGranted() before processing
-    ///      2. For each validated asset, retrieves the balance of aTokens (supplied assets) and debt tokens (borrowed assets)
-    ///      3. Calculates net balance: aToken balance - stable debt - variable debt
-    ///      4. Converts the balance to USD using Price Oracle Middleware (with dynamic decimals)
-    ///      5. Normalizes the result to WAD (18 decimals) using IporMath.convertToWadInt
-    ///      6. Sums all asset balances and returns the total
+    ///      1. For each validated asset, retrieves the balance of aTokens (supplied assets) and debt tokens (borrowed assets)
+    ///      2. Calculates net balance: aToken balance - stable debt - variable debt
+    ///      3. Converts the balance to USD using Price Oracle Middleware (with dynamic decimals)
+    ///      4. Normalizes the result to WAD (18 decimals) using IporMath.convertToWadInt
+    ///      5. Sums all asset balances and returns the total
     ///      The calculation methodology ensures that:
     ///      - Only granted substrates are processed (security validation)
     ///      - Positive balances represent supplied assets (aTokens)
@@ -100,6 +99,7 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuse is IMarketBalanceFuse {
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+
             decimals = ERC20(asset).decimals();
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
 
