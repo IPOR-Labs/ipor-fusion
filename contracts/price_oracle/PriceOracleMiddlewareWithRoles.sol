@@ -57,7 +57,8 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice Gets the USD price for a single asset
     /// @param asset_ The address of the asset to price
     /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
-    /// @return decimals The number of decimals in the returned price
+    /// @return decimals The number of decimals in the returned price (always QUOTE_CURRENCY_DECIMALS)
+    /// @dev Price is automatically normalized to WAD (18 decimals) regardless of feed's native decimals
     function getAssetPrice(address asset_) external view returns (uint256 assetPrice, uint256 decimals) {
         (assetPrice, decimals) = _getAssetPrice(asset_);
     }
@@ -65,11 +66,11 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice Gets USD prices for multiple assets in a single call
     /// @param assets_ Array of asset addresses to price
     /// @return assetPrices Array of prices in USD (with QUOTE_CURRENCY_DECIMALS decimals)
-    /// @return decimalsList Array of decimals for each returned price
+    /// @return decimalsList Array of decimals for each returned price (always QUOTE_CURRENCY_DECIMALS)
+    /// @dev All prices are automatically normalized to WAD (18 decimals) regardless of feed's native decimals
     /// @dev Reverts if:
     /// @dev - assets_ array is empty
-    /// @dev - any asset price feed returns price <= 0
-    /// @dev - any price feed has incorrect decimals
+    /// @dev - any asset price feed returns price <= 0 (after conversion to WAD)
     /// @dev - any asset is unsupported (no custom feed and no Chainlink support)
     /// @dev - zero address is provided as an asset
     /// @dev Note: This is a batch operation - if any asset price fetch fails, the entire call reverts
@@ -184,12 +185,13 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @notice Internal function to get asset price from either custom feed or Chainlink
     /// @param asset_ The address of the asset to price
     /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
-    /// @return decimals The number of decimals in the returned price
+    /// @return decimals The number of decimals in the returned price (always QUOTE_CURRENCY_DECIMALS)
     /// @dev Tries custom price feed first, falls back to Chainlink Registry if no custom feed is set
+    /// @dev Automatically normalizes price to WAD (18 decimals) regardless of feed's native decimals
+    /// @dev Uses IporMath.convertToWad to handle decimal conversion from any feed decimal format
     /// @dev Reverts if:
     /// @dev - asset_ is zero address
-    /// @dev - price <= 0
-    /// @dev - decimals don't match QUOTE_CURRENCY_DECIMALS
+    /// @dev - price <= 0 (after conversion to WAD)
     /// @dev - no custom price feed is set and CHAINLINK_FEED_REGISTRY is address(0)
     /// @dev - asset is not supported in Chainlink Registry when using it as fallback
     /// @dev - Chainlink Registry call fails
