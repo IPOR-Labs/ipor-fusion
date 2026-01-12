@@ -277,7 +277,8 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
                 address(this),
                 address(this)
             );
-            emit MorphoSupplyFuseExit(VERSION, marketParams_.loanToken, morphoMarketId_, assetsWithdrawn);
+            amount = assetsWithdrawn;
+            emit MorphoSupplyFuseExit(VERSION, marketParams_.loanToken, morphoMarketId_, amount);
         }
     }
 }
