@@ -86,10 +86,6 @@ contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
         _setupRoles();
     }
 
-    function testTT() external {
-        assertTrue(true);
-    }
-
     function testShouldSwapWhenOneHop() external {
         // given
 
