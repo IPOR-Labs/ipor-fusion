@@ -395,7 +395,7 @@ contract SwapExecutorTest is Test {
         assertEq(address(swapExecutorRestricted).balance, 0);
     }
 
-    /// @notice Test that ETH can be force-sent via selfdestruct and then recovered via withdrawNative
+    /// @notice Test that ETH can be force-sent via selfdestruct and then recovered via sweepNative
     function testShouldAllowWithdrawNativeAfterSelfdestruct() public {
         uint256 forceSendAmount = 1 ether;
         address recipient = address(0xBEEF);
@@ -411,16 +411,16 @@ contract SwapExecutorTest is Test {
         // Verify ETH was force-sent
         assertEq(address(swapExecutorRestricted).balance, forceSendAmount);
 
-        // Withdraw the force-sent ETH via withdrawNative
+        // Withdraw the force-sent ETH via sweepNative
         vm.prank(restrictedAddress);
-        swapExecutorRestricted.withdrawNative(recipient, forceSendAmount);
+        swapExecutorRestricted.sweepNative(recipient, forceSendAmount);
 
         // Verify withdrawal succeeded
         assertEq(address(swapExecutorRestricted).balance, 0);
         assertEq(recipient.balance, forceSendAmount);
     }
 
-    /// @notice Test that withdrawNative reverts when called by non-restricted address
+    /// @notice Test that sweepNative reverts when called by non-restricted address
     function testShouldRevertWithdrawNativeWhenCallerIsNotRestricted() public {
         // Force-send some ETH first
         vm.deal(address(this), 1 ether);
@@ -429,10 +429,10 @@ contract SwapExecutorTest is Test {
         // Try to withdraw as unauthorized user
         vm.prank(unauthorizedAddress);
         vm.expectRevert(SwapExecutorRestricted.SwapExecutorRestrictedInvalidSender.selector);
-        swapExecutorRestricted.withdrawNative(unauthorizedAddress, 1 ether);
+        swapExecutorRestricted.sweepNative(unauthorizedAddress, 1 ether);
     }
 
-    /// @notice Test that withdrawNative reverts when transfer fails (recipient rejects ETH)
+    /// @notice Test that sweepNative reverts when transfer fails (recipient rejects ETH)
     function testShouldRevertWithdrawNativeWhenTransferFails() public {
         // Deploy a contract that rejects ETH
         EthRejecter rejecter = new EthRejecter();
@@ -444,7 +444,7 @@ contract SwapExecutorTest is Test {
         // Try to withdraw to a contract that rejects ETH
         vm.prank(restrictedAddress);
         vm.expectRevert(SwapExecutorRestricted.SwapExecutorRestrictedNativeTransferFailed.selector);
-        swapExecutorRestricted.withdrawNative(address(rejecter), 1 ether);
+        swapExecutorRestricted.sweepNative(address(rejecter), 1 ether);
     }
 
     /// @notice Test partial withdrawal of force-sent ETH
@@ -459,7 +459,7 @@ contract SwapExecutorTest is Test {
 
         // Withdraw partial amount
         vm.prank(restrictedAddress);
-        swapExecutorRestricted.withdrawNative(recipient, withdrawAmount);
+        swapExecutorRestricted.sweepNative(recipient, withdrawAmount);
 
         // Verify partial withdrawal
         assertEq(address(swapExecutorRestricted).balance, forceSendAmount - withdrawAmount);
@@ -467,7 +467,7 @@ contract SwapExecutorTest is Test {
 
         // Withdraw remaining
         vm.prank(restrictedAddress);
-        swapExecutorRestricted.withdrawNative(recipient, withdrawAmount);
+        swapExecutorRestricted.sweepNative(recipient, withdrawAmount);
 
         // Verify full withdrawal
         assertEq(address(swapExecutorRestricted).balance, 0);
