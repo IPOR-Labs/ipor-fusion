@@ -53,8 +53,11 @@ contract EbisuAdjustTroveFuse is IFuseCommon {
         IERC20 collToken = IERC20(registry.collToken());
         IBorrowerOperations registryBorrowerOperations = IBorrowerOperations(address(registry.borrowerOperations()));
 
-        if(data_.isDebtIncrease)
+        // bold is burnt when debt is reduced, so approve only in that case
+        if(!data_.isDebtIncrease)
             ebusdToken.forceApprove(address(registryBorrowerOperations), data_.debtChange);
+
+        // collateral is taken from vault when increased, so approve only in that case
         if(data_.isCollIncrease)
             collToken.forceApprove(address(registryBorrowerOperations), data_.collChange);
         registryBorrowerOperations.adjustTrove(
@@ -65,7 +68,8 @@ contract EbisuAdjustTroveFuse is IFuseCommon {
             data_.isDebtIncrease,
             data_.maxUpfrontFee
         );
-        if(data_.isDebtIncrease)
+        
+        if(!data_.isDebtIncrease)
             ebusdToken.forceApprove(address(registryBorrowerOperations), 0);
         if(data_.isCollIncrease)
             collToken.forceApprove(address(registryBorrowerOperations), 0);
