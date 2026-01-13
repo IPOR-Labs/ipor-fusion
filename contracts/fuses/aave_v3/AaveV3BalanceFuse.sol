@@ -68,6 +68,12 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
     ///      - Negative balances represent borrowed assets (debt tokens)
     ///      - All balances are converted to a common USD-denominated value using oracle prices
     ///      - Final result is normalized to WAD precision (18 decimals) for consistency
+    /// @dev Trust assumptions:
+    ///      - AAVE_V3_POOL_ADDRESSES_PROVIDER is trusted to return valid, non-zero addresses for:
+    ///        * getPriceOracle(): Returns the Aave V3 price oracle contract address
+    ///        * getPoolDataProvider(): Returns the Aave V3 pool data provider contract address
+    ///      - These addresses are validated to be non-zero before use to prevent potential failures
+    ///      - The Aave V3 protocol is considered a trusted external dependency
     /// @return The total balance of the Plasma Vault in Aave V3 protocol, normalized to WAD (18 decimals)
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
@@ -87,21 +93,37 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
         address stableDebtTokenAddress;
         address variableDebtTokenAddress;
         address plasmaVault = address(this);
+        address aavePriceOracle = IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPriceOracle();
+        address poolDataProvider = IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPoolDataProvider();
+
+        // Validate external contract return values
+        // Trust assumption: AAVE_V3_POOL_ADDRESSES_PROVIDER is expected to return valid addresses
+        // but we validate to prevent potential failures from misconfigured or compromised providers
+        if (aavePriceOracle == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        if (poolDataProvider == address(0)) {
+            revert Errors.WrongAddress();
+        }
 
         for (uint256 i; i < len; ++i) {
             balanceInLoop = 0;
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
+
+            // Validate asset address before processing
+            if (asset == address(0)) {
+                revert Errors.WrongAddress();
+            }
+
             decimals = ERC20(asset).decimals();
-            price = IAavePriceOracle(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPriceOracle())
-                .getAssetPrice(asset);
+            price = IAavePriceOracle(aavePriceOracle).getAssetPrice(asset);
 
             if (price == 0) {
                 revert Errors.UnsupportedQuoteCurrencyFromOracle();
             }
 
-            (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(
-                IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPoolDataProvider()
-            ).getReserveTokensAddresses(asset);
+            (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(poolDataProvider)
+                .getReserveTokensAddresses(asset);
 
             if (aTokenAddress != address(0)) {
                 balanceInLoop += int256(ERC20(aTokenAddress).balanceOf(plasmaVault));
