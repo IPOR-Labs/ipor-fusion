@@ -2318,4 +2318,108 @@ contract FuseWhitelistTest is Test {
         _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
         vm.stopPrank();
     }
+
+    // ============ Tests for Type-0 Forbidden (M6 Security Fix) ============
+
+    /// @notice Test that adding fuse type with ID 0 is forbidden
+    /// @dev Type 0 is reserved and cannot be used to prevent sentinel value conflicts
+    function test_AddFuseType_ZeroIdForbidden() public {
+        // Arrange
+        uint16[] memory fuseTypeIds = new uint16[](1);
+        string[] memory fuseTypeNames = new string[](1);
+
+        fuseTypeIds[0] = 0; // Type 0 - forbidden
+        fuseTypeNames[0] = "Type0";
+
+        // Act & Assert
+        vm.prank(FUSE_TYPE_MANAGER_ROLE);
+        vm.expectRevert(FuseWhitelistLib.ZeroFuseTypeIdNotAllowed.selector);
+        _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
+    }
+
+    /// @notice Test that adding fuse type with ID 0 in a batch fails the entire batch
+    function test_AddFuseTypes_ZeroIdInBatch_Reverts() public {
+        // Arrange
+        uint16[] memory fuseTypeIds = new uint16[](3);
+        string[] memory fuseTypeNames = new string[](3);
+
+        fuseTypeIds[0] = 1;
+        fuseTypeIds[1] = 0; // Type 0 - forbidden (in middle of batch)
+        fuseTypeIds[2] = 2;
+
+        fuseTypeNames[0] = "Type1";
+        fuseTypeNames[1] = "Type0";
+        fuseTypeNames[2] = "Type2";
+
+        // Act & Assert - First type is added but second fails, reverting entire transaction
+        vm.prank(FUSE_TYPE_MANAGER_ROLE);
+        vm.expectRevert(FuseWhitelistLib.ZeroFuseTypeIdNotAllowed.selector);
+        _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
+
+        // Verify no types were added (transaction reverted)
+        (uint16[] memory typeIds, ) = _fuseWhitelist.getFuseTypes();
+        assertEq(typeIds.length, 0, "No types should be added due to revert");
+    }
+
+    /// @notice Test that updateFuseState correctly reverts for truly non-existent fuses
+    /// @dev Verifies the existence check uses fuseAddress == address(0), not fuseType == 0
+    function test_UpdateFuseState_NonExistentFuse_RevertsWithFuseNotFound() public {
+        // Arrange
+        addFuseTypesAndStates();
+        address nonExistentFuse = address(0x999);
+
+        // Act & Assert
+        vm.startPrank(UPDATE_FUSE_STATE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseState(nonExistentFuse, 1);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that existence check is consistent across all update functions
+    /// @dev All functions should use fuseAddress == address(0) for non-existence check
+    function test_ExistenceCheck_Consistency_NonExistentFuse() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        // Add metadata type for metadata update test
+        uint16[] memory metadataIds = new uint16[](1);
+        string[] memory metadataTypes = new string[](1);
+        metadataIds[0] = 1;
+        metadataTypes[0] = "TestMetadata";
+
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
+        _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
+        vm.stopPrank();
+
+        address nonExistentFuse = address(0x999);
+        bytes32[] memory metadata = new bytes32[](1);
+        metadata[0] = keccak256("test");
+
+        // Act & Assert - All update functions should revert with FuseNotFound for non-existent fuse
+
+        // updateFuseState
+        vm.prank(UPDATE_FUSE_STATE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseState(nonExistentFuse, 1);
+
+        // updateFuseMetadata
+        vm.prank(UPDATE_FUSE_METADATA_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseMetadata(nonExistentFuse, 1, metadata);
+
+        // updateFuseDeploymentTimestamp
+        vm.prank(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseDeploymentTimestamp(nonExistentFuse, uint32(block.timestamp + 100));
+
+        // updateFuseType
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = nonExistentFuse;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = 1;
+
+        vm.prank(UPDATE_FUSE_TYPE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+    }
 }

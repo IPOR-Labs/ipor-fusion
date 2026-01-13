@@ -68,6 +68,8 @@ struct FuseInfoByMarketId {
 library FuseWhitelistLib {
     /// @notice Thrown when attempting to add an empty fuse type
     error EmptyFuseType();
+    /// @notice Thrown when attempting to add a fuse type with ID 0 (reserved)
+    error ZeroFuseTypeIdNotAllowed();
     /// @notice Thrown when attempting to add a fuse type that already exists
     error FuseTypeAlreadyExists(uint256 fuseId);
     /// @notice Thrown when attempting to add an empty fuse state
@@ -174,9 +176,14 @@ library FuseWhitelistLib {
     /// @param fuseId_ The unique identifier for the fuse type
     /// @param fuseTypeId_ The descriptive name of the fuse type
     /// @dev Reverts if:
+    /// - fuseId_ is 0 (reserved, not allowed)
     /// - fuseTypeId_ is empty
     /// - fuseId_ already exists
     function addFuseType(uint16 fuseId_, string calldata fuseTypeId_) internal {
+        if (fuseId_ == 0) {
+            revert ZeroFuseTypeIdNotAllowed();
+        }
+
         if (bytes(fuseTypeId_).length == 0) {
             revert EmptyFuseType();
         }
@@ -415,7 +422,7 @@ library FuseWhitelistLib {
 
         FuseInfo storage fuseInfo = _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
 
-        if (fuseInfo.fuseType == 0) {
+        if (fuseInfo.fuseAddress == address(0)) {
             revert FuseNotFound(fuseAddress_);
         }
 
