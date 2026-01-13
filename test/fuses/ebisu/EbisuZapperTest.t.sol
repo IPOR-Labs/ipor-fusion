@@ -756,6 +756,36 @@ contract EbisuZapperTest is Test {
             initialTroveData.entireDebt + adjustData.debtChange,
             "Debt was not updated by fuse"
         );
+
+        // same but with coll and debt decrease
+        adjustData = EbisuAdjustTroveFuse.EbisuAdjustTroveFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            registry: SUSDE_REGISTRY,
+            collChange: 500,
+            debtChange: 200,
+            isCollIncrease: false,
+            isDebtIncrease: false,
+            maxUpfrontFee: 5 * 1e18
+        });
+
+        calls[0] = FuseAction(
+            address(adjustTroveFuse),
+            abi.encodeWithSelector(EbisuAdjustTroveFuse.enter.selector, adjustData)
+        );
+
+        plasmaVault.execute(calls);
+        ITroveManager.LatestTroveData memory finalTroveData = troveManager.getLatestTroveData(troveId);
+        assertEq(
+            finalTroveData.entireColl,
+            troveData.entireColl - 500, // 1000 - 500
+            "Collateral was not updated by fuse"
+        );
+        assertEq(
+            finalTroveData.entireDebt,
+            troveData.entireDebt - 200, // 500 - 200
+            "Debt was not updated by fuse"
+        );
+
     }
     // --- helpers ---
 
