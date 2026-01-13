@@ -92,6 +92,8 @@ library FuseWhitelistLib {
     error InvalidMetadataType(uint256 metadataId);
     /// @notice Thrown when attempting to add metadata to a non-existent fuse
     error FuseNotFound(address fuseAddress);
+    /// @notice Thrown when attempting to remove metadata that doesn't exist for the fuse
+    error MetadataNotFoundForFuse(address fuseAddress, uint256 metadataId);
     /// @notice Thrown when attempting to add a fuse info with a zero deployment timestamp
     error ZeroDeploymentTimestamp();
 
@@ -496,15 +498,22 @@ library FuseWhitelistLib {
 
         FuseInfo storage fuseInfo = fuseInfoByAddress.fusesByAddress[fuseAddress_];
 
-        fuseInfo.metadata[metadataId_] = new bytes32[](0);
-
-        for (uint256 i; i < fuseInfo.metadataIds.length; ++i) {
+        bool metadataFound = false;
+        uint256 metadataIdsLength = fuseInfo.metadataIds.length;
+        for (uint256 i; i < metadataIdsLength; ++i) {
             if (fuseInfo.metadataIds[i] == metadataId_) {
-                fuseInfo.metadataIds[i] = fuseInfo.metadataIds[fuseInfo.metadataIds.length - 1];
+                fuseInfo.metadataIds[i] = fuseInfo.metadataIds[metadataIdsLength - 1];
                 fuseInfo.metadataIds.pop();
+                metadataFound = true;
                 break;
             }
         }
+
+        if (!metadataFound) {
+            revert MetadataNotFoundForFuse(fuseAddress_, metadataId_);
+        }
+
+        delete fuseInfo.metadata[metadataId_];
 
         emit FuseMetadataUpdated(fuseAddress_, metadataId_, new bytes32[](0));
     }
