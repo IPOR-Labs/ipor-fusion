@@ -39,7 +39,19 @@ struct TransientStorageMapperEnterData {
 /// @author IPOR Labs
 contract TransientStorageMapperFuse is IFuseCommon {
     /// @notice The market ID associated with the Fuse
-    uint256 public constant MARKET_ID = IporFusionMarkets.ERC20_VAULT_BALANCE;
+    uint256 public constant MARKET_ID = IporFusionMarkets.ZERO_BALANCE_MARKET;
+    /// @notice Maximum number of items allowed in a single mapping operation
+    /// @dev Prevents DoS attacks through excessively large arrays and ensures gas limits are not exceeded
+    uint256 public constant MAX_ITEMS = 256;
+    /// @notice Maximum decimal difference allowed for conversion
+    /// @dev Prevents overflow when calculating scale factor: 10^77 is the largest power of 10 that fits in uint256
+    uint256 public constant MAX_DECIMAL_DIFF = 77;
+    /// @notice The version identifier of this fuse contract
+    address public immutable VERSION;
+
+    constructor() {
+        VERSION = address(this);
+    }
 
     error TransientStorageMapperFuseUnknownParamType();
     error TransientStorageMapperFuseInvalidDataFromAddress();
@@ -50,11 +62,19 @@ contract TransientStorageMapperFuse is IFuseCommon {
     error TransientStorageMapperFuseInvalidConversion(DataType fromType, DataType toType);
     error TransientStorageMapperFuseDecimalOverflow(uint256 value, uint256 fromDecimals, uint256 toDecimals);
     error TransientStorageMapperFuseSignedDecimalOverflow(int256 value, uint256 fromDecimals, uint256 toDecimals);
+    error TransientStorageMapperFuseItemsArrayTooLarge(uint256 itemsLength, uint256 maxItems);
+    error TransientStorageMapperFuseDecimalDifferenceTooLarge(uint256 fromDecimals, uint256 toDecimals, uint256 maxDiff);
 
     /// @notice Maps transient storage data between fuses with optional type and decimal conversion
     /// @param data_ The data containing mapping instructions
+    /// @dev Reverts if items array length exceeds MAX_ITEMS (256) to prevent DoS attacks
+    /// @dev Requires that destination transient storage (dataToAddress) must be pre-initialized with sufficient array length before calling enter().
+    ///      The TransientStorageLib.setInput() function requires the destination storage to have been initialized with at least (dataToIndex + 1) elements.
     function enter(TransientStorageMapperEnterData calldata data_) external {
         uint256 len = data_.items.length;
+        if (len > MAX_ITEMS) {
+            revert TransientStorageMapperFuseItemsArrayTooLarge(len, MAX_ITEMS);
+        }
         TransientStorageMapperItem calldata item;
         bytes32 value;
         for (uint256 i; i < len; ++i) {
@@ -298,9 +318,23 @@ contract TransientStorageMapperFuse is IFuseCommon {
     ) internal pure returns (int256) {
         if (fromDecimals_ == toDecimals_) {
             return value_;
-        } else if (fromDecimals_ < toDecimals_) {
+        }
+        
+        uint256 decimalDiff;
+        if (fromDecimals_ < toDecimals_) {
+            decimalDiff = toDecimals_ - fromDecimals_;
+        } else {
+            decimalDiff = fromDecimals_ - toDecimals_;
+        }
+        
+        // Validate that decimal difference is within reasonable bounds to prevent scale calculation overflow
+        if (decimalDiff > MAX_DECIMAL_DIFF) {
+            revert TransientStorageMapperFuseDecimalDifferenceTooLarge(fromDecimals_, toDecimals_, MAX_DECIMAL_DIFF);
+        }
+        
+        if (fromDecimals_ < toDecimals_) {
             // Scale up: multiply by 10^(toDecimals - fromDecimals)
-            uint256 scale = 10 ** (toDecimals_ - fromDecimals_);
+            uint256 scale = 10 ** decimalDiff;
             int256 scaleSigned = int256(scale);
             int256 result;
             // Use unchecked to prevent panic, then manually check for overflow
@@ -314,7 +348,7 @@ contract TransientStorageMapperFuse is IFuseCommon {
             return result;
         } else {
             // Scale down: divide by 10^(fromDecimals - toDecimals)
-            uint256 scale = 10 ** (fromDecimals_ - toDecimals_);
+            uint256 scale = 10 ** decimalDiff;
             return value_ / int256(scale);
         }
     }
@@ -439,9 +473,23 @@ contract TransientStorageMapperFuse is IFuseCommon {
     ) internal pure returns (uint256) {
         if (fromDecimals_ == toDecimals_) {
             return value_;
-        } else if (fromDecimals_ < toDecimals_) {
+        }
+        
+        uint256 decimalDiff;
+        if (fromDecimals_ < toDecimals_) {
+            decimalDiff = toDecimals_ - fromDecimals_;
+        } else {
+            decimalDiff = fromDecimals_ - toDecimals_;
+        }
+        
+        // Validate that decimal difference is within reasonable bounds to prevent scale calculation overflow
+        if (decimalDiff > MAX_DECIMAL_DIFF) {
+            revert TransientStorageMapperFuseDecimalDifferenceTooLarge(fromDecimals_, toDecimals_, MAX_DECIMAL_DIFF);
+        }
+        
+        if (fromDecimals_ < toDecimals_) {
             // Scale up: multiply by 10^(toDecimals - fromDecimals)
-            uint256 scale = 10 ** (toDecimals_ - fromDecimals_);
+            uint256 scale = 10 ** decimalDiff;
             uint256 result;
             // Use unchecked to prevent panic, then manually check for overflow
             unchecked {
@@ -454,7 +502,7 @@ contract TransientStorageMapperFuse is IFuseCommon {
             return result;
         } else {
             // Scale down: divide by 10^(fromDecimals - toDecimals)
-            return value_ / (10 ** (fromDecimals_ - toDecimals_));
+            return value_ / (10 ** decimalDiff);
         }
     }
 
