@@ -7,6 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {Errors} from "../../libraries/errors/Errors.sol";
 import {EulerFuseLib} from "./EulerFuseLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
@@ -39,16 +40,16 @@ contract EulerV2SupplyFuse is IFuseCommon {
     /// @notice Emitted when assets are successfully deposited into an Euler V2 vault
     /// @param version The address of this fuse contract version
     /// @param eulerVault The address of the Euler V2 vault receiving the deposit
-    /// @param sharesMinted The number of vault shares minted from the deposit (per ERC-4626)
+    /// @param mintedShares The number of vault shares minted (NOT asset amount)
     /// @param subAccount The sub-account address used for the deposit
-    event EulerV2SupplyEnterFuse(address version, address eulerVault, uint256 sharesMinted, address subAccount);
+    event EulerV2SupplyEnterFuse(address version, address eulerVault, uint256 mintedShares, address subAccount);
 
     /// @notice Emitted when assets are successfully withdrawn from an Euler V2 vault
     /// @param version The address of this fuse contract version
     /// @param eulerVault The address of the Euler V2 vault from which assets are withdrawn
-    /// @param withdrawnAmount The amount of assets withdrawn from the vault
+    /// @param withdrawnAssets The amount of underlying assets withdrawn from the vault (NOT shares)
     /// @param subAccount The sub-account address used for the withdrawal
-    event EulerV2SupplyExitFuse(address version, address eulerVault, uint256 withdrawnAmount, address subAccount);
+    event EulerV2SupplyExitFuse(address version, address eulerVault, uint256 withdrawnAssets, address subAccount);
 
     /// @notice Thrown when attempting to supply to an unsupported Euler V2 vault or sub-account combination
     /// @param vault The address of the vault that is not supported
@@ -71,18 +72,26 @@ contract EulerV2SupplyFuse is IFuseCommon {
     /**
      * @notice Initializes the EulerV2SupplyFuse with a market ID and EVC address
      * @param marketId_ The market ID used to identify the Euler V2 vault substrates
-     * @param eulerV2EVC_ The address of the Ethereum Vault Connector for Euler V2 protocol
+     * @param eulerV2EVC_ The address of the Ethereum Vault Connector for Euler V2 protocol (must not be address(0))
+     * @dev Reverts if eulerV2EVC_ is zero address
      */
     constructor(uint256 marketId_, address eulerV2EVC_) {
+        if (eulerV2EVC_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
         VERSION = address(this);
         MARKET_ID = marketId_;
         EVC = IEVC(eulerV2EVC_);
     }
 
     /// @notice Enters the Euler V2 Supply Fuse with the specified parameters
+    /// @dev Returns the number of vault shares minted, NOT the asset amount deposited.
+    ///      This follows ERC-4626 deposit semantics where deposit() returns shares minted.
     /// @param data_ The data structure containing the parameters for entering the Euler V2 Supply Fuse
-    /// @return sharesMinted The number of vault shares minted from the deposit (per ERC-4626)
-    function enter(EulerV2SupplyFuseEnterData memory data_) public returns (uint256 sharesMinted) {
+    /// @return mintedShares The number of vault shares minted (NOT asset amount)
+    /// @custom:security Validates vault/subAccount against granted substrates before deposit
+    /// @custom:security Uses EVC.call for secure vault interaction
+    function enter(EulerV2SupplyFuseEnterData memory data_) public returns (uint256 mintedShares) {
         if (data_.maxAmount == 0) {
             return 0;
         }
@@ -103,7 +112,7 @@ contract EulerV2SupplyFuse is IFuseCommon {
         ERC20(eulerVaultAsset).forceApprove(data_.eulerVault, transferAmount);
 
         /* solhint-disable avoid-low-level-calls */
-        sharesMinted = abi.decode(
+        mintedShares = abi.decode(
             EVC.call(
                 data_.eulerVault,
                 plasmaVault,
@@ -113,26 +122,39 @@ contract EulerV2SupplyFuse is IFuseCommon {
             (uint256)
         );
         /* solhint-enable avoid-low-level-calls */
-
-        emit EulerV2SupplyEnterFuse(VERSION, data_.eulerVault, sharesMinted, subAccount);
+        emit EulerV2SupplyEnterFuse(VERSION, data_.eulerVault, mintedShares, subAccount);
     }
 
+    /// @notice Enters the Euler V2 Supply Fuse using transient storage for parameters
+    /// @dev Reads eulerVault, maxAmount, and subAccount from transient storage inputs.
+    ///      Writes the minted shares to transient storage outputs.
+    ///      Uses batch getInputs() for gas efficiency.
+    /// @custom:security Delegates to enter() which performs substrate validation
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
         address eulerVault = TypeConversionLib.toAddress(inputs[0]);
         uint256 maxAmount = TypeConversionLib.toUint256(inputs[1]);
         bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[2])));
 
-        uint256 sharesMinted = enter(EulerV2SupplyFuseEnterData(eulerVault, maxAmount, subAccount));
+        uint256 mintedShares = enter(
+            EulerV2SupplyFuseEnterData({eulerVault: eulerVault, maxAmount: maxAmount, subAccount: subAccount})
+        );
 
         bytes32[] memory outputs = new bytes32[](1);
-        outputs[0] = TypeConversionLib.toBytes32(sharesMinted);
+        outputs[0] = TypeConversionLib.toBytes32(mintedShares);
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @notice Exits the Euler V2 Supply Fuse with the specified parameters
+    /// @dev Returns the amount of underlying assets withdrawn, NOT the number of shares burned.
+    ///      This follows ERC-4626 withdraw semantics where withdraw() specifies asset amount.
+    ///      Note: No substrate validation is performed in exit() by design - if a position exists
+    ///      in a vault, it should always be withdrawable regardless of current substrate configuration.
     /// @param data_ The data structure containing the parameters for exiting the Euler V2 Supply Fuse
-    function exit(EulerV2SupplyFuseExitData memory data_) public returns (uint256 withdrawnAmount) {
+    /// @return withdrawnAssets The amount of underlying assets withdrawn (NOT shares burned)
+    /// @custom:security No substrate validation by design - allows withdrawal from any existing position
+    /// @custom:security Uses EVC.call for secure vault interaction
+    function exit(EulerV2SupplyFuseExitData memory data_) public returns (uint256 withdrawnAssets) {
         if (data_.maxAmount == 0) {
             return 0;
         }
@@ -160,21 +182,28 @@ contract EulerV2SupplyFuse is IFuseCommon {
         );
         /* solhint-enable avoid-low-level-calls */
 
-        withdrawnAmount = finalVaultAssetAmount;
+        withdrawnAssets = finalVaultAssetAmount;
 
-        emit EulerV2SupplyExitFuse(VERSION, data_.eulerVault, withdrawnAmount, subAccount);
+        emit EulerV2SupplyExitFuse(VERSION, data_.eulerVault, withdrawnAssets, subAccount);
     }
 
+    /// @notice Exits the Euler V2 Supply Fuse using transient storage for parameters
+    /// @dev Reads eulerVault, maxAmount, and subAccount from transient storage inputs.
+    ///      Writes the withdrawn assets amount to transient storage outputs.
+    ///      Uses batch getInputs() for gas efficiency.
+    /// @custom:security Delegates to exit() - no substrate validation by design
     function exitTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
         address eulerVault = TypeConversionLib.toAddress(inputs[0]);
         uint256 maxAmount = TypeConversionLib.toUint256(inputs[1]);
         bytes1 subAccount = bytes1(uint8(TypeConversionLib.toUint256(inputs[2])));
 
-        uint256 withdrawnAmount = exit(EulerV2SupplyFuseExitData(eulerVault, maxAmount, subAccount));
+        uint256 withdrawnAssets = exit(
+            EulerV2SupplyFuseExitData({eulerVault: eulerVault, maxAmount: maxAmount, subAccount: subAccount})
+        );
 
         bytes32[] memory outputs = new bytes32[](1);
-        outputs[0] = TypeConversionLib.toBytes32(withdrawnAmount);
+        outputs[0] = TypeConversionLib.toBytes32(withdrawnAssets);
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }
