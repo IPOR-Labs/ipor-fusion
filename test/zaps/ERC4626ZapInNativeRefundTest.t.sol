@@ -111,14 +111,15 @@ contract ERC4626ZapInNativeRefundTest is Test {
     }
 
     /// @notice TEST-L7-002: Payable contract can receive ETH refund by setting refundNativeTo to itself
+    /// @dev L13 fix: Only ETH acquired during current operation is refunded, not pre-existing ETH
     function testPayableContractCanReceiveEthRefund() public {
         // given
         PayableIntegration integration = new PayableIntegration(address(zapIn));
         uint256 ethAmount = 10_000e18;
         uint256 leftoverEth = 0.5 ether;
 
-        deal(address(integration), ethAmount);
-        deal(address(zapIn), leftoverEth);
+        // Total ETH sent: ethAmount + leftoverEth (leftover comes from msg.value, not pre-existing)
+        deal(address(integration), ethAmount + leftoverEth);
 
         ZapInData memory zapInData = ZapInData({
             vault: address(plasmaVaultWeth),
@@ -142,20 +143,21 @@ contract ERC4626ZapInNativeRefundTest is Test {
         });
         zapInData.calls = calls;
 
-        // when
+        // when - send extra ETH that will be leftover (not used in calls)
         vm.prank(address(integration));
-        integration.performZap{value: ethAmount}(zapInData);
+        integration.performZap{value: ethAmount + leftoverEth}(zapInData);
 
         // then
         uint256 vaultShares = plasmaVaultWeth.balanceOf(address(integration));
         assertGt(vaultShares, 0, "Integration should receive vault shares");
 
-        // Leftover ETH should be refunded to integration contract
+        // Leftover ETH from current operation should be refunded to integration contract
         assertEq(address(integration).balance, leftoverEth, "Integration should receive leftover ETH");
         assertEq(address(zapIn).balance, 0, "Zap contract should have no ETH left");
     }
 
     /// @notice TEST-L7-003: EOA user can specify different address for ETH refund
+    /// @dev L13 fix: Only ETH acquired during current operation is refunded, not pre-existing ETH
     function testUserCanSpecifyDifferentRefundAddress() public {
         // given
         address user = makeAddr("User");
@@ -163,8 +165,8 @@ contract ERC4626ZapInNativeRefundTest is Test {
         uint256 ethAmount = 10_000e18;
         uint256 leftoverEth = 0.3 ether;
 
-        deal(user, ethAmount);
-        deal(address(zapIn), leftoverEth);
+        // Total ETH sent: ethAmount + leftoverEth (leftover comes from msg.value, not pre-existing)
+        deal(user, ethAmount + leftoverEth);
 
         ZapInData memory zapInData = ZapInData({
             vault: address(plasmaVaultWeth),
@@ -188,15 +190,15 @@ contract ERC4626ZapInNativeRefundTest is Test {
         });
         zapInData.calls = calls;
 
-        // when
+        // when - send extra ETH that will be leftover (not used in calls)
         vm.prank(user);
-        zapIn.zapIn{value: ethAmount}(zapInData);
+        zapIn.zapIn{value: ethAmount + leftoverEth}(zapInData);
 
         // then
         uint256 vaultShares = plasmaVaultWeth.balanceOf(user);
         assertGt(vaultShares, 0, "User should receive vault shares");
 
-        // Leftover ETH should be refunded to specified recipient
+        // Leftover ETH from current operation should be refunded to specified recipient
         assertEq(refundRecipient.balance, leftoverEth, "Refund recipient should receive leftover ETH");
         assertEq(user.balance, 0, "User should not receive ETH refund");
         assertEq(address(zapIn).balance, 0, "Zap contract should have no ETH left");
@@ -295,14 +297,15 @@ contract ERC4626ZapInNativeRefundTest is Test {
     }
 
     /// @notice TEST-L7-006: Backward compatibility - EOA can still receive refunds by setting refundNativeTo to msg.sender
+    /// @dev L13 fix: Only ETH acquired during current operation is refunded, not pre-existing ETH
     function testBackwardCompatibilityEOAReceivesRefund() public {
         // given
         address user = makeAddr("User");
         uint256 ethAmount = 10_000e18;
         uint256 leftoverEth = 0.2 ether;
 
-        deal(user, ethAmount);
-        deal(address(zapIn), leftoverEth);
+        // Total ETH sent: ethAmount + leftoverEth (leftover comes from msg.value, not pre-existing)
+        deal(user, ethAmount + leftoverEth);
 
         ZapInData memory zapInData = ZapInData({
             vault: address(plasmaVaultWeth),
@@ -326,33 +329,34 @@ contract ERC4626ZapInNativeRefundTest is Test {
         });
         zapInData.calls = calls;
 
-        uint256 userBalanceBefore = user.balance;
-
-        // when
+        // when - send extra ETH that will be leftover (not used in calls)
         vm.prank(user);
-        zapIn.zapIn{value: ethAmount}(zapInData);
+        zapIn.zapIn{value: ethAmount + leftoverEth}(zapInData);
 
         // then
         uint256 vaultShares = plasmaVaultWeth.balanceOf(user);
         assertGt(vaultShares, 0, "User should receive vault shares");
 
-        // User should receive leftover ETH refund
-        assertEq(user.balance, userBalanceBefore - ethAmount + leftoverEth, "User should receive leftover ETH");
+        // User should receive leftover ETH from current operation
+        assertEq(user.balance, leftoverEth, "User should receive leftover ETH");
         assertEq(address(zapIn).balance, 0, "Zap contract should have no ETH left");
     }
 
     /// @notice TEST-L7-007: Multiple operations with different refund strategies
+    /// @dev L13 fix: Pre-existing ETH is NOT refunded to prevent exfiltration attacks
     function testMultipleOperationsWithDifferentRefundStrategies() public {
         // given
         address user1 = makeAddr("User1");
         address user2 = makeAddr("User2");
         address refundRecipient = makeAddr("RefundRecipient");
         uint256 ethAmount = 5_000e18;
+        uint256 leftoverEth = 0.1 ether;
 
         deal(user1, ethAmount);
-        deal(user2, ethAmount);
+        // User2 sends extra ETH that will be leftover
+        deal(user2, ethAmount + leftoverEth);
 
-        // First operation: user1 skips refund (sets to address(0))
+        // Pre-existing ETH in zap (e.g., from griefing or accidental transfer)
         deal(address(zapIn), 0.1 ether);
 
         ZapInData memory zapInData1 = ZapInData({
@@ -383,9 +387,10 @@ contract ERC4626ZapInNativeRefundTest is Test {
 
         // then - first operation
         assertGt(plasmaVaultWeth.balanceOf(user1), 0, "User1 should receive vault shares");
-        assertEq(address(zapIn).balance, 0.1 ether, "Leftover ETH should remain in zap");
+        // L13: Pre-existing ETH remains in zap (not refunded, protected from exfiltration)
+        assertEq(address(zapIn).balance, 0.1 ether, "Pre-existing ETH should remain in zap");
 
-        // Second operation: user2 receives refund to a different address
+        // Second operation: user2 sends extra ETH and receives only their leftover back
         ZapInData memory zapInData2 = ZapInData({
             vault: address(plasmaVaultWeth),
             receiver: user2,
@@ -408,21 +413,24 @@ contract ERC4626ZapInNativeRefundTest is Test {
         });
         zapInData2.calls = calls2;
 
-        // when - second operation
+        // when - second operation with extra ETH that will be leftover
         vm.prank(user2);
-        zapIn.zapIn{value: ethAmount}(zapInData2);
+        zapIn.zapIn{value: ethAmount + leftoverEth}(zapInData2);
 
         // then - second operation
         assertGt(plasmaVaultWeth.balanceOf(user2), 0, "User2 should receive vault shares");
+        // L13: Only user2's leftover is refunded, not pre-existing ETH
         assertEq(
             refundRecipient.balance,
-            0.1 ether,
-            "Refund recipient should receive leftover ETH from first operation"
+            leftoverEth,
+            "Refund recipient should receive leftover ETH from second operation only"
         );
-        assertEq(address(zapIn).balance, 0, "Zap contract should have no ETH left");
+        // Pre-existing ETH stays in zap contract (protected from exfiltration)
+        assertEq(address(zapIn).balance, 0.1 ether, "Pre-existing ETH should still remain in zap");
     }
 
     /// @notice TEST-L7-008: Large leftover ETH amount can be refunded successfully
+    /// @dev L13 fix: Only ETH acquired during current operation is refunded, not pre-existing ETH
     function testLargeLeftoverEthRefund() public {
         // given
         address user = makeAddr("User");
@@ -430,8 +438,8 @@ contract ERC4626ZapInNativeRefundTest is Test {
         uint256 ethAmount = 10_000e18;
         uint256 largeLeftoverEth = 100 ether; // Large leftover amount
 
-        deal(user, ethAmount);
-        deal(address(zapIn), largeLeftoverEth);
+        // Total ETH sent: ethAmount + largeLeftoverEth (leftover comes from msg.value, not pre-existing)
+        deal(user, ethAmount + largeLeftoverEth);
 
         ZapInData memory zapInData = ZapInData({
             vault: address(plasmaVaultWeth),
@@ -455,11 +463,11 @@ contract ERC4626ZapInNativeRefundTest is Test {
         });
         zapInData.calls = calls;
 
-        // when
+        // when - send extra ETH that will be leftover (not used in calls)
         vm.prank(user);
-        zapIn.zapIn{value: ethAmount}(zapInData);
+        zapIn.zapIn{value: ethAmount + largeLeftoverEth}(zapInData);
 
-        // then
+        // then - large leftover from current operation should be refunded
         assertEq(refundRecipient.balance, largeLeftoverEth, "Refund recipient should receive large leftover ETH");
         assertEq(address(zapIn).balance, 0, "Zap contract should have no ETH left");
     }

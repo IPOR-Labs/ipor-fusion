@@ -275,6 +275,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
         vm.stopPrank();
     }
 
+    /// @notice L13 fix: Pre-existing tokens are NOT refunded to prevent exfiltration attacks
+    /// @dev This test verifies that pre-existing DAI in the zap contract is protected from exfiltration
     function testShouldRefundDaiAfterZap() public {
         // given
         address user = makeAddr("User");
@@ -283,6 +285,7 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
         uint256 daiAmount = 1e18;
 
         deal(usdc, user, usdcAmount);
+        // Pre-existing DAI in zap (e.g., from accidental transfer or previous operation)
         deal(dai, address(zapIn), daiAmount);
 
         address[] memory assetsToRefund = new address[](1);
@@ -346,9 +349,10 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             "User should have 10_000e18 rUsd in the plasma vault"
         );
 
+        // L13: Pre-existing DAI is NOT refunded (protected from exfiltration)
         assertEq(userDaiBalanceBefore, 0, "User should not have any DAI before the zap");
-        assertEq(userDaiBalanceAfter, daiAmount, "User should receive 1e18 DAI after the zap");
-        assertEq(zapInDaiBalanceAfter, 0, "ZapIn contract should have no DAI after the refund");
+        assertEq(userDaiBalanceAfter, 0, "User should NOT receive pre-existing DAI (L13 protection)");
+        assertEq(zapInDaiBalanceAfter, daiAmount, "Pre-existing DAI should remain in ZapIn contract");
         assertEq(zapInDaiBalanceBefore, daiAmount, "ZapIn contract should have 1e18 DAI before the zap");
     }
 
@@ -444,6 +448,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
         );
     }
 
+    /// @notice L13 fix: Pre-existing native ETH is NOT refunded to prevent exfiltration attacks
+    /// @dev This test verifies that pre-existing ETH in the zap contract is protected from exfiltration
     function testShouldRefundNativeTokenAfterZap() public {
         // given
         address user = makeAddr("User");
@@ -452,6 +458,7 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
         uint256 nativeTokenAmount = 1 ether;
 
         deal(usdc, user, usdcAmount);
+        // Pre-existing ETH in zap (e.g., from accidental transfer or previous operation)
         deal(address(zapIn), nativeTokenAmount);
 
         ZapInData memory zapInData = ZapInData({
@@ -512,9 +519,10 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             "User should have 10_000e18 rUsd in the plasma vault"
         );
 
+        // L13: Pre-existing ETH is NOT refunded (protected from exfiltration)
         assertEq(userNativeTokenBalanceBefore, 0, "User should not have any native tokens before the zap");
-        assertEq(userNativeTokenBalanceAfter, nativeTokenAmount, "User should receive 1 ether after the zap");
-        assertEq(zapInNativeTokenBalanceAfter, 0, "ZapIn contract should have no native tokens after the refund");
+        assertEq(userNativeTokenBalanceAfter, 0, "User should NOT receive pre-existing ETH (L13 protection)");
+        assertEq(zapInNativeTokenBalanceAfter, nativeTokenAmount, "Pre-existing ETH should remain in ZapIn contract");
         assertEq(zapInNativeTokenBalanceBefore, nativeTokenAmount, "ZapIn contract should have 1 ether before the zap");
     }
 
