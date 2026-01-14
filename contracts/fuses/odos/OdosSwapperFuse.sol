@@ -77,6 +77,12 @@ contract OdosSwapperFuse is IFuseCommon {
     /// @notice Error thrown when marketId is zero or invalid
     error OdosSwapperFuseInvalidMarketId();
 
+    /// @notice Error thrown when price oracle returns invalid price (zero or invalid)
+    error OdosSwapperFuseInvalidPrice(address asset);
+
+    /// @notice Error thrown when price oracle middleware is not configured (zero address)
+    error OdosSwapperFuseInvalidPriceOracleMiddleware();
+
     // ============ Constants ============
 
     /// @notice Default slippage limit in WAD (1e16 = 1%)
@@ -115,8 +121,17 @@ contract OdosSwapperFuse is IFuseCommon {
 
     /// @notice Execute a swap operation via Odos
     /// @dev Called via delegatecall from PlasmaVault.execute()
+    /// @custom:security This is the main entry point for swaps. Validates token addresses, amounts, and slippage.
     /// @param data_ Encoded OdosSwapperEnterData struct
     function enter(OdosSwapperEnterData calldata data_) external {
+        // Validate token addresses are non-zero (defense-in-depth)
+        if (data_.tokenIn == address(0)) {
+            revert OdosSwapperFuseUnsupportedAsset(address(0));
+        }
+        if (data_.tokenOut == address(0)) {
+            revert OdosSwapperFuseUnsupportedAsset(address(0));
+        }
+
         // Validate tokenIn is in substrates
         if (!_isTokenGranted(data_.tokenIn)) {
             revert OdosSwapperFuseUnsupportedAsset(data_.tokenIn);
@@ -193,11 +208,24 @@ contract OdosSwapperFuse is IFuseCommon {
     ) internal view {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
+        // Validate price oracle middleware is configured
+        if (priceOracleMiddleware == address(0)) {
+            revert OdosSwapperFuseInvalidPriceOracleMiddleware();
+        }
+
         // Get token prices
         (uint256 tokenInPrice, uint256 tokenInPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
             .getAssetPrice(tokenIn_);
         (uint256 tokenOutPrice, uint256 tokenOutPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
             .getAssetPrice(tokenOut_);
+
+        // Validate prices are non-zero
+        if (tokenInPrice == 0) {
+            revert OdosSwapperFuseInvalidPrice(tokenIn_);
+        }
+        if (tokenOutPrice == 0) {
+            revert OdosSwapperFuseInvalidPrice(tokenOut_);
+        }
 
         // Convert to USD values in WAD
         uint256 amountUsdInDelta = IporMath.convertToWad(
@@ -208,6 +236,11 @@ contract OdosSwapperFuse is IFuseCommon {
             tokenOutDelta_ * tokenOutPrice,
             IERC20Metadata(tokenOut_).decimals() + tokenOutPriceDecimals
         );
+
+        // Validate amountUsdInDelta is non-zero to prevent division by zero
+        if (amountUsdInDelta == 0) {
+            revert OdosSwapperFuseSlippageFail();
+        }
 
         // Calculate quotient: amountUsdOut / amountUsdIn
         uint256 quotient = IporMath.division(amountUsdOutDelta * _ONE, amountUsdInDelta);
@@ -238,12 +271,9 @@ contract OdosSwapperFuse is IFuseCommon {
         uint256 length = substrates.length;
 
         // Iterate through substrates to find slippage config
-        for (uint256 i; i < length; ) {
+        for (uint256 i; i < length; ++i) {
             if (OdosSubstrateLib.isSlippageSubstrate(substrates[i])) {
                 return OdosSubstrateLib.decodeSlippage(substrates[i]);
-            }
-            unchecked {
-                ++i;
             }
         }
 

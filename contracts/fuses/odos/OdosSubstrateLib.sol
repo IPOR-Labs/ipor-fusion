@@ -16,6 +16,9 @@ enum OdosSubstrateType {
 ///      - Token substrate: [0:1] type | [12:32] address (20 bytes), bytes [1:12] are padding
 ///      - Slippage substrate: [0:1] type | [1:32] uint248 slippage in WAD (31 bytes)
 library OdosSubstrateLib {
+    /// @notice Error thrown when slippage value exceeds uint248 maximum
+    /// @param slippageWad The slippage value that caused the overflow
+    error OdosSubstrateLibSlippageOverflow(uint256 slippageWad);
     /// @notice Encodes a token address as a substrate
     /// @param token_ The token address to encode
     /// @return encoded The bytes32 encoded substrate with Token type
@@ -31,7 +34,9 @@ library OdosSubstrateLib {
     function encodeSlippageSubstrate(uint256 slippageWad_) internal pure returns (bytes32 encoded) {
         // Layout: [type (1 byte)][slippage uint248 (31 bytes)]
         // Slippage must fit in 248 bits (31 bytes)
-        require(slippageWad_ <= type(uint248).max, "Slippage overflow");
+        if (slippageWad_ > type(uint248).max) {
+            revert OdosSubstrateLibSlippageOverflow(slippageWad_);
+        }
         encoded = bytes32(uint256(OdosSubstrateType.Slippage) << 248) | bytes32(slippageWad_);
     }
 

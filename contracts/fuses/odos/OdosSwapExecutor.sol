@@ -20,7 +20,18 @@ contract OdosSwapExecutor {
     address public constant ODOS_ROUTER = 0x0D05a7D3448512B78fa8A9e46c4872C88C4a0D05;
 
     /// @notice Executes a swap via Odos Router V3
-    /// @dev Approves the router, executes the swap, resets approval, and returns all tokens to caller
+    /// @dev Approves the router, executes the swap, resets approval, and returns all tokens to caller.
+    ///      This function performs the following operations:
+    ///      1. Approves Odos Router to spend `amountIn_` of `tokenIn_`
+    ///      2. Executes the swap via low-level call using `swapCallData_`
+    ///      3. Resets the approval to 0 (security best practice)
+    ///      4. Transfers any remaining `tokenIn_` balance back to the caller (PlasmaVault)
+    ///      5. Transfers all `tokenOut_` balance to the caller (PlasmaVault)
+    ///      Side Effects:
+    ///      - Token transfers: All tokens held by this contract after the swap are transferred to msg.sender
+    ///      - Approval changes: tokenIn_ approval is set to amountIn_, then reset to 0
+    ///      - No return value: This function does not return any value
+    /// @custom:security Token approval operations require careful handling. Approval is reset to 0 after swap to prevent unauthorized spending.
     /// @param tokenIn_ The input token address
     /// @param tokenOut_ The output token address
     /// @param amountIn_ The amount of tokenIn to approve for the swap
