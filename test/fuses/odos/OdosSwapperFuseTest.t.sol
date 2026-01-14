@@ -26,7 +26,7 @@ import {OdosSwapExecutor} from "../../../contracts/fuses/odos/OdosSwapExecutor.s
 import {OdosSubstrateLib, OdosSubstrateType} from "../../../contracts/fuses/odos/OdosSubstrateLib.sol";
 
 /// @title OdosSwapperFuseTest
-/// @notice Fork integration tests for OdosSwapperFuse on Arbitrum
+/// @notice Fork integration tests for OdosSwapperFuse on Arbitrum.
 contract OdosSwapperFuseTest is Test {
     using SafeERC20 for ERC20;
 
