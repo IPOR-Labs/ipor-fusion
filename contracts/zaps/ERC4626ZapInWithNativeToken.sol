@@ -104,6 +104,17 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard, Ownable {
             revert ReceiverIsZero();
         }
 
+        uint256 assetsToRefundToSenderLength = zapInData_.assetsToRefundToSender.length;
+
+        // Snapshot pre-balances for refundable assets to prevent exfiltration of pre-existing tokens
+        uint256[] memory preBalances = new uint256[](assetsToRefundToSenderLength);
+        for (uint256 i; i < assetsToRefundToSenderLength; ++i) {
+            preBalances[i] = IERC4626(zapInData_.assetsToRefundToSender[i]).balanceOf(address(this));
+        }
+
+        // Snapshot native token balance (excluding msg.value which belongs to this operation)
+        uint256 preNativeBalance = address(this).balance - msg.value;
+
         results = new bytes[](callsLength);
         for (uint256 i; i < callsLength; i++) {
             if (zapInData_.calls[i].nativeTokenAmount > 0) {
@@ -129,15 +140,15 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard, Ownable {
 
         vault.deposit(depositAssetBalance, zapInData_.receiver);
 
-        uint256 assetsToRefundToSenderLength = zapInData_.assetsToRefundToSender.length;
         address asset;
         uint256 balance;
 
+        // Refund only the positive delta acquired during this zap operation
         for (uint256 i; i < assetsToRefundToSenderLength; ++i) {
             asset = zapInData_.assetsToRefundToSender[i];
             balance = IERC4626(asset).balanceOf(address(this));
-            if (balance > 0) {
-                IERC4626(asset).safeTransfer(currentZapSender, balance);
+            if (balance > preBalances[i]) {
+                IERC4626(asset).safeTransfer(currentZapSender, balance - preBalances[i]);
             }
         }
 
@@ -145,8 +156,9 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard, Ownable {
 
         // Refund native ETH only if refundNativeTo is specified (non-zero address)
         // Setting refundNativeTo to address(0) allows non-payable contracts to skip ETH refunds
-        if (nativeTokenBalance > 0 && zapInData_.refundNativeTo != address(0)) {
-            Address.sendValue(payable(zapInData_.refundNativeTo), nativeTokenBalance);
+        // Only refund the delta acquired during this operation
+        if (nativeTokenBalance > preNativeBalance && zapInData_.refundNativeTo != address(0)) {
+            Address.sendValue(payable(zapInData_.refundNativeTo), nativeTokenBalance - preNativeBalance);
         }
 
         return results;
