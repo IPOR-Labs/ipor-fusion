@@ -32,7 +32,8 @@ contract EthToWEthZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: ethAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         Call[] memory calls = new Call[](2);

@@ -44,7 +44,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -106,7 +107,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -156,7 +158,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -206,7 +209,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: address(0),
             minAmountToDeposit: minAmountToDeposit,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -256,7 +260,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -288,7 +293,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: assetsToRefund,
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -359,7 +365,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         bytes32 domainSeparator = 0x06c37168a7db5138defc7866392bb87a741f9b3d104deb5094588ce041cae335;
@@ -452,7 +459,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -525,7 +533,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -656,7 +665,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -730,7 +740,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);
@@ -822,7 +833,8 @@ contract UsdcToRUsdcZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: usdcAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         vm.startPrank(user);

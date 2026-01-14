@@ -34,7 +34,8 @@ contract TacToWTacZapWithNativeTokenTest is Test {
             receiver: user,
             minAmountToDeposit: tacAmount,
             assetsToRefundToSender: new address[](0),
-            calls: new Call[](0)
+            calls: new Call[](0),
+            refundNativeTo: user
         });
 
         Call[] memory calls = new Call[](2);

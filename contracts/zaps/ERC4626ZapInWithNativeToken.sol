@@ -32,6 +32,8 @@ struct ZapInData {
     address[] assetsToRefundToSender;
     /// @notice Array of calls to be executed as part of the zap-in process
     Call[] calls;
+    /// @notice Optional address to receive leftover native ETH. Set to address(0) to skip ETH refunds (useful for non-payable contracts)
+    address refundNativeTo;
 }
 
 /// @title ERC4626ZapInWithNativeToken
@@ -141,8 +143,10 @@ contract ERC4626ZapInWithNativeToken is ReentrancyGuard, Ownable {
 
         uint256 nativeTokenBalance = address(this).balance;
 
-        if (nativeTokenBalance > 0) {
-            Address.sendValue(payable(currentZapSender), nativeTokenBalance);
+        // Refund native ETH only if refundNativeTo is specified (non-zero address)
+        // Setting refundNativeTo to address(0) allows non-payable contracts to skip ETH refunds
+        if (nativeTokenBalance > 0 && zapInData_.refundNativeTo != address(0)) {
+            Address.sendValue(payable(zapInData_.refundNativeTo), nativeTokenBalance);
         }
 
         return results;
