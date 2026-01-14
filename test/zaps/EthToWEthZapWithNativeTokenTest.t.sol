@@ -31,6 +31,7 @@ contract EthToWEthZapWithNativeTokenTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: user,
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: user

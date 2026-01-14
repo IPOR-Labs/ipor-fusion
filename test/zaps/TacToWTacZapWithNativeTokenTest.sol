@@ -33,6 +33,7 @@ contract TacToWTacZapWithNativeTokenTest is Test {
             vault: address(erc4626WTac),
             receiver: user,
             minAmountToDeposit: tacAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: user
