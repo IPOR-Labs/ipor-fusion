@@ -148,6 +148,9 @@ contract VelodromeSuperchainSlipstreamLeafCLGaugeFuse is IFuseCommon {
 
         ILeafCLGauge(data_.gaugeAddress).withdraw(data_.tokenId);
 
+        // Revoke approval to adhere to least privilege principle
+        INonfungiblePositionManager(ILeafCLGauge(data_.gaugeAddress).nft()).approve(address(0), data_.tokenId);
+
         emit VelodromeSuperchainSlipstreamLeafCLGaugeExit(result.gaugeAddress, result.tokenId);
     }
 
