@@ -42,6 +42,7 @@ contract UsdcToRUsdcZapTest is Test {
             vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: usdcAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0)
         });
@@ -100,6 +101,7 @@ contract UsdcToRUsdcZapTest is Test {
             vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0)
         });
@@ -146,6 +148,7 @@ contract UsdcToRUsdcZapTest is Test {
             vault: address(0),
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0)
         });
@@ -192,6 +195,7 @@ contract UsdcToRUsdcZapTest is Test {
             vault: address(plasmaVaultRUsdc),
             receiver: address(0),
             minAmountToDeposit: minAmountToDeposit,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0)
         });
@@ -238,6 +242,7 @@ contract UsdcToRUsdcZapTest is Test {
             vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: minAmountToDeposit,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0)
         });
@@ -270,6 +275,7 @@ contract UsdcToRUsdcZapTest is Test {
             vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: usdcAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: assetsToRefund,
             calls: new Call[](0)
         });
@@ -337,6 +343,7 @@ contract UsdcToRUsdcZapTest is Test {
             vault: address(plasmaVaultRUsdc),
             receiver: user,
             minAmountToDeposit: usdcAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0)
         });
