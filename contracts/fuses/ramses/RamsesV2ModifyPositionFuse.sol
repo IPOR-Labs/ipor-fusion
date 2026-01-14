@@ -204,7 +204,7 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
 
         RamsesV2ModifyPositionFuseExitData memory data_ = RamsesV2ModifyPositionFuseExitData({
             tokenId: TypeConversionLib.toUint256(inputs[0]),
-            liquidity: uint128(TypeConversionLib.toUint256(inputs[1])),
+            liquidity: TypeConversionLib.toUint128(TypeConversionLib.toUint256(inputs[1])),
             amount0Min: TypeConversionLib.toUint256(inputs[2]),
             amount1Min: TypeConversionLib.toUint256(inputs[3]),
             deadline: TypeConversionLib.toUint256(inputs[4])

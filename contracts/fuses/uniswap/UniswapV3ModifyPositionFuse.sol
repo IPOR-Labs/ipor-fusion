@@ -177,7 +177,7 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
     function exitTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
         uint256 tokenId = TypeConversionLib.toUint256(inputs[0]);
-        uint128 liquidity = uint128(TypeConversionLib.toUint256(inputs[1]));
+        uint128 liquidity = TypeConversionLib.toUint128(TypeConversionLib.toUint256(inputs[1]));
         uint256 amount0Min = TypeConversionLib.toUint256(inputs[2]);
         uint256 amount1Min = TypeConversionLib.toUint256(inputs[3]);
         uint256 deadline = TypeConversionLib.toUint256(inputs[4]);
