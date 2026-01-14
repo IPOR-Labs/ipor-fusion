@@ -109,8 +109,8 @@ contract GearboxV3FarmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _exit(
             GearboxV3FarmdSupplyFuseExitData({
                 farmdToken: farmdToken,
-                /// @dev dToken 1:1 Farm dToken
-                dTokenAmount: IERC4626(IFarmingPool(farmdToken).stakingToken()).convertToShares(amount)
+                /// @dev Use previewWithdraw to account for withdrawal fees and proper rounding
+                dTokenAmount: IERC4626(IFarmingPool(farmdToken).stakingToken()).previewWithdraw(amount)
             }),
             true
         );
