@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title Interface for Fuses responsible for providing the balance of the PlasmaVault address in the market in USD
 interface IMarketBalanceFuse {

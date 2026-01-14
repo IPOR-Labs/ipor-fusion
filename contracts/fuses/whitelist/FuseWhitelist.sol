@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
@@ -189,6 +189,43 @@ contract FuseWhitelist is UUPSUpgradeable, FuseWhitelistAccessControl, Universal
         }
         for (uint256 i; i < length; ++i) {
             FuseWhitelistLib.updateFuseMetadata(fuseAddresses_[i], metadataIds_[i], metadatas_[i]);
+        }
+        return true;
+    }
+
+    /// @notice Updates the deployment timestamp of an existing fuse
+    /// @param fuseAddress_ The address of the fuse to update
+    /// @param deploymentTimestamp_ The new deployment timestamp to set
+    /// @return bool True if operation was successful
+    /// @dev Requires UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE
+    /// @dev Fuse must exist in the system
+    /// @dev Deployment timestamp must be non-zero
+    function updateFuseDeploymentTimestamp(
+        address fuseAddress_,
+        uint32 deploymentTimestamp_
+    ) external onlyRole(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE) returns (bool) {
+        FuseWhitelistLib.updateFuseDeploymentTimestamp(fuseAddress_, deploymentTimestamp_);
+        return true;
+    }
+
+    /// @notice Updates the deployment timestamps for multiple existing fuses
+    /// @param fuseAddresses_ Array of fuse addresses to update
+    /// @param deploymentTimestamps_ Array of new deployment timestamps for each fuse
+    /// @return bool True if operation was successful
+    /// @dev Requires UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE
+    /// @dev All arrays must have equal length
+    /// @dev Each fuse must exist in the system
+    /// @dev Each deployment timestamp must be non-zero
+    function updateFusesDeploymentTimestamps(
+        address[] calldata fuseAddresses_,
+        uint32[] calldata deploymentTimestamps_
+    ) external onlyRole(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_MANAGER_ROLE) returns (bool) {
+        uint256 length = fuseAddresses_.length;
+        if (length != deploymentTimestamps_.length) {
+            revert FuseWhitelistInvalidInputLength();
+        }
+        for (uint256 i; i < length; ++i) {
+            FuseWhitelistLib.updateFuseDeploymentTimestamp(fuseAddresses_[i], deploymentTimestamps_[i]);
         }
         return true;
     }

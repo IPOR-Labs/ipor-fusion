@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 import {IRouter} from "./ext/IRouter.sol";
 import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./BalancerSubstrateLib.sol";
@@ -79,27 +82,60 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
     address public immutable BALANCER_ROUTER;
     address public immutable PERMIT2;
 
+    /// @notice Thrown when attempting to use a pool that is not granted for this market
+    /// @param pool The address of the pool that was not granted
+    /// @custom:error BalancerLiquidityUnbalancedFuseUnsupportedPool
     error BalancerLiquidityUnbalancedFuseUnsupportedPool(address pool);
-    error BalancerLiquidityUnbalancedFuseInvalidParams();
-    error InvalidAddress();
 
+    /// @notice Thrown when invalid parameters are provided to enter or exit functions
+    /// @custom:error BalancerLiquidityUnbalancedFuseInvalidParams
+    error BalancerLiquidityUnbalancedFuseInvalidParams();
+
+    /// @notice Thrown when router address is zero
+    /// @custom:error BalancerLiquidityUnbalancedFuseInvalidRouterAddress
+    error BalancerLiquidityUnbalancedFuseInvalidRouterAddress();
+
+    /// @notice Thrown when Permit2 address is zero
+    /// @custom:error BalancerLiquidityUnbalancedFuseInvalidPermit2Address
+    error BalancerLiquidityUnbalancedFuseInvalidPermit2Address();
+
+    /// @notice Thrown when a token is not granted as an asset for this market
+    /// @param token The address of the token that was not granted
+    /// @custom:error BalancerLiquidityUnbalancedFuseUnsupportedAsset
+    error BalancerLiquidityUnbalancedFuseUnsupportedAsset(address token);
+
+    /// @notice Emitted when liquidity is added with unbalanced amounts to a Balancer pool
+    /// @param version The address of the fuse contract version
+    /// @param pool The address of the Balancer pool
+    /// @param bptAmountOut The amount of BPT tokens minted
+    /// @param amountsIn Array of actual token amounts that were added to the pool
     event BalancerLiquidityUnbalancedFuseEnter(
-        address indexed version,
-        address indexed pool,
+        address version,
+        address pool,
         uint256 bptAmountOut,
         uint256[] amountsIn
     );
 
-    event BalancerLiquidityUnbalancedFuseExit(
-        address indexed version,
-        address indexed pool,
-        uint256 bptAmountIn,
-        uint256[] amountsOut
-    );
+    /// @notice Emitted when liquidity is removed with unbalanced amounts from a Balancer pool
+    /// @param version The address of the fuse contract version
+    /// @param pool The address of the Balancer pool
+    /// @param bptAmountIn The amount of BPT tokens burned
+    /// @param amountsOut Array of token amounts received from the pool
+    event BalancerLiquidityUnbalancedFuseExit(address version, address pool, uint256 bptAmountIn, uint256[] amountsOut);
 
+    /// @notice Constructor to initialize the fuse with market ID, Balancer router, and Permit2 addresses
+    /// @param marketId_ The unique identifier for the market configuration
+    /// @param balancerRouter_ The address of the Balancer router contract
+    /// @param permit2_ The address of the Permit2 contract for gas-efficient token approvals
+    /// @dev The market ID is used to retrieve the list of substrates (pools) that this fuse will track.
+    ///      VERSION is set to the address of this contract instance for tracking purposes.
+    ///      Both router and Permit2 addresses must be non-zero.
     constructor(uint256 marketId_, address balancerRouter_, address permit2_) {
         if (balancerRouter_ == address(0)) {
-            revert InvalidAddress();
+            revert BalancerLiquidityUnbalancedFuseInvalidRouterAddress();
+        }
+        if (permit2_ == address(0)) {
+            revert BalancerLiquidityUnbalancedFuseInvalidPermit2Address();
         }
 
         VERSION = address(this);
@@ -108,7 +144,13 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         PERMIT2 = permit2_;
     }
 
-    function enter(BalancerLiquidityUnbalancedFuseEnterData calldata data_) external payable {
+    /// @notice Adds liquidity with unbalanced amounts into a Balancer V3 pool
+    /// @param data_ Parameters for unbalanced liquidity addition
+    /// @return bptAmountOut The amount of BPT tokens minted
+    /// @dev Validates pool substrate, token assets, and ensures proper approval cleanup
+    function enter(
+        BalancerLiquidityUnbalancedFuseEnterData memory data_
+    ) public payable returns (uint256 bptAmountOut) {
         if (data_.pool == address(0)) {
             revert BalancerLiquidityUnbalancedFuseInvalidParams();
         }
@@ -143,7 +185,7 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
             }
         }
 
-        uint256 bptAmountOut = IRouter(BALANCER_ROUTER).addLiquidityUnbalanced(
+        bptAmountOut = IRouter(BALANCER_ROUTER).addLiquidityUnbalanced(
             data_.pool,
             data_.exactAmountsIn,
             data_.minBptAmountOut,
@@ -160,7 +202,46 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         }
     }
 
-    function exit(BalancerLiquidityUnbalancedFuseExitData calldata data_) external payable {
+    /// @notice Adds liquidity with unbalanced amounts using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls enter(), and writes outputs to transient storage
+    function enterTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address pool = TypeConversionLib.toAddress(inputs[0]);
+        uint256 len = (inputs.length - 2) / 2;
+        address[] memory tokens = new address[](len);
+        uint256[] memory exactAmountsIn = new uint256[](len);
+
+        for (uint256 i; i < len; ++i) {
+            tokens[i] = TypeConversionLib.toAddress(inputs[1 + i]);
+            exactAmountsIn[i] = TypeConversionLib.toUint256(inputs[1 + len + i]);
+        }
+
+        uint256 minBptAmountOut = TypeConversionLib.toUint256(inputs[1 + 2 * len]);
+
+        BalancerLiquidityUnbalancedFuseEnterData memory data = BalancerLiquidityUnbalancedFuseEnterData({
+            pool: pool,
+            tokens: tokens,
+            exactAmountsIn: exactAmountsIn,
+            minBptAmountOut: minBptAmountOut
+        });
+
+        uint256 bptAmountOut = enter(data);
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(bptAmountOut);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Removes liquidity with unbalanced amounts from a Balancer V3 pool
+    /// @param data_ Parameters for unbalanced liquidity removal
+    /// @return bptAmountIn The amount of BPT tokens burned
+    /// @return amountsOut Array of token amounts received (corresponds to tokens array)
+    /// @dev Validates pool substrate, gets tokens from pool, and ensures proper approval cleanup
+    function exit(
+        BalancerLiquidityUnbalancedFuseExitData memory data_
+    ) public payable returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         if (data_.pool == address(0)) {
             revert BalancerLiquidityUnbalancedFuseInvalidParams();
         }
@@ -177,12 +258,14 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         }
 
         if (data_.maxBptAmountIn == 0) {
-            return;
+            amountsOut = new uint256[](0);
+            return (0, amountsOut);
         }
 
+        // Approve BPT (pool token) to router for burning
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, data_.maxBptAmountIn);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = IRouter(BALANCER_ROUTER).removeLiquidityCustom(
+        (bptAmountIn, amountsOut, ) = IRouter(BALANCER_ROUTER).removeLiquidityCustom(
             data_.pool,
             data_.maxBptAmountIn,
             data_.minAmountsOut,
@@ -193,5 +276,36 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         emit BalancerLiquidityUnbalancedFuseExit(VERSION, data_.pool, bptAmountIn, amountsOut);
 
         IERC20(data_.pool).forceApprove(BALANCER_ROUTER, 0);
+    }
+
+    /// @notice Removes liquidity with unbalanced amounts using transient storage for input parameters
+    /// @dev Reads inputs from transient storage, calls exit(), and writes outputs to transient storage
+    function exitTransient() external payable {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address pool = TypeConversionLib.toAddress(inputs[0]);
+        uint256 maxBptAmountIn = TypeConversionLib.toUint256(inputs[1]);
+        uint256 len = inputs.length - 2;
+        uint256[] memory minAmountsOut = new uint256[](len);
+
+        for (uint256 i; i < len; ++i) {
+            minAmountsOut[i] = TypeConversionLib.toUint256(inputs[2 + i]);
+        }
+
+        BalancerLiquidityUnbalancedFuseExitData memory data = BalancerLiquidityUnbalancedFuseExitData({
+            pool: pool,
+            maxBptAmountIn: maxBptAmountIn,
+            minAmountsOut: minAmountsOut
+        });
+
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = exit(data);
+
+        bytes32[] memory outputs = new bytes32[](1 + len);
+        outputs[0] = TypeConversionLib.toBytes32(bptAmountIn);
+        for (uint256 i; i < len; ++i) {
+            outputs[1 + i] = TypeConversionLib.toBytes32(amountsOut[i]);
+        }
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

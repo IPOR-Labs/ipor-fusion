@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -85,20 +85,13 @@ contract PtPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
 
         (, int256 price, , , ) = ptPriceFeed.latestRoundData();
 
-        if (price < expextedPriceAfterDeployment_) {
-            int256 priceDelta = expextedPriceAfterDeployment_ - price;
-            int256 priceDeltaPercentage = (priceDelta * 100) / expextedPriceAfterDeployment_;
+        uint256 expectedPrice = uint256(expextedPriceAfterDeployment_);
+        uint256 actualPrice = uint256(price);
 
-            if (priceDeltaPercentage > 1) {
-                revert PriceDeltaTooHigh();
-            }
-        } else {
-            int256 priceDelta = price - expextedPriceAfterDeployment_;
-            int256 priceDeltaPercentage = (priceDelta * 100) / expextedPriceAfterDeployment_;
+        uint256 priceDelta = actualPrice > expectedPrice ? actualPrice - expectedPrice : expectedPrice - actualPrice;
 
-            if (priceDeltaPercentage > 1) {
-                revert PriceDeltaTooHigh();
-            }
+        if (priceDelta * 100 > expectedPrice) {
+            revert PriceDeltaTooHigh();
         }
 
         priceFeedAddress = address(ptPriceFeed);

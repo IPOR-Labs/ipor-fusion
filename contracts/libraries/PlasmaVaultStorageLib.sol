@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /**
  * @title Plasma Vault Storage Library
@@ -65,7 +65,7 @@ library PlasmaVaultStorageLib {
      *
      * Storage Layout:
      * - Points to ERC20CappedStorage struct containing:
-     *   - cap: maximum total supply allowed for the vault tokens
+     *   - cap: maximum total supply denominated in shares (not in underlying asset decimals)
      *
      * Usage:
      * - Enforces maximum supply limits during minting operations
@@ -768,6 +768,7 @@ library PlasmaVaultStorageLib {
     /// @dev Value taken from ERC20VotesUpgradeable contract, don't change it!
     /// @custom:storage-location erc7201:openzeppelin.storage.ERC20Capped
     struct ERC20CappedStorage {
+        /// @dev Maximum total supply cap denominated in shares (not in underlying asset decimals)
         uint256 cap;
     }
 

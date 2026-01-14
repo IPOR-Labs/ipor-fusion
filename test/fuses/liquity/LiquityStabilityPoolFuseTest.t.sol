@@ -1,28 +1,30 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
-import {LiquityStabilityPoolFuse, LiquityStabilityPoolFuseEnterData, LiquityStabilityPoolFuseExitData} from "../../../contracts/fuses/liquity/LiquityStabilityPoolFuse.sol";
-import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/LiquityBalanceFuse.sol";
-import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
-import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
-import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
-import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IStabilityPool} from "../../../contracts/fuses/liquity/ext/IStabilityPool.sol";
 import {IAddressesRegistry} from "../../../contracts/fuses/liquity/ext/IAddressesRegistry.sol";
-import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
-import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
-import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {IStabilityPool} from "../../../contracts/fuses/liquity/ext/IStabilityPool.sol";
+import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/LiquityBalanceFuse.sol";
+import {LiquityStabilityPoolFuse, LiquityStabilityPoolFuseEnterData, LiquityStabilityPoolFuseExitData} from "../../../contracts/fuses/liquity/LiquityStabilityPoolFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
+import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
+import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
 contract MockDex {
     address tokenIn;
@@ -59,7 +61,7 @@ contract LiquityStabilityPoolFuseTest is Test {
     UniversalTokenSwapperFuse private swapFuse;
     address private accessManager;
     address private priceOracle;
-    address private withdrawManager;
+    address private _transientStorageSetInputsFuse;
 
     uint256 private totalBoldInVault;
     uint256 private totalBoldToDeposit;
@@ -100,6 +102,8 @@ contract LiquityStabilityPoolFuseTest is Test {
                 address(new WithdrawManager(accessManager))
             )
         );
+
+        _setupRoles();
 
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
@@ -464,10 +468,12 @@ contract LiquityStabilityPoolFuseTest is Test {
             address(new SwapExecutor()),
             1e18
         );
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
 
-        fuses = new address[](2);
+        fuses = new address[](3);
         fuses[0] = address(sbFuse);
         fuses[1] = address(swapFuse);
+        fuses[2] = _transientStorageSetInputsFuse;
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
@@ -512,5 +518,127 @@ contract LiquityStabilityPoolFuseTest is Test {
         // tol in basis points 1 = 0.01%
         assertLe(a, (b * (10000 + tol)) / 10000, str);
         assertGe((a * (10000 + tol)) / 10000, b, str);
+    }
+
+    /// @notice Tests entering Liquity Stability Pool using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and deposits BOLD
+    function testShouldEnterToLiquitySBUsingTransientStorage() public {
+        // given
+        totalBoldInVault = 300000 * 1e18;
+        totalBoldToDeposit = 200000 * 1e18;
+
+        deal(BOLD, address(this), totalBoldInVault);
+        ERC20(BOLD).approve(address(plasmaVault), totalBoldInVault);
+        plasmaVault.deposit(totalBoldInVault, address(this));
+
+        uint256 assetBefore = plasmaVault.totalAssets();
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(sbFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(ETH_REGISTRY);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(totalBoldToDeposit);
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(sbFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        plasmaVault.execute(calls);
+
+        // then
+        uint256 assetAfter = plasmaVault.totalAssets();
+
+        uint256 balance = ERC20(BOLD).balanceOf(address(plasmaVault));
+        assertEq(
+            balance,
+            totalBoldInVault - totalBoldToDeposit,
+            "Balance should be correct after entering Stability Pool via transient storage"
+        );
+        uint256 sbBalance = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool()).deposits(
+            address(plasmaVault)
+        );
+        assertEq(sbBalance, totalBoldToDeposit, "Stability Pool deposits should match the deposited amount");
+        assertEq(assetAfter, assetBefore, "Assets should be equal to the initial assets");
+
+        // Invariant: Total assets = vault BOLD balance + sum of all market positions
+        uint256 totalAssets = plasmaVault.totalAssets();
+        uint256 vaultBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
+        uint256 liquityMarket = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
+        assertEq(totalAssets, totalBoldInVault, "Total should remain equal (conservation)");
+        assertEq(totalAssets, vaultBoldBalance + liquityMarket, "Total = vault BOLD + Liquity market");
+        assertEq(liquityMarket, totalBoldToDeposit, "Liquity market should equal deposited amount");
+        assertEq(vaultBoldBalance, totalBoldInVault - totalBoldToDeposit, "Vault BOLD should equal remainder");
+    }
+
+    /// @notice Tests exiting Liquity Stability Pool using transient storage
+    /// @dev Verifies that exitTransient() correctly reads inputs from transient storage and withdraws BOLD
+    function testShouldExitFromLiquitySBUsingTransientStorage() public {
+        // given
+        testShouldEnterToLiquitySB();
+        totalBoldToExit = 100000 * 1e18;
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(sbFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(ETH_REGISTRY);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(totalBoldToExit);
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(sbFuse), abi.encodeWithSignature("exitTransient()"));
+
+        uint256 totalAssetsBefore = plasmaVault.totalAssets();
+        uint256 liquityMarketBefore = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
+
+        // when
+        plasmaVault.execute(calls);
+
+        // then
+        uint256 balance = ERC20(BOLD).balanceOf(address(plasmaVault));
+        assertEq(
+            balance,
+            totalBoldInVault - totalBoldToDeposit + totalBoldToExit,
+            "Balance should be equal to the exited amount from Stability Pool"
+        );
+        uint256 sbBalance = IStabilityPool(IAddressesRegistry(ETH_REGISTRY).stabilityPool()).deposits(
+            address(plasmaVault)
+        );
+        assertEq(
+            sbBalance,
+            totalBoldToDeposit - totalBoldToExit,
+            "Stability Pool deposits should match the remaining amount after exit"
+        );
+
+        // Invariant: Total assets = vault BOLD balance + sum of all market positions
+        uint256 totalAssetsAfter = plasmaVault.totalAssets();
+        uint256 vaultBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
+        uint256 liquityMarketAfter = plasmaVault.totalAssetsInMarket(IporFusionMarkets.LIQUITY_V2);
+        assertEq(totalAssetsAfter, totalAssetsBefore, "Total should remain equal (conservation)");
+        assertEq(totalAssetsAfter, totalBoldInVault, "Total is fully in vault");
+        assertEq(totalAssetsAfter, vaultBoldBalance + liquityMarketAfter, "Total = vault BOLD + Liquity market");
+        assertEq(liquityMarketAfter, liquityMarketBefore - totalBoldToExit, "Assets in market have decreased");
     }
 }

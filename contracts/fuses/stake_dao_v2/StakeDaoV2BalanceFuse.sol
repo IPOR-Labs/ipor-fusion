@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -10,15 +10,27 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 
+/// @title StakeDaoV2BalanceFuse
+/// @notice Fuse for calculating the balance of assets in StakeDAO V2 protocol
+/// @dev This fuse calculates the total balance of assets held in StakeDAO V2 reward vaults by the PlasmaVault.
+///      It accounts for the nested structure: Reward Vault -> LP Token Vault -> Underlying Asset.
 contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
+    /// @dev The version of the contract.
+    address public immutable VERSION;
+    /// @dev The unique identifier for IporFusionMarkets.
     uint256 public immutable MARKET_ID;
 
     constructor(uint256 marketId_) {
+        VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
+    /// @notice Calculates the total balance of assets in StakeDAO V2 reward vaults
+    /// @dev Iterates through all configured reward vaults and calculates the total balance in USD (WAD decimals).
+    ///      The calculation follows the chain: Reward Vault shares -> LP Token shares -> Underlying Asset value.
+    /// @return balance The total balance of assets in USD (WAD decimals)
     function balanceOf() external view override returns (uint256 balance) {
         bytes32[] memory rewardVaults = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 

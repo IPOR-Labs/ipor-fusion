@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IWETH9} from "../../interfaces/ext/IWETH9.sol";
 
 /// @title SwapExecutorEthData
@@ -25,8 +26,10 @@ struct SwapExecutorEthData {
 
 /// @title SwapExecutorEth
 /// @notice Contract responsible for executing token swaps and handling ETH transfers
-/// @dev This contract manages the execution of swap operations, including ETH transfers and dust balance checks
-contract SwapExecutorEth {
+/// @dev This contract manages the execution of swap operations, including ETH transfers and dust balance checks.
+///      Uses ReentrancyGuard to prevent reentrancy attacks during external DEX calls.
+/// @author IPOR Labs
+contract SwapExecutorEth is ReentrancyGuard {
     using Address for address;
     using SafeERC20 for IERC20;
 
@@ -64,7 +67,8 @@ contract SwapExecutorEth {
     ///      - Transfers remaining tokens to the sender
     ///      - Converts remaining ETH to WETH and transfers it
     ///      - Checks and transfers any dust balances
-    function execute(SwapExecutorEthData memory data_) external {
+    ///      Protected against reentrancy via nonReentrant modifier.
+    function execute(SwapExecutorEthData memory data_) external nonReentrant {
         uint256 len = data_.targets.length;
 
         if (len != data_.callDatas.length || len != data_.ethAmounts.length) {

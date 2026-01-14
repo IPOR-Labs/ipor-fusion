@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title IWETH9 Interface
 /// @notice Interface for Wrapped Ether (WETH) token with deposit and withdraw functionality

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
@@ -24,9 +24,20 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
 
     error InvalidPool();
 
+    /// @notice Address of this fuse contract version
+    /// @dev Immutable value set in constructor, used for tracking and versioning
+    address public immutable VERSION;
+
+    /// @notice Market ID this fuse operates on
+    /// @dev Immutable value set in constructor, used to retrieve market substrates (Velodrome pool and gauge addresses)
     uint256 public immutable MARKET_ID;
 
+    /**
+     * @notice Initializes the VelodromeSuperchainBalanceFuse with a market ID
+     * @param marketId_ The market ID used to identify the market and retrieve substrates
+     */
     constructor(uint256 marketId_) {
+        VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
@@ -140,27 +151,5 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
         }
 
         return balanceInUsd;
-    }
-
-    function substratesToBytes32(
-        VelodromeSuperchainSubstrate[] memory substrates_
-    ) private pure returns (bytes32[] memory) {
-        bytes32[] memory bytes32Substrates = new bytes32[](substrates_.length);
-        for (uint256 i; i < substrates_.length; ++i) {
-            bytes32Substrates[i] = VelodromeSuperchainSubstrateLib.substrateToBytes32(substrates_[i]);
-        }
-        return bytes32Substrates;
-    }
-
-    function bytes32ToSubstrate(
-        bytes32[] memory bytes32Substrates_
-    ) private pure returns (VelodromeSuperchainSubstrate[] memory) {
-        VelodromeSuperchainSubstrate[] memory substrates = new VelodromeSuperchainSubstrate[](
-            bytes32Substrates_.length
-        );
-        for (uint256 i; i < bytes32Substrates_.length; ++i) {
-            substrates[i] = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(bytes32Substrates_[i]);
-        }
-        return substrates;
     }
 }
