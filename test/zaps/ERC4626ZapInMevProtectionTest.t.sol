@@ -210,7 +210,8 @@ contract ERC4626ZapInMevProtectionTest is Test {
             minAmountToDeposit: ethAmount,
             minSharesOut: minSharesOut,
             assetsToRefundToSender: new address[](0),
-            calls: calls
+            calls: calls,
+            refundNativeTo: receiver
         });
     }
 }

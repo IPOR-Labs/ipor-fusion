@@ -187,7 +187,8 @@ contract ERC4626ZapInWithNativeTokenMinSharesOutTest is Test {
             minAmountToDeposit: ethAmount,
             minSharesOut: minSharesOut,
             assetsToRefundToSender: new address[](0),
-            calls: calls
+            calls: calls,
+            refundNativeTo: user
         });
     }
 }

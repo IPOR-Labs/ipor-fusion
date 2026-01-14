@@ -78,6 +78,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: address(integration),
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: address(0) // Skip ETH refund - critical for non-payable contracts
@@ -125,6 +126,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: address(integration),
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: address(integration) // Refund to self (payable contract)
@@ -172,6 +174,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: user,
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: refundRecipient // Refund to different address
@@ -217,6 +220,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: address(integration),
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: address(0) // Skip refund - prevents griefing DoS
@@ -265,6 +269,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: user,
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: refundRecipient
@@ -311,6 +316,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: user,
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: user // Explicitly set to user for backward compatibility
@@ -363,6 +369,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: user1,
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: address(0) // Skip refund
@@ -395,6 +402,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: user2,
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: refundRecipient // Refund to different address
@@ -445,6 +453,7 @@ contract ERC4626ZapInNativeRefundTest is Test {
             vault: address(plasmaVaultWeth),
             receiver: user,
             minAmountToDeposit: ethAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0),
             refundNativeTo: refundRecipient
