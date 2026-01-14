@@ -27,14 +27,12 @@ struct SwapExecutorData {
 ///         does NOT accept native ETH. Any direct ETH transfer will be rejected.
 /// @dev Architecture and Security:
 ///      - Uses ReentrancyGuard to prevent reentrancy attacks during external DEX calls.
-///      - Only the RESTRICTED address (set at deployment) can call execute() and sweepNative().
+///      - Only the RESTRICTED address (set at deployment) can call execute().
 ///      - After executing swaps, any remaining tokenIn/tokenOut balances are returned to the caller.
 ///
 ///      Native ETH Handling (Intentionally Not Supported):
 ///      - This contract is designed for ERC20 token swaps only and does NOT support native ETH operations.
 ///      - Direct ETH transfers are explicitly rejected via receive() - this is intentional by design.
-///      - ETH can still be force-sent to this contract via selfdestruct (deprecated but still functional).
-///      - The sweepNative() function exists solely to recover ETH that was force-sent, not for normal operations.
 ///
 ///      Trust Assumptions:
 ///      - The RESTRICTED address is trusted to provide valid DEX addresses and call data.
@@ -52,8 +50,6 @@ contract SwapExecutorRestricted is ReentrancyGuard {
     error ArrayLengthMismatch();
     /// @notice Error thrown when native ETH is sent directly to this contract
     error SwapExecutorRestrictedReceiveNotSupported();
-    /// @notice Error thrown when native ETH transfer fails
-    error SwapExecutorRestrictedNativeTransferFailed();
 
     /// @notice Address of the restricted contract
     address public immutable RESTRICTED;
@@ -73,13 +69,6 @@ contract SwapExecutorRestricted is ReentrancyGuard {
      * @dev This contract intentionally does not accept direct ETH transfers to prevent accidental
      *      ETH loss from users or integrations that mistakenly send ETH to this address.
      *
-     *      However, ETH can still arrive at this contract through:
-     *      - selfdestruct from another contract (deprecated in Ethereum but still functional)
-     *      - Block rewards (if this contract is a coinbase recipient)
-     *
-     *      Any ETH that arrives through these mechanisms can be recovered using the sweepNative()
-     *      function, which is restricted to the RESTRICTED address.
-     *
      * @custom:revert SwapExecutorRestrictedReceiveNotSupported Always reverts when ETH is sent directly
      */
     receive() external payable {
@@ -89,7 +78,7 @@ contract SwapExecutorRestricted is ReentrancyGuard {
     /**
      * @notice Modifier that restricts function access to the RESTRICTED address only.
      * @dev Reverts with SwapExecutorRestrictedInvalidSender if msg.sender is not the RESTRICTED address.
-     *      This modifier is applied to execute() and sweepNative() functions.
+     *      This modifier is applied to execute() function.
      */
     modifier restricted() {
         if (msg.sender != RESTRICTED) {
@@ -148,38 +137,6 @@ contract SwapExecutorRestricted is ReentrancyGuard {
             if (balanceTokenOut > 0) {
                 IERC20(data_.tokenOut).safeTransfer(msg.sender, balanceTokenOut);
             }
-        }
-    }
-
-    /**
-     * @notice Sweeps (recovers) native ETH from the contract to a specified recipient address.
-     * @dev This function provides a recovery mechanism for native ETH that may have been
-     *      force-sent to this contract through mechanisms that bypass the receive() function.
-     *      This is NOT intended for normal operations - only for emergency recovery of stuck ETH.
-     *
-     *      ETH can be force-sent via:
-     *      - selfdestruct: Another contract can force-send its ETH balance to any address
-     *        when it self-destructs, regardless of whether the recipient has a payable receive().
-     *      - Block rewards: If this contract address is set as a coinbase recipient.
-     *
-     *      Security considerations:
-     *      - Only the RESTRICTED address can call this function to prevent unauthorized sweeps.
-     *      - Uses low-level call to transfer ETH, which forwards all available gas.
-     *      - Reverts if the ETH transfer fails (e.g., if recipient is a contract that rejects ETH).
-     *
-     * @param to_ The recipient address for the native ETH sweep. Can be an EOA or a contract
-     *            that accepts ETH (has a payable receive/fallback function).
-     * @param amount_ The amount of native ETH to sweep in wei. Must not exceed the contract's
-     *                current ETH balance.
-     * @custom:revert SwapExecutorRestrictedInvalidSender When caller is not the RESTRICTED address
-     * @custom:revert SwapExecutorRestrictedNativeTransferFailed When ETH transfer fails (e.g., recipient rejects ETH)
-     * @custom:access Only callable by RESTRICTED address
-     */
-    function sweepNative(address to_, uint256 amount_) external restricted {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = to_.call{value: amount_}("");
-        if (!success) {
-            revert SwapExecutorRestrictedNativeTransferFailed();
         }
     }
 }
