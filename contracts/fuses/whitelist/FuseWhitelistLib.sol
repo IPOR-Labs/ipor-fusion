@@ -68,6 +68,8 @@ struct FuseInfoByMarketId {
 library FuseWhitelistLib {
     /// @notice Thrown when attempting to add an empty fuse type
     error EmptyFuseType();
+    /// @notice Thrown when attempting to add a fuse type with ID 0 (reserved)
+    error ZeroFuseTypeIdNotAllowed();
     /// @notice Thrown when attempting to add a fuse type that already exists
     error FuseTypeAlreadyExists(uint256 fuseId);
     /// @notice Thrown when attempting to add an empty fuse state
@@ -92,6 +94,8 @@ library FuseWhitelistLib {
     error InvalidMetadataType(uint256 metadataId);
     /// @notice Thrown when attempting to add metadata to a non-existent fuse
     error FuseNotFound(address fuseAddress);
+    /// @notice Thrown when attempting to remove metadata that doesn't exist for the fuse
+    error MetadataNotFoundForFuse(address fuseAddress, uint256 metadataId);
     /// @notice Thrown when attempting to add a fuse info with a zero deployment timestamp
     error ZeroDeploymentTimestamp();
 
@@ -174,9 +178,14 @@ library FuseWhitelistLib {
     /// @param fuseId_ The unique identifier for the fuse type
     /// @param fuseTypeId_ The descriptive name of the fuse type
     /// @dev Reverts if:
+    /// - fuseId_ is 0 (reserved, not allowed)
     /// - fuseTypeId_ is empty
     /// - fuseId_ already exists
     function addFuseType(uint16 fuseId_, string calldata fuseTypeId_) internal {
+        if (fuseId_ == 0) {
+            revert ZeroFuseTypeIdNotAllowed();
+        }
+
         if (bytes(fuseTypeId_).length == 0) {
             revert EmptyFuseType();
         }
@@ -415,7 +424,7 @@ library FuseWhitelistLib {
 
         FuseInfo storage fuseInfo = _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
 
-        if (fuseInfo.fuseType == 0) {
+        if (fuseInfo.fuseAddress == address(0)) {
             revert FuseNotFound(fuseAddress_);
         }
 
@@ -496,15 +505,22 @@ library FuseWhitelistLib {
 
         FuseInfo storage fuseInfo = fuseInfoByAddress.fusesByAddress[fuseAddress_];
 
-        fuseInfo.metadata[metadataId_] = new bytes32[](0);
-
-        for (uint256 i; i < fuseInfo.metadataIds.length; ++i) {
+        bool metadataFound = false;
+        uint256 metadataIdsLength = fuseInfo.metadataIds.length;
+        for (uint256 i; i < metadataIdsLength; ++i) {
             if (fuseInfo.metadataIds[i] == metadataId_) {
-                fuseInfo.metadataIds[i] = fuseInfo.metadataIds[fuseInfo.metadataIds.length - 1];
+                fuseInfo.metadataIds[i] = fuseInfo.metadataIds[metadataIdsLength - 1];
                 fuseInfo.metadataIds.pop();
+                metadataFound = true;
                 break;
             }
         }
+
+        if (!metadataFound) {
+            revert MetadataNotFoundForFuse(fuseAddress_, metadataId_);
+        }
+
+        delete fuseInfo.metadata[metadataId_];
 
         emit FuseMetadataUpdated(fuseAddress_, metadataId_, new bytes32[](0));
     }

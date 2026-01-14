@@ -17,6 +17,37 @@ contract FuseWithoutMarketId {
     // This contract intentionally doesn't implement IFuseCommon.MARKET_ID()
 }
 
+/// @notice Test harness to expose internal library functions for testing
+contract FuseWhitelistLibHarness {
+    function removeFuseMetadata(address fuseAddress_, uint256 metadataId_) external {
+        FuseWhitelistLib.removeFuseMetadata(fuseAddress_, metadataId_);
+    }
+
+    function addFuseType(uint16 fuseId_, string calldata fuseType_) external {
+        FuseWhitelistLib.addFuseType(fuseId_, fuseType_);
+    }
+
+    function addFuseState(uint16 stateId_, string calldata fuseState_) external {
+        FuseWhitelistLib.addFuseState(stateId_, fuseState_);
+    }
+
+    function addMetadataType(uint16 metadataId_, string calldata metadataType_) external {
+        FuseWhitelistLib.addMetadataType(metadataId_, metadataType_);
+    }
+
+    function addFuseToListByType(uint16 fuseTypeId_, address fuseAddress_) external {
+        FuseWhitelistLib.addFuseToListByType(fuseTypeId_, fuseAddress_);
+    }
+
+    function addFuseInfo(uint16 fuseType_, address fuseAddress_, uint32 timestamp_) external {
+        FuseWhitelistLib.addFuseInfo(fuseType_, fuseAddress_, timestamp_);
+    }
+
+    function updateFuseMetadata(address fuseAddress_, uint256 metadataId_, bytes32[] calldata metadata_) external {
+        FuseWhitelistLib.updateFuseMetadata(fuseAddress_, metadataId_, metadata_);
+    }
+}
+
 contract FuseWhitelistTest is Test {
     FuseWhitelist private _fuseWhitelist;
     address ADMIN = TestAddresses.ADMIN;
@@ -2317,5 +2348,225 @@ contract FuseWhitelistTest is Test {
         _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
         _fuseWhitelist.addFuseStates(fuseStateIds, fuseStateNames);
         vm.stopPrank();
+    }
+
+    // ============ Tests for Type-0 Forbidden (M6 Security Fix) ============
+
+    /// @notice Test that adding fuse type with ID 0 is forbidden
+    /// @dev Type 0 is reserved and cannot be used to prevent sentinel value conflicts
+    function test_AddFuseType_ZeroIdForbidden() public {
+        // Arrange
+        uint16[] memory fuseTypeIds = new uint16[](1);
+        string[] memory fuseTypeNames = new string[](1);
+
+        fuseTypeIds[0] = 0; // Type 0 - forbidden
+        fuseTypeNames[0] = "Type0";
+
+        // Act & Assert
+        vm.prank(FUSE_TYPE_MANAGER_ROLE);
+        vm.expectRevert(FuseWhitelistLib.ZeroFuseTypeIdNotAllowed.selector);
+        _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
+    }
+
+    /// @notice Test that adding fuse type with ID 0 in a batch fails the entire batch
+    function test_AddFuseTypes_ZeroIdInBatch_Reverts() public {
+        // Arrange
+        uint16[] memory fuseTypeIds = new uint16[](3);
+        string[] memory fuseTypeNames = new string[](3);
+
+        fuseTypeIds[0] = 1;
+        fuseTypeIds[1] = 0; // Type 0 - forbidden (in middle of batch)
+        fuseTypeIds[2] = 2;
+
+        fuseTypeNames[0] = "Type1";
+        fuseTypeNames[1] = "Type0";
+        fuseTypeNames[2] = "Type2";
+
+        // Act & Assert - First type is added but second fails, reverting entire transaction
+        vm.prank(FUSE_TYPE_MANAGER_ROLE);
+        vm.expectRevert(FuseWhitelistLib.ZeroFuseTypeIdNotAllowed.selector);
+        _fuseWhitelist.addFuseTypes(fuseTypeIds, fuseTypeNames);
+
+        // Verify no types were added (transaction reverted)
+        (uint16[] memory typeIds, ) = _fuseWhitelist.getFuseTypes();
+        assertEq(typeIds.length, 0, "No types should be added due to revert");
+    }
+
+    /// @notice Test that updateFuseState correctly reverts for truly non-existent fuses
+    /// @dev Verifies the existence check uses fuseAddress == address(0), not fuseType == 0
+    function test_UpdateFuseState_NonExistentFuse_RevertsWithFuseNotFound() public {
+        // Arrange
+        addFuseTypesAndStates();
+        address nonExistentFuse = address(0x999);
+
+        // Act & Assert
+        vm.startPrank(UPDATE_FUSE_STATE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseState(nonExistentFuse, 1);
+        vm.stopPrank();
+    }
+
+    /// @notice Test that existence check is consistent across all update functions
+    /// @dev All functions should use fuseAddress == address(0) for non-existence check
+    function test_ExistenceCheck_Consistency_NonExistentFuse() public {
+        // Arrange
+        addFuseTypesAndStates();
+
+        // Add metadata type for metadata update test
+        uint16[] memory metadataIds = new uint16[](1);
+        string[] memory metadataTypes = new string[](1);
+        metadataIds[0] = 1;
+        metadataTypes[0] = "TestMetadata";
+
+        vm.startPrank(FUSE_METADATA_MANAGER_ROLE);
+        _fuseWhitelist.addMetadataTypes(metadataIds, metadataTypes);
+        vm.stopPrank();
+
+        address nonExistentFuse = address(0x999);
+        bytes32[] memory metadata = new bytes32[](1);
+        metadata[0] = keccak256("test");
+
+        // Act & Assert - All update functions should revert with FuseNotFound for non-existent fuse
+
+        // updateFuseState
+        vm.prank(UPDATE_FUSE_STATE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseState(nonExistentFuse, 1);
+
+        // updateFuseMetadata
+        vm.prank(UPDATE_FUSE_METADATA_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseMetadata(nonExistentFuse, 1, metadata);
+
+        // updateFuseDeploymentTimestamp
+        vm.prank(UPDATE_FUSE_DEPLOYMENT_TIMESTAMP_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseDeploymentTimestamp(nonExistentFuse, uint32(block.timestamp + 100));
+
+        // updateFuseType
+        address[] memory fuseAddresses = new address[](1);
+        fuseAddresses[0] = nonExistentFuse;
+        uint16[] memory newTypes = new uint16[](1);
+        newTypes[0] = 1;
+
+        vm.prank(UPDATE_FUSE_TYPE_ROLE);
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _fuseWhitelist.updateFuseType(fuseAddresses, newTypes);
+    }
+}
+
+contract FuseWhitelistLibRemoveFuseMetadataTest is Test {
+    FuseWhitelistLibHarness private _harness;
+
+    function setUp() public {
+        _harness = new FuseWhitelistLibHarness();
+    }
+
+    function test_RemoveFuseMetadata_Success() public {
+        // Arrange
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint16 metadataId = 1;
+
+        // Setup: add fuse type, metadata type, and fuse
+        _harness.addFuseType(fuseType, "TestType");
+        _harness.addMetadataType(metadataId, "TestMetadata");
+        _harness.addFuseToListByType(fuseType, fuseAddress);
+        _harness.addFuseInfo(fuseType, fuseAddress, uint32(block.timestamp));
+
+        // Add metadata to the fuse
+        bytes32[] memory metadata = new bytes32[](2);
+        metadata[0] = keccak256("test1");
+        metadata[1] = keccak256("test2");
+        _harness.updateFuseMetadata(fuseAddress, metadataId, metadata);
+
+        // Act - expect event emission
+        vm.expectEmit(true, true, true, true);
+        emit FuseWhitelistLib.FuseMetadataUpdated(fuseAddress, metadataId, new bytes32[](0));
+        _harness.removeFuseMetadata(fuseAddress, metadataId);
+    }
+
+    function test_RemoveFuseMetadata_RevertsOnNonExistentFuse() public {
+        // Arrange
+        address nonExistentFuse = address(0x999);
+        uint256 metadataId = 1;
+
+        // Act & Assert
+        vm.expectRevert(abi.encodeWithSelector(FuseWhitelistLib.FuseNotFound.selector, nonExistentFuse));
+        _harness.removeFuseMetadata(nonExistentFuse, metadataId);
+    }
+
+    function test_RemoveFuseMetadata_RevertsOnAbsentMetadataId() public {
+        // Arrange
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint256 nonExistentMetadataId = 9999;
+
+        // Setup: add fuse type and fuse (but no metadata)
+        _harness.addFuseType(fuseType, "TestType");
+        _harness.addFuseToListByType(fuseType, fuseAddress);
+        _harness.addFuseInfo(fuseType, fuseAddress, uint32(block.timestamp));
+
+        // Act & Assert - should revert because metadataId was never added to this fuse
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                FuseWhitelistLib.MetadataNotFoundForFuse.selector,
+                fuseAddress,
+                nonExistentMetadataId
+            )
+        );
+        _harness.removeFuseMetadata(fuseAddress, nonExistentMetadataId);
+    }
+
+    function test_RemoveFuseMetadata_RevertsOnAlreadyRemovedMetadata() public {
+        // Arrange
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint16 metadataId = 1;
+
+        // Setup: add fuse type, metadata type, and fuse
+        _harness.addFuseType(fuseType, "TestType");
+        _harness.addMetadataType(metadataId, "TestMetadata");
+        _harness.addFuseToListByType(fuseType, fuseAddress);
+        _harness.addFuseInfo(fuseType, fuseAddress, uint32(block.timestamp));
+
+        // Add metadata to the fuse
+        bytes32[] memory metadata = new bytes32[](1);
+        metadata[0] = keccak256("test");
+        _harness.updateFuseMetadata(fuseAddress, metadataId, metadata);
+
+        // Remove metadata first time - should succeed
+        _harness.removeFuseMetadata(fuseAddress, metadataId);
+
+        // Act & Assert - second removal should revert
+        vm.expectRevert(
+            abi.encodeWithSelector(FuseWhitelistLib.MetadataNotFoundForFuse.selector, fuseAddress, metadataId)
+        );
+        _harness.removeFuseMetadata(fuseAddress, metadataId);
+    }
+
+    function test_RemoveFuseMetadata_NoEventOnAbsentMetadataId() public {
+        // Arrange
+        address fuseAddress = address(new Erc4626SupplyFuse(1));
+        uint16 fuseType = 1;
+        uint256 nonExistentMetadataId = 9999;
+
+        // Setup: add fuse type and fuse (but no metadata)
+        _harness.addFuseType(fuseType, "TestType");
+        _harness.addFuseToListByType(fuseType, fuseAddress);
+        _harness.addFuseInfo(fuseType, fuseAddress, uint32(block.timestamp));
+
+        // Record logs to verify no event is emitted before revert
+        vm.recordLogs();
+
+        // Act & Assert - should revert, no event should be emitted
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                FuseWhitelistLib.MetadataNotFoundForFuse.selector,
+                fuseAddress,
+                nonExistentMetadataId
+            )
+        );
+        _harness.removeFuseMetadata(fuseAddress, nonExistentMetadataId);
     }
 }
