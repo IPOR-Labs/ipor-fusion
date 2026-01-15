@@ -542,7 +542,7 @@ contract WrappedPlasmaVaulttTest is Test {
             "ERC20InsufficientBalance(address,uint256,uint256)",
             user,
             10000000000000,
-            10000000000047
+            10000000000071
         );
 
         // when

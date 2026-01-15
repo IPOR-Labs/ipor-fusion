@@ -886,7 +886,8 @@ abstract contract WrappedPlasmaVaultBase is ERC4626Upgradeable, ReentrancyGuardU
 
     /**
      * @notice Calculates total fee shares for asset/share conversions with fee adjustments
-     * @dev Computes performance fee shares based on asset value changes
+     * @dev Computes performance fee shares based on asset value changes.
+     * Uses the provided rounding parameter for share conversion calculations.
      *
      * Calculation Flow:
      * 1. Performance Fee Assessment
@@ -897,15 +898,15 @@ abstract contract WrappedPlasmaVaultBase is ERC4626Upgradeable, ReentrancyGuardU
      * 2. Share Conversion
      *    - Converts performance fee to shares
      *    - Applies current conversion rate
-     *    - Uses specified rounding direction
+     *    - Uses the provided rounding parameter for consistency with calling function
      *
      * Mathematical Model:
      * - Fee = (CurrentAssets - LastAssets) * FeePercentage
-     * - Shares = Fee * (Supply/Assets) with rounding
+     * - Shares = Fee * (Supply/Assets) with provided rounding
      *
      * @param modifiedTotalAssets_ Total assets after fee adjustments
      * @param modifiedTotalSupply_ Total supply after fee adjustments
-     * @param rounding_ Rounding direction for calculations
+     * @param rounding_ Rounding direction for share conversion
      * @return totalFeeShares Amount of shares representing total fees
      * @custom:security Internal view function with safe math
      */
@@ -934,7 +935,8 @@ abstract contract WrappedPlasmaVaultBase is ERC4626Upgradeable, ReentrancyGuardU
 
     /**
      * @notice Calculates modified total assets and supply when management fee is realized
-     * @dev Simulates the impact of management fee realization on vault totals
+     * @dev Simulates the impact of management fee realization on vault totals.
+     * Uses the provided rounding parameter for fee share calculation.
      *
      * Calculation Flow:
      * 1. Asset Assessment
@@ -945,14 +947,14 @@ abstract contract WrappedPlasmaVaultBase is ERC4626Upgradeable, ReentrancyGuardU
      * 2. Fee Share Calculation
      *    - Converts fee to shares based on current ratio
      *    - Handles edge case of zero total supply
-     *    - Applies specified rounding direction
+     *    - Uses the provided rounding parameter for consistency with calling function
      *
      * 3. Total Modifications
      *    - Adds fee to total assets
      *    - Adds fee shares to total supply
      *    - Returns modified totals
      *
-     * @param rounding_ Rounding direction for share calculations
+     * @param rounding_ Rounding direction for fee share calculation
      * @return modifiedTotalAssets Total assets after fee realization
      * @return modifiedTotalSupply Total supply after fee shares minted
      * @custom:security Internal view function with safe math
@@ -965,9 +967,11 @@ abstract contract WrappedPlasmaVaultBase is ERC4626Upgradeable, ReentrancyGuardU
         uint256 initialTotalAssets = _totalAssets(grossTotalAssets, unrealizedManagementFeeInUnderlying);
         uint256 initialSupply = totalSupply();
 
+        // Use initialTotalAssets (net of unrealized fees) to match _realizeManagementFee behavior
+        // which calls convertToShares() that uses totalAssets() internally.
         uint256 simulatedManagementFeeInShares = _convertToSharesSimple(
             initialSupply,
-            grossTotalAssets,
+            initialTotalAssets,
             unrealizedManagementFeeInUnderlying,
             rounding_
         );
@@ -1037,15 +1041,31 @@ abstract contract WrappedPlasmaVaultBase is ERC4626Upgradeable, ReentrancyGuardU
 
     function _realizeManagementFee() internal {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
-        uint256 unrealizedFeeInUnderlying = getUnrealizedManagementFee();
 
-        PlasmaVaultLib.updateManagementFeeData();
+        // If no fee account configured, nothing to do
+        if (feeData.feeAccount == address(0)) {
+            return;
+        }
+
+        uint256 grossTotalAssets = ERC4626Upgradeable(PLASMA_VAULT).maxWithdraw(address(this));
+
+        // If vault is empty, update timestamp but don't try to mint
+        // This prevents fee accumulation from before first deposit
+        if (grossTotalAssets == 0) {
+            PlasmaVaultLib.updateManagementFeeData();
+            return;
+        }
+
+        uint256 unrealizedFeeInUnderlying = _getUnrealizedManagementFee(grossTotalAssets);
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
 
         if (unrealizedFeeInShares == 0) {
-            return;
+            return; // Do NOT update timestamp - preserve fee accrual
         }
+
+        // Update timestamp ONLY after confirming mint will happen
+        PlasmaVaultLib.updateManagementFeeData();
 
         _mint(feeData.feeAccount, unrealizedFeeInShares);
         emit ManagementFeeRealized(unrealizedFeeInUnderlying, unrealizedFeeInShares);
