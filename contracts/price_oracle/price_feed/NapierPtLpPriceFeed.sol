@@ -22,7 +22,7 @@ interface ITokiChainlinkCompatOracle is AggregatorV3Interface {
 /// - Expects the provided Toki chainlink compatible oracle to be pre-initialized and populated for the pool
 /// - PriceOracleMiddleware must have a source configured for the chosen pricing asset (asset or underlying),
 ///   as determined by the Toki oracle's immutable configuration
-contract NapierPriceFeed is IPriceFeed {
+contract NapierPtLpPriceFeed is IPriceFeed {
     using SafeCast for *;
 
     uint8 public constant TOKI_CHAINLINK_ORACLE_DECIMALS = 18;

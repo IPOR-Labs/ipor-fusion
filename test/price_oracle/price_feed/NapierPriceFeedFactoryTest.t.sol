@@ -13,7 +13,7 @@ import {LogExpMath} from "@pendle/core-v2/contracts/core/libraries/math/LogExpMa
 import {IPermit2} from "../../../contracts/fuses/balancer/ext/IPermit2.sol";
 
 import {NapierPriceFeedFactory} from "../../../contracts/factory/price_feed/NapierPriceFeedFactory.sol";
-import {NapierPriceFeed, ITokiChainlinkCompatOracle} from "../../../contracts/price_oracle/price_feed/NapierPriceFeed.sol";
+import {NapierPtLpPriceFeed, ITokiChainlinkCompatOracle} from "../../../contracts/price_oracle/price_feed/NapierPtLpPriceFeed.sol";
 import {NapierYtTwapPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierYtTwapPriceFeed.sol";
 import {NapierConstants} from "../../fuses/napier/NapierConstants.sol";
 import {Constants} from "../../../contracts/fuses/napier/utils/Constants.sol";
@@ -291,7 +291,7 @@ contract NapierPriceFeedFactoryTest is Test {
         address priceFeedAddress = feedFactory.createPriceFeed(PRICE_MIDDLEWARE, address(linearOracle));
 
         // then
-        NapierPriceFeed priceFeed = NapierPriceFeed(priceFeedAddress);
+        NapierPtLpPriceFeed priceFeed = NapierPtLpPriceFeed(priceFeedAddress);
         assertEq(priceFeed.PRICE_MIDDLEWARE(), PRICE_MIDDLEWARE, "Price middleware should match");
         assertEq(address(priceFeed.TOKI_CHAINLINK_ORACLE()), address(linearOracle), "Toki oracle should match");
         assertEq(priceFeed.QUOTE(), USDC, "Quote asset should match");
@@ -315,7 +315,7 @@ contract NapierPriceFeedFactoryTest is Test {
         address priceFeedAddress = feedFactory.createPriceFeed(PRICE_MIDDLEWARE, address(twapOracle));
 
         // then
-        NapierPriceFeed priceFeed = NapierPriceFeed(priceFeedAddress);
+        NapierPtLpPriceFeed priceFeed = NapierPtLpPriceFeed(priceFeedAddress);
         assertEq(priceFeed.PRICE_MIDDLEWARE(), PRICE_MIDDLEWARE, "Price middleware should match");
         assertEq(address(priceFeed.TOKI_CHAINLINK_ORACLE()), address(twapOracle), "Toki oracle should match");
         assertEq(priceFeed.QUOTE(), USDC, "Quote asset should match");

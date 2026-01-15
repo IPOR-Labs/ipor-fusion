@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {NapierPriceFeed} from "../../price_oracle/price_feed/NapierPriceFeed.sol";
+import {NapierPtLpPriceFeed} from "../../price_oracle/price_feed/NapierPtLpPriceFeed.sol";
 import {NapierYtTwapPriceFeed} from "../../price_oracle/price_feed/NapierYtTwapPriceFeed.sol";
 
 /// @title NapierPriceFeedFactory
@@ -13,7 +13,7 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     /// @notice Emitted when a new Napier price feed is created
     /// @param priceFeed The address of the newly created price feed
     /// @param tokiChainlinkOracle The address of the Toki Chainlink compatible oracle
-    event NapierPriceFeedCreated(address priceFeed, address tokiChainlinkOracle);
+    event NapierPtLpPriceFeedCreated(address priceFeed, address tokiChainlinkOracle);
 
     /// @notice Emitted when a new Napier YT price feed is created
     /// @param priceFeed The address of the newly created YT price feed
@@ -60,9 +60,9 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
             revert InvalidAddress();
         }
 
-        NapierPriceFeed napierPriceFeed = new NapierPriceFeed(priceMiddleware_, tokiChainlinkOracle_);
+        NapierPtLpPriceFeed napierPriceFeed = new NapierPtLpPriceFeed(priceMiddleware_, tokiChainlinkOracle_);
         priceFeedAddress = address(napierPriceFeed);
-        emit NapierPriceFeedCreated(priceFeedAddress, tokiChainlinkOracle_);
+        emit NapierPtLpPriceFeedCreated(priceFeedAddress, tokiChainlinkOracle_);
     }
 
     function createYtPriceFeed(
