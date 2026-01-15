@@ -87,9 +87,17 @@ contract PtPriceFeedFactoryTest is Test {
         assertEq(priceFeed.USE_PENDLE_ORACLE_METHOD(), item.usePendleOracleMethod, "Oracle method should match");
 
         // Verify price feed is functional
-        (, int256 price, , uint256 timestamp, ) = priceFeed.latestRoundData();
+        (uint80 roundId, int256 price, uint256 startedAt, uint256 timestamp, uint80 answeredInRound) = priceFeed
+            .latestRoundData();
         assertTrue(price > 0, "Price should be positive");
         assertEq(timestamp, block.timestamp, "Timestamp should match block timestamp");
+
+        // Verify Chainlink-compatible metadata (IL-6765)
+        assertTrue(roundId > 0, "roundId should not be zero");
+        assertTrue(startedAt > 0, "startedAt should not be zero");
+        assertTrue(answeredInRound > 0, "answeredInRound should not be zero");
+        assertEq(answeredInRound, roundId, "answeredInRound should equal roundId");
+        assertEq(startedAt, timestamp - TWAP_WINDOW, "startedAt should equal timestamp - TWAP_WINDOW");
     }
 
     function testCreateMultipleMarkets() public {
