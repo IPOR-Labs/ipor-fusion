@@ -38,6 +38,11 @@ struct UniversalTokenSwapperEthEnterData {
     UniversalTokenSwapperEthData data;
 }
 
+/// @notice Struct to track token balances before and after swap execution
+/// @param tokenInBalanceBefore Balance of input token before swap
+/// @param tokenOutBalanceBefore Balance of output token before swap
+/// @param tokenInBalanceAfter Balance of input token after swap
+/// @param tokenOutBalanceAfter Balance of output token after swap
 struct Balances {
     uint256 tokenInBalanceBefore;
     uint256 tokenOutBalanceBefore;
@@ -78,6 +83,12 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     error UniversalTokenSwapperEthFuseInvalidMarketId();
     /// @notice Error thrown when WETH address is zero
     error UniversalTokenSwapperEthFuseInvalidWethAddress();
+    /// @notice Error thrown when slippage exceeds 100%
+    error UniversalTokenSwapperEthFuseSlippageExceeds100Percent(uint256 slippageWad);
+    /// @notice Error thrown when targets array is empty
+    error UniversalTokenSwapperEthFuseEmptyTargets();
+    /// @notice Error thrown when targets and data arrays have different lengths
+    error UniversalTokenSwapperEthFuseArrayLengthMismatch();
 
     /// @notice Fuse version identifier (set to deployment address)
     address public immutable VERSION;
@@ -109,6 +120,8 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     /// @notice Execute a swap operation
     /// @dev Called via delegatecall from PlasmaVault.execute()
     /// @param data_ Encoded UniversalTokenSwapperEthEnterData struct
+    /// @custom:security Validates all tokens, targets and dust tokens against substrate configuration.
+    ///                  Enforces minAmountOut and USD-based slippage protection.
     function enter(UniversalTokenSwapperEthEnterData calldata data_) external {
         if (data_.amountIn == 0) {
             revert UniversalTokenSwapperEthFuseZeroAmount();
@@ -222,7 +235,11 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
 
         for (uint256 i; i < length; ++i) {
             if (UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(substrates[i])) {
-                return UniversalTokenSwapperSubstrateLib.decodeSlippage(substrates[i]);
+                slippageWad = UniversalTokenSwapperSubstrateLib.decodeSlippage(substrates[i]);
+                if (slippageWad > _ONE) {
+                    revert UniversalTokenSwapperEthFuseSlippageExceeds100Percent(slippageWad);
+                }
+                return slippageWad;
             }
         }
 
@@ -265,7 +282,21 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         return false;
     }
 
+    /// @dev Validates all substrate requirements for the swap operation.
+    ///      Checks tokenIn, tokenOut, all targets, and dust tokens against configured substrates.
+    /// @param data_ The swap data containing tokens and targets to validate
     function _checkSubstrates(UniversalTokenSwapperEthEnterData calldata data_) private view {
+        uint256 targetsLength = data_.data.targets.length;
+        if (targetsLength == 0) {
+            revert UniversalTokenSwapperEthFuseEmptyTargets();
+        }
+        if (targetsLength != data_.data.callDatas.length) {
+            revert UniversalTokenSwapperEthFuseArrayLengthMismatch();
+        }
+        if (targetsLength != data_.data.ethAmounts.length) {
+            revert UniversalTokenSwapperEthFuseArrayLengthMismatch();
+        }
+
         if (!_isTokenGranted(data_.tokenIn)) {
             revert UniversalTokenSwapperEthFuseUnsupportedAsset(data_.tokenIn);
         }
@@ -273,12 +304,10 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
             revert UniversalTokenSwapperEthFuseUnsupportedAsset(data_.tokenOut);
         }
 
-        uint256 targetsLength = data_.data.targets.length;
         for (uint256 i; i < targetsLength; ++i) {
             if (!_isTargetGranted(data_.data.targets[i])) {
                 revert UniversalTokenSwapperEthFuseUnsupportedAsset(data_.data.targets[i]);
             }
-           
         }
 
         uint256 tokensDustToCheckLength = data_.data.tokensDustToCheck.length;

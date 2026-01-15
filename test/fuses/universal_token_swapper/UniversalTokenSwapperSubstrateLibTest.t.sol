@@ -41,7 +41,8 @@ contract UniversalTokenSwapperSubstrateLibTest is Test {
         assertFalse(UniversalTokenSwapperSubstrateLib.isTokenSubstrate(slippageSubstrate), "Should not be token substrate");
     }
 
-    function testFuzzEncodeDecodeToken(address token_) public pure {
+    function testFuzzEncodeDecodeToken(address token_) public {
+        vm.assume(token_ != address(0));
         bytes32 encoded = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(token_);
         address decoded = UniversalTokenSwapperSubstrateLib.decodeToken(encoded);
         assertEq(decoded, token_, "Fuzz: Decoded token should match original");
@@ -78,7 +79,8 @@ contract UniversalTokenSwapperSubstrateLibTest is Test {
         assertFalse(UniversalTokenSwapperSubstrateLib.isTargetSubstrate(slippageSubstrate), "Should not be target substrate");
     }
 
-    function testFuzzEncodeDecodeTarget(address target_) public pure {
+    function testFuzzEncodeDecodeTarget(address target_) public {
+        vm.assume(target_ != address(0));
         bytes32 encoded = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(target_);
         address decoded = UniversalTokenSwapperSubstrateLib.decodeTarget(encoded);
         assertEq(decoded, target_, "Fuzz: Decoded target should match original");
@@ -188,11 +190,32 @@ contract UniversalTokenSwapperSubstrateLibTest is Test {
 
     // ==================== Edge Cases ====================
 
-    function testZeroAddress() public pure {
-        bytes32 encoded = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(address(0));
-        address decoded = UniversalTokenSwapperSubstrateLib.decodeToken(encoded);
-        assertEq(decoded, address(0), "Zero address should be preserved");
-        assertTrue(UniversalTokenSwapperSubstrateLib.isTokenSubstrate(encoded), "Should still be token substrate");
+    function testZeroAddressTokenReverts() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                UniversalTokenSwapperSubstrateLib.UniversalTokenSwapperSubstrateLibZeroAddress.selector
+            )
+        );
+        this.encodeTokenExternal(address(0));
+    }
+
+    function testZeroAddressTargetReverts() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                UniversalTokenSwapperSubstrateLib.UniversalTokenSwapperSubstrateLibZeroAddress.selector
+            )
+        );
+        this.encodeTargetExternal(address(0));
+    }
+
+    /// @notice External wrapper for testing revert
+    function encodeTokenExternal(address token_) external pure returns (bytes32) {
+        return UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(token_);
+    }
+
+    /// @notice External wrapper for testing revert
+    function encodeTargetExternal(address target_) external pure returns (bytes32) {
+        return UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(target_);
     }
 
     function testZeroSlippage() public pure {

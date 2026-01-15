@@ -106,7 +106,7 @@ contract UniversalSwapOnMockDexTest is Test {
         address[] memory targets = new address[](1);
         targets[0] = _mockDexActionEthereum;
 
-        bytes[] memory data = new bytes[](2);
+        bytes[] memory data = new bytes[](1);
         data[0] = abi.encodeWithSignature("returnExtra1000Usdc(address)", _swapExecutor);
 
         UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
@@ -152,7 +152,7 @@ contract UniversalSwapOnMockDexTest is Test {
         address[] memory targets = new address[](1);
         targets[0] = _mockDexActionEthereum;
 
-        bytes[] memory data = new bytes[](2);
+        bytes[] memory data = new bytes[](1);
         data[0] = abi.encodeWithSignature("returnExtra1000Usdt(address)", _swapExecutor);
 
         UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({

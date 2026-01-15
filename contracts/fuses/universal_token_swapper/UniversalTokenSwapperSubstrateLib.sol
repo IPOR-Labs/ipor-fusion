@@ -22,10 +22,16 @@ library UniversalTokenSwapperSubstrateLib {
     /// @param slippageWad The slippage value that caused the overflow
     error UniversalTokenSwapperSubstrateLibSlippageOverflow(uint256 slippageWad);
 
+    /// @notice Error thrown when zero address is provided for token or target
+    error UniversalTokenSwapperSubstrateLibZeroAddress();
+
     /// @notice Encodes a token address as a substrate
     /// @param token_ The token address to encode
     /// @return encoded The bytes32 encoded substrate with Token type
     function encodeTokenSubstrate(address token_) internal pure returns (bytes32 encoded) {
+        if (token_ == address(0)) {
+            revert UniversalTokenSwapperSubstrateLibZeroAddress();
+        }
         // Layout: [type (1 byte)][padding (11 bytes)][address (20 bytes)]
         // Type is in the most significant byte
         encoded = bytes32(uint256(UniversalTokenSwapperSubstrateType.Token) << 248) | bytes32(uint256(uint160(token_)));
@@ -35,6 +41,9 @@ library UniversalTokenSwapperSubstrateLib {
     /// @param target_ The target/DEX address to encode
     /// @return encoded The bytes32 encoded substrate with Target type
     function encodeTargetSubstrate(address target_) internal pure returns (bytes32 encoded) {
+        if (target_ == address(0)) {
+            revert UniversalTokenSwapperSubstrateLibZeroAddress();
+        }
         // Layout: [type (1 byte)][padding (11 bytes)][address (20 bytes)]
         // Type is in the most significant byte
         encoded =

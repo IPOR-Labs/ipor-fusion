@@ -64,7 +64,7 @@ contract SwapExecutorEth {
     ///      - Transfers remaining tokens to the sender
     ///      - Converts remaining ETH to WETH and transfers it
     ///      - Checks and transfers any dust balances
-    function execute(SwapExecutorEthData memory data_) external {
+    function execute(SwapExecutorEthData calldata data_) external {
         uint256 len = data_.targets.length;
 
         if (len != data_.callDatas.length || len != data_.ethAmounts.length) {

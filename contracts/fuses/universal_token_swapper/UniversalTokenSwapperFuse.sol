@@ -34,6 +34,11 @@ struct UniversalTokenSwapperEnterData {
     UniversalTokenSwapperData data;
 }
 
+/// @notice Struct to track token balances before and after swap execution
+/// @param tokenInBalanceBefore Balance of input token before swap
+/// @param tokenOutBalanceBefore Balance of output token before swap
+/// @param tokenInBalanceAfter Balance of input token after swap
+/// @param tokenOutBalanceAfter Balance of output token after swap
 struct Balances {
     uint256 tokenInBalanceBefore;
     uint256 tokenOutBalanceBefore;
@@ -72,6 +77,12 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     error UniversalTokenSwapperFuseZeroAmount();
     /// @notice Error thrown when marketId is zero
     error UniversalTokenSwapperFuseInvalidMarketId();
+    /// @notice Error thrown when slippage exceeds 100%
+    error UniversalTokenSwapperFuseSlippageExceeds100Percent(uint256 slippageWad);
+    /// @notice Error thrown when targets array is empty
+    error UniversalTokenSwapperFuseEmptyTargets();
+    /// @notice Error thrown when targets and data arrays have different lengths
+    error UniversalTokenSwapperFuseArrayLengthMismatch();
 
     /// @notice Fuse version identifier (set to deployment address)
     address public immutable VERSION;
@@ -99,9 +110,19 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     /// @notice Execute a swap operation
     /// @dev Called via delegatecall from PlasmaVault.execute()
     /// @param data_ Encoded UniversalTokenSwapperEnterData struct
+    /// @custom:security Validates all tokens and targets against substrate configuration.
+    ///                  Enforces minAmountOut and USD-based slippage protection.
     function enter(UniversalTokenSwapperEnterData calldata data_) external {
         if (data_.amountIn == 0) {
             revert UniversalTokenSwapperFuseZeroAmount();
+        }
+
+        uint256 dexsLength = data_.data.targets.length;
+        if (dexsLength == 0) {
+            revert UniversalTokenSwapperFuseEmptyTargets();
+        }
+        if (dexsLength != data_.data.data.length) {
+            revert UniversalTokenSwapperFuseArrayLengthMismatch();
         }
 
         if (!_isTokenGranted(data_.tokenIn)) {
@@ -111,7 +132,6 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
         }
 
-        uint256 dexsLength = data_.data.targets.length;
         for (uint256 i; i < dexsLength; ++i) {
             if (!_isTargetGranted(data_.data.targets[i])) {
                 revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
@@ -222,7 +242,11 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
         for (uint256 i; i < length; ++i) {
             if (UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(substrates[i])) {
-                return UniversalTokenSwapperSubstrateLib.decodeSlippage(substrates[i]);
+                slippageWad = UniversalTokenSwapperSubstrateLib.decodeSlippage(substrates[i]);
+                if (slippageWad > _ONE) {
+                    revert UniversalTokenSwapperFuseSlippageExceeds100Percent(slippageWad);
+                }
+                return slippageWad;
             }
         }
 
