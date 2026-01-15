@@ -52,7 +52,7 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     /// @param priceMiddleware_ Address of the price oracle middleware
     /// @param tokiChainlinkOracle_ Address of the Toki Chainlink compatible oracle
     /// @return priceFeedAddress The address of the newly created price feed
-    function createPriceFeed(
+    function createPtLpPriceFeed(
         address priceMiddleware_,
         address tokiChainlinkOracle_
     ) external returns (address priceFeedAddress) {
@@ -65,7 +65,7 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         emit NapierPtLpPriceFeedCreated(priceFeedAddress, tokiChainlinkOracle_);
     }
 
-    function createYtPriceFeed(
+    function createYtTwapPriceFeed(
         address priceMiddleware_,
         address tokiOracle_,
         address liquidityToken_,
