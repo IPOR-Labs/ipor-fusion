@@ -30,7 +30,7 @@ contract SwapExecutor {
      * - `tokenIn`: The address of the input token.
      * - `tokenOut`: The address of the output token.
      */
-    function execute(SwapExecutorData memory data_) external {
+    function execute(SwapExecutorData calldata data_) external {
         uint256 len = data_.dexs.length;
         for (uint256 i; i < len; ++i) {
             data_.dexs[i].functionCall(data_.dexsData[i]);

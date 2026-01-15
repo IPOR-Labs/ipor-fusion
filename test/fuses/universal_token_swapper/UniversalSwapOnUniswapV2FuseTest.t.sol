@@ -18,6 +18,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {SwapExecutor} from "contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
@@ -120,13 +121,14 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenIn: USDC,
             tokenOut: USDT,
             amountIn: depositAmount,
+            minAmountOut: 0,
             data: UniversalTokenSwapperData({targets: targets, data: data})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -183,13 +185,14 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenIn: USDC,
             tokenOut: USDT,
             amountIn: depositAmount,
+            minAmountOut: 0,
             data: UniversalTokenSwapperData({targets: targets, data: data})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -246,13 +249,14 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenIn: address(0x76543),
             tokenOut: USDT,
             amountIn: depositAmount,
+            minAmountOut: 0,
             data: UniversalTokenSwapperData({targets: targets, data: data})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature(
@@ -303,13 +307,14 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenIn: USDC,
             tokenOut: address(0x76543),
             amountIn: depositAmount,
+            minAmountOut: 0,
             data: UniversalTokenSwapperData({targets: targets, data: data})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature(
@@ -359,13 +364,14 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenIn: USDC,
             tokenOut: USDT,
             amountIn: depositAmount,
+            minAmountOut: 0,
             data: UniversalTokenSwapperData({targets: targets, data: data})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature(
@@ -409,23 +415,23 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
     function _setupMarketConfigs() private returns (MarketSubstratesConfig[] memory marketConfigs_) {
         marketConfigs_ = new MarketSubstratesConfig[](1);
 
-        bytes32[] memory universalSwapTokens = new bytes32[](4);
-        universalSwapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        universalSwapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(USDT);
-        universalSwapTokens[2] = PlasmaVaultConfigLib.addressToBytes32(DAI);
-        universalSwapTokens[3] = PlasmaVaultConfigLib.addressToBytes32(_UNIVERSAL_ROUTER);
+        // Using new substrate encoding format
+        bytes32[] memory universalSwapSubstrates = new bytes32[](6);
+        // Token substrates
+        universalSwapSubstrates[0] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(USDC);
+        universalSwapSubstrates[1] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(USDT);
+        universalSwapSubstrates[2] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(DAI);
+        // Target substrates
+        universalSwapSubstrates[3] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(_UNIVERSAL_ROUTER);
+        universalSwapSubstrates[4] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(USDC);
+        // Slippage substrate - 6%
+        universalSwapSubstrates[5] = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(6e16);
 
-        marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, universalSwapTokens);
+        marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, universalSwapSubstrates);
     }
 
     function _setupFuses() private returns (address[] memory fuses_) {
-        SwapExecutor swapExecutor = new SwapExecutor();
-
-        _universalTokenSwapperFuse = new UniversalTokenSwapperFuse(
-            IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            address(swapExecutor),
-            6e16 // 6% slippage
-        );
+        _universalTokenSwapperFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER);
 
         fuses_ = new address[](1);
         fuses_[0] = address(_universalTokenSwapperFuse);
