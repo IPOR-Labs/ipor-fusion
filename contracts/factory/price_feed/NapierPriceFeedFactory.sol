@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {NapierPtLpPriceFeed} from "../../price_oracle/price_feed/NapierPtLpPriceFeed.sol";
+import {NapierYtLinearPriceFeed} from "../../price_oracle/price_feed/NapierYtLinearPriceFeed.sol";
 import {NapierYtTwapPriceFeed} from "../../price_oracle/price_feed/NapierYtTwapPriceFeed.sol";
 
 /// @title NapierPriceFeedFactory
@@ -28,6 +29,11 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         address quoteAsset,
         uint32 twapWindow
     );
+
+    /// @notice Emitted when a new Napier YT linear price feed is created
+    /// @param priceFeed The address of the newly created YT linear price feed
+    /// @param tokiChainlinkOracle The address of the Toki Chainlink compatible oracle
+    event NapierYtLinearPriceFeedCreated(address priceFeed, address tokiChainlinkOracle);
 
     /// @notice Error thrown when an invalid address (zero address) is provided
     error InvalidAddress();
@@ -85,6 +91,24 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         );
         priceFeedAddress = address(napierPriceFeed);
         emit NapierYtTwapPriceFeedCreated(priceFeedAddress, tokiOracle_, liquidityToken_, quoteAsset_, twapWindow_);
+    }
+
+    /// @notice Creates a new Napier YT linear price feed instance
+    /// @dev Validates provided addresses before deploying a new feed
+    /// @param priceMiddleware_ Address of the price oracle middleware
+    /// @param tokiChainlinkOracle_ Address of the Toki Chainlink compatible oracle
+    /// @return priceFeedAddress The address of the newly created price feed
+    function createYtLinearPriceFeed(
+        address priceMiddleware_,
+        address tokiChainlinkOracle_
+    ) external returns (address priceFeedAddress) {
+        if (priceMiddleware_ == address(0) || tokiChainlinkOracle_ == address(0)) {
+            revert InvalidAddress();
+        }
+
+        NapierYtLinearPriceFeed napierPriceFeed = new NapierYtLinearPriceFeed(priceMiddleware_, tokiChainlinkOracle_);
+        priceFeedAddress = address(napierPriceFeed);
+        emit NapierYtLinearPriceFeedCreated(priceFeedAddress, tokiChainlinkOracle_);
     }
 
     /// @notice Authorizes an upgrade to a new implementation
