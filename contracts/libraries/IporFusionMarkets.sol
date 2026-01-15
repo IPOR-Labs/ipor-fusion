@@ -172,6 +172,14 @@ library IporFusionMarkets {
     /// @dev Morpho liquidity in markets market
     uint256 public constant MORPHO_LIQUIDITY_IN_MARKETS = 41;
 
+    /// @dev Odos Swapper market for optimized token swapping via Odos Smart Order Routing V3
+    /// @dev Substrate type: OdosSubstrateType (Token or Slippage)
+    /// @dev Substrate values:
+    ///      - Token: Allowed token addresses for swapping (encoded with OdosSubstrateLib.encodeTokenSubstrate)
+    ///      - Slippage: Custom slippage limit in WAD (encoded with OdosSubstrateLib.encodeSlippageSubstrate)
+    /// @dev Used for executing Odos swaps via OdosSwapExecutor contract
+    uint256 public constant ODOS_SWAPPER = 42;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
