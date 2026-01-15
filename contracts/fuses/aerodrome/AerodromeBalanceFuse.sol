@@ -51,14 +51,17 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
     ///         - If substrate is a Gauge: retrieves the staking token (pool) from the gauge
     ///         - If substrate is a Pool: uses the pool address directly
     ///      2. Gets the LP token balance (liquidity) held by the vault for that pool
-    ///      3. Calculates balance from liquidity: proportionally calculates the value of underlying tokens
-    ///         based on the LP token balance relative to total supply and pool reserves
-    ///      4. Calculates balance from fees: accumulates claimable fees using index deltas
+    ///      3. Calculates balance from liquidity (only when liquidity > 0): proportionally calculates the value
+    ///         of underlying tokens based on the LP token balance relative to total supply and pool reserves
+    ///      4. Calculates balance from fees (always, regardless of liquidity): accumulates claimable fees
+    ///         using index deltas. This ensures unclaimed fees are included even when LP tokens have been
+    ///         withdrawn but fees haven't been claimed yet.
     ///      5. Converts all balances to USD using price oracle middleware
     ///      6. Normalizes results to WAD (18 decimals) and sums all balances
     ///      The calculation methodology ensures that:
     ///      - Both LP token value and accumulated fees are included in the balance
     ///      - Index deltas track fee accumulation over time
+    ///      - Claimable fees are included even when liquidity is zero (post-withdrawal state)
     ///      - All token amounts are converted to USD using oracle prices
     ///      - Final result is normalized to WAD precision (18 decimals) for consistency
     /// @return The total balance of the Plasma Vault in Aerodrome protocol, normalized to WAD (18 decimals)
@@ -92,8 +95,10 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
 
             if (liquidity > 0) {
                 balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
             }
+            // Always calculate fees - claimable fees may exist even when liquidity is zero
+            // (e.g., after withdrawing LP tokens but before claiming accumulated fees)
+            balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
         }
 
         return balance;
