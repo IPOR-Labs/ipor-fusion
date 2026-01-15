@@ -13,7 +13,8 @@ import {LogExpMath} from "@pendle/core-v2/contracts/core/libraries/math/LogExpMa
 import {IPermit2} from "../../../contracts/fuses/balancer/ext/IPermit2.sol";
 
 import {NapierPriceFeedFactory} from "../../../contracts/factory/price_feed/NapierPriceFeedFactory.sol";
-import {NapierPtLpPriceFeed, ITokiChainlinkCompatOracle} from "../../../contracts/price_oracle/price_feed/NapierPtLpPriceFeed.sol";
+import {NapierPtLpPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierPtLpPriceFeed.sol";
+import {ITokiChainlinkCompatOracle} from "../../../contracts/price_oracle/price_feed/ext/ITokiChainlinkCompatOracle.sol";
 import {NapierYtTwapPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierYtTwapPriceFeed.sol";
 import {NapierConstants} from "../../fuses/napier/NapierConstants.sol";
 import {Constants} from "../../../contracts/fuses/napier/utils/Constants.sol";
