@@ -26,7 +26,7 @@ contract TransientStorageMapperFuseTest is Test {
 
     /// @notice Test MARKET_ID constant value
     function testMarketId() public view {
-        assertEq(fuse.MARKET_ID(), IporFusionMarkets.ERC20_VAULT_BALANCE);
+        assertEq(fuse.MARKET_ID(), IporFusionMarkets.ZERO_BALANCE_MARKET, "MARKET_ID should equal ZERO_BALANCE_MARKET");
     }
 
     /// @notice Test successful mapping from INPUTS_BY_FUSE
@@ -42,7 +42,7 @@ contract TransientStorageMapperFuseTest is Test {
         mock.setInputs(fuseFrom, inputs);
 
         bytes32[] memory storedInputs = mock.getInputs(fuseFrom);
-        assertEq(storedInputs.length, 3);
+        assertEq(storedInputs.length, 3, "Stored inputs array should have length 3");
 
         TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
         items[0] = TransientStorageMapperItem({
@@ -64,7 +64,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(mock.getInput(fuseTo, 0), inputs[1]);
+        assertEq(mock.getInput(fuseTo, 0), inputs[1], "Mapped input should equal source input at index 1");
     }
 
     /// @notice Test successful mapping from OUTPUTS_BY_FUSE
@@ -79,7 +79,7 @@ contract TransientStorageMapperFuseTest is Test {
         mock.setOutputs(fuseFrom, outputs);
 
         bytes32[] memory storedOutputs = mock.getOutputs(fuseFrom);
-        assertEq(storedOutputs.length, 2);
+        assertEq(storedOutputs.length, 2, "Stored outputs array should have length 2");
 
         TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
         items[0] = TransientStorageMapperItem({
@@ -101,7 +101,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(mock.getInput(fuseTo, 0), outputs[0]);
+        assertEq(mock.getInput(fuseTo, 0), outputs[0], "Mapped input should equal source output at index 0");
     }
 
     /// @notice Test successful mapping with multiple items
@@ -152,8 +152,8 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(mock.getInput(fuseTo, 0), inputs1[0]);
-        assertEq(mock.getInput(fuseTo, 1), outputs2[1]);
+        assertEq(mock.getInput(fuseTo, 0), inputs1[0], "First mapped input should equal inputs1[0]");
+        assertEq(mock.getInput(fuseTo, 1), outputs2[1], "Second mapped input should equal outputs2[1]");
     }
 
     /// @notice Test mapping to different fuse addresses
@@ -201,8 +201,8 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(mock.getInput(fuseTo1, 0), inputs[0]);
-        assertEq(mock.getInput(fuseTo2, 0), inputs[1]);
+        assertEq(mock.getInput(fuseTo1, 0), inputs[0], "fuseTo1 input should equal inputs[0]");
+        assertEq(mock.getInput(fuseTo2, 0), inputs[1], "fuseTo2 input should equal inputs[1]");
     }
 
     /// @notice Test revert when dataFromAddress is zero
@@ -407,7 +407,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(mock.getInput(fuseTo, 0), newInputs[0]);
+        assertEq(mock.getInput(fuseTo, 0), newInputs[0], "Mapped input should equal newInputs[0]");
     }
 
     /// @notice Test mapping with different bytes32 values
@@ -464,9 +464,9 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(mock.getInput(fuseTo, 0), inputs[0]);
-        assertEq(mock.getInput(fuseTo, 1), inputs[1]);
-        assertEq(mock.getInput(fuseTo, 2), inputs[2]);
+        assertEq(mock.getInput(fuseTo, 0), inputs[0], "First mapped input should equal inputs[0]");
+        assertEq(mock.getInput(fuseTo, 1), inputs[1], "Second mapped input should equal inputs[1]");
+        assertEq(mock.getInput(fuseTo, 2), inputs[2], "Third mapped input should equal inputs[2]");
     }
 
     // ============================================
@@ -507,7 +507,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         // Expected: 1000 * 10^18 = 1_000_000_000_000_000_000_000
         uint256 expectedAmount = 1000 * 1e18;
-        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount, "Should convert USDC (6 decimals) to DAI (18 decimals) correctly");
     }
 
     /// @notice Test decimal conversion: scale down from 18 to 6 decimals (DAI -> USDC style)
@@ -544,7 +544,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         // Expected: 1000 * 10^6 = 1_000_000_000
         uint256 expectedAmount = 1000 * 1e6;
-        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount, "Should convert DAI (18 decimals) to USDC (6 decimals) correctly");
     }
 
     /// @notice Test decimal conversion: scale up from 8 to 18 decimals (WBTC style)
@@ -581,7 +581,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         // Expected: 1.5 * 10^18 = 1_500_000_000_000_000_000
         uint256 expectedAmount = 15 * 1e17;
-        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount, "Should convert WBTC (8 decimals) to 18 decimals correctly");
     }
 
     /// @notice Test decimal conversion: same decimals should not change value
@@ -615,7 +615,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), amount);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), amount, "Value should remain unchanged when decimals are the same");
     }
 
     /// @notice Test that same type and decimals returns value unchanged (early return optimization)
@@ -651,7 +651,7 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Should be exactly the same (early return, no conversion cycle)
-        assertEq(mock.getInput(fuseTo, 0), complexValue);
+        assertEq(mock.getInput(fuseTo, 0), complexValue, "Complex bytes32 value should remain unchanged with same type and decimals");
     }
 
     /// @notice Test that same decimals but different types still performs conversion
@@ -687,7 +687,7 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Should convert properly even though decimals are the same
-        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value));
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert UINT128 to UINT256 correctly even with same decimals");
     }
 
     /// @notice Test decimal conversion with zero value
@@ -720,7 +720,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 0);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 0, "Zero value should remain zero after decimal conversion");
     }
 
     /// @notice Test type conversion: UINT128 to UINT256
@@ -754,7 +754,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value));
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert UINT128 to UINT256 correctly");
     }
 
     /// @notice Test combined type and decimal conversion
@@ -790,7 +790,7 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Expected: 100 * 10^18
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 100 * 1e18);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 100 * 1e18, "Should convert UINT128 (6 decimals) to UINT256 (18 decimals) correctly");
     }
 
     /// @notice Test decimal conversion scale down with precision loss
@@ -828,7 +828,7 @@ contract TransientStorageMapperFuseTest is Test {
         // Expected: 1000.123456 USDC (loses precision after 6 decimals)
         // 1000123456789012345678 / 10^12 = 1000123456
         uint256 expectedAmount = 1000123456;
-        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount, "Should scale down from 18 to 6 decimals with precision loss");
     }
 
     /// @notice Test mapping with UNKNOWN type bypasses conversion
@@ -863,7 +863,7 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // When fromType is UNKNOWN, value should pass through unchanged
-        assertEq(uint256(mock.getInput(fuseTo, 0)), amount);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), amount, "UNKNOWN type should bypass conversion and pass value unchanged");
     }
 
     /// @notice Test address type conversion preserves address
@@ -897,7 +897,7 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(address(uint160(uint256(mock.getInput(fuseTo, 0)))), testAddress);
+        assertEq(address(uint160(uint256(mock.getInput(fuseTo, 0)))), testAddress, "ADDRESS type conversion should preserve address value");
     }
 
     /// @notice Test bool type conversion
@@ -942,8 +942,8 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 1);
-        assertEq(uint256(mock.getInput(fuseTo, 1)), 0);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1, "BOOL true should convert to 1");
+        assertEq(uint256(mock.getInput(fuseTo, 1)), 0, "BOOL false should convert to 0");
     }
 
     /// @notice Test decimal conversion from 0 to 18 decimals (no decimals to standard decimals)
@@ -979,7 +979,7 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Expected: 1000 * 10^18
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000 * 1e18);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000 * 1e18, "Should convert from 0 to 18 decimals correctly");
     }
 
     /// @notice Test decimal conversion from 18 to 0 decimals
@@ -1015,7 +1015,7 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Expected: 1000
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000);
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000, "Should convert from 18 to 0 decimals correctly");
     }
 
     /// @notice Test multiple items with different decimal conversions
@@ -1075,8 +1075,2893 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000 * 1e18); // USDC scaled up
-        assertEq(uint256(mock.getInput(fuseTo, 1)), 500 * 1e18); // WBTC scaled up
-        assertEq(uint256(mock.getInput(fuseTo, 2)), 200 * 1e6); // DAI scaled down
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000 * 1e18, "USDC should scale up from 6 to 18 decimals");
+        assertEq(uint256(mock.getInput(fuseTo, 1)), 500 * 1e18, "WBTC should scale up from 8 to 18 decimals");
+        assertEq(uint256(mock.getInput(fuseTo, 2)), 200 * 1e6, "DAI should scale down from 18 to 6 decimals");
+    }
+
+    // ============================================
+    // INT TO INT CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test INT256 positive to INT128 conversion
+    function testShouldConvertInt256ToInt128PositiveSuccessfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = 1000e18;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT128,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int128 result = int128(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int128(value), "Should convert positive INT256 to INT128 correctly");
+    }
+
+    /// @notice Test INT256 negative to INT128 conversion
+    function testShouldConvertInt256ToInt128NegativeSuccessfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -1000e18;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT128,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int128 result = int128(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int128(value), "Should convert negative INT256 to INT128 correctly");
+    }
+
+    /// @notice Test INT128 negative to INT256 extension
+    function testShouldConvertInt128ToInt256NegativeSuccessfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int128 value = -500e6;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(int256(value)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT128,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int256 result = int256(uint256(mock.getInput(fuseTo, 0)));
+        assertEq(result, int256(value), "Should convert negative INT128 to INT256 correctly");
+    }
+
+    /// @notice Test INT256 negative with decimal scale up preserves sign
+    function testShouldConvertInt256NegativeScaleUp6To18Decimals() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -1000 * 1e6; // -1000 with 6 decimals
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 6,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 18
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int256 result = int256(uint256(mock.getInput(fuseTo, 0)));
+        assertEq(result, -1000 * 1e18, "Should scale up negative INT256 from 6 to 18 decimals preserving sign");
+    }
+
+    /// @notice Test INT256 negative with decimal scale down preserves sign
+    function testShouldConvertInt256NegativeScaleDown18To6Decimals() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -1000 * 1e18; // -1000 with 18 decimals
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 18,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 6
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int256 result = int256(uint256(mock.getInput(fuseTo, 0)));
+        assertEq(result, -1000 * 1e6, "Should scale down negative INT256 from 18 to 6 decimals preserving sign");
+    }
+
+    // ============================================
+    // INT TO UINT CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test positive INT256 to UINT256 conversion
+    function testShouldConvertInt256PositiveToUint256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = 1000e18;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert positive INT256 to UINT256 correctly");
+    }
+
+    /// @notice Test negative INT256 to UINT256 reverts
+    function testShouldRevertWhenNegativeInt256ToUint256() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -1000e18;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseNegativeValueNotAllowed.selector,
+                value,
+                DataType.UINT256
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test negative INT128 to UINT256 reverts
+    function testShouldRevertWhenNegativeInt128ToUint256() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int128 value = -500e6;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(int256(value)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT128,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseNegativeValueNotAllowed.selector,
+                int256(value),
+                DataType.UINT256
+            )
+        );
+        mock.enter(data);
+    }
+
+    // ============================================
+    // UINT TO INT CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test UINT256 to INT256 in positive range
+    function testShouldConvertUint256ToInt256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 1000e18;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int256 result = int256(uint256(mock.getInput(fuseTo, 0)));
+        assertEq(result, int256(value), "Should convert INT128 positive to INT256 correctly");
+    }
+
+    /// @notice Test UINT256 exceeds INT256 max reverts
+    function testShouldRevertWhenUint256ExceedsInt256Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(type(int256).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                value,
+                DataType.INT256
+            )
+        );
+        mock.enter(data);
+    }
+
+    // ============================================
+    // ADDRESS CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test ADDRESS to UINT256 conversion
+    function testShouldConvertAddressToUint256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        address testAddr = address(0x1234567890AbcdEF1234567890aBcdef12345678);
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(uint160(testAddr)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.ADDRESS,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(uint160(testAddr)), "Should convert ADDRESS to UINT256 correctly");
+    }
+
+    /// @notice Test UINT256 to ADDRESS conversion (within uint160 range)
+    function testShouldConvertUint256ToAddressSuccessfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(uint160(address(0xDEAD)));
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.ADDRESS,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(address(uint160(uint256(mock.getInput(fuseTo, 0)))), address(0xDEAD), "Should convert UINT256 to ADDRESS correctly");
+    }
+
+    /// @notice Test UINT256 > uint160.max to ADDRESS reverts
+    function testShouldRevertWhenUint256ExceedsUint160ForAddress() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(type(uint160).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.ADDRESS,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                value,
+                DataType.ADDRESS
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test ADDRESS to INT256 conversion reverts (invalid path)
+    function testShouldRevertWhenAddressToInt256() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(uint160(address(0xDEAD))));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.ADDRESS,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseInvalidConversion.selector,
+                DataType.ADDRESS,
+                DataType.INT256
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test INT256 to ADDRESS conversion reverts (invalid path)
+    function testShouldRevertWhenInt256ToAddress() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = 1000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.ADDRESS,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseInvalidConversion.selector,
+                DataType.INT256,
+                DataType.ADDRESS
+            )
+        );
+        mock.enter(data);
+    }
+
+    // ============================================
+    // BOOL CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test BOOL true to UINT256 conversion
+    function testShouldConvertBoolTrueToUint256() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(1)); // true
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BOOL,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1, "BOOL true should convert to UINT256 value 1");
+    }
+
+    /// @notice Test BOOL false to UINT256 conversion
+    function testShouldConvertBoolFalseToUint256() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(0)); // false
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BOOL,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 0, "BOOL false should convert to UINT256 value 0");
+    }
+
+    /// @notice Test BOOL to ADDRESS conversion reverts (invalid path)
+    function testShouldRevertWhenBoolToAddress() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(1)); // true
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BOOL,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.ADDRESS,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseInvalidConversion.selector,
+                DataType.BOOL,
+                DataType.ADDRESS
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test negative INT256 to BOOL (non-zero -> true)
+    function testShouldConvertInt256NegativeToBoolTrue() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -1000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BOOL,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1, "Negative INT256 should convert to BOOL true (non-zero)");
+    }
+
+    // ============================================
+    // BYTES32 CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test BYTES32 to UINT256 conversion
+    function testShouldConvertBytes32ToUint256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32 value = keccak256("test");
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = value;
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BYTES32,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert BYTES32 to UINT256 correctly");
+    }
+
+    /// @notice Test INT256 to BYTES32 conversion
+    function testShouldConvertInt256ToBytes32Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -12345;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BYTES32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        // Should pass through directly
+        assertEq(mock.getInput(fuseTo, 0), bytes32(uint256(value)), "Should convert INT256 to BYTES32 correctly");
+    }
+
+    // ============================================
+    // DECIMAL OVERFLOW TESTS
+    // ============================================
+
+    /// @notice Test decimal scale up overflow reverts
+    function testShouldRevertWhenDecimalScaleUpOverflows() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        // Large value that will overflow when multiplied by 10^12
+        uint256 value = type(uint256).max / 1e11; // Just above what will overflow
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 6,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 18
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseDecimalOverflow.selector,
+                value,
+                6,
+                18
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test signed decimal scale up overflow reverts
+    function testShouldRevertWhenSignedDecimalScaleUpOverflows() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        // Large positive signed value that will overflow
+        int256 value = type(int256).max / 1e11;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 6,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 18
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseSignedDecimalOverflow.selector,
+                value,
+                6,
+                18
+            )
+        );
+        mock.enter(data);
+    }
+
+    // ============================================
+    // VALUE OUT OF RANGE TESTS
+    // ============================================
+
+    /// @notice Test UINT256 exceeds UINT128 max reverts
+    function testShouldRevertWhenUint256ExceedsUint128Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(type(uint128).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT128,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                value,
+                DataType.UINT128
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test INT256 exceeds INT128 max reverts
+    function testShouldRevertWhenInt256ExceedsInt128Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = int256(type(int128).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT128,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                uint256(value),
+                DataType.INT128
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test INT256 below INT128 min reverts
+    function testShouldRevertWhenInt256BelowInt128Min() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = int256(type(int128).min) - 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT128,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                uint256(-value), // absolute value
+                DataType.INT128
+            )
+        );
+        mock.enter(data);
+    }
+
+    // ============================================
+    // DECIMAL BYPASS FOR NON-NUMERIC TESTS
+    // ============================================
+
+    /// @notice Test decimals are ignored for ADDRESS conversion
+    function testShouldIgnoreDecimalsForAddressConversion() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        address testAddr = address(0xDEAD);
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(uint160(testAddr)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.ADDRESS,
+            dataFromDecimals: 6, // Should be ignored
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 18 // Should be ignored
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        // Value should NOT be scaled - decimals ignored for ADDRESS
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(uint160(testAddr)), "ADDRESS conversion should ignore decimals");
+    }
+
+    /// @notice Test decimals are ignored for BOOL conversion
+    function testShouldIgnoreDecimalsForBoolConversion() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(1)); // true
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BOOL,
+            dataFromDecimals: 6, // Should be ignored
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 18 // Should be ignored
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        // Value should be 1, not 1e12
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1, "BOOL conversion should ignore decimals");
+    }
+
+    // ============================================
+    // SMALLER SIGNED TYPE CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test INT64 positive to INT256 conversion
+    function testShouldConvertInt64ToInt256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int64 value = 1000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(int256(value)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT64,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(value), "Should convert INT64 to INT256 correctly");
+    }
+
+    /// @notice Test INT32 negative to INT256 conversion
+    function testShouldConvertInt32NegativeToInt256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int32 value = -500000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(int256(value)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT32,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(value), "Should convert INT32 to INT256 correctly");
+    }
+
+    /// @notice Test INT16 conversion
+    function testShouldConvertInt16ToInt256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int16 value = -1000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(int256(value)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT16,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(value), "Should convert INT16 to INT256 correctly");
+    }
+
+    /// @notice Test INT8 conversion
+    function testShouldConvertInt8ToInt256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int8 value = -100;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(int256(value)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT8,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(value), "Should convert INT8 to INT256 correctly");
+    }
+
+    /// @notice Test INT256 to INT64 positive conversion
+    function testShouldConvertInt256ToInt64PositiveSuccessfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = 1000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT64,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int64 result = int64(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int64(value), "Should convert INT256 to INT64 correctly");
+    }
+
+    /// @notice Test INT256 to INT32 conversion
+    function testShouldConvertInt256ToInt32Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -10000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int32 result = int32(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int32(value), "Should convert INT256 to INT32 correctly");
+    }
+
+    /// @notice Test INT256 to INT16 conversion
+    function testShouldConvertInt256ToInt16Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = 1000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT16,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int16 result = int16(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int16(value), "Should convert INT256 to INT16 correctly");
+    }
+
+    /// @notice Test INT256 to INT8 conversion
+    function testShouldConvertInt256ToInt8Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -50;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT8,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int8 result = int8(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int8(value), "Should convert INT256 to INT8 correctly");
+    }
+
+    // ============================================
+    // SMALLER UNSIGNED TYPE CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test UINT64 to UINT256 conversion
+    function testShouldConvertUint64ToUint256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint64 value = 1000000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT64,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert UINT64 to UINT256 correctly");
+    }
+
+    /// @notice Test UINT32 to UINT256 conversion
+    function testShouldConvertUint32ToUint256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint32 value = 1000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT32,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert UINT32 to UINT256 correctly");
+    }
+
+    /// @notice Test UINT16 to UINT256 conversion
+    function testShouldConvertUint16ToUint256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint16 value = 50000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT16,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert UINT16 to UINT256 correctly");
+    }
+
+    /// @notice Test UINT8 to UINT256 conversion
+    function testShouldConvertUint8ToUint256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint8 value = 200;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT8,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert UINT8 to UINT256 correctly");
+    }
+
+    /// @notice Test UINT256 to UINT64 conversion
+    function testShouldConvertUint256ToUint64Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 1000000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT64,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint64(uint256(mock.getInput(fuseTo, 0))), uint64(value), "Should convert UINT256 to UINT64 correctly");
+    }
+
+    /// @notice Test UINT256 to UINT32 conversion
+    function testShouldConvertUint256ToUint32Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 1000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint32(uint256(mock.getInput(fuseTo, 0))), uint32(value), "Should convert UINT256 to UINT32 correctly");
+    }
+
+    /// @notice Test UINT256 to UINT16 conversion
+    function testShouldConvertUint256ToUint16Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 50000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT16,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint16(uint256(mock.getInput(fuseTo, 0))), uint16(value), "Should convert UINT256 to UINT16 correctly");
+    }
+
+    /// @notice Test UINT256 to UINT8 conversion
+    function testShouldConvertUint256ToUint8Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 200;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT8,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint8(uint256(mock.getInput(fuseTo, 0))), uint8(value), "Should convert UINT256 to UINT8 correctly");
+    }
+
+    // ============================================
+    // ADDITIONAL OUT OF RANGE TESTS
+    // ============================================
+
+    /// @notice Test UINT256 exceeds UINT64 max reverts
+    function testShouldRevertWhenUint256ExceedsUint64Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(type(uint64).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT64,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                value,
+                DataType.UINT64
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test UINT256 exceeds UINT32 max reverts
+    function testShouldRevertWhenUint256ExceedsUint32Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(type(uint32).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                value,
+                DataType.UINT32
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test UINT256 exceeds UINT16 max reverts
+    function testShouldRevertWhenUint256ExceedsUint16Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(type(uint16).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT16,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                value,
+                DataType.UINT16
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test UINT256 exceeds UINT8 max reverts
+    function testShouldRevertWhenUint256ExceedsUint8Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(type(uint8).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT8,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                value,
+                DataType.UINT8
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test INT256 exceeds INT64 max reverts
+    function testShouldRevertWhenInt256ExceedsInt64Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = int256(type(int64).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT64,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                uint256(value),
+                DataType.INT64
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test INT256 exceeds INT32 max reverts
+    function testShouldRevertWhenInt256ExceedsInt32Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = int256(type(int32).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                uint256(value),
+                DataType.INT32
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test INT256 exceeds INT16 max reverts
+    function testShouldRevertWhenInt256ExceedsInt16Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = int256(type(int16).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT16,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                uint256(value),
+                DataType.INT16
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test INT256 exceeds INT8 max reverts
+    function testShouldRevertWhenInt256ExceedsInt8Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = int256(type(int8).max) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT8,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                uint256(value),
+                DataType.INT8
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test UINT256 exceeds INT128 max reverts (for unsigned to signed)
+    function testShouldRevertWhenUint256ExceedsInt128Max() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = uint256(uint128(type(int128).max)) + 1;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT128,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransientStorageMapperFuse.TransientStorageMapperFuseValueOutOfRange.selector,
+                value,
+                DataType.INT128
+            )
+        );
+        mock.enter(data);
+    }
+
+    /// @notice Test UINT256 to INT64 conversion within range
+    function testShouldConvertUint256ToInt64Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 1000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT64,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int64 result = int64(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int64(int256(value)), "Should convert UINT256 to INT64 correctly");
+    }
+
+    /// @notice Test UINT256 to INT32 conversion within range
+    function testShouldConvertUint256ToInt32Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 10000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int32 result = int32(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int32(int256(value)), "Should convert UINT256 to INT32 correctly");
+    }
+
+    /// @notice Test UINT256 to INT16 conversion within range
+    function testShouldConvertUint256ToInt16Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 1000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT16,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int16 result = int16(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int16(int256(value)), "Should convert UINT256 to INT16 correctly");
+    }
+
+    /// @notice Test UINT256 to INT8 conversion within range
+    function testShouldConvertUint256ToInt8Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 100;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT8,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int8 result = int8(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int8(int256(value)), "Should convert UINT256 to INT8 correctly");
+    }
+
+    // ============================================
+    // ADDITIONAL UINT TO INT CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test UINT128 to INT256 conversion
+    function testShouldConvertUint128ToInt256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint128 value = 1000000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT128,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(uint256(value)), "Should convert UINT128 to INT256 correctly");
+    }
+
+    /// @notice Test UINT256 to INT128 conversion within range
+    function testShouldConvertUint256ToInt128Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 1000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT128,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        int128 result = int128(int256(uint256(mock.getInput(fuseTo, 0))));
+        assertEq(result, int128(int256(value)), "Should convert UINT256 to INT128 correctly");
+    }
+
+    // ============================================
+    // ADDITIONAL INT TO UINT CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test positive INT128 to UINT256 conversion
+    function testShouldConvertInt128PositiveToUint256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int128 value = 500000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(int256(value)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT128,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(int256(value)), "Should convert positive INT256 to UINT256 correctly");
+    }
+
+    /// @notice Test positive INT256 to UINT128 conversion
+    function testShouldConvertInt256PositiveToUint128Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = 1000000;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT128,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint128(uint256(mock.getInput(fuseTo, 0))), uint128(uint256(value)), "Should convert positive INT256 to UINT128 correctly");
+    }
+
+    // ============================================
+    // ADDITIONAL BOOL CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test BOOL true to INT256 conversion
+    function testShouldConvertBoolTrueToInt256() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(1)); // true
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BOOL,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(1), "BOOL true should convert to INT256 value 1");
+    }
+
+    /// @notice Test BOOL false to INT256 conversion
+    function testShouldConvertBoolFalseToInt256() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(0)); // false
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BOOL,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(0), "BOOL false should convert to INT256 value 0");
+    }
+
+    /// @notice Test UINT256 non-zero to BOOL conversion
+    function testShouldConvertUint256NonZeroToBoolTrue() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(12345));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BOOL,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1, "UINT256 non-zero should convert to BOOL true");
+    }
+
+    /// @notice Test UINT256 zero to BOOL conversion
+    function testShouldConvertUint256ZeroToBoolFalse() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(0));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BOOL,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 0, "UINT256 zero should convert to BOOL false");
+    }
+
+    /// @notice Test INT256 zero to BOOL conversion
+    function testShouldConvertInt256ZeroToBoolFalse() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = 0;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BOOL,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 0, "INT256 zero should convert to BOOL false");
+    }
+
+    // ============================================
+    // ADDITIONAL BYTES32 CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test BYTES32 to INT256 conversion
+    function testShouldConvertBytes32ToInt256Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32 value = bytes32(uint256(12345));
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = value;
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BYTES32,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(12345), "Should convert BYTES32 to INT256 correctly");
+    }
+
+    /// @notice Test BYTES32 to ADDRESS conversion
+    function testShouldConvertBytes32ToAddressSuccessfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        address testAddr = address(0xDEADBEEF);
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(uint160(testAddr)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BYTES32,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.ADDRESS,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(address(uint160(uint256(mock.getInput(fuseTo, 0)))), testAddr, "Should convert BYTES32 to ADDRESS correctly");
+    }
+
+    /// @notice Test BYTES32 non-zero to BOOL conversion
+    function testShouldConvertBytes32ToBoolNonZero() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = keccak256("non-zero");
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BYTES32,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BOOL,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1, "BYTES32 non-zero should convert to BOOL true");
+    }
+
+    /// @notice Test BYTES32 zero to BOOL conversion
+    function testShouldConvertBytes32ToBoolZero() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(0);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.BYTES32,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BOOL,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 0, "BYTES32 zero should convert to BOOL false");
+    }
+
+    /// @notice Test UINT256 to BYTES32 conversion
+    function testShouldConvertUint256ToBytes32Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 123456789;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BYTES32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(mock.getInput(fuseTo, 0), bytes32(value), "Should convert UINT256 to BYTES32 correctly");
+    }
+
+    // ============================================
+    // ADDITIONAL ADDRESS CONVERSION TESTS
+    // ============================================
+
+    /// @notice Test ADDRESS to BOOL true (non-zero address)
+    function testShouldConvertAddressToBoolTrue() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(uint160(address(0xDEAD))));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.ADDRESS,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BOOL,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1, "ADDRESS non-zero should convert to BOOL true");
+    }
+
+    /// @notice Test ADDRESS to BOOL false (zero address)
+    function testShouldConvertAddressToBoolFalse() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(0)); // address(0)
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.ADDRESS,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BOOL,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 0, "ADDRESS zero should convert to BOOL false");
+    }
+
+    /// @notice Test ADDRESS to BYTES32 conversion
+    function testShouldConvertAddressToBytes32Successfully() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        address testAddr = address(0x1234567890AbcdEF1234567890aBcdef12345678);
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(uint160(testAddr)));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.ADDRESS,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.BYTES32,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(mock.getInput(fuseTo, 0), bytes32(uint256(uint160(testAddr))), "Should convert ADDRESS to BYTES32 correctly");
+    }
+
+    // ============================================
+    // DECIMAL CONVERSION COVERAGE TESTS
+    // ============================================
+
+    /// @notice Test INT256 to UINT256 with decimal conversion (line 199)
+    function testShouldConvertInt256ToUint256WithDecimals() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = 1000 * 1e6; // 1000 with 6 decimals
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 6,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 18
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000 * 1e18, "Should convert INT256 (6 decimals) to UINT256 (18 decimals) correctly");
+    }
+
+    /// @notice Test UINT256 to INT256 with decimal conversion (line 250-251)
+    function testShouldConvertUint256ToInt256WithDecimals() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 500 * 1e6; // 500 with 6 decimals
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 6,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 18
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), 500 * 1e18, "Should convert UINT256 (6 decimals) to INT256 (18 decimals) correctly");
+    }
+
+    /// @notice Test INT256 to INT256 same decimals (line 300 - early return)
+    function testShouldConvertInt256ToInt256SameDecimals() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        int256 value = -12345;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(uint256(value));
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.INT256,
+            dataFromDecimals: 18,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.INT256,
+            dataToDecimals: 18
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), value, "INT256 to INT256 with same decimals should remain unchanged");
+    }
+
+    /// @notice Test UINT256 to UINT256 same decimals (line 441 - early return)
+    function testShouldConvertUint256ToUint256SameDecimals() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 999888777;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 6,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 6
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), value, "UINT256 to UINT256 with same decimals should remain unchanged");
+    }
+
+    // ============================================
+    // BACKWARD COMPATIBILITY TESTS
+    // ============================================
+
+    /// @notice Test existing UINT256 to UINT256 no decimals unchanged
+    function testExistingUint256ToUint256NoDecimalsUnchanged() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 123456789;
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 0,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 0
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), value, "UINT256 to UINT256 with no decimals should remain unchanged (backward compatibility)");
+    }
+
+    /// @notice Test existing decimal conversion unchanged (backward compatibility)
+    function testExistingDecimalConversionUnchanged() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        uint256 value = 1000 * 1e6; // 1000 USDC
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = bytes32(value);
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UINT256,
+            dataFromDecimals: 6,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 18
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000 * 1e18, "Decimal conversion should work correctly (backward compatibility)");
+    }
+
+    /// @notice Test existing UNKNOWN type bypass unchanged (backward compatibility)
+    function testExistingUnknownTypeBypassUnchanged() public {
+        address fuseFrom = address(0x1);
+        address fuseTo = address(0x2);
+
+        bytes32 value = keccak256("arbitrary data");
+        bytes32[] memory inputs = new bytes32[](1);
+        inputs[0] = value;
+
+        mock.setInputs(fuseFrom, inputs);
+
+        TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+        items[0] = TransientStorageMapperItem({
+            paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+            dataFromAddress: fuseFrom,
+            dataFromIndex: 0,
+            dataFromType: DataType.UNKNOWN,
+            dataFromDecimals: 6,
+            dataToAddress: fuseTo,
+            dataToIndex: 0,
+            dataToType: DataType.UINT256,
+            dataToDecimals: 18
+        });
+
+        bytes32[] memory emptyInputs = new bytes32[](1);
+        mock.setInputs(fuseTo, emptyInputs);
+
+        TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
+        mock.enter(data);
+
+        // Value should pass through unchanged when fromType is UNKNOWN
+        assertEq(mock.getInput(fuseTo, 0), value, "UNKNOWN type should bypass conversion (backward compatibility)");
     }
 }
