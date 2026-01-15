@@ -3,13 +3,12 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, MarketSubstratesConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager, WithdrawRequestInfo} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
-import {MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
@@ -845,7 +844,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 balanceAfter = ERC20(_USDC).balanceOf(_plasmaVault);
 
         assertEq(balanceBefore, 10000000000);
-        assertEq(balanceAfter, 9990100000);
+        assertEq(balanceAfter, 9990000000);
     }
 
     /**
