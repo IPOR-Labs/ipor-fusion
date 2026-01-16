@@ -139,7 +139,7 @@ contract BalancerGaugeFuse is IFuseCommon {
         IERC20(lpToken).forceApprove(data_.gaugeAddress, depositAmount);
         ILiquidityGauge(data_.gaugeAddress).deposit(depositAmount, address(this), false);
 
-        emit BalancerGaugeFuseEnter(VERSION, data_.gaugeAddress, data_.bptAmount);
+        emit BalancerGaugeFuseEnter(VERSION, data_.gaugeAddress, depositAmount);
     }
 
     /// @notice Deposits BPT into a gauge using transient storage for input parameters
