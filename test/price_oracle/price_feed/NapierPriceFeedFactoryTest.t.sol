@@ -13,7 +13,10 @@ import {LogExpMath} from "@pendle/core-v2/contracts/core/libraries/math/LogExpMa
 import {IPermit2} from "../../../contracts/fuses/balancer/ext/IPermit2.sol";
 
 import {NapierPriceFeedFactory} from "../../../contracts/factory/price_feed/NapierPriceFeedFactory.sol";
-import {NapierPriceFeed, ITokiChainlinkCompatOracle} from "../../../contracts/price_oracle/price_feed/NapierPriceFeed.sol";
+import {NapierPtLpPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierPtLpPriceFeed.sol";
+import {ITokiChainlinkCompatOracle} from "../../../contracts/price_oracle/price_feed/ext/ITokiChainlinkCompatOracle.sol";
+import {NapierYtLinearPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierYtLinearPriceFeed.sol";
+import {NapierYtTwapPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierYtTwapPriceFeed.sol";
 import {NapierConstants} from "../../fuses/napier/NapierConstants.sol";
 import {Constants} from "../../../contracts/fuses/napier/utils/Constants.sol";
 import {Actions} from "../../../contracts/fuses/napier/utils/Actions.sol";
@@ -287,10 +290,10 @@ contract NapierPriceFeedFactoryTest is Test {
     function testCreateLinearPriceFeed() public {
         // when
         vm.prank(admin);
-        address priceFeedAddress = feedFactory.create(PRICE_MIDDLEWARE, address(linearOracle));
+        address priceFeedAddress = feedFactory.createPtLpPriceFeed(PRICE_MIDDLEWARE, address(linearOracle));
 
         // then
-        NapierPriceFeed priceFeed = NapierPriceFeed(priceFeedAddress);
+        NapierPtLpPriceFeed priceFeed = NapierPtLpPriceFeed(priceFeedAddress);
         assertEq(priceFeed.PRICE_MIDDLEWARE(), PRICE_MIDDLEWARE, "Price middleware should match");
         assertEq(address(priceFeed.TOKI_CHAINLINK_ORACLE()), address(linearOracle), "Toki oracle should match");
         assertEq(priceFeed.QUOTE(), USDC, "Quote asset should match");
@@ -311,10 +314,10 @@ contract NapierPriceFeedFactoryTest is Test {
     function testCreateTwapPriceFeed() public {
         // when
         vm.prank(admin);
-        address priceFeedAddress = feedFactory.create(PRICE_MIDDLEWARE, address(twapOracle));
+        address priceFeedAddress = feedFactory.createPtLpPriceFeed(PRICE_MIDDLEWARE, address(twapOracle));
 
         // then
-        NapierPriceFeed priceFeed = NapierPriceFeed(priceFeedAddress);
+        NapierPtLpPriceFeed priceFeed = NapierPtLpPriceFeed(priceFeedAddress);
         assertEq(priceFeed.PRICE_MIDDLEWARE(), PRICE_MIDDLEWARE, "Price middleware should match");
         assertEq(address(priceFeed.TOKI_CHAINLINK_ORACLE()), address(twapOracle), "Toki oracle should match");
         assertEq(priceFeed.QUOTE(), USDC, "Quote asset should match");
@@ -332,18 +335,136 @@ contract NapierPriceFeedFactoryTest is Test {
         console2.log("price", price);
     }
 
-    function testCreateWithInvalidPriceMiddlewareAddress() public {
-        // when & then
-        vm.expectRevert(abi.encodeWithSelector(NapierPriceFeedFactory.InvalidAddress.selector));
-        vm.prank(admin);
-        feedFactory.create(address(0), address(linearOracle));
+    function testCreateYtTwapPriceFeed() public {
+        vm.expectEmit(false, false, false, false, address(feedFactory));
+        emit NapierPriceFeedFactory.NapierYtTwapPriceFeedCreated(
+            address(0),
+            NapierConstants.ARB_TOKI_ORACLE,
+            pool,
+            USDC,
+            uint32(TWAP_WINDOW)
+        );
+
+        address priceFeedAddress = feedFactory.createYtTwapPriceFeed(
+            PRICE_MIDDLEWARE,
+            NapierConstants.ARB_TOKI_ORACLE,
+            pool,
+            uint32(TWAP_WINDOW),
+            USDC
+        );
+
+        NapierYtTwapPriceFeed ytFeed = NapierYtTwapPriceFeed(priceFeedAddress);
+        assertEq(address(ytFeed.TOKI_ORACLE()), NapierConstants.ARB_TOKI_ORACLE, "toki oracle");
+        assertEq(ytFeed.LIQUIDITY_TOKEN(), pool, "liquidity token");
+        assertEq(ytFeed.PRICE_MIDDLEWARE(), PRICE_MIDDLEWARE, "price middleware");
+        assertEq(ytFeed.QUOTE(), USDC, "quote");
+        assertEq(ytFeed.UNDERLYING_TOKEN(), Currency.unwrap(poolKey.currency0), "underlying token");
+        assertEq(ytFeed.TWAP_WINDOW(), uint32(TWAP_WINDOW), "twap window");
     }
 
-    function testCreateWithInvalidTokiOracleAddress() public {
+    function testCreateYtLinearPriceFeed() public {
+        NapierYtLinearPriceFeed ytFeed = new NapierYtLinearPriceFeed(PRICE_MIDDLEWARE, address(linearOracle));
+
+        assertEq(address(ytFeed.TOKI_CHAINLINK_ORACLE()), address(linearOracle), "toki oracle");
+        assertEq(ytFeed.LIQUIDITY_TOKEN(), pool, "liquidity token");
+        assertEq(ytFeed.PRICE_MIDDLEWARE(), PRICE_MIDDLEWARE, "price middleware");
+        assertEq(ytFeed.QUOTE(), USDC, "quote");
+        assertEq(ytFeed.BASE(), IPrincipalToken(principalToken).i_yt(), "base should be YT");
+
+        vm.prank(PRICE_MIDDLEWARE);
+        (, int256 price, , uint256 timestamp, ) = ytFeed.latestRoundData();
+        assertGt(price, 0, "price should be positive");
+        assertEq(timestamp, block.timestamp, "timestamp should match");
+    }
+
+    function testRevertWhenCreateYtTwapPriceFeedWithZeroAddresses() public {
+        vm.prank(admin);
+        vm.expectRevert(NapierPriceFeedFactory.InvalidAddress.selector);
+        feedFactory.createYtTwapPriceFeed(address(0), NapierConstants.ARB_TOKI_ORACLE, pool, uint32(TWAP_WINDOW), USDC);
+
+        vm.prank(admin);
+        vm.expectRevert(NapierPriceFeedFactory.InvalidAddress.selector);
+        feedFactory.createYtTwapPriceFeed(PRICE_MIDDLEWARE, address(0), pool, uint32(TWAP_WINDOW), USDC);
+
+        vm.prank(admin);
+        vm.expectRevert(NapierPriceFeedFactory.InvalidAddress.selector);
+        feedFactory.createYtTwapPriceFeed(
+            PRICE_MIDDLEWARE,
+            NapierConstants.ARB_TOKI_ORACLE,
+            address(0),
+            uint32(TWAP_WINDOW),
+            USDC
+        );
+    }
+
+    function testRevertWhenCreateYtTwapPriceFeedWithShortTwapWindow() public {
+        uint32 shortWindow = 1 minutes; // below MIN_TWAP_WINDOW
+
+        vm.prank(admin);
+        vm.expectRevert(NapierYtTwapPriceFeed.PriceOracleInvalidTwapWindow.selector);
+        feedFactory.createYtTwapPriceFeed(PRICE_MIDDLEWARE, NapierConstants.ARB_TOKI_ORACLE, pool, shortWindow, USDC);
+    }
+
+    function testRevertWhenCreateYtPriceFeedWithInvalidQuoteAsset() public {
+        address badQuote = makeAddr("badQuote");
+
+        vm.prank(admin);
+        vm.expectRevert(NapierYtTwapPriceFeed.PriceOracleInvalidQuoteAsset.selector);
+        feedFactory.createYtTwapPriceFeed(
+            PRICE_MIDDLEWARE,
+            NapierConstants.ARB_TOKI_ORACLE,
+            pool,
+            uint32(TWAP_WINDOW),
+            badQuote
+        );
+    }
+
+    function testRevertWhenCreateYtLinearPriceFeedWithInvalidQuoteAsset() public {
+        address badLinearOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
+            NapierConstants.ARB_TOKI_LINEAR_PRICE_ORACLE_IMPL,
+            abi.encode(pool, principalToken, USDC, DISCOUNT_RATE_YEARLY_BPS),
+            ""
+        );
+        bytes memory badImmutableArgs = abi.encode(pool, principalToken, GAUNTLET_USDC_PRIME, 0);
+        vm.mockCall(
+            badLinearOracle,
+            abi.encodeWithSelector(ITokiChainlinkCompatOracle.parseImmutableArgs.selector),
+            badImmutableArgs
+        );
+
+        vm.expectRevert(NapierYtLinearPriceFeed.PriceOracleInvalidQuoteAsset.selector);
+        new NapierYtLinearPriceFeed(PRICE_MIDDLEWARE, badLinearOracle);
+    }
+
+    function testRevertWhenCreateYtLinearPriceFeedWithNonPrincipalBase() public {
+        address badLinearOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
+            NapierConstants.ARB_TOKI_LINEAR_PRICE_ORACLE_IMPL,
+            abi.encode(pool, principalToken, USDC, TWAP_WINDOW),
+            ""
+        );
+        bytes memory badImmutableArgs = abi.encode(pool, pool, GAUNTLET_USDC_PRIME, 0);
+        vm.mockCall(
+            badLinearOracle,
+            abi.encodeWithSelector(ITokiChainlinkCompatOracle.parseImmutableArgs.selector),
+            badImmutableArgs
+        );
+
+        vm.expectRevert(NapierYtLinearPriceFeed.PriceOracleInvalidBaseAsset.selector);
+        new NapierYtLinearPriceFeed(PRICE_MIDDLEWARE, badLinearOracle);
+    }
+
+    function testRevertWhenCreateWithInvalidPriceMiddlewareAddress() public {
         // when & then
         vm.expectRevert(abi.encodeWithSelector(NapierPriceFeedFactory.InvalidAddress.selector));
         vm.prank(admin);
-        feedFactory.create(PRICE_MIDDLEWARE, address(0));
+        feedFactory.createPtLpPriceFeed(address(0), address(linearOracle));
+    }
+
+    function testRevertWhenCreateWithInvalidTokiOracleAddress() public {
+        // when & then
+        vm.expectRevert(abi.encodeWithSelector(NapierPriceFeedFactory.InvalidAddress.selector));
+        vm.prank(admin);
+        feedFactory.createPtLpPriceFeed(PRICE_MIDDLEWARE, address(0));
     }
 
     function testOwnershipTransfer() public {

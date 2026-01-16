@@ -4,17 +4,7 @@ pragma solidity 0.8.26;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IPriceFeed} from "./IPriceFeed.sol";
 import {IPriceOracleMiddleware} from "../IPriceOracleMiddleware.sol";
-import {AggregatorV3Interface} from "../ext/AggregatorV3Interface.sol";
-
-/// @notice Standard interface for {TokiTWAPChainlinkOracle} and {TokiLinearChainlinkOracle}
-interface ITokiChainlinkCompatOracle is AggregatorV3Interface {
-    /// @notice Returns the immutable arguments of the Toki Chainlink compatible oracle
-    /// @dev Linear discount oracle supports only PT as base asset
-    /// @return liquidityToken Address of the Napier liquidity token (Toki pool token)
-    /// @return base Address of the base asset (PT or LP)
-    /// @return quote Address of the pricing asset (asset or underlying)
-    function parseImmutableArgs() external view returns (address liquidityToken, address base, address quote, uint256);
-}
+import {ITokiChainlinkCompatOracle} from "./ext/ITokiChainlinkCompatOracle.sol";
 
 /// @title Price feed for Napier v2 Principal Tokens and LP tokens
 /// @notice Provides USD price data for Napier PT tokens using the Toki chainlink compatible oracle
@@ -22,7 +12,7 @@ interface ITokiChainlinkCompatOracle is AggregatorV3Interface {
 /// - Expects the provided Toki chainlink compatible oracle to be pre-initialized and populated for the pool
 /// - PriceOracleMiddleware must have a source configured for the chosen pricing asset (asset or underlying),
 ///   as determined by the Toki oracle's immutable configuration
-contract NapierPriceFeed is IPriceFeed {
+contract NapierPtLpPriceFeed is IPriceFeed {
     using SafeCast for *;
 
     uint8 public constant TOKI_CHAINLINK_ORACLE_DECIMALS = 18;

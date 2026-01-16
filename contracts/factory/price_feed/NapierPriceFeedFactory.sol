@@ -3,7 +3,9 @@ pragma solidity 0.8.26;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {NapierPriceFeed} from "../../price_oracle/price_feed/NapierPriceFeed.sol";
+import {NapierPtLpPriceFeed} from "../../price_oracle/price_feed/NapierPtLpPriceFeed.sol";
+import {NapierYtLinearPriceFeed} from "../../price_oracle/price_feed/NapierYtLinearPriceFeed.sol";
+import {NapierYtTwapPriceFeed} from "../../price_oracle/price_feed/NapierYtTwapPriceFeed.sol";
 
 /// @title NapierPriceFeedFactory
 /// @notice Factory contract for creating price feeds for Napier Principal Tokens (PT) and LP tokens
@@ -12,7 +14,26 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     /// @notice Emitted when a new Napier price feed is created
     /// @param priceFeed The address of the newly created price feed
     /// @param tokiChainlinkOracle The address of the Toki Chainlink compatible oracle
-    event NapierPriceFeedCreated(address priceFeed, address tokiChainlinkOracle);
+    event NapierPtLpPriceFeedCreated(address priceFeed, address tokiChainlinkOracle);
+
+    /// @notice Emitted when a new Napier YT price feed is created
+    /// @param priceFeed The address of the newly created YT price feed
+    /// @param tokiOracle The address of the Toki oracle used for TWAP conversions
+    /// @param liquidityToken The Napier pool liquidity token
+    /// @param quoteAsset The quote asset (underlying or base asset) used for USD pricing
+    /// @param twapWindow TWAP window configured for the feed
+    event NapierYtTwapPriceFeedCreated(
+        address priceFeed,
+        address tokiOracle,
+        address liquidityToken,
+        address quoteAsset,
+        uint32 twapWindow
+    );
+
+    /// @notice Emitted when a new Napier YT linear price feed is created
+    /// @param priceFeed The address of the newly created YT linear price feed
+    /// @param tokiChainlinkOracle The address of the Toki Chainlink compatible oracle
+    event NapierYtLinearPriceFeedCreated(address priceFeed, address tokiChainlinkOracle);
 
     /// @notice Error thrown when an invalid address (zero address) is provided
     error InvalidAddress();
@@ -37,7 +58,7 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     /// @param priceMiddleware_ Address of the price oracle middleware
     /// @param tokiChainlinkOracle_ Address of the Toki Chainlink compatible oracle
     /// @return priceFeedAddress The address of the newly created price feed
-    function create(
+    function createPtLpPriceFeed(
         address priceMiddleware_,
         address tokiChainlinkOracle_
     ) external returns (address priceFeedAddress) {
@@ -45,9 +66,49 @@ contract NapierPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
             revert InvalidAddress();
         }
 
-        NapierPriceFeed napierPriceFeed = new NapierPriceFeed(priceMiddleware_, tokiChainlinkOracle_);
+        NapierPtLpPriceFeed napierPriceFeed = new NapierPtLpPriceFeed(priceMiddleware_, tokiChainlinkOracle_);
         priceFeedAddress = address(napierPriceFeed);
-        emit NapierPriceFeedCreated(priceFeedAddress, tokiChainlinkOracle_);
+        emit NapierPtLpPriceFeedCreated(priceFeedAddress, tokiChainlinkOracle_);
+    }
+
+    function createYtTwapPriceFeed(
+        address priceMiddleware_,
+        address tokiOracle_,
+        address liquidityToken_,
+        uint32 twapWindow_,
+        address quoteAsset_
+    ) external returns (address priceFeedAddress) {
+        if (priceMiddleware_ == address(0) || tokiOracle_ == address(0) || liquidityToken_ == address(0)) {
+            revert InvalidAddress();
+        }
+
+        NapierYtTwapPriceFeed napierPriceFeed = new NapierYtTwapPriceFeed(
+            priceMiddleware_,
+            tokiOracle_,
+            liquidityToken_,
+            twapWindow_,
+            quoteAsset_
+        );
+        priceFeedAddress = address(napierPriceFeed);
+        emit NapierYtTwapPriceFeedCreated(priceFeedAddress, tokiOracle_, liquidityToken_, quoteAsset_, twapWindow_);
+    }
+
+    /// @notice Creates a new Napier YT linear price feed instance
+    /// @dev Validates provided addresses before deploying a new feed
+    /// @param priceMiddleware_ Address of the price oracle middleware
+    /// @param tokiChainlinkOracle_ Address of the Toki Chainlink compatible oracle
+    /// @return priceFeedAddress The address of the newly created price feed
+    function createYtLinearPriceFeed(
+        address priceMiddleware_,
+        address tokiChainlinkOracle_
+    ) external returns (address priceFeedAddress) {
+        if (priceMiddleware_ == address(0) || tokiChainlinkOracle_ == address(0)) {
+            revert InvalidAddress();
+        }
+
+        NapierYtLinearPriceFeed napierPriceFeed = new NapierYtLinearPriceFeed(priceMiddleware_, tokiChainlinkOracle_);
+        priceFeedAddress = address(napierPriceFeed);
+        emit NapierYtLinearPriceFeedCreated(priceFeedAddress, tokiChainlinkOracle_);
     }
 
     /// @notice Authorizes an upgrade to a new implementation

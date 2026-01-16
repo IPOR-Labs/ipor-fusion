@@ -47,7 +47,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contract
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {NapierHelper, ITokiHook, ITokiOracle} from "./NapierHelper.sol";
 import {LogExpMath} from "@pendle/core-v2/contracts/core/libraries/math/LogExpMath.sol";
-import {NapierPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierPriceFeed.sol";
+import {NapierPtLpPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierPtLpPriceFeed.sol";
 import {ERC4626PriceFeed} from "../../../contracts/price_oracle/price_feed/ERC4626PriceFeed.sol";
 import {ApproximationParams} from "../../../contracts/fuses/napier/ext/ApproximationParams.sol";
 import {NapierConstants} from "./NapierConstants.sol";
@@ -411,8 +411,8 @@ contract NapierSupplyFuseTest is Test {
             abi.encode(pool, pool, USDC, LP_TWAP_WINDOW), // liquidityToken, base, quote, twapWindow
             ""
         );
-        _napierPtPriceFeed = address(new NapierPriceFeed(address(_priceOracleMiddleware), _ptLinarOracle));
-        _napierLpPriceFeed = address(new NapierPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
+        _napierPtPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _ptLinarOracle));
+        _napierLpPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
         address[] memory assets = new address[](2);
         assets[0] = principalToken;
         assets[1] = pool;
