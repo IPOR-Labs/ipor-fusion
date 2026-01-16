@@ -150,7 +150,8 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         _velodromSuperchainSlipstreamBalanceFuse = new VelodromeSuperchainSlipstreamBalanceFuse(
             IporFusionMarkets.VELODROME_SUPERCHAIN_SLIPSTREAM,
             _NONFUNGIBLE_POSITION_MANAGER,
-            _SLIPSTREAM_SUPERCHAIN_SUGAR
+            _SLIPSTREAM_SUPERCHAIN_SUGAR,
+            50 // DEFAULT_MAX_POSITIONS_PER_SUBSTRATE
         );
 
         _velodromeGaugeClaimFuse = new VelodromeSuperchainSlipstreamGaugeClaimFuse(
