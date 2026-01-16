@@ -109,7 +109,7 @@ contract NapierSupplyFuseTest is Test {
     PriceOracleMiddleware private _priceOracleMiddleware;
 
     // Price feeds
-    address private _ptLinarOracle;
+    address private _ptLinearOracle;
     address private _napierPtPriceFeed;
     address private _napierLpPriceFeed;
     address private _lpTwapOracle;
@@ -401,7 +401,7 @@ contract NapierSupplyFuseTest is Test {
         // By default, on Ethereum the system uses Chainlink registry for price feeds.
         // On all chains, it uses a general priceOracleMiddleware predefined by IPOR DAO.
         // However, any price feed can be overridden in the PriceOracleMiddlewareManager.
-        _ptLinarOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
+        _ptLinearOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
             NapierConstants.ARB_TOKI_LINEAR_PRICE_ORACLE_IMPL,
             abi.encode(pool, principalToken, USDC, 100), // liquidityToken, base, quote, discountRatePerYearBps
             ""
@@ -411,7 +411,8 @@ contract NapierSupplyFuseTest is Test {
             abi.encode(pool, pool, USDC, LP_TWAP_WINDOW), // liquidityToken, base, quote, twapWindow
             ""
         );
-        _napierPtPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _ptLinarOracle));
+        // TODO
+        _napierPtPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
         _napierLpPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
         address[] memory assets = new address[](2);
         assets[0] = principalToken;
