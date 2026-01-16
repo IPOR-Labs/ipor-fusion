@@ -305,7 +305,7 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
         VelodromeSuperchainSlipstreamModifyPositionFuseExitData
             memory data_ = VelodromeSuperchainSlipstreamModifyPositionFuseExitData({
                 tokenId: TypeConversionLib.toUint256(inputs[0]),
-                liquidity: uint128(TypeConversionLib.toUint256(inputs[1])),
+                liquidity: TypeConversionLib.toUint128(TypeConversionLib.toUint256(inputs[1])),
                 amount0Min: TypeConversionLib.toUint256(inputs[2]),
                 amount1Min: TypeConversionLib.toUint256(inputs[3]),
                 deadline: TypeConversionLib.toUint256(inputs[4])
