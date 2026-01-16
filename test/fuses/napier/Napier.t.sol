@@ -48,6 +48,7 @@ import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawMana
 import {NapierHelper, ITokiHook, ITokiOracle} from "./NapierHelper.sol";
 import {LogExpMath} from "@pendle/core-v2/contracts/core/libraries/math/LogExpMath.sol";
 import {NapierPtLpPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierPtLpPriceFeed.sol";
+import {NapierYtLinearPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierYtLinearPriceFeed.sol";
 import {ERC4626PriceFeed} from "../../../contracts/price_oracle/price_feed/ERC4626PriceFeed.sol";
 import {ApproximationParams} from "../../../contracts/fuses/napier/ext/ApproximationParams.sol";
 import {NapierConstants} from "./NapierConstants.sol";
@@ -112,6 +113,7 @@ contract NapierSupplyFuseTest is Test {
     address private _ptLinearOracle;
     address private _napierPtPriceFeed;
     address private _napierLpPriceFeed;
+    address private _napierYtPriceFeed;
     address private _lpTwapOracle;
 
     // Fuses
@@ -411,15 +413,17 @@ contract NapierSupplyFuseTest is Test {
             abi.encode(pool, pool, USDC, LP_TWAP_WINDOW), // liquidityToken, base, quote, twapWindow
             ""
         );
-        // TODO
         _napierPtPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
         _napierLpPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
-        address[] memory assets = new address[](2);
+        _napierYtPriceFeed = address(new NapierYtLinearPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
+        address[] memory assets = new address[](3);
         assets[0] = principalToken;
         assets[1] = pool;
-        address[] memory sources = new address[](2); // Price feed contract address
+        assets[2] = yt;
+        address[] memory sources = new address[](3); // Price feed contract address
         sources[0] = _napierPtPriceFeed;
         sources[1] = _napierLpPriceFeed;
+        sources[2] = _napierYtPriceFeed;
         vm.startPrank(_priceOracleMiddleware.owner());
         _priceOracleMiddleware.setAssetsPricesSources(assets, sources);
         vm.stopPrank();
@@ -457,7 +461,7 @@ contract NapierSupplyFuseTest is Test {
         _plasmaVault.addBalanceFusesToVault(IporFusionMarkets.ERC4626_0001, address(erc4626Balance));
 
         // Add ZeroBalanceFuse for NAPIER market (balance is tracked through ERC20_VAULT_BALANCE dependency)
-        ZeroBalanceFuse napierBalance = new ZeroBalanceFuse(IporFusionMarkets.NAPIER);
+        ERC20BalanceFuse napierBalance = new ERC20BalanceFuse(IporFusionMarkets.NAPIER);
         _plasmaVault.addBalanceFusesToVault(IporFusionMarkets.NAPIER, address(napierBalance));
 
         // Convert vault from private to public mode.
@@ -499,6 +503,17 @@ contract NapierSupplyFuseTest is Test {
 
         // Note: updateMarketsBalances is called automatically by execute() function
         // so we don't need to call it manually in setUp
+    }
+
+    function test_Setup_ConfiguresYtPriceFeedSource() public {
+        address yt = IPrincipalToken(principalToken).i_yt();
+        address ytSource = _priceOracleMiddleware.getSourceOfAssetPrice(yt);
+        address ptSource = _priceOracleMiddleware.getSourceOfAssetPrice(principalToken);
+        address lpSource = _priceOracleMiddleware.getSourceOfAssetPrice(pool);
+
+        assertEq(ytSource, _napierYtPriceFeed, "YT price feed source");
+        assertEq(ptSource, _napierPtPriceFeed, "PT price feed source");
+        assertEq(lpSource, _napierLpPriceFeed, "LP price feed source");
     }
 
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
