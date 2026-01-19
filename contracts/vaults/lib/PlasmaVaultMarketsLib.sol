@@ -15,13 +15,23 @@ library PlasmaVaultMarketsLib {
     using Address for address;
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
+    /// @dev Error thrown when asset price is zero
+    error AssetPriceIsZero();
+
+    /// @notice Updates balances for specified markets by fetching balance from balance fuses and converting from USD to underlying asset
+    /// @param markets_ Array of market IDs to update balances for
+    /// @param assetAddress_ Address of the underlying asset
+    /// @param decimals_ Number of decimals for the underlying asset
+    /// @param decimalsOffset_ Offset to apply when converting decimals
+    /// @return dataToCheck Data structure containing markets and their balances for validation
+    /// @dev Filters zero markets, checks balance fuse dependencies, fetches asset price from oracle,
+    ///      converts balances from USD (WAD) to underlying asset decimals, and updates total assets in markets
     function updateMarketsBalances(
         uint256[] memory markets_,
         address assetAddress_,
         uint256 decimals_,
         uint256 decimalsOffset_
     ) public returns (DataToCheck memory dataToCheck) {
-        // Filter zero values early for efficiency
         uint256[] memory filteredMarkets = _filterZeroMarkets(markets_);
 
         uint256 wadBalanceAmountInUSD;
@@ -31,10 +41,13 @@ library PlasmaVaultMarketsLib {
         uint256[] memory markets = _checkBalanceFusesDependencies(filteredMarkets);
         uint256 marketsLength = markets.length;
 
-        /// @dev USD price is represented in 8 decimals
         (uint256 underlyingAssetPrice, uint256 underlyingAssePriceDecimals) = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         ).getAssetPrice(assetAddress_);
+
+        if (underlyingAssetPrice == 0) {
+            revert AssetPriceIsZero();
+        }
 
         dataToCheck.marketsToCheck = new MarketToCheck[](marketsLength);
 
@@ -71,6 +84,13 @@ library PlasmaVaultMarketsLib {
         emit MarketBalancesUpdated(markets, deltasInUnderlying);
     }
 
+    /// @notice Withdraws assets from markets using instant withdrawal fuses until the required amount is met
+    /// @param assetAddress_ Address of the underlying asset to withdraw
+    /// @param assets_ Total amount of assets needed to be withdrawn
+    /// @param vaultCurrentBalanceUnderlying_ Current balance of the vault in underlying token
+    /// @return markets Array of unique market IDs that were touched during the withdrawal process
+    /// @dev Uses instant withdrawal fuses to withdraw assets from markets, tracking unique market IDs
+    ///      that were affected. The array may contain zero values at the end if fewer markets were used.
     function withdrawFromMarkets(
         address assetAddress_,
         uint256 assets_,

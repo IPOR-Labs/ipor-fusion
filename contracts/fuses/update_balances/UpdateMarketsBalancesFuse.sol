@@ -14,7 +14,6 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 /// @author IPOR Labs
 /// @notice Fuse that triggers market balance updates via PlasmaVault
 /// @dev This fuse runs via delegatecall from PlasmaVault.execute(), so address(this) is the PlasmaVault.
-///      CRITICAL: This contract MUST NOT contain storage variables.
 contract UpdateMarketsBalancesFuse is IFuseCommon, IUpdateMarketsBalancesFuse {
     /// @notice Fuse version identifier (set to deployment address)
     address public immutable VERSION;
