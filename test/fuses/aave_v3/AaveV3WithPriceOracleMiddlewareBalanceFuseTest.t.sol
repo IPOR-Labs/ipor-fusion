@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
+import {FusionFactoryFeePackagesHelper} from "../../test_helpers/FusionFactoryFeePackagesHelper.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
@@ -55,7 +56,11 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
         vm.createSelectFork(vm.envString("BASE_PROVIDER_URL"), 34381896);
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
-        _fusionInstance = fusionFactory.create("AaveV2WithPriceOracleMiddlewareBalanceFuse", "AV2", _WETH, 0, _ATOMIST);
+
+        // Setup fee packages before creating vault
+        FusionFactoryFeePackagesHelper.setupDefaultFeePackages(vm, fusionFactory);
+
+        _fusionInstance = fusionFactory.create("AaveV2WithPriceOracleMiddlewareBalanceFuse", "AV2", _WETH, 0, _ATOMIST, 0);
 
         vm.startPrank(_ATOMIST);
         IporFusionAccessManager(_fusionInstance.accessManager).grantRole(Roles.ATOMIST_ROLE, _ATOMIST, 0);

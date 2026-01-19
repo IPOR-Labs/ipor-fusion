@@ -42,6 +42,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
     event PlasmaVaultAdminArrayUpdated(address[] newPlasmaVaultAdminArray);
+    event FeePackagesUpdated(FusionFactoryStorageLib.FeePackage[] packages, address indexed updatedBy);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -80,6 +81,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param underlyingToken_ The address of the underlying token
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
+    /// @param feePackageIndex_ Index of the fee package to use
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     function create(
@@ -87,7 +89,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         string memory assetSymbol_,
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
-        address owner_
+        address owner_,
+        uint256 feePackageIndex_
     ) external returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.create(
@@ -96,7 +99,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 underlyingToken_,
                 redemptionDelayInSeconds_,
                 owner_,
-                false
+                false,
+                feePackageIndex_
             );
     }
 
@@ -106,6 +110,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param underlyingToken_ The address of the underlying token
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
+    /// @param feePackageIndex_ Index of the fee package to use
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     /// @dev This function clones existing contracts rather than deploying new ones, which is more gas efficient
@@ -114,7 +119,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         string memory assetSymbol_,
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
-        address owner_
+        address owner_,
+        uint256 feePackageIndex_
     ) external returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.clone(
@@ -123,7 +129,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 underlyingToken_,
                 redemptionDelayInSeconds_,
                 owner_,
-                false
+                false,
+                feePackageIndex_
             );
     }
 
@@ -133,6 +140,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param underlyingToken_ The address of the underlying token
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
+    /// @param feePackageIndex_ Index of the fee package to use
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     function createSupervised(
@@ -140,7 +148,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         string memory assetSymbol_,
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
-        address owner_
+        address owner_,
+        uint256 feePackageIndex_
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.create(
@@ -149,7 +158,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 underlyingToken_,
                 redemptionDelayInSeconds_,
                 owner_,
-                true
+                true,
+                feePackageIndex_
             );
     }
 
@@ -159,6 +169,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param underlyingToken_ The address of the underlying token
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
+    /// @param feePackageIndex_ Index of the fee package to use
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     /// @dev This function clones existing contracts rather than deploying new ones, which is more gas efficient
@@ -168,10 +179,19 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         string memory assetSymbol_,
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
-        address owner_
+        address owner_,
+        uint256 feePackageIndex_
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
-            FusionFactoryLib.clone(assetName_, assetSymbol_, underlyingToken_, redemptionDelayInSeconds_, owner_, true);
+            FusionFactoryLib.clone(
+                assetName_,
+                assetSymbol_,
+                underlyingToken_,
+                redemptionDelayInSeconds_,
+                owner_,
+                true,
+                feePackageIndex_
+            );
     }
 
     function updatePlasmaVaultAdminArray(
@@ -184,6 +204,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         emit PlasmaVaultAdminArrayUpdated(newPlasmaVaultAdminArray_);
     }
 
+    /// @notice Updates the DAO fee configuration (DEPRECATED - use setFeePackages instead)
+    /// @dev DEPRECATED: This function is kept for backward compatibility. Use setFeePackages() for new deployments.
     function updateDaoFee(
         address newDaoFeeRecipient_,
         uint256 newDaoManagementFee_,
@@ -196,6 +218,43 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         FusionFactoryStorageLib.setDaoManagementFee(newDaoManagementFee_);
         FusionFactoryStorageLib.setDaoPerformanceFee(newDaoPerformanceFee_);
         emit DaoFeeUpdated(newDaoFeeRecipient_, newDaoManagementFee_, newDaoPerformanceFee_);
+    }
+
+    /// @notice Sets the fee packages array (replaces entire array)
+    /// @param packages_ Array of fee packages to set
+    /// @dev Each package must have valid fees (<=10000) and non-zero recipient
+    function setFeePackages(
+        FusionFactoryStorageLib.FeePackage[] calldata packages_
+    ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
+        if (packages_.length == 0) revert FusionFactoryLib.FeePackagesArrayEmpty();
+
+        uint256 length = packages_.length;
+        for (uint256 i; i < length; ) {
+            if (packages_[i].managementFee > 10000) {
+                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].managementFee, 10000);
+            }
+            if (packages_[i].performanceFee > 10000) {
+                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].performanceFee, 10000);
+            }
+            if (packages_[i].feeRecipient == address(0)) {
+                revert FusionFactoryLib.FeeRecipientZeroAddress();
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Convert calldata to memory for storage
+        FusionFactoryStorageLib.FeePackage[] memory packagesMemory = new FusionFactoryStorageLib.FeePackage[](length);
+        for (uint256 i; i < length; ) {
+            packagesMemory[i] = packages_[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        FusionFactoryStorageLib.setFeePackages(packagesMemory);
+        emit FeePackagesUpdated(packagesMemory, msg.sender);
     }
 
     /// @notice Updates the factory addresses
@@ -379,6 +438,29 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
     function getVestingPeriodInSeconds() external view returns (uint256) {
         return FusionFactoryStorageLib.getVestingPeriodInSeconds();
+    }
+
+    /// @notice Returns all fee packages
+    /// @return Array of fee packages
+    function getFeePackages() external view returns (FusionFactoryStorageLib.FeePackage[] memory) {
+        return FusionFactoryStorageLib.getFeePackages();
+    }
+
+    /// @notice Returns a specific fee package by index
+    /// @param index_ Index of the fee package
+    /// @return Fee package at the specified index
+    function getFeePackage(uint256 index_) external view returns (FusionFactoryStorageLib.FeePackage memory) {
+        uint256 length = FusionFactoryStorageLib.getFeePackagesLength();
+        if (index_ >= length) {
+            revert FusionFactoryLib.FeePackageIndexOutOfBounds(index_, length);
+        }
+        return FusionFactoryStorageLib.getFeePackage(index_);
+    }
+
+    /// @notice Returns the number of fee packages
+    /// @return Number of fee packages
+    function getFeePackagesLength() external view returns (uint256) {
+        return FusionFactoryStorageLib.getFeePackagesLength();
     }
 
     /// @dev Required by the OZ UUPS module
