@@ -21,11 +21,14 @@ library PlasmaVaultMarketsLib {
         uint256 decimals_,
         uint256 decimalsOffset_
     ) public returns (DataToCheck memory dataToCheck) {
+        // Filter zero values early for efficiency
+        uint256[] memory filteredMarkets = _filterZeroMarkets(markets_);
+
         uint256 wadBalanceAmountInUSD;
         // DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-        uint256[] memory markets = _checkBalanceFusesDependencies(markets_);
+        uint256[] memory markets = _checkBalanceFusesDependencies(filteredMarkets);
         uint256 marketsLength = markets.length;
 
         /// @dev USD price is represented in 8 decimals
@@ -204,5 +207,42 @@ library PlasmaVaultMarketsLib {
             }
         }
         return false;
+    }
+
+    /// @notice Filters zero values from markets array
+    /// @param markets_ Array that may contain zero values
+    /// @return Compacted array without zero values
+    function _filterZeroMarkets(uint256[] memory markets_) private pure returns (uint256[] memory) {
+        uint256 length = markets_.length;
+        if (length == 0) {
+            return markets_;
+        }
+
+        // Count non-zero elements
+        uint256 count;
+        for (uint256 i; i < length; ++i) {
+            if (markets_[i] != 0) {
+                unchecked {
+                    ++count;
+                }
+            }
+        }
+
+        // If all elements are non-zero, return original array
+        if (count == length) {
+            return markets_;
+        }
+
+        // Create compacted array
+        uint256[] memory filtered = new uint256[](count);
+        uint256 index;
+        for (uint256 i; i < length; ++i) {
+            if (markets_[i] != 0) {
+                filtered[index] = markets_[i];
+                ++index;
+            }
+        }
+
+        return filtered;
     }
 }
