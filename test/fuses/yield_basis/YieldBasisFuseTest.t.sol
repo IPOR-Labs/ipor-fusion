@@ -686,8 +686,16 @@ contract YieldBasisFuseTest is Test {
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), atomist);
         vm.stopPrank();
 
+        // Setup fee packages
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 100,
+            performanceFee: 100,
+            feeRecipient: atomist
+        });
+
         vm.startPrank(atomist);
-        fusionFactory.updateDaoFee(atomist, 100, 100);
+        fusionFactory.setFeePackages(packages);
         vm.stopPrank();
     }
 
@@ -708,7 +716,8 @@ contract YieldBasisFuseTest is Test {
             "yieldBasisVault",
             WBTC,
             1 seconds,
-            atomist
+            atomist,
+            0
         );
 
         plasmaVault = PlasmaVault(instance.plasmaVault);

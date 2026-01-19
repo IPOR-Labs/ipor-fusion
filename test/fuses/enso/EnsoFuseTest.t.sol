@@ -10,6 +10,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryFeePackagesHelper} from "../../test_helpers/FusionFactoryFeePackagesHelper.sol";
 
 // Enso Fuses
 import {EnsoFuse, EnsoFuseEnterData, EnsoFuseExitData} from "../../../contracts/fuses/enso/EnsoFuse.sol";
@@ -70,6 +71,9 @@ contract EnsoFuseTest is Test {
 
         fusionFactory = FusionFactory(FUSION_FACTORY_PROXY);
 
+        // Setup fee packages before creating vault
+        FusionFactoryFeePackagesHelper.setupDefaultFeePackages(vm, fusionFactory);
+
         _deployMockContracts();
         _createVaultWithFusionFactory();
         _deployEnsoFuses();
@@ -105,7 +109,8 @@ contract EnsoFuseTest is Test {
             "ENSO-V",
             USDC, // underlying token
             1 seconds, // redemption delay
-            ATOMIST // owner
+            ATOMIST, // owner
+            0 // feePackageIndex
         );
 
         plasmaVault = PlasmaVault(instance.plasmaVault);
