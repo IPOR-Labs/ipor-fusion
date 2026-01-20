@@ -175,6 +175,16 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         for (uint256 i; i < len; ++i) {
             uint256 amountIn = data_.exactAmountsIn[i];
             if (amountIn > 0) {
+                if (
+                    !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                        MARKET_ID,
+                        BalancerSubstrateLib.substrateToBytes32(
+                            BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: data_.tokens[i]})
+                        )
+                    )
+                ) {
+                    revert BalancerLiquidityUnbalancedFuseUnsupportedAsset(data_.tokens[i]);
+                }
                 IERC20(data_.tokens[i]).forceApprove(PERMIT2, type(uint256).max);
                 IPermit2(PERMIT2).approve(
                     data_.tokens[i],

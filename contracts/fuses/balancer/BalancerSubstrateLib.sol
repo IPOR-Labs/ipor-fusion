@@ -8,7 +8,8 @@ import {IPool} from "./ext/IPool.sol";
 enum BalancerSubstrateType {
     UNDEFINED,
     GAUGE,
-    POOL
+    POOL,
+    TOKEN
 }
 
 struct BalancerSubstrate {
