@@ -239,7 +239,7 @@ library FuseStorageLib {
      * - Essential for position ownership verification
      * - Prevents DoS via malicious NFT transfers to vault
      */
-    bytes32 private constant AERODROME_SLIPSTREAM_TOKEN_IDS = 0x8c1d8f8c7a4b3e2d1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d00;
+    bytes32 private constant AERODROME_SLIPSTREAM_TOKEN_IDS = 0x0c954f82f9216b16230a9847b4d73bfde1ddedf5d9a25bf9eb22e669cbfcd600;
 
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
