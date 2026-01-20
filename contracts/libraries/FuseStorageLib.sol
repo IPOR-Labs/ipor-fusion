@@ -201,6 +201,46 @@ library FuseStorageLib {
      */
     bytes32 private constant EBISU_TROVE_IDS = 0x9b098fe9de431f116cec9bcef5a806a02e41a628f070feb12cb5ddc28d703300;
 
+    /**
+     * @dev Storage slot for managing Velodrome Superchain Slipstream NFT position token IDs in the Plasma Vault
+     * @notice Tracks and manages Velodrome Superchain Slipstream LP positions held by the vault
+     *
+     * Calculation:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.VelodromeSuperchainSlipstreamTokenIds")) - 1)) & ~bytes32(uint256(0xff))
+     *
+     * Purpose:
+     * - Tracks all Velodrome Superchain Slipstream NFT positions owned by the vault
+     * - Enables efficient position management and lookup
+     * - Supports concentrated liquidity position tracking
+     * - Prevents DoS attacks via unbounded NFT enumeration
+     *
+     * Storage Layout:
+     * - Points to VelodromeSuperchainSlipstreamTokenIds struct containing:
+     *   - tokenIds: uint256[] array of Velodrome Superchain Slipstream NFT position IDs
+     *   - indexes: mapping(uint256 tokenId => uint256 index) for position lookup
+     *     - Maps each token ID to its index in the tokenIds array
+     *     - Zero index indicates non-existent position
+     *
+     * Usage Pattern:
+     * - Updated when creating new Velodrome Superchain Slipstream positions
+     * - Referenced during position management
+     * - Used for position value calculations
+     * - Maintains efficient position tracking
+     *
+     * Integration Points:
+     * - VelodromeSuperchainSlipstreamNewPositionFuse: Position creation and management
+     * - VelodromeSuperchainSlipstreamBalanceFuse: Balance calculation systems
+     * - Withdrawal and rebalancing operations
+     *
+     * Security Considerations:
+     * - Must accurately track all vault positions
+     * - Critical for proper liquidity management
+     * - Requires careful index management
+     * - Essential for position ownership verification
+     * - Prevents DoS via malicious NFT transfers to vault
+     */
+    bytes32 private constant VELODROME_SUPERCHAIN_SLIPSTREAM_TOKEN_IDS = 0xadec8ab8bc14c5c231913cd378fa94ac5788a64fe4296974cef061d370402200;
+
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted
@@ -229,6 +269,12 @@ library FuseStorageLib {
     struct EbisuTroveIds {
         uint256 latestOwnerIndex;
         mapping(address zapper => uint256 id) troveIds;
+    }
+
+    /// @custom:storage-location erc7201:io.ipor.VelodromeSuperchainSlipstreamTokenIds
+    struct VelodromeSuperchainSlipstreamTokenIds {
+        uint256[] tokenIds;
+        mapping(uint256 tokenId => uint256 index) indexes;
     }
 
     /// @notice Gets the fuses storage pointer
@@ -263,6 +309,17 @@ library FuseStorageLib {
     function getEbisuTroveIds() internal pure returns (EbisuTroveIds storage ebisuTroveIds) {
         assembly {
             ebisuTroveIds.slot := EBISU_TROVE_IDS
+        }
+    }
+
+    /// @notice Gets the VelodromeSuperchainSlipstreamTokenIds storage pointer
+    function getVelodromeSuperchainSlipstreamTokenIds()
+        internal
+        pure
+        returns (VelodromeSuperchainSlipstreamTokenIds storage velodromeSuperchainSlipstreamTokenIds)
+    {
+        assembly {
+            velodromeSuperchainSlipstreamTokenIds.slot := VELODROME_SUPERCHAIN_SLIPSTREAM_TOKEN_IDS
         }
     }
 }

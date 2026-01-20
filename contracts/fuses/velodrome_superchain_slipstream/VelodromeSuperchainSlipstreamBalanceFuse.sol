@@ -2,6 +2,8 @@
 pragma solidity 0.8.30;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
@@ -15,11 +17,16 @@ import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 
 /// @title VelodromeSuperchainSlipstreamBalanceFuse
 /// @notice Contract responsible for managing Velodrome Superchain Slipstream balance calculations
-/// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome Slipstream pools and gauges
-/// It calculates total USD value of vault's liquidity positions (principal + fees) across multiple Velodrome Slipstream substrates
-/// The balance calculations support both direct pool positions and staked gauge positions
+/// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome Slipstream pools and gauges.
+///      Uses a curated storage-based list of position IDs to prevent DoS attacks via unbounded NFT enumeration.
+///      Only positions that were legitimately created by the vault (tracked in FuseStorageLib) are included
+///      in the balance calculation, preventing malicious actors from inflating gas costs by transferring
+///      arbitrary NFTs to the vault.
 contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
+    using Address for address;
+
     error InvalidAddress();
+    error InvalidReturnData();
 
     /// @notice Address of this fuse contract version
     /// @dev Immutable value set in constructor, used for tracking and versioning
@@ -36,6 +43,10 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
     /// @notice Slipstream Superchain Sugar address
     /// @dev Immutable value set in constructor, used for calculating principal and fees for positions
     address public immutable SLIPSTREAM_SUPERCHAIN_SUGAR;
+
+    /// @notice Factory address for computing pool addresses
+    /// @dev Immutable value set in constructor, retrieved from NonfungiblePositionManager
+    address public immutable FACTORY;
 
     /**
      * @notice Initializes the VelodromeSuperchainSlipstreamBalanceFuse with a market ID and required addresses
@@ -56,14 +67,19 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         SLIPSTREAM_SUPERCHAIN_SUGAR = slipstreamSuperchainSugar_;
+        FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
+
+        if (FACTORY == address(0)) {
+            revert InvalidAddress();
+        }
     }
 
     /**
      * @notice Calculates the total balance of the Plasma Vault in Velodrome Slipstream protocol
      * @dev This function:
      *      1. Retrieves all substrates (pool and gauge addresses) configured for the market
-     *      2. For each pool substrate, gets all NFT positions and calculates principal + fees
-     *      3. For each gauge substrate, gets staked NFT positions and calculates principal
+     *      2. For Pool substrates: uses curated storage list and filters by pool to prevent DoS attacks
+     *      3. For Gauge substrates: uses stakedValues which is already filtered by gauge
      *      4. Converts token amounts to USD using price oracle middleware
      *      5. Sums all balances and returns the total
      * @return The total balance of the Plasma Vault in USD, normalized to WAD (18 decimals)
@@ -94,24 +110,27 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
             amount1 = 0;
 
             if (substrate.substrateType == VelodromeSuperchainSlipstreamSubstrateType.Pool) {
-                tokenIds = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).userPositions(
-                    address(this),
-                    substrate.substrateAddress
-                );
+                // Use curated storage list instead of unbounded userPositions enumeration
+                // This prevents DoS attacks where malicious actors transfer arbitrary NFTs to the vault
+                uint256[] memory storedTokenIds = FuseStorageLib.getVelodromeSuperchainSlipstreamTokenIds().tokenIds;
+                uint256 tokenIdsLen = storedTokenIds.length;
 
-                uint256 tokenIdsLen = tokenIds.length;
                 token0 = ICLPool(substrate.substrateAddress).token0();
                 token1 = ICLPool(substrate.substrateAddress).token1();
                 sqrtPriceX96 = ICLPool(substrate.substrateAddress).slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = _addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
-                    (amount0, amount1) = _addFees(amount0, amount1, tokenIds[j]);
+                    // Filter: only include positions that belong to the current substrate pool
+                    if (_isPositionForPool(storedTokenIds[j], substrate.substrateAddress)) {
+                        (amount0, amount1) = _addPrincipal(amount0, amount1, storedTokenIds[j], sqrtPriceX96);
+                        (amount0, amount1) = _addFees(amount0, amount1, storedTokenIds[j]);
+                    }
                 }
 
                 balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
                 balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
             } else if (substrate.substrateType == VelodromeSuperchainSlipstreamSubstrateType.Gauge) {
+                // Gauge's stakedValues is already filtered - returns only positions staked in this gauge
                 tokenIds = ILeafCLGauge(substrate.substrateAddress).stakedValues(address(this));
                 uint256 tokenIdsLen = tokenIds.length;
                 token0 = ILeafCLGauge(substrate.substrateAddress).token0();
@@ -127,6 +146,39 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
             }
         }
         return balance;
+    }
+
+    /// @notice Checks if a position NFT belongs to a specific pool
+    /// @param tokenId_ The NFT token ID to check
+    /// @param poolAddress_ The pool address to match against
+    /// @return True if the position belongs to the pool, false otherwise
+    function _isPositionForPool(uint256 tokenId_, address poolAddress_) internal view returns (bool) {
+        // Get position data to extract token0, token1, tickSpacing
+        bytes memory returnData = NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
+            abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_)
+        );
+
+        if (returnData.length < 160) revert InvalidReturnData();
+
+        address posToken0;
+        address posToken1;
+        int24 tickSpacing;
+
+        assembly {
+            posToken0 := mload(add(returnData, 96))
+            posToken1 := mload(add(returnData, 128))
+            tickSpacing := mload(add(returnData, 160))
+        }
+
+        // Compute the pool address for this position
+        address computedPool = VelodromeSuperchainSlipstreamSubstrateLib.getPoolAddress(
+            FACTORY,
+            posToken0,
+            posToken1,
+            tickSpacing
+        );
+
+        return computedPool == poolAddress_;
     }
 
     /**
