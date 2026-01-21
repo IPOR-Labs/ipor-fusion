@@ -235,6 +235,10 @@ contract BalancerSingleTokenFuse is IFuseCommon {
             revert BalancerSingleTokenFuseUnsupportedPool(data_.pool);
         }
 
+        // Validate that the output token is granted as a TOKEN substrate for this market
+        // This prevents withdrawing non-whitelisted tokens into the vault
+        BalancerSubstrateLib.validateTokenGranted(MARKET_ID, data_.tokenOut);
+
         if (data_.maxBptAmountIn == 0) {
             return 0;
         }
