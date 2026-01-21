@@ -1,0 +1,31 @@
+{
+  "apiVersion": "v3",
+  "blockNumber": 421192690,
+  "chainId": 42161,
+  "network": "arbitrum",
+  "odosRouterV3": "0x0D05a7D3448512B78fa8A9e46c4872C88C4a0D05",
+  "timestamp": "2025-01-14",
+  "note": "Use /sor/quote/v3 endpoint to get calldata for Router V3. The /sor/quote/v2 endpoint returns calldata for deprecated Router V2.",
+  "swaps": [
+    {
+      "name": "USDC_TO_WETH_1000",
+      "description": "Swap 1000 USDC to WETH on Arbitrum via Odos Router V3",
+      "tokenIn": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      "tokenOut": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+      "amountIn": "1000000000",
+      "amountInHuman": "1000 USDC",
+      "expectedAmountOut": "299733955546060416",
+      "expectedAmountOutHuman": "~0.2997 WETH",
+      "minAmountOut": "296736615990599812",
+      "slippagePercent": 1,
+      "pathId": "6e52dd0648a08c56005a01dc00c9e078",
+      "transaction": {
+        "to": "0x0D05a7D3448512B78fa8A9e46c4872C88C4a0D05",
+        "data": "0x83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca00080428de71cb721680028f5c000103222a2b261a12091bBE271e763A7E26b64E25e200000001000000000000000000000000000000000000000100000000000000000003010204016bf913c60b0101010200000b0101030200ff00000000000000000000b1026b8e7276e7ac75410f1fcbbe21796e8f7526af88d065e77c8cc2239327c5edb3a432268e58317fcdc35463e3770c2fb992716cd070b63540b94700000000",
+        "value": "0",
+        "gasEstimate": 660014
+      },
+      "notes": "The receiver address in calldata is 0x03222a2b261a12091bBE271e763A7E26b64E25e2 which is placeholder. The Odos Router sends output tokens to msg.sender (the executor contract), which then forwards them to PlasmaVault."
+    }
+  ]
+}
