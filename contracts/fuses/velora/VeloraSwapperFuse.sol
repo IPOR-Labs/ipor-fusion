@@ -34,6 +34,16 @@ struct Balances {
     uint256 tokenOutBalanceAfter;
 }
 
+/// @notice Struct containing validated substrate data (tokens, slippage)
+/// @param tokenInGranted Whether tokenIn is in the allowed substrates
+/// @param tokenOutGranted Whether tokenOut is in the allowed substrates
+/// @param slippageWad The slippage limit in WAD (or 0 if not found)
+struct SubstrateValidationResult {
+    bool tokenInGranted;
+    bool tokenOutGranted;
+    uint256 slippageWad;
+}
+
 /// @title VeloraSwapperFuse
 /// @author IPOR Labs
 /// @notice Fuse for Velora/ParaSwap protocol integration in PlasmaVault for optimized token swapping
@@ -124,28 +134,13 @@ contract VeloraSwapperFuse is IFuseCommon {
     /// @custom:security This is the main entry point for swaps. Validates token addresses, amounts, and slippage.
     /// @param data_ Encoded VeloraSwapperEnterData struct
     function enter(VeloraSwapperEnterData calldata data_) external {
-        // Validate token addresses are non-zero (defense-in-depth)
-        if (data_.tokenIn == address(0)) {
-            revert VeloraSwapperFuseUnsupportedAsset(address(0));
-        }
-        if (data_.tokenOut == address(0)) {
-            revert VeloraSwapperFuseUnsupportedAsset(address(0));
-        }
-
-        // Validate tokenIn is in substrates
-        if (!_isTokenGranted(data_.tokenIn)) {
-            revert VeloraSwapperFuseUnsupportedAsset(data_.tokenIn);
-        }
-
-        // Validate tokenOut is in substrates
-        if (!_isTokenGranted(data_.tokenOut)) {
-            revert VeloraSwapperFuseUnsupportedAsset(data_.tokenOut);
-        }
-
         // Revert if amountIn is 0
         if (data_.amountIn == 0) {
             revert VeloraSwapperFuseZeroAmount();
         }
+
+        // Single pass substrate validation - returns slippage for later use
+        uint256 slippageWad = _checkSubstrates(data_.tokenIn, data_.tokenOut);
 
         address plasmaVault = address(this);
 
@@ -187,7 +182,7 @@ contract VeloraSwapperFuse is IFuseCommon {
         }
 
         // Validate USD slippage
-        _validateUsdSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+        _validateUsdSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta, slippageWad);
 
         // Emit event
         emit VeloraSwapperFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
@@ -200,11 +195,13 @@ contract VeloraSwapperFuse is IFuseCommon {
     /// @param tokenOut_ The output token address
     /// @param tokenInDelta_ The amount of tokenIn consumed
     /// @param tokenOutDelta_ The amount of tokenOut received
+    /// @param slippageWad_ The slippage limit in WAD
     function _validateUsdSlippage(
         address tokenIn_,
         address tokenOut_,
         uint256 tokenInDelta_,
-        uint256 tokenOutDelta_
+        uint256 tokenOutDelta_,
+        uint256 slippageWad_
     ) internal view {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 
@@ -245,39 +242,70 @@ contract VeloraSwapperFuse is IFuseCommon {
         // Calculate quotient: amountUsdOut / amountUsdIn
         uint256 quotient = IporMath.division(amountUsdOutDelta * _ONE, amountUsdInDelta);
 
-        // Get slippage limit from substrates or use default
-        uint256 slippageLimit = _getSlippageLimit();
-
         // Compare against slippage limit (1 - slippagePercentage)
         // If quotient < (1 - slippage), then slippage exceeded
-        if (quotient < (_ONE - slippageLimit)) {
+        if (quotient < (_ONE - slippageWad_)) {
             revert VeloraSwapperFuseSlippageFail();
         }
     }
 
-    /// @notice Checks if a token is granted in the substrates
-    /// @param token_ The token address to check
-    /// @return True if the token is granted
-    function _isTokenGranted(address token_) internal view returns (bool) {
-        bytes32 substrate = VeloraSubstrateLib.encodeTokenSubstrate(token_);
-        return PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, substrate);
-    }
-
-    /// @notice Gets the slippage limit from substrates or returns default
-    /// @return slippageWad The slippage limit in WAD
-    function _getSlippageLimit() internal view returns (uint256 slippageWad) {
-        // Get all substrates for this market
+    /// @notice Validates all substrates in a single pass
+    /// @dev Reads substrates only once and checks tokens and slippage in one iteration
+    /// @param tokenIn_ The input token address to validate
+    /// @param tokenOut_ The output token address to validate
+    /// @return result Struct containing validation results for all checked items
+    function _validateSubstrates(
+        address tokenIn_,
+        address tokenOut_
+    ) internal view returns (SubstrateValidationResult memory result) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        uint256 length = substrates.length;
+        uint256 substratesLength = substrates.length;
 
-        // Iterate through substrates to find slippage config
-        for (uint256 i; i < length; ++i) {
-            if (VeloraSubstrateLib.isSlippageSubstrate(substrates[i])) {
-                return VeloraSubstrateLib.decodeSlippage(substrates[i]);
+        for (uint256 i; i < substratesLength; ++i) {
+            bytes32 substrate = substrates[i];
+
+            if (VeloraSubstrateLib.isTokenSubstrate(substrate)) {
+                address token = VeloraSubstrateLib.decodeToken(substrate);
+                if (token == tokenIn_) {
+                    result.tokenInGranted = true;
+                }
+                if (token == tokenOut_) {
+                    result.tokenOutGranted = true;
+                }
+            } else if (VeloraSubstrateLib.isSlippageSubstrate(substrate)) {
+                result.slippageWad = VeloraSubstrateLib.decodeSlippage(substrate);
             }
         }
 
-        // Return default slippage if not configured
-        return DEFAULT_SLIPPAGE_WAD;
+        if (result.slippageWad == 0) {
+            result.slippageWad = DEFAULT_SLIPPAGE_WAD;
+        }
+    }
+
+    /// @notice Validates all substrate requirements for the swap operation
+    /// @dev Checks tokenIn and tokenOut against configured substrates in single pass
+    /// @param tokenIn_ The input token address to validate
+    /// @param tokenOut_ The output token address to validate
+    /// @return slippageWad The slippage limit in WAD for use in USD slippage validation
+    function _checkSubstrates(address tokenIn_, address tokenOut_) private view returns (uint256 slippageWad) {
+        // Validate token addresses are non-zero (defense-in-depth)
+        if (tokenIn_ == address(0)) {
+            revert VeloraSwapperFuseUnsupportedAsset(address(0));
+        }
+        if (tokenOut_ == address(0)) {
+            revert VeloraSwapperFuseUnsupportedAsset(address(0));
+        }
+
+        // Single pass substrate validation - reads substrates only once
+        SubstrateValidationResult memory validation = _validateSubstrates(tokenIn_, tokenOut_);
+
+        if (!validation.tokenInGranted) {
+            revert VeloraSwapperFuseUnsupportedAsset(tokenIn_);
+        }
+        if (!validation.tokenOutGranted) {
+            revert VeloraSwapperFuseUnsupportedAsset(tokenOut_);
+        }
+
+        return validation.slippageWad;
     }
 }

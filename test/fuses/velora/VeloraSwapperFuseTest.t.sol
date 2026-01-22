@@ -10,6 +10,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig} from "../../
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IPlasmaVaultGovernance} from "../../../contracts/interfaces/IPlasmaVaultGovernance.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
@@ -373,6 +374,242 @@ contract VeloraSwapperFuseTest is Test {
     function testShouldUseDefaultSlippageWhenNotConfigured() public view {
         // The default slippage should be 1% (1e16)
         assertEq(_veloraSwapperFuse.DEFAULT_SLIPPAGE_WAD(), 1e16);
+    }
+
+    // ============ Single-Pass Substrate Validation Tests ============
+
+    /// @notice Test that validation works when both tokens are not in substrates (reverts on first - tokenIn)
+    function testShouldRevertOnFirstTokenWhenBothTokensNotInSubstrates() public {
+        // given - create a vault with only slippage substrate (no tokens)
+        _setupVaultWithOnlySlippageSubstrate();
+
+        address unsupportedTokenIn = address(0x1111);
+        address unsupportedTokenOut = address(0x2222);
+
+        VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
+            tokenIn: unsupportedTokenIn,
+            tokenOut: unsupportedTokenOut,
+            amountIn: 1000e6,
+            minAmountOut: 0,
+            swapCallData: ""
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_veloraSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+        );
+
+        // when/then - should revert with tokenIn (first check fails)
+        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, unsupportedTokenIn));
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    /// @notice Test that validation works when same token is used for tokenIn and tokenOut
+    function testShouldAllowSameTokenForInAndOut() public {
+        // given
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+
+        // Mock executor that returns all tokens back (no actual swap)
+        MockNoOpVeloraSwapExecutor mockExecutor = new MockNoOpVeloraSwapExecutor();
+
+        VeloraSwapperFuseWithMockExecutor testFuse = new VeloraSwapperFuseWithMockExecutor(
+            IporFusionMarkets.VELORA_SWAPPER,
+            address(mockExecutor)
+        );
+
+        address[] memory newFuses = new address[](1);
+        newFuses[0] = address(testFuse);
+        IPlasmaVaultGovernance(_plasmaVault).addFuses(newFuses);
+
+        // Use same token for in and out (USDC -> USDC)
+        VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: USDC,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: ""
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(testFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+        );
+
+        uint256 vaultUsdcBefore = ERC20(USDC).balanceOf(_plasmaVault);
+
+        // when - should not revert (early return because no tokens consumed)
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        // then - balance should be unchanged
+        uint256 vaultUsdcAfter = ERC20(USDC).balanceOf(_plasmaVault);
+        assertEq(vaultUsdcAfter, vaultUsdcBefore, "Balance should be unchanged");
+    }
+
+    /// @notice Test that validation works when slippage substrate comes before token substrates
+    function testShouldValidateWhenSlippageSubstrateIsFirst() public {
+        // given - setup vault with slippage first, then tokens
+        _setupVaultWithSlippageFirst();
+
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+
+        // Mock executor that simulates successful swap
+        MockSuccessfulVeloraExecutor mockExecutor = new MockSuccessfulVeloraExecutor();
+
+        vm.prank(WETH_WHALE);
+        ERC20(WETH).transfer(address(mockExecutor), 0.3 ether);
+
+        VeloraSwapperFuseWithMockExecutorAndEvent testFuse = new VeloraSwapperFuseWithMockExecutorAndEvent(
+            IporFusionMarkets.VELORA_SWAPPER,
+            address(mockExecutor)
+        );
+
+        address[] memory newFuses = new address[](1);
+        newFuses[0] = address(testFuse);
+        IPlasmaVaultGovernance(_plasmaVault).addFuses(newFuses);
+
+        VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: ""
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(testFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+        );
+
+        // when - should succeed
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        // then
+        uint256 vaultWethAfter = ERC20(WETH).balanceOf(_plasmaVault);
+        assertGt(vaultWethAfter, 0, "Should have received WETH");
+    }
+
+    /// @notice Test that validation works when tokens are at the end of substrates list
+    function testShouldValidateWhenTokensAreAtEndOfSubstrates() public {
+        // given - setup vault with multiple slippage-like entries first, then tokens at end
+        _setupVaultWithTokensAtEnd();
+
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+
+        MockSuccessfulVeloraExecutor mockExecutor = new MockSuccessfulVeloraExecutor();
+
+        vm.prank(WETH_WHALE);
+        ERC20(WETH).transfer(address(mockExecutor), 0.3 ether);
+
+        VeloraSwapperFuseWithMockExecutorAndEvent testFuse = new VeloraSwapperFuseWithMockExecutorAndEvent(
+            IporFusionMarkets.VELORA_SWAPPER,
+            address(mockExecutor)
+        );
+
+        address[] memory newFuses = new address[](1);
+        newFuses[0] = address(testFuse);
+        IPlasmaVaultGovernance(_plasmaVault).addFuses(newFuses);
+
+        VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: ""
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(testFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+        );
+
+        // when - should succeed
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        // then
+        uint256 vaultWethAfter = ERC20(WETH).balanceOf(_plasmaVault);
+        assertGt(vaultWethAfter, 0, "Should have received WETH");
+    }
+
+    /// @notice Test that validation fails when substrates list is empty
+    function testShouldRevertWhenSubstratesListIsEmpty() public {
+        // given - setup vault with empty substrates
+        _setupVaultWithEmptySubstrates();
+
+        VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: 1000e6,
+            minAmountOut: 0,
+            swapCallData: ""
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_veloraSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+        );
+
+        // when/then - should revert because tokenIn not found
+        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, USDC));
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    /// @notice Test that only tokenIn is granted but tokenOut is not
+    function testShouldRevertWhenOnlyTokenInIsGranted() public {
+        // given - setup vault with only USDC granted
+        _setupVaultWithOnlyTokenInGranted();
+
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+
+        VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH, // Not granted
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: ""
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_veloraSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+        );
+
+        // when/then - should revert on tokenOut
+        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, WETH));
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    /// @notice Test that only tokenOut is granted but tokenIn is not
+    function testShouldRevertWhenOnlyTokenOutIsGranted() public {
+        // given - setup vault with only WETH granted
+        _setupVaultWithOnlyTokenOutGranted();
+
+        VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
+            tokenIn: USDC, // Not granted
+            tokenOut: WETH,
+            amountIn: 1000e6,
+            minAmountOut: 0,
+            swapCallData: ""
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_veloraSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+        );
+
+        // when/then - should revert on tokenIn (checked first)
+        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, USDC));
+        PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
     // ============ Executor Tests ============
@@ -1039,6 +1276,63 @@ contract VeloraSwapperFuseTest is Test {
 
         balanceFuses_ = new MarketBalanceFuseConfig[](1);
         balanceFuses_[0] = MarketBalanceFuseConfig(IporFusionMarkets.VELORA_SWAPPER, address(zeroBalance));
+    }
+
+    // ============ Additional Setup Helpers for Substrate Validation Tests ============
+
+    function _setupVaultWithOnlySlippageSubstrate() private {
+        // Configure market with only slippage substrate (no tokens)
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = VeloraSubstrateLib.encodeSlippageSubstrate(2e16); // 2% slippage only
+
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.VELORA_SWAPPER, substrates);
+    }
+
+    function _setupVaultWithSlippageFirst() private {
+        // Configure market with slippage first, then tokens
+        bytes32[] memory substrates = new bytes32[](3);
+        substrates[0] = VeloraSubstrateLib.encodeSlippageSubstrate(3e16); // 3% slippage first
+        substrates[1] = VeloraSubstrateLib.encodeTokenSubstrate(USDC);
+        substrates[2] = VeloraSubstrateLib.encodeTokenSubstrate(WETH);
+
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.VELORA_SWAPPER, substrates);
+    }
+
+    function _setupVaultWithTokensAtEnd() private {
+        // Configure market with slippage first, dummy entries, then tokens at end
+        bytes32[] memory substrates = new bytes32[](4);
+        substrates[0] = VeloraSubstrateLib.encodeSlippageSubstrate(2e16); // slippage first
+        substrates[1] = VeloraSubstrateLib.encodeTokenSubstrate(DAI); // other token
+        substrates[2] = VeloraSubstrateLib.encodeTokenSubstrate(USDC); // tokenIn at end
+        substrates[3] = VeloraSubstrateLib.encodeTokenSubstrate(WETH); // tokenOut at end
+
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.VELORA_SWAPPER, substrates);
+    }
+
+    function _setupVaultWithEmptySubstrates() private {
+        // Note: grantMarketSubstrates adds to existing, so we need a fresh vault
+        // For this test, we use the fact that unsupported tokens won't be found anyway
+        // The initial setup already has substrates, but we test with tokens not in that list
+        bytes32[] memory substrates = new bytes32[](0);
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.VELORA_SWAPPER, substrates);
+    }
+
+    function _setupVaultWithOnlyTokenInGranted() private {
+        // Configure market with only USDC (tokenIn) granted
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = VeloraSubstrateLib.encodeTokenSubstrate(USDC);
+        substrates[1] = VeloraSubstrateLib.encodeSlippageSubstrate(2e16);
+
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.VELORA_SWAPPER, substrates);
+    }
+
+    function _setupVaultWithOnlyTokenOutGranted() private {
+        // Configure market with only WETH (tokenOut) granted
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = VeloraSubstrateLib.encodeTokenSubstrate(WETH);
+        substrates[1] = VeloraSubstrateLib.encodeSlippageSubstrate(2e16);
+
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.VELORA_SWAPPER, substrates);
     }
 }
 
