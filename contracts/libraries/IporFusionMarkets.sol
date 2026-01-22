@@ -180,6 +180,14 @@ library IporFusionMarkets {
     /// @dev Used for executing Odos swaps via OdosSwapExecutor contract
     uint256 public constant ODOS_SWAPPER = 42;
 
+    /// @dev Velora Swapper market for optimized token swapping via Velora/ParaSwap Augustus v6.2
+    /// @dev Substrate type: VeloraSubstrateType (Token or Slippage)
+    /// @dev Substrate values:
+    ///      - Token: Allowed token addresses for swapping (encoded with VeloraSubstrateLib.encodeTokenSubstrate)
+    ///      - Slippage: Custom slippage limit in WAD (encoded with VeloraSubstrateLib.encodeSlippageSubstrate)
+    /// @dev Used for executing Velora swaps via VeloraSwapExecutor contract
+    uint256 public constant VELORA_SWAPPER = 43;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
