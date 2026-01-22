@@ -84,6 +84,9 @@ contract VeloraSwapperFuse is IFuseCommon {
     /// @notice Error thrown when amountIn is zero
     error VeloraSwapperFuseZeroAmount();
 
+    /// @notice Error thrown when tokenIn and tokenOut are the same
+    error VeloraSwapperFuseSameTokens();
+
     /// @notice Error thrown when marketId is zero or invalid
     error VeloraSwapperFuseInvalidMarketId();
 
@@ -137,6 +140,11 @@ contract VeloraSwapperFuse is IFuseCommon {
         // Revert if amountIn is 0
         if (data_.amountIn == 0) {
             revert VeloraSwapperFuseZeroAmount();
+        }
+
+        // Revert if tokenIn and tokenOut are the same (swap to same token is not allowed)
+        if (data_.tokenIn == data_.tokenOut) {
+            revert VeloraSwapperFuseSameTokens();
         }
 
         // Single pass substrate validation - returns slippage for later use
@@ -250,7 +258,12 @@ contract VeloraSwapperFuse is IFuseCommon {
     }
 
     /// @notice Validates all substrates in a single pass
-    /// @dev Reads substrates only once and checks tokens and slippage in one iteration
+    /// @dev Reads substrates only once and checks tokens and slippage in one iteration.
+    ///      SLIPPAGE FALLBACK BEHAVIOR: If no slippage substrate is configured OR if slippage
+    ///      is explicitly set to 0, the function falls back to DEFAULT_SLIPPAGE_WAD (1%).
+    ///      There is no distinction between "unconfigured" and "explicitly set to 0" -
+    ///      both cases result in using the default 1% slippage limit. This is by design to
+    ///      ensure safe swap execution when slippage configuration is missing or invalid.
     /// @param tokenIn_ The input token address to validate
     /// @param tokenOut_ The output token address to validate
     /// @return result Struct containing validation results for all checked items
@@ -277,6 +290,10 @@ contract VeloraSwapperFuse is IFuseCommon {
             }
         }
 
+        // Fallback to default 1% slippage when:
+        // - No slippage substrate is configured, OR
+        // - Slippage is explicitly set to 0
+        // Note: There is no way to distinguish between these two cases
         if (result.slippageWad == 0) {
             result.slippageWad = DEFAULT_SLIPPAGE_WAD;
         }
