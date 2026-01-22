@@ -5,14 +5,14 @@ import {Vm} from "forge-std/Vm.sol";
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 
-/// @title FusionFactoryFeePackagesHelper
-/// @notice Helper library for setting up fee packages on FusionFactory in fork tests
-library FusionFactoryFeePackagesHelper {
+/// @title FusionFactoryDaoFeePackagesHelper
+/// @notice Helper library for setting up DAO fee packages on FusionFactory in fork tests
+library FusionFactoryDaoFeePackagesHelper {
     /// @notice Sets up a default zero-fee package on the FusionFactory
     /// @param vm The Foundry VM instance
     /// @param fusionFactory The FusionFactory to configure
-    /// @dev This function handles upgrade, role assignment and fee package setup for fork tests
-    function setupDefaultFeePackages(Vm vm, FusionFactory fusionFactory) internal {
+    /// @dev This function handles upgrade, role assignment and DAO fee package setup for fork tests
+    function setupDefaultDaoFeePackages(Vm vm, FusionFactory fusionFactory) internal {
         address daoFeeManager = address(0xFEE0);
         address feeRecipient = address(0xFEE1);
 
@@ -27,7 +27,7 @@ library FusionFactoryFeePackagesHelper {
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
         vm.stopPrank();
 
-        // Create fee packages
+        // Create DAO fee packages
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
             managementFee: 0,
@@ -36,14 +36,14 @@ library FusionFactoryFeePackagesHelper {
         });
 
         vm.prank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
     }
 
-    /// @notice Sets up custom fee packages on the FusionFactory
+    /// @notice Sets up custom DAO fee packages on the FusionFactory
     /// @param vm The Foundry VM instance
     /// @param fusionFactory The FusionFactory to configure
-    /// @param packages The fee packages to set
-    function setupFeePackages(
+    /// @param packages The DAO fee packages to set
+    function setupDaoFeePackages(
         Vm vm,
         FusionFactory fusionFactory,
         FusionFactoryStorageLib.FeePackage[] memory packages
@@ -58,15 +58,15 @@ library FusionFactoryFeePackagesHelper {
         vm.stopPrank();
 
         vm.prank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
     }
 
-    /// @notice Sets up fee packages with a specific account as the fee manager
+    /// @notice Sets up DAO fee packages with a specific account as the fee manager
     /// @param vm The Foundry VM instance
     /// @param fusionFactory The FusionFactory to configure
     /// @param daoFeeManager The account to be granted DAO_FEE_MANAGER_ROLE
     /// @param feeRecipient The recipient for fees
-    function setupDefaultFeePackagesWithManager(
+    function setupDefaultDaoFeePackagesWithManager(
         Vm vm,
         FusionFactory fusionFactory,
         address daoFeeManager,
@@ -79,7 +79,7 @@ library FusionFactoryFeePackagesHelper {
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
         vm.stopPrank();
 
-        // Create fee packages
+        // Create DAO fee packages
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
             managementFee: 0,
@@ -88,6 +88,6 @@ library FusionFactoryFeePackagesHelper {
         });
 
         vm.prank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
     }
 }

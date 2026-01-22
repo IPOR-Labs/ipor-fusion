@@ -16,7 +16,7 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
-import {FusionFactoryFeePackagesHelper} from "../../test_helpers/FusionFactoryFeePackagesHelper.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {VelodromeSuperchainSlipstreamCollectFuse, VelodromeSuperchainSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
 import {INonfungiblePositionManager} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/INonfungiblePositionManager.sol";
@@ -99,7 +99,7 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         vm.stopPrank();
 
         // Setup fee packages before creating vault
-        FusionFactoryFeePackagesHelper.setupDefaultFeePackages(vm, fusionFactory);
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
         FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "VelodromeSuperchainSlipstream",

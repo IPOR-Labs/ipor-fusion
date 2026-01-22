@@ -301,12 +301,12 @@ contract TestConfigurationExample is Test {
         newFactory.updateWithdrawWindowInSeconds(withdrawWindow);
 
         // Setup fee packages
-        _setupFeePackages(newFactory);
+        _setupDaoFeePackages(newFactory);
 
         return newFactory;
     }
 
-    function _setupFeePackages(FusionFactory factory_) internal {
+    function _setupDaoFeePackages(FusionFactory factory_) internal {
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
 
         // Package 0: Standard fees (0% management, 0% performance for testing simplicity)
@@ -317,6 +317,6 @@ contract TestConfigurationExample is Test {
         });
 
         vm.prank(daoFeeManager);
-        factory_.setFeePackages(packages);
+        factory_.setDaoFeePackages(packages);
     }
 }

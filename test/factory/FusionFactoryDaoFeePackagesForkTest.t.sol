@@ -16,10 +16,10 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 
-/// @title Fork Integration Tests for Fee Packages
-/// @notice Tests fee packages functionality on Ethereum mainnet fork
-/// @dev Deploys fresh FusionFactory with fee packages support to test against real mainnet state
-contract FusionFactoryFeePackagesForkTest is Test {
+/// @title Fork Integration Tests for DAO Fee Packages
+/// @notice Tests DAO fee packages functionality on Ethereum mainnet fork
+/// @dev Deploys fresh FusionFactory with DAO fee packages support to test against real mainnet state
+contract FusionFactoryDaoFeePackagesForkTest is Test {
     // Ethereum mainnet addresses - used for reference/copying configuration
     address public constant EXISTING_FUSION_FACTORY_PROXY = 0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -82,7 +82,7 @@ contract FusionFactoryFeePackagesForkTest is Test {
         _copyOtherConfiguration();
 
         // Setup fee packages
-        _setupFeePackages();
+        _setupDaoFeePackages();
 
         // Transfer some USDC to atomist for deposits
         vm.prank(USDC_HOLDER);
@@ -122,7 +122,7 @@ contract FusionFactoryFeePackagesForkTest is Test {
         fusionFactory.updateWithdrawWindowInSeconds(withdrawWindow);
     }
 
-    function _setupFeePackages() internal {
+    function _setupDaoFeePackages() internal {
         // Create fee packages with different configurations
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](3);
 
@@ -148,11 +148,11 @@ contract FusionFactoryFeePackagesForkTest is Test {
         });
 
         vm.prank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
     }
 
     /// @notice Test creating vault with standard fee package (index 0) on Ethereum fork
-    function testForkEthereum_CreateVaultWithFeePackageIndex0() public {
+    function testForkEthereum_CreateVaultWithDaoFeePackageIndex0() public {
         // given
         uint256 redemptionDelay = 1 days;
 
@@ -181,7 +181,7 @@ contract FusionFactoryFeePackagesForkTest is Test {
     }
 
     /// @notice Test creating vault with low fee package (index 1) on Ethereum fork
-    function testForkEthereum_CreateVaultWithFeePackageIndex1() public {
+    function testForkEthereum_CreateVaultWithDaoFeePackageIndex1() public {
         // given
         uint256 redemptionDelay = 1 days;
 
@@ -203,7 +203,7 @@ contract FusionFactoryFeePackagesForkTest is Test {
     }
 
     /// @notice Test cloning vault with fee package on Ethereum fork
-    function testForkEthereum_CloneVaultWithFeePackage() public {
+    function testForkEthereum_CloneVaultWithDaoFeePackage() public {
         // given
         uint256 redemptionDelay = 1 days;
 
@@ -229,7 +229,7 @@ contract FusionFactoryFeePackagesForkTest is Test {
     }
 
     /// @notice Test that fee packages are correctly applied and vault can accept deposits
-    function testForkEthereum_VaultWithFeePackageAcceptsDeposits() public {
+    function testForkEthereum_VaultWithDaoFeePackageAcceptsDeposits() public {
         // given
         uint256 redemptionDelay = 0; // No delay for simplicity
         uint256 depositAmount = 10_000e6;
@@ -270,7 +270,7 @@ contract FusionFactoryFeePackagesForkTest is Test {
     }
 
     /// @notice Test creating multiple vaults with different fee packages
-    function testForkEthereum_CreateMultipleVaultsWithDifferentPackages() public {
+    function testForkEthereum_CreateMultipleVaultsWithDifferentDaoFeePackages() public {
         // given
         uint256 redemptionDelay = 1 days;
 
@@ -319,45 +319,45 @@ contract FusionFactoryFeePackagesForkTest is Test {
     }
 
     /// @notice Test fee packages query functions work correctly on fork
-    function testForkEthereum_QueryFeePackages() public view {
+    function testForkEthereum_QueryDaoFeePackages() public view {
         // when
-        FusionFactoryStorageLib.FeePackage[] memory packages = fusionFactory.getFeePackages();
-        uint256 length = fusionFactory.getFeePackagesLength();
+        FusionFactoryStorageLib.FeePackage[] memory packages = fusionFactory.getDaoFeePackages();
+        uint256 length = fusionFactory.getDaoFeePackagesLength();
 
         // then
         assertEq(length, 3, "Should have 3 packages");
         assertEq(packages.length, 3, "Array should have 3 packages");
 
         // Verify package 0
-        FusionFactoryStorageLib.FeePackage memory pkg0 = fusionFactory.getFeePackage(0);
+        FusionFactoryStorageLib.FeePackage memory pkg0 = fusionFactory.getDaoFeePackage(0);
         assertEq(pkg0.managementFee, 200);
         assertEq(pkg0.performanceFee, 2000);
 
         // Verify package 1
-        FusionFactoryStorageLib.FeePackage memory pkg1 = fusionFactory.getFeePackage(1);
+        FusionFactoryStorageLib.FeePackage memory pkg1 = fusionFactory.getDaoFeePackage(1);
         assertEq(pkg1.managementFee, 100);
         assertEq(pkg1.performanceFee, 1000);
 
         // Verify package 2
-        FusionFactoryStorageLib.FeePackage memory pkg2 = fusionFactory.getFeePackage(2);
+        FusionFactoryStorageLib.FeePackage memory pkg2 = fusionFactory.getDaoFeePackage(2);
         assertEq(pkg2.managementFee, 300);
         assertEq(pkg2.performanceFee, 3000);
     }
 
     /// @notice Test that invalid fee package index reverts on fork
-    function testForkEthereum_RevertOnInvalidFeePackageIndex() public {
+    function testForkEthereum_RevertOnInvalidDaoFeePackageIndex() public {
         // given
         uint256 redemptionDelay = 1 days;
 
         // when / then
-        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeePackageIndexOutOfBounds.selector, 10, 3));
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 10, 3));
         fusionFactory.create("Invalid Package", "INV", USDC, redemptionDelay, atomist, 10);
     }
 
     /// @notice Test updating fee packages on fork
-    function testForkEthereum_UpdateFeePackages() public {
+    function testForkEthereum_UpdateDaoFeePackages() public {
         // given - verify initial state
-        assertEq(fusionFactory.getFeePackagesLength(), 3);
+        assertEq(fusionFactory.getDaoFeePackagesLength(), 3);
 
         // Create new packages
         FusionFactoryStorageLib.FeePackage[] memory newPackages = new FusionFactoryStorageLib.FeePackage[](2);
@@ -374,16 +374,16 @@ contract FusionFactoryFeePackagesForkTest is Test {
 
         // when
         vm.prank(daoFeeManager);
-        fusionFactory.setFeePackages(newPackages);
+        fusionFactory.setDaoFeePackages(newPackages);
 
         // then
-        assertEq(fusionFactory.getFeePackagesLength(), 2, "Should have 2 packages after update");
+        assertEq(fusionFactory.getDaoFeePackagesLength(), 2, "Should have 2 packages after update");
 
-        FusionFactoryStorageLib.FeePackage memory pkg0 = fusionFactory.getFeePackage(0);
+        FusionFactoryStorageLib.FeePackage memory pkg0 = fusionFactory.getDaoFeePackage(0);
         assertEq(pkg0.managementFee, 150);
         assertEq(pkg0.performanceFee, 1500);
 
-        FusionFactoryStorageLib.FeePackage memory pkg1 = fusionFactory.getFeePackage(1);
+        FusionFactoryStorageLib.FeePackage memory pkg1 = fusionFactory.getDaoFeePackage(1);
         assertEq(pkg1.managementFee, 250);
         assertEq(pkg1.performanceFee, 2500);
     }

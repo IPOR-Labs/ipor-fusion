@@ -9,7 +9,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
-import {FusionFactoryFeePackagesHelper} from "../../test_helpers/FusionFactoryFeePackagesHelper.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 
 // SiloV2 Fuses
 import {SiloV2BalanceFuse} from "../../../contracts/fuses/silo_v2/SiloV2BalanceFuse.sol";
@@ -98,7 +98,7 @@ contract SiloV2FuseTest is Test {
         fusionFactory = FusionFactory(FUSION_FACTORY_PROXY);
 
         // Setup fee packages before creating vault
-        FusionFactoryFeePackagesHelper.setupDefaultFeePackages(vm, fusionFactory);
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
         _createVaultWithFusionFactory();
 

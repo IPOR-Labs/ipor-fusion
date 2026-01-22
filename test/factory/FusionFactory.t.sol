@@ -102,8 +102,6 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(daoFeeRecipient, 333, 777);
-
         // Setup fee packages for testing
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](2);
         packages[0] = FusionFactoryStorageLib.FeePackage({
@@ -116,7 +114,7 @@ contract FusionFactoryTest is Test {
             performanceFee: 200,
             feeRecipient: address(0x999)
         });
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
 
         address[] memory approvedAddresses = new address[](1);
@@ -220,23 +218,6 @@ contract FusionFactoryTest is Test {
         assertTrue(instance.rewardsManager != address(0));
         assertTrue(instance.contextManager != address(0));
         assertTrue(instance.feeManager != address(0));
-    }
-
-    function testShouldSetupDaoFee() public {
-        //given
-        address daoFeeRecipient = address(0x999);
-        uint256 daoManagementFee = 11;
-        uint256 daoPerformanceFee = 12;
-
-        //when
-        vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
-        vm.stopPrank();
-
-        //then
-        assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
-        assertEq(fusionFactory.getDaoManagementFee(), daoManagementFee);
-        assertEq(fusionFactory.getDaoPerformanceFee(), daoPerformanceFee);
     }
 
     function testShouldUpdateFactoryAddresses() public {
@@ -397,22 +378,6 @@ contract FusionFactoryTest is Test {
         vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
         vm.startPrank(maintenanceManager);
         fusionFactory.updateBurnRequestFeeBalanceFuse(address(0));
-        vm.stopPrank();
-    }
-
-    function testShouldRevertWhenUpdatingIporDaoFeeWithZeroAddress() public {
-        // when/then
-        vm.expectRevert(FusionFactoryLib.InvalidAddress.selector);
-        vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(address(0), 100, 100);
-        vm.stopPrank();
-    }
-
-    function testShouldRevertWhenUpdatingIporDaoFeeWithInvalidFee() public {
-        // when/then
-        vm.expectRevert(FusionFactoryLib.InvalidFeeValue.selector);
-        vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(daoFeeRecipient, 10001, 100); // > 10000 (100%)
         vm.stopPrank();
     }
 
@@ -583,62 +548,6 @@ contract FusionFactoryTest is Test {
         assertEq(delayOne, 0);
         assertEq(delayTwo, 0);
         assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
-    }
-
-    function testShouldCreateVaultWithCorrectIporDaoFees() public {
-        // given
-        uint256 redemptionDelay = 1 seconds;
-
-        address daoFeeRecipient = address(0x999);
-        uint256 daoManagementFee = 100;
-        uint256 daoPerformanceFee = 200;
-
-        vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
-        vm.stopPrank();
-
-        // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            0
-        );
-
-        // then
-        assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
-        assertEq(fusionFactory.getDaoManagementFee(), daoManagementFee);
-        assertEq(fusionFactory.getDaoPerformanceFee(), daoPerformanceFee);
-    }
-
-    function testShouldCloneVaultWithCorrectIporDaoFees() public {
-        // given
-        uint256 redemptionDelay = 1 seconds;
-
-        address daoFeeRecipient = address(0x999);
-        uint256 daoManagementFee = 100;
-        uint256 daoPerformanceFee = 200;
-
-        vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(daoFeeRecipient, daoManagementFee, daoPerformanceFee);
-        vm.stopPrank();
-
-        // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            0
-        );
-
-        // then
-        assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
-        assertEq(fusionFactory.getDaoManagementFee(), daoManagementFee);
-        assertEq(fusionFactory.getDaoPerformanceFee(), daoPerformanceFee);
     }
 
     function testShouldCreateVaultWithCorrectRedemptionDelay() public {
@@ -1043,10 +952,6 @@ contract FusionFactoryTest is Test {
         assertTrue(instance.contextManager != address(0));
         assertTrue(instance.feeManager != address(0));
 
-        // Verify that existing functionality still works
-        assertEq(fusionFactory.getDaoFeeRecipientAddress(), daoFeeRecipient);
-        assertEq(fusionFactory.getDaoManagementFee(), 333);
-        assertEq(fusionFactory.getDaoPerformanceFee(), 777);
     }
 
     function testShouldRevertUpgradeWhenNotOwner() public {
@@ -1313,7 +1218,7 @@ contract FusionFactoryTest is Test {
         });
 
         vm.startPrank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
 
         // when - use fee package index 2 which has custom fees
@@ -1359,7 +1264,7 @@ contract FusionFactoryTest is Test {
         });
 
         vm.startPrank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
 
         // when - use fee package index 2 which has custom fees
@@ -1871,9 +1776,9 @@ contract FusionFactoryTest is Test {
         assertEq(instance1.plasmaVaultBase, plasmaVaultBase, "plasmaVaultBase should match the setup value");
     }
 
-    // ======================= Fee Packages Tests =======================
+    // ======================= DAO Fee Packages Tests =======================
 
-    function testShouldSetFeePackages() public {
+    function testShouldSetDaoFeePackages() public {
         // given
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](3);
         packages[0] = FusionFactoryStorageLib.FeePackage({
@@ -1894,33 +1799,33 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
 
         // then
-        assertEq(fusionFactory.getFeePackagesLength(), 3, "Should have 3 packages");
+        assertEq(fusionFactory.getDaoFeePackagesLength(), 3, "Should have 3 packages");
 
-        FusionFactoryStorageLib.FeePackage memory pkg0 = fusionFactory.getFeePackage(0);
+        FusionFactoryStorageLib.FeePackage memory pkg0 = fusionFactory.getDaoFeePackage(0);
         assertEq(pkg0.managementFee, 100);
         assertEq(pkg0.performanceFee, 200);
         assertEq(pkg0.feeRecipient, address(0x111));
 
-        FusionFactoryStorageLib.FeePackage memory pkg1 = fusionFactory.getFeePackage(1);
+        FusionFactoryStorageLib.FeePackage memory pkg1 = fusionFactory.getDaoFeePackage(1);
         assertEq(pkg1.managementFee, 300);
         assertEq(pkg1.performanceFee, 400);
         assertEq(pkg1.feeRecipient, address(0x222));
 
-        FusionFactoryStorageLib.FeePackage memory pkg2 = fusionFactory.getFeePackage(2);
+        FusionFactoryStorageLib.FeePackage memory pkg2 = fusionFactory.getDaoFeePackage(2);
         assertEq(pkg2.managementFee, 500);
         assertEq(pkg2.performanceFee, 600);
         assertEq(pkg2.feeRecipient, address(0x333));
     }
 
-    function testShouldGetAllFeePackages() public {
+    function testShouldGetAllDaoFeePackages() public {
         // given - packages set in setUp
 
         // when
-        FusionFactoryStorageLib.FeePackage[] memory packages = fusionFactory.getFeePackages();
+        FusionFactoryStorageLib.FeePackage[] memory packages = fusionFactory.getDaoFeePackages();
 
         // then
         assertEq(packages.length, 2, "Should have 2 packages from setUp");
@@ -1930,18 +1835,18 @@ contract FusionFactoryTest is Test {
         assertEq(packages[1].performanceFee, 200);
     }
 
-    function testShouldRevertWhenSetFeePackagesWithEmptyArray() public {
+    function testShouldRevertWhenSetDaoFeePackagesWithEmptyArray() public {
         // given
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](0);
 
         // when / then
         vm.startPrank(daoFeeManager);
-        vm.expectRevert(FusionFactoryLib.FeePackagesArrayEmpty.selector);
-        fusionFactory.setFeePackages(packages);
+        vm.expectRevert(FusionFactoryLib.DaoFeePackagesArrayEmpty.selector);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
-    function testShouldRevertWhenSetFeePackagesWithInvalidManagementFee() public {
+    function testShouldRevertWhenSetDaoFeePackagesWithInvalidManagementFee() public {
         // given
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
@@ -1953,11 +1858,11 @@ contract FusionFactoryTest is Test {
         // when / then
         vm.startPrank(daoFeeManager);
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 10001, 10000));
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
-    function testShouldRevertWhenSetFeePackagesWithInvalidPerformanceFee() public {
+    function testShouldRevertWhenSetDaoFeePackagesWithInvalidPerformanceFee() public {
         // given
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
@@ -1969,11 +1874,11 @@ contract FusionFactoryTest is Test {
         // when / then
         vm.startPrank(daoFeeManager);
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 10001, 10000));
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
-    function testShouldRevertWhenSetFeePackagesWithZeroFeeRecipient() public {
+    function testShouldRevertWhenSetDaoFeePackagesWithZeroFeeRecipient() public {
         // given
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
@@ -1985,24 +1890,24 @@ contract FusionFactoryTest is Test {
         // when / then
         vm.startPrank(daoFeeManager);
         vm.expectRevert(FusionFactoryLib.FeeRecipientZeroAddress.selector);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
-    function testShouldRevertWhenGetFeePackageWithInvalidIndex() public {
+    function testShouldRevertWhenGetDaoFeePackageWithInvalidIndex() public {
         // given - 2 packages set in setUp
 
         // when / then
-        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeePackageIndexOutOfBounds.selector, 5, 2));
-        fusionFactory.getFeePackage(5);
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 5, 2));
+        fusionFactory.getDaoFeePackage(5);
     }
 
-    function testShouldRevertWhenCreateWithInvalidFeePackageIndex() public {
+    function testShouldRevertWhenCreateWithInvalidDaoFeePackageIndex() public {
         // given
         uint256 redemptionDelay = 1 seconds;
 
         // when / then
-        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeePackageIndexOutOfBounds.selector, 10, 2));
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
         fusionFactory.create(
             "Test Asset",
             "TEST",
@@ -2013,12 +1918,12 @@ contract FusionFactoryTest is Test {
         );
     }
 
-    function testShouldRevertWhenCloneWithInvalidFeePackageIndex() public {
+    function testShouldRevertWhenCloneWithInvalidDaoFeePackageIndex() public {
         // given
         uint256 redemptionDelay = 1 seconds;
 
         // when / then
-        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLogicLib.FeePackageIndexOutOfBounds.selector, 10, 2));
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLogicLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
         fusionFactory.clone(
             "Test Asset",
             "TEST",
@@ -2029,7 +1934,7 @@ contract FusionFactoryTest is Test {
         );
     }
 
-    function testShouldCreateVaultWithDifferentFeePackages() public {
+    function testShouldCreateVaultWithDifferentDaoFeePackages() public {
         // given
         uint256 redemptionDelay = 1 seconds;
 
@@ -2066,7 +1971,7 @@ contract FusionFactoryTest is Test {
         assertEq(feeManager1.getIporDaoFeeRecipientAddress(), address(0x999), "Package 1 recipient");
     }
 
-    function testShouldRevertSetFeePackagesWhenNotDaoFeeManager() public {
+    function testShouldRevertSetDaoFeePackagesWhenNotDaoFeeManager() public {
         // given
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
@@ -2078,11 +1983,11 @@ contract FusionFactoryTest is Test {
         // when / then
         vm.startPrank(address(0xBAD));
         vm.expectRevert();
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
-    function testShouldEmitFeePackagesUpdatedEvent() public {
+    function testShouldEmitDaoFeePackagesUpdatedEvent() public {
         // given
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
@@ -2094,14 +1999,14 @@ contract FusionFactoryTest is Test {
         // when / then
         vm.startPrank(daoFeeManager);
         vm.expectEmit(false, true, false, false);
-        emit FusionFactory.FeePackagesUpdated(packages, daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        emit FusionFactory.DaoFeePackagesUpdated(packages, daoFeeManager);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
-    function testShouldReplaceFeePackagesArray() public {
+    function testShouldReplaceDaoFeePackagesArray() public {
         // given - 2 packages set in setUp
-        assertEq(fusionFactory.getFeePackagesLength(), 2, "Should start with 2 packages");
+        assertEq(fusionFactory.getDaoFeePackagesLength(), 2, "Should start with 2 packages");
 
         FusionFactoryStorageLib.FeePackage[] memory newPackages = new FusionFactoryStorageLib.FeePackage[](1);
         newPackages[0] = FusionFactoryStorageLib.FeePackage({
@@ -2112,12 +2017,12 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(daoFeeManager);
-        fusionFactory.setFeePackages(newPackages);
+        fusionFactory.setDaoFeePackages(newPackages);
         vm.stopPrank();
 
         // then - array should be replaced, not appended
-        assertEq(fusionFactory.getFeePackagesLength(), 1, "Should have 1 package after replacement");
-        FusionFactoryStorageLib.FeePackage memory pkg = fusionFactory.getFeePackage(0);
+        assertEq(fusionFactory.getDaoFeePackagesLength(), 1, "Should have 1 package after replacement");
+        FusionFactoryStorageLib.FeePackage memory pkg = fusionFactory.getDaoFeePackage(0);
         assertEq(pkg.managementFee, 999);
         assertEq(pkg.performanceFee, 888);
         assertEq(pkg.feeRecipient, address(0x444));
@@ -2134,7 +2039,7 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
 
         // then
@@ -2167,7 +2072,7 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(daoFeeManager);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
 
         // then

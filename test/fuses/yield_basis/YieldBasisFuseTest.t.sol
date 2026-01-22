@@ -695,7 +695,7 @@ contract YieldBasisFuseTest is Test {
         });
 
         vm.startPrank(atomist);
-        fusionFactory.setFeePackages(packages);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 

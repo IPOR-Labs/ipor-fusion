@@ -30,8 +30,8 @@ import {IRewardsClaimManager} from "../../interfaces/IRewardsClaimManager.sol";
 library FusionFactoryLogicLib {
     error InvalidBaseAddress();
     error InvalidDaoFeeRecipient();
-    error FeePackagesArrayEmpty();
-    error FeePackageIndexOutOfBounds(uint256 index, uint256 length);
+    error DaoFeePackagesArrayEmpty();
+    error DaoFeePackageIndexOutOfBounds(uint256 index, uint256 length);
 
     struct FusionInstance {
         uint256 index;
@@ -53,16 +53,16 @@ library FusionFactoryLogicLib {
         address priceManager;
     }
 
-    /// @notice Validates and retrieves a fee package by index
-    /// @param index_ Index of the fee package
-    /// @return Fee package at the specified index
-    function _validateAndGetFeePackage(
+    /// @notice Validates and retrieves a DAO fee package by index
+    /// @param index_ Index of the DAO fee package
+    /// @return DAO fee package at the specified index
+    function _validateAndGetDaoFeePackage(
         uint256 index_
     ) internal view returns (FusionFactoryStorageLib.FeePackage memory) {
-        uint256 length = FusionFactoryStorageLib.getFeePackagesLength();
-        if (length == 0) revert FeePackagesArrayEmpty();
-        if (index_ >= length) revert FeePackageIndexOutOfBounds(index_, length);
-        return FusionFactoryStorageLib.getFeePackage(index_);
+        uint256 length = FusionFactoryStorageLib.getDaoFeePackagesLength();
+        if (length == 0) revert DaoFeePackagesArrayEmpty();
+        if (index_ >= length) revert DaoFeePackageIndexOutOfBounds(index_, length);
+        return FusionFactoryStorageLib.getDaoFeePackage(index_);
     }
 
     /// @notice Clones a Fusion instance
@@ -73,7 +73,7 @@ library FusionFactoryLogicLib {
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
     /// @param withAdmin_ Whether to include admin role
-    /// @param feePackageIndex_ Index of the fee package to use
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
     function doClone(
         FusionInstance memory fusionAddresses,
         string memory assetName_,
@@ -82,21 +82,21 @@ library FusionFactoryLogicLib {
         uint256 redemptionDelayInSeconds_,
         address owner_,
         bool withAdmin_,
-        uint256 feePackageIndex_
+        uint256 daoFeePackageIndex_
     ) public returns (FusionInstance memory) {
-        FusionFactoryStorageLib.FeePackage memory feePackage = _validateAndGetFeePackage(feePackageIndex_);
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage = _validateAndGetDaoFeePackage(daoFeePackageIndex_);
 
         fusionAddresses = _cloneManagers(fusionAddresses, redemptionDelayInSeconds_);
 
         fusionAddresses = _clonePlasmaVaultAndRewards(
             fusionAddresses,
-            feePackage,
+            daoFeePackage,
             assetName_,
             assetSymbol_,
             underlyingToken_
         );
 
-        return setupFinalConfiguration(fusionAddresses, owner_, withAdmin_, feePackage.feeRecipient, false);
+        return setupFinalConfiguration(fusionAddresses, owner_, withAdmin_, daoFeePackage.feeRecipient, false);
     }
 
     function _cloneManagers(
@@ -134,7 +134,7 @@ library FusionFactoryLogicLib {
 
     function _clonePlasmaVaultAndRewards(
         FusionInstance memory fusionAddresses,
-        FusionFactoryStorageLib.FeePackage memory feePackage_,
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage_,
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_
@@ -147,7 +147,7 @@ library FusionFactoryLogicLib {
             fusionAddresses,
             baseAddresses,
             factoryAddresses,
-            feePackage_,
+            daoFeePackage_,
             assetName_,
             assetSymbol_,
             underlyingToken_
@@ -178,7 +178,7 @@ library FusionFactoryLogicLib {
         FusionInstance memory fusionAddresses,
         FusionFactoryStorageLib.BaseAddresses memory baseAddresses,
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses,
-        FusionFactoryStorageLib.FeePackage memory feePackage_,
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage_,
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_
@@ -190,9 +190,9 @@ library FusionFactoryLogicLib {
             priceOracleMiddleware: fusionAddresses.priceManager,
             feeConfig: FeeConfig({
                 feeFactory: factoryAddresses.feeManagerFactory,
-                iporDaoManagementFee: feePackage_.managementFee,
-                iporDaoPerformanceFee: feePackage_.performanceFee,
-                iporDaoFeeRecipientAddress: feePackage_.feeRecipient
+                iporDaoManagementFee: daoFeePackage_.managementFee,
+                iporDaoPerformanceFee: daoFeePackage_.performanceFee,
+                iporDaoFeeRecipientAddress: daoFeePackage_.feeRecipient
             }),
             accessManager: fusionAddresses.accessManager,
             plasmaVaultBase: fusionAddresses.plasmaVaultBase,

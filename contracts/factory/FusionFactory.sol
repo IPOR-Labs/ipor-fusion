@@ -38,11 +38,10 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     event PriceOracleMiddlewareUpdated(address newPriceOracleMiddleware);
     event BurnRequestFeeFuseUpdated(address newBurnRequestFeeFuse);
     event BurnRequestFeeBalanceFuseUpdated(address newBurnRequestFeeBalanceFuse);
-    event DaoFeeUpdated(address newDaoFeeRecipient, uint256 newDaoManagementFee, uint256 newDaoPerformanceFee);
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
     event PlasmaVaultAdminArrayUpdated(address[] newPlasmaVaultAdminArray);
-    event FeePackagesUpdated(FusionFactoryStorageLib.FeePackage[] packages, address indexed updatedBy);
+    event DaoFeePackagesUpdated(FusionFactoryStorageLib.FeePackage[] packages, address updatedBy);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -81,7 +80,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param underlyingToken_ The address of the underlying token
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
-    /// @param feePackageIndex_ Index of the fee package to use
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     function create(
@@ -90,7 +89,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_,
-        uint256 feePackageIndex_
+        uint256 daoFeePackageIndex_
     ) external returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.create(
@@ -100,7 +99,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 redemptionDelayInSeconds_,
                 owner_,
                 false,
-                feePackageIndex_
+                daoFeePackageIndex_
             );
     }
 
@@ -110,7 +109,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param underlyingToken_ The address of the underlying token
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
-    /// @param feePackageIndex_ Index of the fee package to use
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     /// @dev This function clones existing contracts rather than deploying new ones, which is more gas efficient
@@ -120,7 +119,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_,
-        uint256 feePackageIndex_
+        uint256 daoFeePackageIndex_
     ) external returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.clone(
@@ -130,7 +129,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 redemptionDelayInSeconds_,
                 owner_,
                 false,
-                feePackageIndex_
+                daoFeePackageIndex_
             );
     }
 
@@ -140,7 +139,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param underlyingToken_ The address of the underlying token
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
-    /// @param feePackageIndex_ Index of the fee package to use
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     function createSupervised(
@@ -149,7 +148,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_,
-        uint256 feePackageIndex_
+        uint256 daoFeePackageIndex_
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.create(
@@ -159,7 +158,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 redemptionDelayInSeconds_,
                 owner_,
                 true,
-                feePackageIndex_
+                daoFeePackageIndex_
             );
     }
 
@@ -169,7 +168,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param underlyingToken_ The address of the underlying token
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
-    /// @param feePackageIndex_ Index of the fee package to use
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
     /// @return The Fusion Vault instance
     /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
     /// @dev This function clones existing contracts rather than deploying new ones, which is more gas efficient
@@ -180,7 +179,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_,
-        uint256 feePackageIndex_
+        uint256 daoFeePackageIndex_
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.clone(
@@ -190,7 +189,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 redemptionDelayInSeconds_,
                 owner_,
                 true,
-                feePackageIndex_
+                daoFeePackageIndex_
             );
     }
 
@@ -204,32 +203,16 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         emit PlasmaVaultAdminArrayUpdated(newPlasmaVaultAdminArray_);
     }
 
-    /// @notice Updates the DAO fee configuration (DEPRECATED - use setFeePackages instead)
-    /// @dev DEPRECATED: This function is kept for backward compatibility. Use setFeePackages() for new deployments.
-    function updateDaoFee(
-        address newDaoFeeRecipient_,
-        uint256 newDaoManagementFee_,
-        uint256 newDaoPerformanceFee_
-    ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
-        if (newDaoFeeRecipient_ == address(0)) revert FusionFactoryLib.InvalidAddress();
-        if (newDaoManagementFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
-        if (newDaoPerformanceFee_ > 10000) revert FusionFactoryLib.InvalidFeeValue(); // 100% max
-        FusionFactoryStorageLib.setDaoFeeRecipientAddress(newDaoFeeRecipient_);
-        FusionFactoryStorageLib.setDaoManagementFee(newDaoManagementFee_);
-        FusionFactoryStorageLib.setDaoPerformanceFee(newDaoPerformanceFee_);
-        emit DaoFeeUpdated(newDaoFeeRecipient_, newDaoManagementFee_, newDaoPerformanceFee_);
-    }
-
-    /// @notice Sets the fee packages array (replaces entire array)
-    /// @param packages_ Array of fee packages to set
+    /// @notice Sets the DAO fee packages array (replaces entire array)
+    /// @param packages_ Array of DAO fee packages to set
     /// @dev Each package must have valid fees (<=10000) and non-zero recipient
-    function setFeePackages(
+    function setDaoFeePackages(
         FusionFactoryStorageLib.FeePackage[] calldata packages_
     ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
-        if (packages_.length == 0) revert FusionFactoryLib.FeePackagesArrayEmpty();
+        if (packages_.length == 0) revert FusionFactoryLib.DaoFeePackagesArrayEmpty();
 
         uint256 length = packages_.length;
-        for (uint256 i; i < length; ) {
+        for (uint256 i; i < length; ++i) {
             if (packages_[i].managementFee > 10000) {
                 revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].managementFee, 10000);
             }
@@ -239,22 +222,16 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
             if (packages_[i].feeRecipient == address(0)) {
                 revert FusionFactoryLib.FeeRecipientZeroAddress();
             }
-            unchecked {
-                ++i;
-            }
         }
 
         // Convert calldata to memory for storage
         FusionFactoryStorageLib.FeePackage[] memory packagesMemory = new FusionFactoryStorageLib.FeePackage[](length);
-        for (uint256 i; i < length; ) {
+        for (uint256 i; i < length; ++i) {
             packagesMemory[i] = packages_[i];
-            unchecked {
-                ++i;
-            }
         }
 
-        FusionFactoryStorageLib.setFeePackages(packagesMemory);
-        emit FeePackagesUpdated(packagesMemory, msg.sender);
+        FusionFactoryStorageLib.setDaoFeePackages(packagesMemory);
+        emit DaoFeePackagesUpdated(packagesMemory, msg.sender);
     }
 
     /// @notice Updates the factory addresses
@@ -420,18 +397,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         return FusionFactoryStorageLib.getBurnRequestFeeFuseAddress();
     }
 
-    function getDaoFeeRecipientAddress() external view returns (address) {
-        return FusionFactoryStorageLib.getDaoFeeRecipientAddress();
-    }
-
-    function getDaoManagementFee() external view returns (uint256) {
-        return FusionFactoryStorageLib.getDaoManagementFee();
-    }
-
-    function getDaoPerformanceFee() external view returns (uint256) {
-        return FusionFactoryStorageLib.getDaoPerformanceFee();
-    }
-
     function getWithdrawWindowInSeconds() external view returns (uint256) {
         return FusionFactoryStorageLib.getWithdrawWindowInSeconds();
     }
@@ -440,27 +405,27 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         return FusionFactoryStorageLib.getVestingPeriodInSeconds();
     }
 
-    /// @notice Returns all fee packages
-    /// @return Array of fee packages
-    function getFeePackages() external view returns (FusionFactoryStorageLib.FeePackage[] memory) {
-        return FusionFactoryStorageLib.getFeePackages();
+    /// @notice Returns all DAO fee packages
+    /// @return Array of DAO fee packages
+    function getDaoFeePackages() external view returns (FusionFactoryStorageLib.FeePackage[] memory) {
+        return FusionFactoryStorageLib.getDaoFeePackages();
     }
 
-    /// @notice Returns a specific fee package by index
-    /// @param index_ Index of the fee package
-    /// @return Fee package at the specified index
-    function getFeePackage(uint256 index_) external view returns (FusionFactoryStorageLib.FeePackage memory) {
-        uint256 length = FusionFactoryStorageLib.getFeePackagesLength();
+    /// @notice Returns a specific DAO fee package by index
+    /// @param index_ Index of the DAO fee package
+    /// @return DAO fee package at the specified index
+    function getDaoFeePackage(uint256 index_) external view returns (FusionFactoryStorageLib.FeePackage memory) {
+        uint256 length = FusionFactoryStorageLib.getDaoFeePackagesLength();
         if (index_ >= length) {
-            revert FusionFactoryLib.FeePackageIndexOutOfBounds(index_, length);
+            revert FusionFactoryLib.DaoFeePackageIndexOutOfBounds(index_, length);
         }
-        return FusionFactoryStorageLib.getFeePackage(index_);
+        return FusionFactoryStorageLib.getDaoFeePackage(index_);
     }
 
-    /// @notice Returns the number of fee packages
-    /// @return Number of fee packages
-    function getFeePackagesLength() external view returns (uint256) {
-        return FusionFactoryStorageLib.getFeePackagesLength();
+    /// @notice Returns the number of DAO fee packages
+    /// @return Number of DAO fee packages
+    function getDaoFeePackagesLength() external view returns (uint256) {
+        return FusionFactoryStorageLib.getDaoFeePackagesLength();
     }
 
     /// @dev Required by the OZ UUPS module

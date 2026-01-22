@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryFeePackagesHelper} from "../../test_helpers/FusionFactoryFeePackagesHelper.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {EulerV2BatchFuse, EulerV2BatchItem, EulerV2BatchFuseData} from "../../../contracts/fuses/euler/EulerV2BatchFuse.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
@@ -48,7 +48,7 @@ contract EulerV2Batch is Test {
         FusionFactory fusionFactory = FusionFactory(FUSION_FACTORY);
 
         // Setup fee packages before creating vault
-        FusionFactoryFeePackagesHelper.setupDefaultFeePackages(vm, fusionFactory);
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
         FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "EulerV2Batch",

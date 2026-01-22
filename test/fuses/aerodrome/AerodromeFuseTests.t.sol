@@ -16,7 +16,7 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
-import {FusionFactoryFeePackagesHelper} from "../../test_helpers/FusionFactoryFeePackagesHelper.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AerodromeBalanceFuse} from "../../../contracts/fuses/aerodrome/AerodromeBalanceFuse.sol";
 import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "../../../contracts/fuses/aerodrome/AreodromeLib.sol";
@@ -75,7 +75,7 @@ contract AerodromeFuseTests is Test {
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
         // Setup fee packages before creating vault
-        FusionFactoryFeePackagesHelper.setupDefaultFeePackages(vm, fusionFactory);
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
         FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "Aerodrome",
