@@ -142,6 +142,10 @@ contract AreodromeSlipstreamBalanceFuse is IMarketBalanceFuse {
         //
         // 3. Gas efficiency - raw bytes + assembly allows reading only the needed fields at specific memory
         //    offsets (96, 128, 160 bytes) without decoding unused fields.
+        //
+        // 4. Stack depth compatibility - a direct call with 12 return values can cause "stack too deep" errors
+        //    when compiling without the optimizer. This approach avoids that limitation by using memory instead
+        //    of stack variables.
         bytes memory returnData = NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
             abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_)
         );
