@@ -36,6 +36,11 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
     event CurveChildLiquidityGaugeSupplyFuseExitFailed(address version, address childLiquidityGauge, uint256 amount);
 
     error CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address childLiquidityGauge);
+    error CurveChildLiquidityGaugeSupplyFuseInsufficientStakedBalance(
+        address gauge,
+        uint256 requiredShares,
+        uint256 availableShares
+    );
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -94,12 +99,33 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
 
     /// @dev Could be used only if lpToken is ERC4626.
     /// @dev params[0] - amount in underlying asset, params[1] - gauge address
+    /// @notice Uses previewWithdraw instead of convertToShares for withdrawal flows.
+    /// previewWithdraw rounds UP to ensure enough shares are burned to cover the requested underlying amount,
+    /// while convertToShares rounds DOWN which is only appropriate for deposits.
     function instantWithdraw(bytes32[] calldata params_) external {
         uint256 amount = uint256(params_[0]);
 
+        if (amount == 0) {
+            return;
+        }
+
         address gauge = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
         address lpToken = IChildLiquidityGauge(gauge).lp_token();
-        uint256 lpTokenToWithdraw = ERC4626Upgradeable(lpToken).convertToShares(amount);
+
+        // Use previewWithdraw instead of convertToShares for withdrawal flows.
+        // previewWithdraw rounds UP to ensure enough shares are burned to cover the requested underlying amount,
+        // while convertToShares rounds DOWN which is only appropriate for deposits.
+        uint256 lpTokenToWithdraw = ERC4626Upgradeable(lpToken).previewWithdraw(amount);
+
+        // Check if we have sufficient staked balance before proceeding
+        uint256 stakedBalance = IERC20(gauge).balanceOf(address(this));
+        if (lpTokenToWithdraw > stakedBalance) {
+            revert CurveChildLiquidityGaugeSupplyFuseInsufficientStakedBalance(
+                gauge,
+                lpTokenToWithdraw,
+                stakedBalance
+            );
+        }
 
         _exit(CurveChildLiquidityGaugeSupplyFuseExitData(gauge, lpTokenToWithdraw), true);
     }
