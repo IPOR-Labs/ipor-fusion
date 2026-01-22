@@ -153,7 +153,19 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
     /// @param poolAddress_ The pool address to match against
     /// @return True if the position belongs to the pool, false otherwise
     function _isPositionForPool(uint256 tokenId_, address poolAddress_) internal view returns (bool) {
-        // Get position data to extract token0, token1, tickSpacing
+        // Why functionStaticCall instead of direct INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).positions(tokenId_)?
+        //
+        // 1. STATICCALL guarantees read-only execution - when calling an external contract, staticcall
+        //    ensures the target cannot modify state, providing an additional security layer even though
+        //    positions() is declared as view. This is enforced at EVM level, not just Solidity compiler level.
+        //
+        // 2. Selective field extraction - positions() returns 12 fields (nonce, operator, token0, token1,
+        //    tickSpacing, tickLower, tickUpper, liquidity, feeGrowthInside0LastX128, feeGrowthInside1LastX128,
+        //    tokensOwed0, tokensOwed1), but we only need 3 (token0, token1, tickSpacing). A direct call would
+        //    require declaring all 12 return variables and ABI-decoding the entire response.
+        //
+        // 3. Gas efficiency - raw bytes + assembly allows reading only the needed fields at specific memory
+        //    offsets (96, 128, 160 bytes) without decoding unused fields.
         bytes memory returnData = NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
             abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_)
         );
