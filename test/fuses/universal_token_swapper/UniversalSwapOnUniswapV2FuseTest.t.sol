@@ -384,6 +384,65 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
+    function testShouldRevertWhenSecondDexIsUnsupported() external {
+        // given
+
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        address[] memory path = new address[](3);
+        path[0] = USDC;
+        path[1] = DAI;
+        path[2] = USDT;
+
+        // First target is valid (USDC), second target is invalid
+        address[] memory targets = new address[](2);
+        targets[0] = USDC;
+        targets[1] = address(0x98765);
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        data[1] = abi.encodeWithSignature(
+            "execute(bytes,bytes[])",
+            abi.encodePacked(bytes1(uint8(_V2_SWAP_EXACT_IN))),
+            inputs
+        );
+
+        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: USDT,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperData({targets: targets, data: data})
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+        );
+
+        bytes memory error = abi.encodeWithSignature(
+            "UniversalTokenSwapperFuseUnsupportedAsset(address)",
+            address(0x98765)
+        );
+
+        //when
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
         feeConfig_ = FeeConfigHelper.createZeroFeeConfig();
     }

@@ -46,6 +46,18 @@ struct Balances {
     uint256 tokenOutBalanceAfter;
 }
 
+/// @notice Struct containing validated substrate data (tokens, targets, slippage)
+/// @param tokenInGranted Whether tokenIn is in the allowed substrates
+/// @param tokenOutGranted Whether tokenOut is in the allowed substrates
+/// @param slippageWad The slippage limit in WAD (or 0 if not found)
+/// @param grantedTargets Bitmask of which targets are granted (bit i = targets[i] granted)
+struct SubstrateValidationResult {
+    bool tokenInGranted;
+    bool tokenOutGranted;
+    uint256 slippageWad;
+    uint256 grantedTargets;
+}
+
 /// @title UniversalTokenSwapperFuse
 /// @notice This contract is designed to execute every swap operation and check the slippage on any DEX.
 /// @dev Executes in PlasmaVault storage context via delegatecall.
@@ -125,16 +137,28 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
             revert UniversalTokenSwapperFuseArrayLengthMismatch();
         }
 
-        if (!_isTokenGranted(data_.tokenIn)) {
+        // Single pass substrate validation - reads substrates only once
+        SubstrateValidationResult memory validation = _validateSubstrates(
+            data_.tokenIn,
+            data_.tokenOut,
+            data_.data.targets
+        );
+
+        if (!validation.tokenInGranted) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
         }
-        if (!_isTokenGranted(data_.tokenOut)) {
+        if (!validation.tokenOutGranted) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
         }
 
-        for (uint256 i; i < dexsLength; ++i) {
-            if (!_isTargetGranted(data_.data.targets[i])) {
-                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
+        // Check all targets are granted using bitmask
+        uint256 expectedMask = (1 << dexsLength) - 1;
+        if (validation.grantedTargets != expectedMask) {
+            // Find first non-granted target for error message
+            for (uint256 i; i < dexsLength; ++i) {
+                if ((validation.grantedTargets & (1 << i)) == 0) {
+                    revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
+                }
             }
         }
 
@@ -178,7 +202,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
             revert UniversalTokenSwapperFuseMinAmountOutNotReached(data_.minAmountOut, tokenOutDelta);
         }
 
-        _validateUsdSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+        _validateUsdSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta, validation.slippageWad);
 
         emit UniversalTokenSwapperFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
     }
@@ -188,11 +212,13 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     /// @param tokenOut_ The output token address
     /// @param tokenInDelta_ The amount of input token spent
     /// @param tokenOutDelta_ The amount of output token received
+    /// @param slippageWad_ The slippage limit in WAD
     function _validateUsdSlippage(
         address tokenIn_,
         address tokenOut_,
         uint256 tokenInDelta_,
-        uint256 tokenOutDelta_
+        uint256 tokenOutDelta_,
+        uint256 slippageWad_
     ) internal view {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         if (priceOracleMiddleware == address(0)) {
@@ -226,66 +252,56 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
         uint256 quotient = IporMath.division(amountUsdOutDelta * 1e18, amountUsdInDelta);
 
-        uint256 slippageWad = _getSlippageLimit();
-        uint256 slippageReverse = _ONE - slippageWad;
+        uint256 slippageReverse = _ONE - slippageWad_;
 
         if (quotient < slippageReverse) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
     }
 
-    /// @notice Gets the slippage limit from substrate configuration or returns default
-    /// @return slippageWad The slippage limit in WAD
-    function _getSlippageLimit() internal view returns (uint256 slippageWad) {
+    /// @notice Validates all substrates in a single pass
+    /// @dev Reads substrates only once and checks tokens, targets, and slippage in one iteration
+    /// @param tokenIn_ The input token address to validate
+    /// @param tokenOut_ The output token address to validate
+    /// @param targets_ The array of target addresses to validate
+    /// @return result Struct containing validation results for all checked items
+    function _validateSubstrates(
+        address tokenIn_,
+        address tokenOut_,
+        address[] calldata targets_
+    ) internal view returns (SubstrateValidationResult memory result) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        uint256 length = substrates.length;
+        uint256 substratesLength = substrates.length;
+        uint256 targetsLength = targets_.length;
 
-        for (uint256 i; i < length; ++i) {
-            if (UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(substrates[i])) {
-                slippageWad = UniversalTokenSwapperSubstrateLib.decodeSlippage(substrates[i]);
-                if (slippageWad > _ONE) {
-                    revert UniversalTokenSwapperFuseSlippageExceeds100Percent(slippageWad);
+        for (uint256 i; i < substratesLength; ++i) {
+            bytes32 substrate = substrates[i];
+
+            if (UniversalTokenSwapperSubstrateLib.isTokenSubstrate(substrate)) {
+                address token = UniversalTokenSwapperSubstrateLib.decodeToken(substrate);
+                if (token == tokenIn_) {
+                    result.tokenInGranted = true;
                 }
-                return slippageWad;
-            }
-        }
-
-        return DEFAULT_SLIPPAGE_WAD;
-    }
-
-    /// @notice Checks if a token is granted in substrates
-    /// @param token_ The token address to check
-    /// @return isGranted True if the token is granted
-    function _isTokenGranted(address token_) internal view returns (bool isGranted) {
-        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        uint256 length = substrates.length;
-
-        for (uint256 i; i < length; ++i) {
-            if (UniversalTokenSwapperSubstrateLib.isTokenSubstrate(substrates[i])) {
-                if (UniversalTokenSwapperSubstrateLib.decodeToken(substrates[i]) == token_) {
-                    return true;
+                if (token == tokenOut_) {
+                    result.tokenOutGranted = true;
                 }
-            }
-        }
-
-        return false;
-    }
-
-    /// @notice Checks if a target is granted in substrates
-    /// @param target_ The target address to check
-    /// @return isGranted True if the target is granted
-    function _isTargetGranted(address target_) internal view returns (bool isGranted) {
-        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        uint256 length = substrates.length;
-
-        for (uint256 i; i < length; ++i) {
-            if (UniversalTokenSwapperSubstrateLib.isTargetSubstrate(substrates[i])) {
-                if (UniversalTokenSwapperSubstrateLib.decodeTarget(substrates[i]) == target_) {
-                    return true;
+            } else if (UniversalTokenSwapperSubstrateLib.isTargetSubstrate(substrate)) {
+                address target = UniversalTokenSwapperSubstrateLib.decodeTarget(substrate);
+                for (uint256 j; j < targetsLength; ++j) {
+                    if (targets_[j] == target) {
+                        result.grantedTargets |= (1 << j);
+                    }
+                }
+            } else if (UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(substrate)) {
+                result.slippageWad = UniversalTokenSwapperSubstrateLib.decodeSlippage(substrate);
+                if (result.slippageWad > _ONE) {
+                    revert UniversalTokenSwapperFuseSlippageExceeds100Percent(result.slippageWad);
                 }
             }
         }
 
-        return false;
+        if (result.slippageWad == 0) {
+            result.slippageWad = DEFAULT_SLIPPAGE_WAD;
+        }
     }
 }

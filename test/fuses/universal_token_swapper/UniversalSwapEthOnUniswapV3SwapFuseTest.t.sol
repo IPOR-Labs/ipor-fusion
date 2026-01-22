@@ -476,6 +476,335 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         assertApproxEqAbs(uint256(40 ether), balanceWethAfter, 100);
     }
 
+    function testShouldRevertWhenUnsupportedTokenIn() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        address[] memory targets = new address[](2);
+        targets[0] = USDC;
+        targets[1] = _UNIVERSAL_ROUTER;
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        callDatas[1] = abi.encodeWithSignature(
+            "execute(bytes,bytes[])",
+            abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
+            inputs
+        );
+
+        uint256[] memory ethAmounts = new uint256[](2);
+        address[] memory dustToCheck = new address[](0);
+
+        UniversalTokenSwapperEthEnterData memory enterData = UniversalTokenSwapperEthEnterData({
+            tokenIn: address(0x12345), // unsupported token
+            tokenOut: USDT,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperEthData({
+                targets: targets,
+                callDatas: callDatas,
+                ethAmounts: ethAmounts,
+                tokensDustToCheck: dustToCheck
+            })
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                enterData
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature(
+            "UniversalTokenSwapperEthFuseUnsupportedAsset(address)",
+            address(0x12345)
+        );
+
+        // when
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    function testShouldRevertWhenUnsupportedTokenOut() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        address[] memory targets = new address[](2);
+        targets[0] = USDC;
+        targets[1] = _UNIVERSAL_ROUTER;
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        callDatas[1] = abi.encodeWithSignature(
+            "execute(bytes,bytes[])",
+            abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
+            inputs
+        );
+
+        uint256[] memory ethAmounts = new uint256[](2);
+        address[] memory dustToCheck = new address[](0);
+
+        UniversalTokenSwapperEthEnterData memory enterData = UniversalTokenSwapperEthEnterData({
+            tokenIn: USDC,
+            tokenOut: address(0x12345), // unsupported token
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperEthData({
+                targets: targets,
+                callDatas: callDatas,
+                ethAmounts: ethAmounts,
+                tokensDustToCheck: dustToCheck
+            })
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                enterData
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature(
+            "UniversalTokenSwapperEthFuseUnsupportedAsset(address)",
+            address(0x12345)
+        );
+
+        // when
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    function testShouldRevertWhenFirstTargetUnsupported() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        address[] memory targets = new address[](2);
+        targets[0] = address(0x98765); // unsupported target
+        targets[1] = _UNIVERSAL_ROUTER;
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        callDatas[1] = abi.encodeWithSignature(
+            "execute(bytes,bytes[])",
+            abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
+            inputs
+        );
+
+        uint256[] memory ethAmounts = new uint256[](2);
+        address[] memory dustToCheck = new address[](0);
+
+        UniversalTokenSwapperEthEnterData memory enterData = UniversalTokenSwapperEthEnterData({
+            tokenIn: USDC,
+            tokenOut: USDT,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperEthData({
+                targets: targets,
+                callDatas: callDatas,
+                ethAmounts: ethAmounts,
+                tokensDustToCheck: dustToCheck
+            })
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                enterData
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature(
+            "UniversalTokenSwapperEthFuseUnsupportedAsset(address)",
+            address(0x98765)
+        );
+
+        // when
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    function testShouldRevertWhenSecondTargetUnsupported() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        // First target is valid (USDC), second is invalid
+        address[] memory targets = new address[](2);
+        targets[0] = USDC;
+        targets[1] = address(0x98765); // unsupported target
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        callDatas[1] = abi.encodeWithSignature(
+            "execute(bytes,bytes[])",
+            abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
+            inputs
+        );
+
+        uint256[] memory ethAmounts = new uint256[](2);
+        address[] memory dustToCheck = new address[](0);
+
+        UniversalTokenSwapperEthEnterData memory enterData = UniversalTokenSwapperEthEnterData({
+            tokenIn: USDC,
+            tokenOut: USDT,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperEthData({
+                targets: targets,
+                callDatas: callDatas,
+                ethAmounts: ethAmounts,
+                tokensDustToCheck: dustToCheck
+            })
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                enterData
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature(
+            "UniversalTokenSwapperEthFuseUnsupportedAsset(address)",
+            address(0x98765)
+        );
+
+        // when
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    function testShouldRevertWhenDustTokenUnsupported() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        address[] memory targets = new address[](2);
+        targets[0] = USDC;
+        targets[1] = _UNIVERSAL_ROUTER;
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        callDatas[1] = abi.encodeWithSignature(
+            "execute(bytes,bytes[])",
+            abi.encodePacked(bytes1(uint8(_V3_SWAP_EXACT_IN))),
+            inputs
+        );
+
+        uint256[] memory ethAmounts = new uint256[](2);
+
+        // Add unsupported dust token
+        address[] memory dustToCheck = new address[](1);
+        dustToCheck[0] = address(0x55555);
+
+        UniversalTokenSwapperEthEnterData memory enterData = UniversalTokenSwapperEthEnterData({
+            tokenIn: USDC,
+            tokenOut: USDT,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperEthData({
+                targets: targets,
+                callDatas: callDatas,
+                ethAmounts: ethAmounts,
+                tokensDustToCheck: dustToCheck
+            })
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                enterData
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature(
+            "UniversalTokenSwapperEthFuseUnsupportedAsset(address)",
+            address(0x55555)
+        );
+
+        // when
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
         feeConfig_ = FeeConfigHelper.createZeroFeeConfig();
     }
