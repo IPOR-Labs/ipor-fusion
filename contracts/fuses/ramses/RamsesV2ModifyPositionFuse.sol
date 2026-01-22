@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
@@ -204,7 +205,7 @@ contract RamsesV2ModifyPositionFuse is IFuseCommon {
 
         RamsesV2ModifyPositionFuseExitData memory data_ = RamsesV2ModifyPositionFuseExitData({
             tokenId: TypeConversionLib.toUint256(inputs[0]),
-            liquidity: TypeConversionLib.toUint128(TypeConversionLib.toUint256(inputs[1])),
+            liquidity: SafeCast.toUint128(TypeConversionLib.toUint256(inputs[1])),
             amount0Min: TypeConversionLib.toUint256(inputs[2]),
             amount1Min: TypeConversionLib.toUint256(inputs[3]),
             deadline: TypeConversionLib.toUint256(inputs[4])

@@ -24,9 +24,6 @@ enum DataType {
 /// @notice Library for converting between bytes32 and various Solidity types
 /// @author IPOR Labs
 library TypeConversionLib {
-    /// @notice Thrown when a uint256 value exceeds uint128 max during conversion
-    error Uint128Overflow();
-
     /// @notice Converts an address to bytes32
     /// @param value_ The address to convert
     /// @return The bytes32 representation
@@ -53,16 +50,6 @@ library TypeConversionLib {
     /// @return The uint256 representation
     function toUint256(bytes32 value_) internal pure returns (uint256) {
         return uint256(value_);
-    }
-
-    /// @notice Safely converts a uint256 to uint128 with overflow check
-    /// @param value_ The uint256 to convert
-    /// @return result The uint128 representation
-    /// @dev Reverts with Uint128Overflow if value_ exceeds type(uint128).max
-    function toUint128(uint256 value_) internal pure returns (uint128 result) {
-        if ((result = uint128(value_)) != value_) {
-            revert Uint128Overflow();
-        }
     }
 
     /// @notice Converts a bool to bytes32
