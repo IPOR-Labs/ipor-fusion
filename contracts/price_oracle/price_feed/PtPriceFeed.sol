@@ -100,6 +100,12 @@ contract PtPriceFeed is IPriceFeed {
     }
 
     /// @inheritdoc IPriceFeed
+    /// @notice Returns the latest price data with Chainlink-compatible metadata
+    /// @dev Metadata fields are populated as follows:
+    /// - roundId: Synthetic round ID derived from block.number
+    /// - startedAt: Start of TWAP observation window (block.timestamp - TWAP_WINDOW)
+    /// - time: When price was computed (block.timestamp)
+    /// - answeredInRound: Same as roundId (single-observation pattern)
     function latestRoundData()
         external
         view
@@ -125,7 +131,15 @@ contract PtPriceFeed is IPriceFeed {
             revert PriceOracleInvalidPrice();
         }
 
+        // Populate Chainlink-compatible metadata
+        // Synthetic round ID derived from block number for monotonic ordering
+        roundId = uint80(block.number);
+        // Start of TWAP observation window
+        startedAt = block.timestamp - twapWindow;
+        // When price was computed
         time = block.timestamp;
+        // Answer corresponds to this round
+        answeredInRound = roundId;
     }
 
     /// @notice Returns the raw PT to asset rate without price adjustment

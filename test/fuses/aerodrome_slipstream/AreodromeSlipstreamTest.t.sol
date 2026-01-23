@@ -23,7 +23,7 @@ import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEn
 import {AreodromeSlipstreamModifyPositionFuse, AreodromeSlipstreamModifyPositionFuseEnterData, AreodromeSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
 import {AreodromeSlipstreamCLGaugeFuse, AreodromeSlipstreamCLGaugeFuseEnterData, AreodromeSlipstreamCLGaugeFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
 import {AreodromeSlipstreamBalanceFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalanceFuse.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
+import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate, PoolNotDeployed} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -721,12 +721,17 @@ contract AreodromeSlipstreamTest is Test {
         new AreodromeSlipstreamCollectFuse(IporFusionMarkets.AREODROME_SLIPSTREAM, address(0));
     }
 
-    function testShouldRevertWhenEnteringNewPositionWithUnsupportedPool() public {
+    function testShouldRevertWhenEnteringNewPositionWithNonExistentPool() public {
         // given
+        // Using fake token addresses that don't have a pool deployed
+        address token0 = address(0x1);
+        address token1 = address(0x2);
+        int24 tickSpacing = 100;
+
         AreodromeSlipstreamNewPositionFuseEnterData memory mintParams = AreodromeSlipstreamNewPositionFuseEnterData({
-            token0: address(0x1),
-            token1: address(0x2),
-            tickSpacing: 100,
+            token0: token0,
+            token1: token1,
+            tickSpacing: tickSpacing,
             tickLower: 100,
             tickUpper: 300,
             amount0Desired: 10e18,
@@ -746,16 +751,12 @@ contract AreodromeSlipstreamTest is Test {
             )
         );
 
-        address expectedPool = AreodromeSlipstreamSubstrateLib.getPoolAddress(
-            INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).factory(),
-            address(0x1),
-            address(0x2),
-            100
-        );
-
+        // Expect PoolNotDeployed error since these fake tokens don't have a deployed pool
         bytes memory errorData = abi.encodeWithSelector(
-            AreodromeSlipstreamNewPositionFuse.AreodromeSlipstreamNewPositionFuseUnsupportedPool.selector,
-            expectedPool
+            PoolNotDeployed.selector,
+            token0,
+            token1,
+            tickSpacing
         );
 
         // when

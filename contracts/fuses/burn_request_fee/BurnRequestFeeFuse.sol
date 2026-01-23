@@ -2,52 +2,53 @@
 pragma solidity 0.8.30;
 
 import {IFuseCommon} from "../IFuse.sol";
-import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {IPlasmaVaultBase} from "../../interfaces/IPlasmaVaultBase.sol";
 
 /**
  * @title BurnRequestFeeFuse - Fuse for Burning Request Fee Shares
  * @notice Specialized fuse contract for burning request fee shares from the PlasmaVault
- * @dev Inherits from ERC20Upgradeable to interact with PlasmaVault's share token functionality
+ * @dev Routes burn operations through PlasmaVaultBase.updateInternal to ensure proper hook execution
  *
  * Execution Context:
  * - All fuse operations are executed via delegatecall from PlasmaVault
  * - Storage operations affect PlasmaVault's state, not the fuse contract
  * - msg.sender refers to the caller of PlasmaVault.execute
  * - address(this) refers to PlasmaVault's address during execution
- * - ERC20 operations modify PlasmaVault's token balances
  *
  * Inheritance Structure:
- * - ERC20Upgradeable: Used to interact with PlasmaVault's share token system
  * - IFuseCommon: Base fuse interface implementation
  *
  * Core Features:
  * - Burns request fee shares collected by WithdrawManager
- * - Manages share token state through ERC20 operations
+ * - Routes through vault's _update pipeline for proper hook execution
  * - Maintains version and market tracking
  * - Implements fuse enter/exit pattern
  *
  * Share Burning System:
- * - Utilizes ERC20Upgradeable._burn for share destruction
+ * - Uses delegatecall to PlasmaVaultBase.updateInternal for burn operations
+ * - Ensures voting checkpoints are updated via _transferVotingUnits
+ * - Maintains governance state consistency
  * - Operates on WithdrawManager's collected fees
  * - Reduces total supply through burning
  * - Maintains protocol tokenomics
  *
  * Integration Points:
  * - PlasmaVault: Main vault interaction (via delegatecall)
+ * - PlasmaVaultBase: Token state management (via nested delegatecall)
  * - WithdrawManager: Fee source
- * - ERC20 Share Token: State management
  * - Fuse System: Execution framework
  *
  * Security Considerations:
+ * - Burns route through vault's _update pipeline to maintain voting checkpoints
  * - Access controlled operations
  * - State consistency checks
  * - Share burning validation
  * - Version tracking for upgrades
  * - Delegatecall security implications
- * - Storage layout compatibility
  *
  */
 
@@ -60,7 +61,9 @@ struct BurnRequestFeeDataEnter {
 
 /// @title BurnRequestFeeFuse
 /// @notice Contract responsible for burning request fee shares from PlasmaVault
-contract BurnRequestFeeFuse is IFuseCommon, ERC20Upgradeable {
+contract BurnRequestFeeFuse is IFuseCommon {
+    using Address for address;
+
     /// @notice Thrown when WithdrawManager address is not set in PlasmaVault
     error BurnRequestFeeWithdrawManagerNotSet();
 
@@ -81,27 +84,27 @@ contract BurnRequestFeeFuse is IFuseCommon, ERC20Upgradeable {
     uint256 public immutable MARKET_ID;
 
     /// @notice Initializes the BurnRequestFeeFuse contract
-    /// @dev Sets up the fuse with market ID and initializes ERC20 metadata
+    /// @dev Sets up the fuse with market ID
     /// @param marketId_ The market ID this fuse will operate on
-    constructor(uint256 marketId_) initializer {
+    constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
-        __ERC20_init("Burn Request Fee - Fuse", "BRF");
     }
 
     /// @notice Burns request fee shares from the WithdrawManager
-    /// @dev Executes the share burning operation using ERC20Upgradeable._burn
+    /// @dev Routes through PlasmaVaultBase.updateInternal via delegatecall to ensure proper hook execution
     ///
     /// Operation Flow:
     /// - Verifies WithdrawManager is set
     /// - Validates amount is non-zero
-    /// - Burns shares using ERC20 functionality
+    /// - Burns shares via delegatecall to PlasmaVaultBase.updateInternal
     /// - Emits BurnRequestFeeEnter event
     ///
     /// Security:
+    /// - Routes through vault's _update pipeline to maintain voting checkpoints
     /// - Checks WithdrawManager existence
     /// - Validates input parameters
-    /// - Uses safe burning mechanism
+    /// - Uses nested delegatecall to PlasmaVaultBase for proper hook execution
     ///
     /// @param data_ Struct containing the amount of shares to burn
     function enter(BurnRequestFeeDataEnter memory data_) public {
@@ -115,7 +118,12 @@ contract BurnRequestFeeFuse is IFuseCommon, ERC20Upgradeable {
             return;
         }
 
-        _burn(withdrawManager, data_.amount);
+        // Route burn through PlasmaVaultBase.updateInternal to ensure voting checkpoints
+        // and supply cap validations are properly executed. Using delegatecall ensures
+        // the vault's _update pipeline is used instead of bypassing it.
+        PlasmaVaultStorageLib.getPlasmaVaultBase().functionDelegateCall(
+            abi.encodeWithSelector(IPlasmaVaultBase.updateInternal.selector, withdrawManager, address(0), data_.amount)
+        );
 
         emit BurnRequestFeeEnter(VERSION, data_.amount);
     }

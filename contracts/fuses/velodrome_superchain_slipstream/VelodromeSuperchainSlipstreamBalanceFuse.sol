@@ -22,11 +22,24 @@ import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 ///      Only positions that were legitimately created by the vault (tracked in FuseStorageLib) are included
 ///      in the balance calculation, preventing malicious actors from inflating gas costs by transferring
 ///      arbitrary NFTs to the vault.
+///      It calculates total USD value of vault's liquidity positions (principal + fees) across multiple Velodrome Slipstream substrates
+///      The balance calculations support both direct pool positions and staked gauge positions
+/// @dev Security: This fuse enforces a maximum positions limit per substrate to prevent gas exhaustion DoS attacks.
+///      If the limit is exceeded, balanceOf() will revert, requiring position consolidation before proceeding.
 contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
     using Address for address;
 
     error InvalidAddress();
     error InvalidReturnData();
+
+    /// @notice Error thrown when the number of positions exceeds the maximum allowed per substrate
+    /// @param substrate The substrate address where the limit was exceeded
+    /// @param positionCount The actual number of positions found
+    /// @param maxPositions The maximum allowed positions
+    error TooManyPositions(address substrate, uint256 positionCount, uint256 maxPositions);
+
+    /// @notice Default maximum positions per substrate if not specified in constructor
+    uint256 public constant DEFAULT_MAX_POSITIONS_PER_SUBSTRATE = 50;
 
     /// @notice Address of this fuse contract version
     /// @dev Immutable value set in constructor, used for tracking and versioning
@@ -44,6 +57,11 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
     /// @dev Immutable value set in constructor, used for calculating principal and fees for positions
     address public immutable SLIPSTREAM_SUPERCHAIN_SUGAR;
 
+    /// @notice Maximum number of positions allowed per substrate to prevent gas exhaustion
+    /// @dev This limit prevents DoS attacks via position proliferation. If exceeded, balanceOf() will revert.
+    ///      Default value of 50 provides safety margin for ~30M gas block limits while being practical for normal usage.
+    uint256 public immutable MAX_POSITIONS_PER_SUBSTRATE;
+
     /// @notice Factory address for computing pool addresses
     /// @dev Immutable value set in constructor, retrieved from NonfungiblePositionManager
     address public immutable FACTORY;
@@ -53,13 +71,22 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
      * @param marketId_ The market ID used to identify the market and retrieve substrates
      * @param nonfungiblePositionManager_ The address of the Nonfungible Position Manager (must not be address(0))
      * @param slipstreamSuperchainSugar_ The address of the Slipstream Superchain Sugar (must not be address(0))
-     * @dev Reverts if nonfungiblePositionManager_ or slipstreamSuperchainSugar_ is zero address
+     * @param maxPositionsPerSubstrate_ Maximum positions per substrate (use DEFAULT_MAX_POSITIONS_PER_SUBSTRATE for default, must be > 0)
+     * @dev Reverts if nonfungiblePositionManager_ or slipstreamSuperchainSugar_ is zero address, or maxPositionsPerSubstrate_ is 0
      */
-    constructor(uint256 marketId_, address nonfungiblePositionManager_, address slipstreamSuperchainSugar_) {
+    constructor(
+        uint256 marketId_,
+        address nonfungiblePositionManager_,
+        address slipstreamSuperchainSugar_,
+        uint256 maxPositionsPerSubstrate_
+    ) {
         if (nonfungiblePositionManager_ == address(0)) {
             revert InvalidAddress();
         }
         if (slipstreamSuperchainSugar_ == address(0)) {
+            revert InvalidAddress();
+        }
+        if (maxPositionsPerSubstrate_ == 0) {
             revert InvalidAddress();
         }
 
@@ -67,6 +94,7 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         SLIPSTREAM_SUPERCHAIN_SUGAR = slipstreamSuperchainSugar_;
+        MAX_POSITIONS_PER_SUBSTRATE = maxPositionsPerSubstrate_;
         FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
 
         if (FACTORY == address(0)) {
@@ -82,6 +110,10 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
      *      3. For Gauge substrates: uses stakedValues which is already filtered by gauge
      *      4. Converts token amounts to USD using price oracle middleware
      *      5. Sums all balances and returns the total
+     *
+     *      Security: This function enforces MAX_POSITIONS_PER_SUBSTRATE to prevent gas exhaustion DoS.
+     *      If any substrate has more positions than the limit, the function will revert with TooManyPositions.
+     *      This requires operational intervention (position consolidation) before proceeding.
      * @return The total balance of the Plasma Vault in USD, normalized to WAD (18 decimals)
      */
     function balanceOf() external view override returns (uint256) {
@@ -115,6 +147,11 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
                 uint256[] memory storedTokenIds = FuseStorageLib.getVelodromeSuperchainSlipstreamTokenIds().tokenIds;
                 uint256 tokenIdsLen = storedTokenIds.length;
 
+                // Prevent gas exhaustion DoS: revert if too many positions
+                if (tokenIdsLen > MAX_POSITIONS_PER_SUBSTRATE) {
+                    revert TooManyPositions(substrate.substrateAddress, tokenIdsLen, MAX_POSITIONS_PER_SUBSTRATE);
+                }
+
                 token0 = ICLPool(substrate.substrateAddress).token0();
                 token1 = ICLPool(substrate.substrateAddress).token1();
                 sqrtPriceX96 = ICLPool(substrate.substrateAddress).slot0().sqrtPriceX96;
@@ -130,9 +167,14 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
                 balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
                 balance += _convertToUsd(amount1, token1, priceOracleMiddleware);
             } else if (substrate.substrateType == VelodromeSuperchainSlipstreamSubstrateType.Gauge) {
-                // Gauge's stakedValues is already filtered - returns only positions staked in this gauge
                 tokenIds = ILeafCLGauge(substrate.substrateAddress).stakedValues(address(this));
                 uint256 tokenIdsLen = tokenIds.length;
+
+                // Prevent gas exhaustion DoS: revert if too many positions
+                if (tokenIdsLen > MAX_POSITIONS_PER_SUBSTRATE) {
+                    revert TooManyPositions(substrate.substrateAddress, tokenIdsLen, MAX_POSITIONS_PER_SUBSTRATE);
+                }
+
                 token0 = ILeafCLGauge(substrate.substrateAddress).token0();
                 token1 = ILeafCLGauge(substrate.substrateAddress).token1();
                 sqrtPriceX96 = ILeafCLGauge(substrate.substrateAddress).pool().slot0().sqrtPriceX96;
