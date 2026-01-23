@@ -39,6 +39,39 @@ contract MockSmartWallet {
     }
 }
 
+/// @title Mock contract that calls vault on behalf of another address
+/// @notice Used to test scenarios where msg.sender differs from tx.origin
+/// @dev Simulates a router or relayer pattern
+contract MockVaultCaller {
+    /// @notice Calls deposit on the vault
+    /// @dev When this is called, msg.sender to vault will be this contract, not tx.origin
+    function callDeposit(address vault_, address asset_, uint256 amount_, address receiver_) external {
+        // Transfer tokens from the original caller to this contract first
+        IERC20(asset_).transferFrom(msg.sender, address(this), amount_);
+        IERC20(asset_).approve(vault_, amount_);
+        PlasmaVault(vault_).deposit(amount_, receiver_);
+    }
+}
+
+/// @title Mock contract simulating EIP-7702 delegatecall pattern
+/// @notice Simulates how EIP-7702 delegation works - code executes in EOA's context
+/// @dev Uses delegatecall to execute SmartWallet code while preserving msg.sender context
+contract MockEIP7702Executor {
+    /// @notice Executes a call to the vault as if the caller's SmartWallet code was running
+    /// @dev In real EIP-7702, this happens automatically when calling an EOA with delegation
+    ///      Here we simulate it by having the EOA call this, which then calls vault
+    ///      The key difference: msg.sender to vault = this contract (simulating EOA with code)
+    function executeAsSmartWallet(
+        address vault_,
+        address asset_,
+        uint256 amount_,
+        address receiver_
+    ) external {
+        IERC20(asset_).approve(vault_, amount_);
+        PlasmaVault(vault_).deposit(amount_, receiver_);
+    }
+}
+
 /// @title EIP7702DelegateValidationPreHook Test
 /// @notice Tests for EIP-7702 delegate target validation pre-hook
 /// @dev Tests validation of delegate targets against a governance-managed whitelist
@@ -421,7 +454,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     ///      1. Deploy a trusted SmartWallet contract
     ///      2. Whitelist the SmartWallet in the PreHook substrates
     ///      3. EOA "delegates" to SmartWallet (simulated via vm.etch with EIP-7702 code)
-    ///      4. EOA interacts with the vault - PreHook validates the delegation
+    ///      4. EOA interacts with the vault - PreHook validates msg.sender's delegation
     ///      5. Transaction succeeds because SmartWallet is whitelisted
     function testEIP7702AuthorizationWithWhitelistedSmartWallet() public {
         // ========== STEP 1: Deploy trusted SmartWallet ==========
@@ -465,13 +498,13 @@ contract EIP7702DelegateValidationPreHookTest is Test {
 
         // ========== STEP 4: EOA interacts with the vault ==========
         // When EOA calls the vault, the PreHook checks:
-        // - tx.origin has EIP-7702 delegation code
+        // - msg.sender has EIP-7702 delegation code
         // - The delegate target (SmartWallet) is in the whitelist
-        vm.startPrank(userEOA, userEOA); // msg.sender = userEOA, tx.origin = userEOA
+        vm.startPrank(userEOA, userEOA); // msg.sender = userEOA (has delegation code)
         IERC20(USDC).approve(address(plasmaVault), 100e6);
 
         // ========== STEP 5: Deposit succeeds ==========
-        // PreHook validates: userEOA -> delegated to trustedSmartWallet -> whitelisted ✓
+        // PreHook validates: msg.sender (userEOA) -> delegated to trustedSmartWallet -> whitelisted ✓
         uint256 sharesBefore = IERC20(address(plasmaVault)).balanceOf(userEOA);
         plasmaVault.deposit(50e6, userEOA);
         uint256 sharesAfter = IERC20(address(plasmaVault)).balanceOf(userEOA);
@@ -520,7 +553,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         IERC20(USDC).approve(address(plasmaVault), 100e6);
 
         // ========== STEP 5: PreHook reverts the transaction ==========
-        // PreHook validates: userEOA -> delegated to untrustedSmartWallet -> NOT in whitelist ✗
+        // PreHook validates: msg.sender (userEOA) -> delegated to untrustedSmartWallet -> NOT in whitelist ✗
         vm.expectRevert(
             abi.encodeWithSelector(
                 EIP7702DelegateValidationPreHook.InvalidDelegateTarget.selector,
@@ -638,5 +671,207 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         vm.stopPrank();
 
         assertTrue(IERC20(address(plasmaVault)).balanceOf(userEOA) > 0, "Deposit should succeed after whitelist update");
+    }
+
+    // ============================================
+    // msg.sender vs tx.origin Demonstration Tests
+    // ============================================
+
+    /// @notice Demonstrates that tx.origin (initiator) without delegation passes through
+    /// @dev When msg.sender has no delegation code, the check passes regardless of tx.origin
+    function testMsgSenderValidation_CallerWithoutDelegationPasses() public {
+        // Deploy a router contract WITHOUT any delegation code
+        MockVaultCaller router = new MockVaultCaller();
+        // router has normal contract code (not 23 bytes, not EIP-7702)
+
+        // Whitelist some smart wallet (doesn't matter which)
+        MockSmartWallet someWallet = new MockSmartWallet();
+
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(preHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](1);
+        substrates[0][0] = bytes32(uint256(uint160(address(someWallet))));
+
+        vm.prank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+
+        // Give userEOA delegation to a NON-whitelisted wallet
+        MockSmartWallet userMaliciousWallet = new MockSmartWallet();
+        vm.etch(userEOA, abi.encodePacked(bytes3(0xef0100), address(userMaliciousWallet)));
+
+        // userEOA (tx.origin, has malicious delegation) calls through router
+        // tx.origin = userEOA (has non-whitelisted delegation)
+        // msg.sender = router (no delegation code - normal contract)
+
+        // With msg.sender check: router has no delegation -> PASSES (router is just a contract)
+        // With tx.origin check: userEOA's delegation would be checked -> would REVERT
+
+        // This demonstrates that msg.sender check focuses on the DIRECT CALLER
+        // The router is a normal contract, so it passes through
+
+        vm.startPrank(userEOA, userEOA);
+        IERC20(USDC).approve(address(router), 100e6);
+
+        // Should succeed - router (msg.sender) has no delegation code
+        router.callDeposit(address(plasmaVault), USDC, 50e6, userEOA);
+        vm.stopPrank();
+
+        assertTrue(IERC20(address(plasmaVault)).balanceOf(userEOA) > 0, "Deposit through router should succeed");
+    }
+
+    /// @notice Key demonstration: Direct caller with delegation is always validated
+    /// @dev This shows the core behavior - whoever calls the vault directly is checked
+    function testMsgSenderValidation_DirectCallerWithDelegationIsAlwaysChecked() public {
+        MockSmartWallet whitelistedWallet = new MockSmartWallet();
+        MockSmartWallet nonWhitelistedWallet = new MockSmartWallet();
+
+        // Only whitelist one wallet
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(preHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](1);
+        substrates[0][0] = bytes32(uint256(uint160(address(whitelistedWallet))));
+
+        vm.prank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+
+        // Case 1: userEOA delegates to whitelisted wallet -> should pass
+        vm.etch(userEOA, abi.encodePacked(bytes3(0xef0100), address(whitelistedWallet)));
+
+        vm.startPrank(userEOA, userEOA);
+        IERC20(USDC).approve(address(plasmaVault), 100e6);
+        plasmaVault.deposit(25e6, userEOA);
+        vm.stopPrank();
+
+        uint256 sharesAfterFirst = IERC20(address(plasmaVault)).balanceOf(userEOA);
+        assertTrue(sharesAfterFirst > 0, "Whitelisted delegation should pass");
+
+        // Case 2: Change userEOA delegation to non-whitelisted wallet -> should fail
+        vm.etch(userEOA, abi.encodePacked(bytes3(0xef0100), address(nonWhitelistedWallet)));
+
+        vm.startPrank(userEOA, userEOA);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EIP7702DelegateValidationPreHook.InvalidDelegateTarget.selector,
+                userEOA,
+                address(nonWhitelistedWallet)
+            )
+        );
+        plasmaVault.deposit(25e6, userEOA);
+        vm.stopPrank();
+
+        // Shares should not have changed
+        assertEq(
+            IERC20(address(plasmaVault)).balanceOf(userEOA),
+            sharesAfterFirst,
+            "Non-whitelisted delegation should be blocked"
+        );
+    }
+
+    /// @notice Demonstrates the scenario from documentation: Bob calls Alice's SmartWallet
+    /// @dev In EIP-7702: Bob -> Alice (SmartWallet code runs) -> Vault
+    ///      tx.origin = Bob, msg.sender = Alice
+    ///      We validate Alice (msg.sender) who has the delegation
+    function testMsgSenderValidation_ThirdPartyCallsEOAWithDelegation() public {
+        // Setup: Alice has delegation to a whitelisted SmartWallet
+        address alice = makeAddr("alice");
+        MockSmartWallet aliceSmartWallet = new MockSmartWallet();
+
+        // Whitelist Alice's SmartWallet
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(preHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](1);
+        substrates[0][0] = bytes32(uint256(uint160(address(aliceSmartWallet))));
+
+        vm.prank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+
+        // Set Alice's delegation code
+        vm.etch(alice, abi.encodePacked(bytes3(0xef0100), address(aliceSmartWallet)));
+
+        // Give Alice some USDC
+        deal(USDC, alice, 1000e6);
+
+        // In real EIP-7702, when Bob calls Alice, Alice's SmartWallet code executes
+        // and Alice becomes msg.sender when that code calls the vault.
+        //
+        // We simulate this by having Alice call the vault directly
+        // (in reality, Bob would trigger this, but Alice's address would be msg.sender)
+
+        // Simulation: Alice's SmartWallet code calls vault (Alice is msg.sender)
+        // tx.origin could be anyone (Bob), but msg.sender is Alice
+        address bob = makeAddr("bob");
+
+        vm.startPrank(alice, bob); // msg.sender = Alice, tx.origin = Bob
+        IERC20(USDC).approve(address(plasmaVault), 100e6);
+
+        // PreHook checks msg.sender (Alice) who has whitelisted delegation -> PASS
+        // If it checked tx.origin (Bob), Bob has no delegation -> would skip validation (security hole)
+        plasmaVault.deposit(50e6, alice);
+        vm.stopPrank();
+
+        assertTrue(
+            IERC20(address(plasmaVault)).balanceOf(alice) > 0,
+            "Alice with whitelisted delegation should be able to deposit"
+        );
+    }
+
+    /// @notice Shows what happens when third party triggers EOA with non-whitelisted delegation
+    /// @dev Bob -> Alice (non-whitelisted SmartWallet) -> Vault should REVERT
+    function testMsgSenderValidation_ThirdPartyCallsEOAWithNonWhitelistedDelegation() public {
+        address alice = makeAddr("alice");
+        MockSmartWallet aliceNonWhitelistedWallet = new MockSmartWallet();
+        MockSmartWallet otherWhitelistedWallet = new MockSmartWallet();
+
+        // Whitelist a DIFFERENT wallet (not Alice's)
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(preHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](1);
+        substrates[0][0] = bytes32(uint256(uint160(address(otherWhitelistedWallet))));
+
+        vm.prank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+
+        // Alice delegates to a NON-whitelisted wallet
+        vm.etch(alice, abi.encodePacked(bytes3(0xef0100), address(aliceNonWhitelistedWallet)));
+
+        deal(USDC, alice, 1000e6);
+
+        address bob = makeAddr("bob");
+
+        // Bob triggers Alice's SmartWallet code (Alice is msg.sender)
+        vm.startPrank(alice, bob); // msg.sender = Alice, tx.origin = Bob
+        IERC20(USDC).approve(address(plasmaVault), 100e6);
+
+        // PreHook checks msg.sender (Alice) -> delegation to non-whitelisted wallet -> REVERT
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EIP7702DelegateValidationPreHook.InvalidDelegateTarget.selector,
+                alice, // msg.sender (Alice has the delegation)
+                address(aliceNonWhitelistedWallet)
+            )
+        );
+        plasmaVault.deposit(50e6, alice);
+        vm.stopPrank();
     }
 }
