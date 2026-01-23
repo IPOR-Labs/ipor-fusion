@@ -2,6 +2,8 @@
 pragma solidity 0.8.30;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
@@ -15,19 +17,29 @@ import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 
 /// @title VelodromeSuperchainSlipstreamBalanceFuse
 /// @notice Contract responsible for managing Velodrome Superchain Slipstream balance calculations
-/// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome Slipstream pools and gauges
-/// It calculates total USD value of vault's liquidity positions (principal + fees) across multiple Velodrome Slipstream substrates
-/// The balance calculations support both direct pool positions and staked gauge positions
+/// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome Slipstream pools and gauges.
+///      Uses a curated storage-based list of position IDs to prevent DoS attacks via unbounded NFT enumeration.
+///      Only positions that were legitimately created by the vault (tracked in FuseStorageLib) are included
+///      in the balance calculation, preventing malicious actors from inflating gas costs by transferring
+///      arbitrary NFTs to the vault.
+///      It calculates total USD value of vault's liquidity positions (principal + fees) across multiple Velodrome Slipstream substrates
+///      The balance calculations support both direct pool positions and staked gauge positions
 /// @dev Security: This fuse enforces a maximum positions limit per substrate to prevent gas exhaustion DoS attacks.
 ///      If the limit is exceeded, balanceOf() will revert, requiring position consolidation before proceeding.
 contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
+    using Address for address;
+
     error InvalidAddress();
+    error InvalidReturnData();
 
     /// @notice Error thrown when the number of positions exceeds the maximum allowed per substrate
     /// @param substrate The substrate address where the limit was exceeded
     /// @param positionCount The actual number of positions found
     /// @param maxPositions The maximum allowed positions
     error TooManyPositions(address substrate, uint256 positionCount, uint256 maxPositions);
+
+    /// @notice Default maximum positions per substrate if not specified in constructor
+    uint256 public constant DEFAULT_MAX_POSITIONS_PER_SUBSTRATE = 50;
 
     /// @notice Address of this fuse contract version
     /// @dev Immutable value set in constructor, used for tracking and versioning
@@ -50,8 +62,9 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
     ///      Default value of 50 provides safety margin for ~30M gas block limits while being practical for normal usage.
     uint256 public immutable MAX_POSITIONS_PER_SUBSTRATE;
 
-    /// @notice Default maximum positions per substrate if not specified in constructor
-    uint256 public constant DEFAULT_MAX_POSITIONS_PER_SUBSTRATE = 50;
+    /// @notice Factory address for computing pool addresses
+    /// @dev Immutable value set in constructor, retrieved from NonfungiblePositionManager
+    address public immutable FACTORY;
 
     /**
      * @notice Initializes the VelodromeSuperchainSlipstreamBalanceFuse with a market ID and required addresses
@@ -82,14 +95,19 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager_;
         SLIPSTREAM_SUPERCHAIN_SUGAR = slipstreamSuperchainSugar_;
         MAX_POSITIONS_PER_SUBSTRATE = maxPositionsPerSubstrate_;
+        FACTORY = INonfungiblePositionManager(nonfungiblePositionManager_).factory();
+
+        if (FACTORY == address(0)) {
+            revert InvalidAddress();
+        }
     }
 
     /**
      * @notice Calculates the total balance of the Plasma Vault in Velodrome Slipstream protocol
      * @dev This function:
      *      1. Retrieves all substrates (pool and gauge addresses) configured for the market
-     *      2. For each pool substrate, gets all NFT positions and calculates principal + fees
-     *      3. For each gauge substrate, gets staked NFT positions and calculates principal
+     *      2. For Pool substrates: uses curated storage list and filters by pool to prevent DoS attacks
+     *      3. For Gauge substrates: uses stakedValues which is already filtered by gauge
      *      4. Converts token amounts to USD using price oracle middleware
      *      5. Sums all balances and returns the total
      *
@@ -124,12 +142,10 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
             amount1 = 0;
 
             if (substrate.substrateType == VelodromeSuperchainSlipstreamSubstrateType.Pool) {
-                tokenIds = INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).userPositions(
-                    address(this),
-                    substrate.substrateAddress
-                );
-
-                uint256 tokenIdsLen = tokenIds.length;
+                // Use curated storage list instead of unbounded userPositions enumeration
+                // This prevents DoS attacks where malicious actors transfer arbitrary NFTs to the vault
+                uint256[] memory storedTokenIds = FuseStorageLib.getVelodromeSuperchainSlipstreamTokenIds().tokenIds;
+                uint256 tokenIdsLen = storedTokenIds.length;
 
                 // Prevent gas exhaustion DoS: revert if too many positions
                 if (tokenIdsLen > MAX_POSITIONS_PER_SUBSTRATE) {
@@ -141,8 +157,11 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
                 sqrtPriceX96 = ICLPool(substrate.substrateAddress).slot0().sqrtPriceX96;
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    (amount0, amount1) = _addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
-                    (amount0, amount1) = _addFees(amount0, amount1, tokenIds[j]);
+                    // Filter: only include positions that belong to the current substrate pool
+                    if (_isPositionForPool(storedTokenIds[j], substrate.substrateAddress)) {
+                        (amount0, amount1) = _addPrincipal(amount0, amount1, storedTokenIds[j], sqrtPriceX96);
+                        (amount0, amount1) = _addFees(amount0, amount1, storedTokenIds[j]);
+                    }
                 }
 
                 balance += _convertToUsd(amount0, token0, priceOracleMiddleware);
@@ -169,6 +188,55 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
             }
         }
         return balance;
+    }
+
+    /// @notice Checks if a position NFT belongs to a specific pool
+    /// @param tokenId_ The NFT token ID to check
+    /// @param poolAddress_ The pool address to match against
+    /// @return True if the position belongs to the pool, false otherwise
+    function _isPositionForPool(uint256 tokenId_, address poolAddress_) internal view returns (bool) {
+        // Why functionStaticCall instead of direct INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).positions(tokenId_)?
+        //
+        // 1. STATICCALL guarantees read-only execution - when calling an external contract, staticcall
+        //    ensures the target cannot modify state, providing an additional security layer even though
+        //    positions() is declared as view. This is enforced at EVM level, not just Solidity compiler level.
+        //
+        // 2. Selective field extraction - positions() returns 12 fields (nonce, operator, token0, token1,
+        //    tickSpacing, tickLower, tickUpper, liquidity, feeGrowthInside0LastX128, feeGrowthInside1LastX128,
+        //    tokensOwed0, tokensOwed1), but we only need 3 (token0, token1, tickSpacing). A direct call would
+        //    require declaring all 12 return variables and ABI-decoding the entire response.
+        //
+        // 3. Gas efficiency - raw bytes + assembly allows reading only the needed fields at specific memory
+        //    offsets (96, 128, 160 bytes) without decoding unused fields.
+        //
+        // 4. Stack depth compatibility - a direct call with 12 return values can cause "stack too deep" errors
+        //    when compiling without the optimizer. This approach avoids that limitation by using memory instead
+        //    of stack variables.
+        bytes memory returnData = NONFUNGIBLE_POSITION_MANAGER.functionStaticCall(
+            abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId_)
+        );
+
+        if (returnData.length < 160) revert InvalidReturnData();
+
+        address posToken0;
+        address posToken1;
+        int24 tickSpacing;
+
+        assembly {
+            posToken0 := mload(add(returnData, 96))
+            posToken1 := mload(add(returnData, 128))
+            tickSpacing := mload(add(returnData, 160))
+        }
+
+        // Compute the pool address for this position
+        address computedPool = VelodromeSuperchainSlipstreamSubstrateLib.getPoolAddress(
+            FACTORY,
+            posToken0,
+            posToken1,
+            tickSpacing
+        );
+
+        return computedPool == poolAddress_;
     }
 
     /**
