@@ -61,18 +61,24 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
             substrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(pools[i]);
 
             if (substrate.substrateType == VelodromeSuperchainSubstrateType.Gauge) {
-                pool = ILeafGauge(substrate.substrateAddress).stakingToken();
-                liquidity = IERC20(substrate.substrateAddress).balanceOf(address(this));
+                address gauge = substrate.substrateAddress;
+                pool = ILeafGauge(gauge).stakingToken();
+                liquidity = IERC20(gauge).balanceOf(address(this));
+
+                if (liquidity > 0) {
+                    balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
+                    // For gauge positions: use gauge's fee caches prorated by vault's share
+                    balance += _calculateBalanceFromGaugeFees(gauge, pool, priceOracleMiddleware);
+                }
             } else if (substrate.substrateType == VelodromeSuperchainSubstrateType.Pool) {
                 pool = substrate.substrateAddress;
                 liquidity = IERC20(pool).balanceOf(address(this));
-            } else {
-                continue;
-            }
 
-            if (liquidity > 0) {
-                balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
+                if (liquidity > 0) {
+                    balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
+                    // For pool positions: use pool's fee indices keyed to vault address
+                    balance += _calculateBalanceFromPoolFees(pool, priceOracleMiddleware, liquidity);
+                }
             }
         }
         return balance;
@@ -104,7 +110,13 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
         return balanceInUsd;
     }
 
-    function _calculateBalanceFromFees(
+    /// @notice Calculate fee balance for direct pool positions (LP tokens held by vault in the pool)
+    /// @dev For pool positions, fees accrue directly to the vault address in the pool's fee tracking
+    /// @param pool_ The pool address
+    /// @param priceOracleMiddleware_ The price oracle middleware address
+    /// @param liquidity_ The vault's LP token balance in the pool
+    /// @return balanceInUsd The USD value of accrued fees
+    function _calculateBalanceFromPoolFees(
         address pool_,
         address priceOracleMiddleware_,
         uint256 liquidity_
@@ -146,6 +158,61 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
             );
             balanceInUsd += IporMath.convertToWad(
                 claimable1 * price1,
+                IERC20Metadata(token1).decimals() + priceDecimals1
+            );
+        }
+
+        return balanceInUsd;
+    }
+
+    /// @notice Calculate fee balance for gauge-staked positions
+    /// @dev When LP tokens are staked in a gauge, the pool accrues fees to the gauge (or its feesVotingReward),
+    ///      not to the original depositor. This function uses the gauge's cached fee amounts (fees0/fees1)
+    ///      and prorates them by the vault's share of the gauge's total staked supply.
+    /// @param gauge_ The gauge address where LP tokens are staked
+    /// @param pool_ The underlying pool address (for token addresses)
+    /// @param priceOracleMiddleware_ The price oracle middleware address
+    /// @return balanceInUsd The USD value of the vault's prorated share of gauge fees
+    function _calculateBalanceFromGaugeFees(
+        address gauge_,
+        address pool_,
+        address priceOracleMiddleware_
+    ) private view returns (uint256 balanceInUsd) {
+        uint256 gaugeTotalSupply = ILeafGauge(gauge_).totalSupply();
+
+        // If no one has staked in the gauge, there are no fees to prorate
+        if (gaugeTotalSupply == 0) {
+            return 0;
+        }
+
+        uint256 vaultStake = ILeafGauge(gauge_).balanceOf(address(this));
+
+        // Get the gauge's cached fee amounts
+        uint256 gaugeFees0 = ILeafGauge(gauge_).fees0();
+        uint256 gaugeFees1 = ILeafGauge(gauge_).fees1();
+
+        // Prorate fees by vault's share of the gauge
+        uint256 vaultFees0 = (gaugeFees0 * vaultStake) / gaugeTotalSupply;
+        uint256 vaultFees1 = (gaugeFees1 * vaultStake) / gaugeTotalSupply;
+
+        if (vaultFees0 > 0) {
+            address token0 = IPool(pool_).token0();
+            (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
+                token0
+            );
+            balanceInUsd += IporMath.convertToWad(
+                vaultFees0 * price0,
+                IERC20Metadata(token0).decimals() + priceDecimals0
+            );
+        }
+
+        if (vaultFees1 > 0) {
+            address token1 = IPool(pool_).token1();
+            (uint256 price1, uint256 priceDecimals1) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
+                token1
+            );
+            balanceInUsd += IporMath.convertToWad(
+                vaultFees1 * price1,
                 IERC20Metadata(token1).decimals() + priceDecimals1
             );
         }
