@@ -6,10 +6,11 @@ Ebisu integration allows IPOR Fusion to interact with the Ebisu Zapper contracts
 
 **What Ebisu does:**
 Ebisu is a wrapper on top of Liquity which allows to automatically open leveraged troves. A trove on Liquity is conceptually an overcollateralized loan where the user gets ebUSD, a stablecoin, against posting a collateral. The leverage is implemented in Ebisu's "Zapper" smart contract, which executes flash loans on Balancer. The flash loan gets collateral tokens which are used to mint more ebUSD, which are then swapped into a dex to re-obtain the collateral token to repay the flash loan. The same mechanism is used to perform leveraging down/up, where both the trove debt and collateral are respectively decreased/increased.
+The functions leverageUp / leverageDown control the trove's debt and collateral by executing flashloans and swapping on external markets. In order to directly control the debt and collateral using the vault's funds, a separate fuse EbisuAdjustTroveFuse.sol is needed, to perform the BorrowerOperation's action "adjustTrove".
 
 Troves can be closed either "to raw ETH", where the user pays directly the ebUSD debt with a transfer, or "from collateral", where the ebUSD is obtained by requesting a collateral flash loan and swapping it. In the latter case, the flash loan is repaid, if possible, by unlocking the collateral in the trove. This means that the latter case cannot be performed if the collateral price dropped too much.
 
-Since Troves can be controlled by LeverageUp and LeverageDown, there's no point in having more than one Trove open at any time for any given Zapper. This is enforced at FuseStorageLib level, in which the mapping is simply zapper => id.
+Since Troves can be controlled by LeverageUp, LeverageDown, and AdjustTrove, there's no point in having more than one Trove open at any time for any given Zapper. This is enforced at FuseStorageLib level, in which the mapping is simply zapper => id.
 
 The annual interest rate of an open Trove can be modified by the Trove owner during the life of the Trove. In our case, the Trove owner is the Plasma Vault, therefore a Fuse to adjust the interest rate is required. This is implemented in EbisuAdjustedInterestRateFuse.sol.
 
@@ -35,6 +36,7 @@ The integration uses a single market for all operations:
 -   **`EbisuZapperCreateFuse`**: Opens and closes a Leveraged Trove using Ebisu's Zapper contract.
 -   **`EbisuZapperLeverModifyFuse`**: Handles levering up and down of open Troves.
 -   **`EbisuAdjustInterestRateFuse`**: Adjusts the annual interest rate of an open Trove.
+-   **`EbisuAdjustTroveFuse`**: Adjusts the debt and collateral of an open Trove using the Vault's funds.
 
 ## Balance Calculation
 
@@ -52,7 +54,7 @@ The debt of the Trove is automatically updated by Liquity smart contract during 
 
 ## Substrate Configuration
 
-### 1. EBISU Market (Market ID: 38) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove operations
+### 1. EBISU Market (Market ID: 38) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove/adjustTrove operations
 
 Substrates are configured as a pair `(type, address)` where "type" can be `UNDEFINED, ZAPPER, REGISTRY`. This is necessary because we need data from the stability pool during the validation of `enter`, and the pool's address is not exposed by the Zapper.
 
@@ -64,6 +66,7 @@ Substrates are configured as a pair `(type, address)` where "type" can be `UNDEF
 | sUSDe Branch | `0x10C14374104f9FC2dAE4b38F945ff8a52f48151d` | `0x411ed8575a1e3822bbc763dc578dd9bfaf526c1f` | sUSDe            |
 | WBTC Branch  | `0x175a17755ea596875CB3c996D007072C3f761F6B` | `0x0cac6a40ee0d35851fd6d9710c5180f30b494350` | WBTC             |
 | LBTC Branch  | `0xe32e9ab36558e5341a4c05fd635db4ba1f3f51cf` | `0x7f034988af49248d3d5bd81a2ce76ed4a3006243` | LBTC             |
+| stcUSD Branch| `0x6a883bfa534754E3B31AA810d6E546F9D0Be2f20` | `0x0C774f22e4b782167EF9635d9ecfBA61dd4e94Ea` | stcUSD           |
 
 ## Price Oracle Setup
 

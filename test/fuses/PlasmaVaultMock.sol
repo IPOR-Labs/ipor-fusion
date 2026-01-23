@@ -2,6 +2,12 @@
 pragma solidity 0.8.30;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
+import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
+import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 
 import {AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
 import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
@@ -27,8 +33,8 @@ contract PlasmaVaultMock {
         balanceFuse = balanceFuse_;
     }
 
-    function enterCompoundV3Supply(CompoundV3SupplyFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+    function enterCompoundV3Supply(CompoundV3SupplyFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data_));
     }
 
     function enterCompoundV3SupplyTransient() external {
@@ -130,17 +136,18 @@ contract PlasmaVaultMock {
     }
 
     //solhint-disable-next-line
-    function enter(bytes calldata data) external {
+    function enter(bytes calldata data_) external {
         address(fuse).functionDelegateCall(msg.data);
     }
 
     //solhint-disable-next-line
-    function exit(bytes calldata data) external {
+    function exit(bytes calldata data_) external {
         address(fuse).functionDelegateCall(msg.data);
     }
 
-    function instantWithdraw(bytes32[] calldata params_) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSelector(bytes4(0xbe1946da), params_));
+    //solhint-disable-next-line
+    function instantWithdraw(bytes32[] calldata params) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("instantWithdraw(bytes32[])", params));
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
