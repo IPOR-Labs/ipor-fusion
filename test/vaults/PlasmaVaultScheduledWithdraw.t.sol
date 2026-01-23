@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, MarketSubstratesConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -1232,5 +1233,267 @@ contract PlasmaVaultScheduledWithdraw is Test {
                 "INVARIANT VIOLATED: Vault balance must always cover sharesToRelease"
             );
         }
+    }
+
+    // ============================================
+    // Voting Checkpoint Tests for BurnRequestFeeFuse
+    // ============================================
+    // These tests verify that the BurnRequestFeeFuse correctly updates
+    // voting checkpoints when burning shares 
+    // ============================================
+
+    /**
+     * @notice Test that burning request fee shares correctly updates voting checkpoints
+     * @dev This test verifies the fix for H3: Direct ERC20Upgradeable._burn bypass
+     *
+     * The vulnerability was that BurnRequestFeeFuse called _burn() directly which
+     * used the fuse's own ERC20Upgradeable implementation, bypassing PlasmaVaultBase._update
+     * and thus not calling _transferVotingUnits.
+     *
+     * After the fix, the fuse routes through PlasmaVaultBase.updateInternal via delegatecall,
+     * ensuring voting checkpoints are properly updated.
+     */
+    function testBurnRequestFeeShouldUpdateVotingCheckpoints() external {
+        // given
+        uint256 withdrawAmount = 1_000e8;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        // Setup request fee (1%)
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateRequestFee(0.01e18);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+        vm.stopPrank();
+
+        // User makes a withdrawal request, which transfers fee shares to WithdrawManager
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
+        vm.stopPrank();
+
+        // WithdrawManager now has shares (the request fee)
+        uint256 withdrawManagerBalance = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
+        assertGt(withdrawManagerBalance, 0, "WithdrawManager should have shares from request fee");
+
+        // Activate voting checkpoints for WithdrawManager by delegating to itself
+        vm.prank(_withdrawManager);
+        IVotes(_plasmaVault).delegate(_withdrawManager);
+
+        // Record voting power before burn
+        uint256 votesBefore = IVotes(_plasmaVault).getVotes(_withdrawManager);
+        uint256 totalSupplyBefore = PlasmaVaultBase(_plasmaVault).totalSupply();
+
+        // Verify voting power matches balance
+        assertEq(votesBefore, withdrawManagerBalance, "Votes should equal balance before burn");
+
+        // Prepare burn action
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_burnRequestFeeFuse),
+            abi.encodeWithSignature("enter((uint256))", withdrawManagerBalance)
+        );
+
+        // when - Execute burn
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        // then - Verify voting checkpoints were updated
+        uint256 votesAfter = IVotes(_plasmaVault).getVotes(_withdrawManager);
+        uint256 balanceAfter = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
+        uint256 totalSupplyAfter = PlasmaVaultBase(_plasmaVault).totalSupply();
+
+        // Balance should be zero after burn
+        assertEq(balanceAfter, 0, "Balance should be zero after burn");
+
+        // CRITICAL: Voting power should also be zero (this is the fix verification)
+        assertEq(votesAfter, 0, "Votes should be zero after burn - voting checkpoints must be updated");
+
+        // Voting power should match balance
+        assertEq(votesAfter, balanceAfter, "Votes should equal balance after burn");
+
+        // Total supply should be reduced
+        assertEq(
+            totalSupplyAfter,
+            totalSupplyBefore - withdrawManagerBalance,
+            "Total supply should be reduced by burned amount"
+        );
+    }
+
+    /**
+     * @notice Test that voting power remains consistent with balance after partial burn
+     * @dev Tests that multiple burn operations maintain voting checkpoint consistency
+     */
+    function testBurnRequestFeeShouldMaintainVotingConsistencyOnPartialBurn() external {
+        // given
+        uint256 withdrawAmount = 2_000e8;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        // Setup request fee (5% for larger fee amounts)
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateRequestFee(0.05e18);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+        vm.stopPrank();
+
+        // User makes withdrawal request
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
+        vm.stopPrank();
+
+        uint256 initialBalance = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
+        assertGt(initialBalance, 0, "WithdrawManager should have shares");
+
+        // Activate voting checkpoints
+        vm.prank(_withdrawManager);
+        IVotes(_plasmaVault).delegate(_withdrawManager);
+
+        // Burn only half of the shares
+        uint256 burnAmount = initialBalance / 2;
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_burnRequestFeeFuse),
+            abi.encodeWithSignature("enter((uint256))", burnAmount)
+        );
+
+        // when - Execute partial burn
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        // then
+        uint256 balanceAfter = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
+        uint256 votesAfter = IVotes(_plasmaVault).getVotes(_withdrawManager);
+
+        // Balance should be reduced by burn amount
+        assertEq(balanceAfter, initialBalance - burnAmount, "Balance should be reduced by burn amount");
+
+        // CRITICAL: Votes should match the new balance
+        assertEq(votesAfter, balanceAfter, "Votes should equal balance after partial burn");
+    }
+
+    /**
+     * @notice Test that delegated voting power is correctly updated when delegate's shares are burned
+     * @dev Verifies that when shares are burned from an account that has delegated its votes,
+     *      the delegatee's voting power is correctly reduced
+     */
+    function testBurnRequestFeeShouldUpdateDelegatedVotingPower() external {
+        // given
+        address delegatee = address(0xDE1E);
+        uint256 withdrawAmount = 1_000e8;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        // Setup request fee
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateRequestFee(0.01e18);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+        vm.stopPrank();
+
+        // User makes withdrawal request
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
+        vm.stopPrank();
+
+        uint256 withdrawManagerBalance = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
+
+        // WithdrawManager delegates its voting power to delegatee
+        vm.prank(_withdrawManager);
+        IVotes(_plasmaVault).delegate(delegatee);
+
+        // Record delegatee's voting power before burn
+        uint256 delegateeVotesBefore = IVotes(_plasmaVault).getVotes(delegatee);
+        assertEq(
+            delegateeVotesBefore,
+            withdrawManagerBalance,
+            "Delegatee should have voting power from withdraw manager"
+        );
+
+        // Burn all shares from WithdrawManager
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_burnRequestFeeFuse),
+            abi.encodeWithSignature("enter((uint256))", withdrawManagerBalance)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        // then
+        uint256 delegateeVotesAfter = IVotes(_plasmaVault).getVotes(delegatee);
+
+        // CRITICAL: Delegatee's voting power should be reduced to zero
+        assertEq(
+            delegateeVotesAfter,
+            0,
+            "Delegatee's voting power should be zero after burning delegator's shares"
+        );
+    }
+
+    /**
+     * @notice Test that getPastTotalSupply returns correct values after burn
+     * @dev Verifies that historical total supply queries work correctly after burns
+     */
+    function testBurnRequestFeeShouldUpdatePastTotalSupply() external {
+        // given
+        uint256 withdrawAmount = 1_000e8;
+
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateWithdrawWindow(1 days);
+
+        vm.startPrank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updateRequestFee(0.01e18);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+        vm.stopPrank();
+
+        vm.startPrank(_USER);
+        WithdrawManager(_withdrawManager).requestShares(withdrawAmount);
+        vm.stopPrank();
+
+        uint256 withdrawManagerBalance = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
+
+        // Activate checkpoints
+        vm.prank(_withdrawManager);
+        IVotes(_plasmaVault).delegate(_withdrawManager);
+
+        // Record block before burn
+        uint256 blockBeforeBurn = block.number;
+        uint256 totalSupplyBeforeBurn = PlasmaVaultBase(_plasmaVault).totalSupply();
+
+        // Move to next block
+        vm.roll(block.number + 1);
+
+        // Burn shares
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_burnRequestFeeFuse),
+            abi.encodeWithSignature("enter((uint256))", withdrawManagerBalance)
+        );
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        // Move to next block for historical query
+        vm.roll(block.number + 1);
+
+        // then
+        uint256 totalSupplyAfterBurn = PlasmaVaultBase(_plasmaVault).totalSupply();
+
+        // Current total supply should be reduced
+        assertEq(
+            totalSupplyAfterBurn,
+            totalSupplyBeforeBurn - withdrawManagerBalance,
+            "Current total supply should reflect burn"
+        );
+
+        // Historical query should show old total supply
+        uint256 pastTotalSupply = IVotes(_plasmaVault).getPastTotalSupply(blockBeforeBurn);
+        assertEq(pastTotalSupply, totalSupplyBeforeBurn, "Past total supply should equal supply before burn");
     }
 }

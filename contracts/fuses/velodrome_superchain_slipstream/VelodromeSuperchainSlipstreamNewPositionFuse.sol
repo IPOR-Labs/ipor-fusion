@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
@@ -165,6 +166,12 @@ contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
+        // Track the tokenId in storage to prevent DoS via unbounded NFT enumeration
+        FuseStorageLib.VelodromeSuperchainSlipstreamTokenIds storage tokensIds = FuseStorageLib
+            .getVelodromeSuperchainSlipstreamTokenIds();
+        tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
+        tokensIds.tokenIds.push(tokenId);
+
         result.tokenId = tokenId;
         result.liquidity = liquidity;
         result.amount0 = amount0;
@@ -191,9 +198,9 @@ contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
 
     /**
      * @notice Closes one or more Velodrome Superchain Slipstream NFT positions
-     * @dev Burns the specified NFT positions, which removes liquidity and returns tokens to the vault.
-     *      Iterates through all provided token IDs and burns each position. Emits an event for each
-     *      closed position.
+     * @dev Burns the specified NFT positions, removes them from storage tracking, which removes liquidity
+     *      and returns tokens to the vault. Iterates through all provided token IDs and burns each position.
+     *      Emits an event for each closed position.
      * @param closePositions_ The exit data containing array of token IDs to close
      * @return tokenIds The array of token IDs that were successfully closed
      */
@@ -203,11 +210,36 @@ contract VelodromeSuperchainSlipstreamNewPositionFuse is IFuseCommon {
         uint256 len = closePositions_.tokenIds.length;
         tokenIds = new uint256[](len);
 
-        for (uint256 i; i < len; ++i) {
-            tokenIds[i] = closePositions_.tokenIds[i];
-            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions_.tokenIds[i]);
+        FuseStorageLib.VelodromeSuperchainSlipstreamTokenIds storage storedTokenIds = FuseStorageLib
+            .getVelodromeSuperchainSlipstreamTokenIds();
+        uint256 storageLen = storedTokenIds.tokenIds.length;
+        uint256 tokenIndex;
+        uint256 lastTokenId;
+        uint256 tokenId;
 
-            emit VelodromeSuperchainSlipstreamNewPositionFuseExit(VERSION, closePositions_.tokenIds[i]);
+        for (uint256 i; i < len; ++i) {
+            tokenId = closePositions_.tokenIds[i];
+            tokenIds[i] = tokenId;
+
+            // Remove tokenId from storage using swap-and-pop pattern
+            tokenIndex = storedTokenIds.indexes[tokenId];
+
+            // Only remove if the token exists in storage (index exists and matches)
+            if (storageLen > 0 && tokenIndex < storageLen && storedTokenIds.tokenIds[tokenIndex] == tokenId) {
+                if (tokenIndex != storageLen - 1) {
+                    lastTokenId = storedTokenIds.tokenIds[storageLen - 1];
+                    storedTokenIds.tokenIds[tokenIndex] = lastTokenId;
+                    storedTokenIds.indexes[lastTokenId] = tokenIndex;
+                }
+
+                storedTokenIds.tokenIds.pop();
+                delete storedTokenIds.indexes[tokenId];
+                --storageLen;
+            }
+
+            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
+
+            emit VelodromeSuperchainSlipstreamNewPositionFuseExit(VERSION, tokenId);
         }
     }
 
