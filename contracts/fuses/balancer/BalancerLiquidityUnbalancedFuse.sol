@@ -99,10 +99,10 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
     /// @custom:error BalancerLiquidityUnbalancedFuseInvalidPermit2Address
     error BalancerLiquidityUnbalancedFuseInvalidPermit2Address();
 
-    /// @notice Thrown when a token is not granted as an asset for this market
-    /// @param token The address of the token that was not granted
+    /// @notice Thrown when attempting to use a token that is not granted for this market
+    /// @param asset The address of the token that was not granted
     /// @custom:error BalancerLiquidityUnbalancedFuseUnsupportedAsset
-    error BalancerLiquidityUnbalancedFuseUnsupportedAsset(address token);
+    error BalancerLiquidityUnbalancedFuseUnsupportedAsset(address asset);
 
     /// @notice Emitted when liquidity is added with unbalanced amounts to a Balancer pool
     /// @param version The address of the fuse contract version
@@ -266,6 +266,10 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
         ) {
             revert BalancerLiquidityUnbalancedFuseUnsupportedPool(data_.pool);
         }
+
+        // Validate that all tokens in the pool are granted as TOKEN substrates for this market
+        // This prevents withdrawing non-whitelisted tokens into the vault
+        BalancerSubstrateLib.validatePoolTokensGranted(MARKET_ID, data_.pool);
 
         if (data_.maxBptAmountIn == 0) {
             amountsOut = new uint256[](0);
