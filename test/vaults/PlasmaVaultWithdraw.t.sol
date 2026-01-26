@@ -2335,6 +2335,168 @@ contract PlasmaVaultWithdrawTest is Test {
         assertLe(actualShares, previewShares, "ERC4626: withdraw should return <= previewWithdraw");
     }
 
+    /// @notice Test L4 fix: previewWithdraw uses correct formula (1e18 / (1e18 - fee)) not additive formula
+    /// @dev This test verifies that previewWithdraw is the algebraic inverse of previewRedeem
+    ///      For a fee, previewRedeem scales shares DOWN by (1e18 - fee) / 1e18
+    ///      So previewWithdraw must scale shares UP by 1e18 / (1e18 - fee)
+    ///      Bug was: additive formula baseShares * (1 + fee) instead of baseShares / (1 - fee)
+    function testL4Fix_PreviewWithdrawUsesCorrectMultiplicativeInverseFormula() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        uint256 assetsToWithdraw = 100 * 1e18;
+
+        // Get base shares without fee
+        uint256 baseShares = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // Test with 1% fee
+        uint256 fee1Percent = 1e16; // 1%
+        WithdrawManager(withdrawManager).updateWithdrawFee(fee1Percent);
+        uint256 sharesWithFee1Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // For 1% fee, correct multiplier is 1e18 / (1e18 - 1e16) = 1e18 / 0.99e18 ≈ 1.010101...
+        // Wrong additive formula would give: 1 + 0.01 = 1.01
+        uint256 expectedRatio1Percent = (baseShares * 1e18) / (1e18 - fee1Percent);
+        
+        // Allow 1 wei tolerance for rounding
+        assertApproxEqAbs(
+            sharesWithFee1Percent, 
+            expectedRatio1Percent, 
+            1, 
+            "1% fee: previewWithdraw should use multiplicative inverse formula"
+        );
+        
+        // Verify the ratio is ~1.0101, not ~1.01 (which would be the additive bug)
+        // 1.0101... * 1e18 = 1010101010101010101
+        // 1.01 * 1e18 = 1010000000000000000
+        uint256 actualRatio1Percent = (sharesWithFee1Percent * 1e18) / baseShares;
+        assertGt(actualRatio1Percent, 1010000000000000000, "1% fee ratio should be > 1.01 (additive bug)");
+        assertLt(actualRatio1Percent, 1010200000000000000, "1% fee ratio should be < 1.0102");
+
+        // Test with 10% fee - difference is more pronounced
+        uint256 fee10Percent = 1e17; // 10%
+        WithdrawManager(withdrawManager).updateWithdrawFee(fee10Percent);
+        uint256 sharesWithFee10Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // For 10% fee, correct multiplier is 1e18 / 0.9e18 ≈ 1.1111...
+        // Wrong additive formula would give: 1 + 0.1 = 1.1
+        uint256 expectedRatio10Percent = (baseShares * 1e18) / (1e18 - fee10Percent);
+        
+        assertApproxEqAbs(
+            sharesWithFee10Percent, 
+            expectedRatio10Percent, 
+            1, 
+            "10% fee: previewWithdraw should use multiplicative inverse formula"
+        );
+        
+        // Verify the ratio is ~1.1111, not ~1.1
+        uint256 actualRatio10Percent = (sharesWithFee10Percent * 1e18) / baseShares;
+        assertGt(actualRatio10Percent, 1100000000000000000, "10% fee ratio should be > 1.1 (additive bug)");
+        assertGt(actualRatio10Percent, 1110000000000000000, "10% fee ratio should be > 1.11 (proves correct formula)");
+        assertLt(actualRatio10Percent, 1112000000000000000, "10% fee ratio should be < 1.112");
+    }
+
+    /// @notice Test L4 fix: previewWithdraw and previewRedeem are algebraic inverses
+    /// @dev If you previewWithdraw(assets) to get shares, then previewRedeem(shares) should return ~assets
+    function testL4Fix_PreviewWithdrawAndPreviewRedeemAreAlgebraicInverses() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        // Set 10% withdrawal fee
+        uint256 fee = 1e17; // 10%
+        WithdrawManager(withdrawManager).updateWithdrawFee(fee);
+
+        uint256 targetAssets = 100 * 1e18;
+
+        //when
+        // Get shares needed to withdraw targetAssets
+        uint256 sharesNeeded = plasmaVault.previewWithdraw(targetAssets);
+        
+        // Now check: if we redeem those shares, do we get back targetAssets?
+        uint256 assetsFromRedeem = plasmaVault.previewRedeem(sharesNeeded);
+
+        //then
+        // The round-trip should return approximately the original assets
+        // Allow small tolerance for rounding (both functions may round)
+        assertApproxEqRel(
+            assetsFromRedeem, 
+            targetAssets, 
+            1e15, // 0.1% tolerance for rounding
+            "previewWithdraw and previewRedeem should be algebraic inverses"
+        );
+        
+        // More strict: assets from redeem should be >= target (since previewWithdraw rounds up)
+        assertGe(
+            assetsFromRedeem, 
+            targetAssets, 
+            "previewRedeem(previewWithdraw(assets)) should return >= original assets"
+        );
+    }
+
+    /// @notice Test L4 fix: previewWithdraw handles edge case fees correctly
+    function testL4Fix_PreviewWithdrawEdgeCaseFees() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        uint256 assetsToWithdraw = 100 * 1e18;
+        uint256 baseShares = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // Test with 50% fee - most extreme reasonable case
+        uint256 fee50Percent = 5e17; // 50%
+        WithdrawManager(withdrawManager).updateWithdrawFee(fee50Percent);
+        uint256 sharesWithFee50Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // For 50% fee: 1 / (1 - 0.5) = 2x multiplier
+        // Wrong additive formula would give: 1 + 0.5 = 1.5x
+        uint256 expectedShares50Percent = (baseShares * 1e18) / (1e18 - fee50Percent);
+        
+        assertApproxEqAbs(
+            sharesWithFee50Percent, 
+            expectedShares50Percent, 
+            1, 
+            "50% fee: should require 2x shares, not 1.5x"
+        );
+        
+        // Verify the ratio is exactly 2x (not 1.5x from additive bug)
+        uint256 actualRatio = (sharesWithFee50Percent * 1e18) / baseShares;
+        assertGt(actualRatio, 1900000000000000000, "50% fee ratio should be close to 2x");
+        assertLt(actualRatio, 2100000000000000000, "50% fee ratio should be close to 2x");
+        
+        // Test very small fee (0.01%)
+        uint256 feeSmall = 1e14; // 0.01%
+        WithdrawManager(withdrawManager).updateWithdrawFee(feeSmall);
+        uint256 sharesWithSmallFee = plasmaVault.previewWithdraw(assetsToWithdraw);
+        
+        // Should be slightly more than base shares
+        assertGt(sharesWithSmallFee, baseShares, "Small fee should require more shares than no fee");
+        
+        // Ratio should be very close to 1
+        uint256 smallFeeRatio = (sharesWithSmallFee * 1e18) / baseShares;
+        assertGt(smallFeeRatio, 1e18, "Small fee ratio should be > 1");
+        assertLt(smallFeeRatio, 1000200000000000000, "Small fee ratio should be < 1.0002");
+    }
+
     /// @notice Test that maxWithdraw() correctly accounts for fee and allows full withdrawal
     function testERC4626_MaxWithdrawAccountsForFee() public {
         //given
