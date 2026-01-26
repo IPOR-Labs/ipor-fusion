@@ -53,12 +53,16 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
     ///      2. Gets the LP token balance (liquidity) held by the vault for that pool
     ///      3. Calculates balance from liquidity: proportionally calculates the value of underlying tokens
     ///         based on the LP token balance relative to total supply and pool reserves
-    ///      4. Calculates balance from fees: accumulates claimable fees using index deltas
+    ///      4. Calculates balance from fees (Pool substrates only):
+    ///         - For Pool substrates: includes trading fees claimable by the vault
+    ///         - For Gauge substrates: trading fees are NOT included because when LP tokens are staked
+    ///           in a Gauge, trading fees go to the Aerodrome voting/bribe system (FeesVotingReward),
+    ///           not to the vault. The vault only receives AERO token rewards from gauges.
     ///      5. Converts all balances to USD using price oracle middleware
     ///      6. Normalizes results to WAD (18 decimals) and sums all balances
     ///      The calculation methodology ensures that:
-    ///      - Both LP token value and accumulated fees are included in the balance
-    ///      - Index deltas track fee accumulation over time
+    ///      - LP token value is always included in the balance
+    ///      - Trading fees are only included when the vault directly holds LP tokens (Pool substrate)
     ///      - All token amounts are converted to USD using oracle prices
     ///      - Final result is normalized to WAD precision (18 decimals) for consistency
     /// @return The total balance of the Plasma Vault in Aerodrome protocol, normalized to WAD (18 decimals)
@@ -76,6 +80,7 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         uint256 liquidity;
         AerodromeSubstrate memory substrate;
+        bool isGauge;
 
         for (uint256 i; i < len; ++i) {
             substrate = AerodromeSubstrateLib.bytes32ToSubstrate(pools[i]);
@@ -83,16 +88,25 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
             if (substrate.substrateType == AerodromeSubstrateType.Gauge) {
                 pool = IGauge(substrate.substrateAddress).stakingToken();
                 liquidity = IERC20(substrate.substrateAddress).balanceOf(address(this));
+                isGauge = true;
             } else if (substrate.substrateType == AerodromeSubstrateType.Pool) {
                 pool = substrate.substrateAddress;
                 liquidity = IERC20(pool).balanceOf(address(this));
+                isGauge = false;
             } else {
                 continue;
             }
 
             if (liquidity > 0) {
                 balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
+                // Only include trading fees for Pool substrates.
+                // When LP tokens are staked in a Gauge, trading fees go to FeesVotingReward (voter/bribe system),
+                // not to the vault. The vault's supplyIndex and claimable values in the pool will be zero/stale
+                // since it doesn't hold LP tokens directly. Including fees for Gauge substrates would incorrectly
+                // attribute the entire historical fee index growth to the vault, massively inflating the balance.
+                if (!isGauge) {
+                    balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
+                }
             }
         }
 
@@ -172,6 +186,10 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
     ///
     ///      The index delta approach ensures accurate fee tracking even if fees accumulate between balance checks.
     ///      Only positive deltas are considered to avoid underflow issues.
+    ///
+    ///      IMPORTANT: This function should only be called for Pool substrates where the vault directly holds
+    ///      LP tokens. For Gauge substrates, trading fees go to the FeesVotingReward contract (voter/bribe system),
+    ///      not to the vault, so this function should not be called.
     /// @param pool_ The address of the Aerodrome pool
     /// @param priceOracleMiddleware_ The address of the price oracle middleware for USD price conversion
     /// @param liquidity_ The amount of LP tokens held by the vault

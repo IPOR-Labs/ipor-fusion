@@ -748,18 +748,17 @@ contract PlasmaVault is
     function previewWithdraw(uint256 assets_) public view override returns (uint256) {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
-        uint256 baseShares = super.previewWithdraw(assets_);
-
         if (withdrawManager != address(0)) {
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
 
             if (withdrawFee > 0) {
-                uint256 feeShares = Math.mulDiv(baseShares, withdrawFee, 1e18, Math.Rounding.Ceil);
-
-                return baseShares + feeShares;
+                // Scale by 1e18 / (1e18 - withdrawFee) to add proportional fee on top of pre-fee shares
+                // This is the algebraic inverse of previewRedeem which uses (1e18 - withdrawFee) / 1e18
+                // Round up since we're computing required shares
+                return Math.mulDiv(super.previewWithdraw(assets_), 1e18, 1e18 - withdrawFee, Math.Rounding.Ceil);
             }
         }
-        return baseShares;
+        return super.previewWithdraw(assets_);
     }
 
     /// @notice Redeems vault shares for underlying assets
