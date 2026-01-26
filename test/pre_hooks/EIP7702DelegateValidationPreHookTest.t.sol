@@ -90,15 +90,40 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     address public nonWhitelistedTarget;
     address public userEOA;
 
+    /// @notice Counter for generating unique EOA addresses that don't exist on mainnet
+    uint256 private _eoaCounter = 0x1234567890ABCDEF;
+
+    /// @notice Generates a fresh EOA address guaranteed to have no code
+    /// @dev Uses an incrementing counter to generate unique private keys
+    function _createFreshEOA(string memory label_) internal returns (address eoa) {
+        _eoaCounter++;
+        uint256 privateKey = uint256(keccak256(abi.encodePacked(label_, _eoaCounter, block.timestamp)));
+        eoa = vm.addr(privateKey);
+        // Ensure the address has no code (clear any existing code from fork)
+        vm.etch(eoa, "");
+        vm.label(eoa, label_);
+    }
+
+    /// @notice Sets EIP-7702 delegation code on an address, ensuring clean state first
+    /// @dev Clears any existing code before setting delegation code for consistent behavior
+    function _setDelegationCode(address eoa_, address delegateTarget_) internal {
+        // First clear any existing code to ensure consistent behavior across Foundry versions
+        vm.etch(eoa_, "");
+        // Now set the EIP-7702 delegation code
+        bytes memory delegationCode = abi.encodePacked(bytes3(0xef0100), delegateTarget_);
+        vm.etch(eoa_, delegationCode);
+    }
+
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 21596204);
 
         preHook = new EIP7702DelegateValidationPreHook();
 
-        // Create addresses for testing
-        whitelistedTarget = makeAddr("whitelistedTarget");
-        nonWhitelistedTarget = makeAddr("nonWhitelistedTarget");
-        userEOA = makeAddr("userEOA");
+        // Create fresh EOA addresses that are guaranteed to have no code on the fork
+        // Using _createFreshEOA ensures consistent behavior across different Foundry versions
+        whitelistedTarget = _createFreshEOA("whitelistedTarget");
+        nonWhitelistedTarget = _createFreshEOA("nonWhitelistedTarget");
+        userEOA = _createFreshEOA("userEOA");
 
         // Deploy a fresh vault
         PriceOracleMiddleware priceOracleMiddleware = PriceOracleMiddlewareHelper.getEthereumPriceOracleMiddleware();
@@ -128,8 +153,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     /// @notice Test that whitelisted delegate target passes validation
     function testShouldAllowWhitelistedDelegateTarget() public {
         // given - set up EIP-7702 delegation code on userEOA
-        bytes memory delegationCode = abi.encodePacked(bytes3(0xef0100), whitelistedTarget);
-        vm.etch(userEOA, delegationCode);
+        _setDelegationCode(userEOA, whitelistedTarget);
 
         // Configure pre-hook with whitelisted target
         bytes4[] memory selectors = new bytes4[](1);
@@ -159,8 +183,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     /// @notice Test that non-whitelisted delegate target reverts
     function testShouldRevertForNonWhitelistedDelegateTarget() public {
         // given - set up EIP-7702 delegation code with non-whitelisted target
-        bytes memory delegationCode = abi.encodePacked(bytes3(0xef0100), nonWhitelistedTarget);
-        vm.etch(userEOA, delegationCode);
+        _setDelegationCode(userEOA, nonWhitelistedTarget);
 
         // Configure pre-hook with different whitelisted target
         bytes4[] memory selectors = new bytes4[](1);
@@ -287,10 +310,9 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     /// @notice Test that different selectors can have different whitelists
     function testShouldWorkWithMultipleSelectors() public {
         // given - set up EIP-7702 delegation
-        bytes memory delegationCode = abi.encodePacked(bytes3(0xef0100), whitelistedTarget);
-        vm.etch(userEOA, delegationCode);
+        _setDelegationCode(userEOA, whitelistedTarget);
 
-        address secondWhitelistedTarget = makeAddr("secondWhitelistedTarget");
+        address secondWhitelistedTarget = _createFreshEOA("secondWhitelistedTarget");
 
         // Configure pre-hook for deposit with whitelistedTarget
         // Configure pre-hook for withdraw with secondWhitelistedTarget
@@ -334,9 +356,8 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     /// @notice Test multiple whitelisted targets for same selector
     function testShouldWorkWithMultipleWhitelistedTargets() public {
         // given - set up EIP-7702 delegation with second whitelisted target
-        address secondWhitelistedTarget = makeAddr("secondWhitelistedTarget");
-        bytes memory delegationCode = abi.encodePacked(bytes3(0xef0100), secondWhitelistedTarget);
-        vm.etch(userEOA, delegationCode);
+        address secondWhitelistedTarget = _createFreshEOA("secondWhitelistedTarget");
+        _setDelegationCode(userEOA, secondWhitelistedTarget);
 
         // Configure pre-hook with both targets whitelisted
         bytes4[] memory selectors = new bytes4[](1);
@@ -367,8 +388,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     /// @notice Test that empty whitelist reverts for delegated account
     function testShouldRevertWhenWhitelistIsEmpty() public {
         // given - set up EIP-7702 delegation
-        bytes memory delegationCode = abi.encodePacked(bytes3(0xef0100), whitelistedTarget);
-        vm.etch(userEOA, delegationCode);
+        _setDelegationCode(userEOA, whitelistedTarget);
 
         // Configure pre-hook with empty substrates
         bytes4[] memory selectors = new bytes4[](1);
@@ -481,12 +501,8 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         // authorization = (chain_id, address, nonce, y_parity, r, s)
         // This sets the EOA's code to: 0xef0100 || smart_wallet_address
         //
-        // Here we simulate this by using vm.etch to set the delegation designator
-        bytes memory eip7702DelegationCode = abi.encodePacked(
-            bytes3(0xef0100), // EIP-7702 delegation prefix
-            address(trustedSmartWallet) // Delegate target (the smart wallet)
-        );
-        vm.etch(userEOA, eip7702DelegationCode);
+        // Here we simulate this by using _setDelegationCode helper
+        _setDelegationCode(userEOA, address(trustedSmartWallet));
 
         // Verify the delegation code is set correctly
         assertEq(userEOA.code.length, 23, "EOA should have 23-byte delegation code");
@@ -542,11 +558,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
 
         // ========== STEP 3: EOA delegates to the UNTRUSTED SmartWallet ==========
         // This simulates a malicious or unknown smart wallet
-        bytes memory eip7702DelegationCode = abi.encodePacked(
-            bytes3(0xef0100),
-            address(untrustedSmartWallet) // Delegate to untrusted wallet
-        );
-        vm.etch(userEOA, eip7702DelegationCode);
+        _setDelegationCode(userEOA, address(untrustedSmartWallet));
 
         // ========== STEP 4: EOA tries to interact with the vault ==========
         vm.startPrank(userEOA, userEOA);
@@ -573,9 +585,9 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         MockSmartWallet smartWallet1 = new MockSmartWallet();
         MockSmartWallet smartWallet2 = new MockSmartWallet();
 
-        // Create two EOA addresses
-        address alice = makeAddr("alice");
-        address bob = makeAddr("bob");
+        // Create two fresh EOA addresses
+        address alice = _createFreshEOA("alice");
+        address bob = _createFreshEOA("bob");
         deal(USDC, alice, 1000e6);
         deal(USDC, bob, 1000e6);
 
@@ -594,10 +606,10 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
 
         // Alice delegates to smartWallet1 (whitelisted)
-        vm.etch(alice, abi.encodePacked(bytes3(0xef0100), address(smartWallet1)));
+        _setDelegationCode(alice, address(smartWallet1));
 
         // Bob delegates to smartWallet2 (NOT whitelisted)
-        vm.etch(bob, abi.encodePacked(bytes3(0xef0100), address(smartWallet2)));
+        _setDelegationCode(bob, address(smartWallet2));
 
         // Alice's deposit should succeed
         vm.startPrank(alice, alice);
@@ -628,7 +640,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         MockSmartWallet smartWallet = new MockSmartWallet();
 
         // Set up EOA with delegation
-        vm.etch(userEOA, abi.encodePacked(bytes3(0xef0100), address(smartWallet)));
+        _setDelegationCode(userEOA, address(smartWallet));
 
         // Initially, no whitelist configured - EOA with delegation will be rejected
         bytes4[] memory selectors = new bytes4[](1);
@@ -702,7 +714,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
 
         // Give userEOA delegation to a NON-whitelisted wallet
         MockSmartWallet userMaliciousWallet = new MockSmartWallet();
-        vm.etch(userEOA, abi.encodePacked(bytes3(0xef0100), address(userMaliciousWallet)));
+        _setDelegationCode(userEOA, address(userMaliciousWallet));
 
         // userEOA (tx.origin, has malicious delegation) calls through router
         // tx.origin = userEOA (has non-whitelisted delegation)
@@ -745,7 +757,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
 
         // Case 1: userEOA delegates to whitelisted wallet -> should pass
-        vm.etch(userEOA, abi.encodePacked(bytes3(0xef0100), address(whitelistedWallet)));
+        _setDelegationCode(userEOA, address(whitelistedWallet));
 
         vm.startPrank(userEOA, userEOA);
         IERC20(USDC).approve(address(plasmaVault), 100e6);
@@ -756,7 +768,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         assertTrue(sharesAfterFirst > 0, "Whitelisted delegation should pass");
 
         // Case 2: Change userEOA delegation to non-whitelisted wallet -> should fail
-        vm.etch(userEOA, abi.encodePacked(bytes3(0xef0100), address(nonWhitelistedWallet)));
+        _setDelegationCode(userEOA, address(nonWhitelistedWallet));
 
         vm.startPrank(userEOA, userEOA);
 
@@ -784,7 +796,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     ///      We validate Alice (msg.sender) who has the delegation
     function testMsgSenderValidation_ThirdPartyCallsEOAWithDelegation() public {
         // Setup: Alice has delegation to a whitelisted SmartWallet
-        address alice = makeAddr("alice");
+        address alice = _createFreshEOA("alice");
         MockSmartWallet aliceSmartWallet = new MockSmartWallet();
 
         // Whitelist Alice's SmartWallet
@@ -802,7 +814,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
 
         // Set Alice's delegation code
-        vm.etch(alice, abi.encodePacked(bytes3(0xef0100), address(aliceSmartWallet)));
+        _setDelegationCode(alice, address(aliceSmartWallet));
 
         // Give Alice some USDC
         deal(USDC, alice, 1000e6);
@@ -815,7 +827,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
 
         // Simulation: Alice's SmartWallet code calls vault (Alice is msg.sender)
         // tx.origin could be anyone (Bob), but msg.sender is Alice
-        address bob = makeAddr("bob");
+        address bob = _createFreshEOA("bob");
 
         vm.startPrank(alice, bob); // msg.sender = Alice, tx.origin = Bob
         IERC20(USDC).approve(address(plasmaVault), 100e6);
@@ -834,7 +846,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     /// @notice Shows what happens when third party triggers EOA with non-whitelisted delegation
     /// @dev Bob -> Alice (non-whitelisted SmartWallet) -> Vault should REVERT
     function testMsgSenderValidation_ThirdPartyCallsEOAWithNonWhitelistedDelegation() public {
-        address alice = makeAddr("alice");
+        address alice = _createFreshEOA("alice");
         MockSmartWallet aliceNonWhitelistedWallet = new MockSmartWallet();
         MockSmartWallet otherWhitelistedWallet = new MockSmartWallet();
 
@@ -853,11 +865,11 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
 
         // Alice delegates to a NON-whitelisted wallet
-        vm.etch(alice, abi.encodePacked(bytes3(0xef0100), address(aliceNonWhitelistedWallet)));
+        _setDelegationCode(alice, address(aliceNonWhitelistedWallet));
 
         deal(USDC, alice, 1000e6);
 
-        address bob = makeAddr("bob");
+        address bob = _createFreshEOA("bob");
 
         // Bob triggers Alice's SmartWallet code (Alice is msg.sender)
         vm.startPrank(alice, bob); // msg.sender = Alice, tx.origin = Bob
