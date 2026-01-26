@@ -125,6 +125,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoBaseTest is Test {
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
+            plasmaVaultERC4626: address(0),
             withdrawManager: _withdrawManager
         });
 

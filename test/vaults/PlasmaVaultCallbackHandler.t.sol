@@ -85,6 +85,7 @@ contract PlasmaVaultCallbackHandler is Test {
                 feeConfig,
                 _accessManager,
                 address(new PlasmaVaultBase()),
+                address(0),
                 _withdrawManager
             )
         );

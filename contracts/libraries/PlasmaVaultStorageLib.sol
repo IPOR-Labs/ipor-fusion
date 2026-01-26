@@ -736,6 +736,21 @@ library PlasmaVaultStorageLib {
         0x5bb34fc23414cfe7e422518e1d8590877bcc5dcacad5f8689bfd98e9a05ac600;
 
     /**
+     * @dev Storage slot for PlasmaVaultERC4626 address. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultERC4626")) - 1)) & ~bytes32(uint256(0xff))
+     */
+    bytes32 private constant PLASMA_VAULT_ERC4626_SLOT =
+        0x3a8d9c8f5b7e2d1a0f6c4b3e8d7a2c1f5b9e8d3a7c6f2e1b0a9d8c7f6e5b4a00;
+
+    /**
+     * @dev Storage slot for market balance last update timestamp. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.MarketBalanceLastUpdate")) - 1)) & ~bytes32(uint256(0xff))
+     * @notice Tracks when market balances were last updated for staleness detection
+     */
+    bytes32 private constant MARKET_BALANCE_LAST_UPDATE_SLOT =
+        0xd249011a2df6f5e5a53a76d2d33daa4a8cdeff9b71ef47a3bf61897813733800;
+
+    /**
      * @notice Maps callback signatures to their handler contracts
      * @dev Stores routing information for protocol-specific callbacks
      * @custom:storage-location erc7201:io.ipor.callbackHandler
@@ -1152,6 +1167,41 @@ library PlasmaVaultStorageLib {
     function setShareScaleMultiplier(uint256 multiplier_) internal {
         assembly {
             sstore(SHARE_SCALE_MULTIPLIER_SLOT, multiplier_)
+        }
+    }
+
+    /// @notice Gets the PlasmaVaultERC4626 address from storage
+    /// @return The address of the PlasmaVaultERC4626 contract
+    function getPlasmaVaultERC4626() internal view returns (address) {
+        address erc4626;
+        assembly {
+            erc4626 := sload(PLASMA_VAULT_ERC4626_SLOT)
+        }
+        return erc4626;
+    }
+
+    /// @notice Sets the PlasmaVaultERC4626 address in storage
+    /// @param erc4626_ The address of the PlasmaVaultERC4626 contract
+    function setPlasmaVaultERC4626(address erc4626_) internal {
+        assembly {
+            sstore(PLASMA_VAULT_ERC4626_SLOT, erc4626_)
+        }
+    }
+
+    /// @notice Gets the market balance last update timestamp from storage
+    /// @return ts Unix timestamp of the last balance update (0 if never updated)
+    function getMarketBalanceLastUpdateTimestamp() internal view returns (uint32) {
+        uint32 ts;
+        assembly {
+            ts := sload(MARKET_BALANCE_LAST_UPDATE_SLOT)
+        }
+        return ts;
+    }
+
+    /// @notice Updates the market balance last update timestamp to current block timestamp
+    function updateMarketBalanceLastUpdateTimestamp() internal {
+        assembly {
+            sstore(MARKET_BALANCE_LAST_UPDATE_SLOT, timestamp())
         }
     }
 }

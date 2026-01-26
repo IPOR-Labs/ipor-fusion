@@ -86,6 +86,9 @@ struct PlasmaVaultInitData {
     /// @notice Address of the base contract providing common functionality
     /// @dev Implements core vault logic through delegatecall
     address plasmaVaultBase;
+    /// @notice Address of the ERC4626 view functions contract
+    /// @dev Implements ERC4626 preview/max functions through delegatecall to reduce main contract size
+    address plasmaVaultERC4626;
     /// @notice Address of the withdraw manager contract
     /// @dev Controls withdrawal permissions and limits, zero address disables managed withdrawals
     address withdrawManager;
@@ -265,15 +268,55 @@ contract PlasmaVault is
             /// @dev Handle callback can be done only during the execution of the FuseActions by Alpha
             CallbackHandlerLib.handleCallback();
             return "";
-        } else {
-            return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
         }
+
+        bytes4 sig = msg.sig;
+
+        // Route ERC4626 view functions to dedicated contract to reduce main contract size
+        if (_isERC4626ViewFunction(sig)) {
+            address erc4626 = PlasmaVaultStorageLib.getPlasmaVaultERC4626();
+            if (erc4626 != address(0)) {
+                return erc4626.functionDelegateCall(msg.data);
+            }
+        }
+
+        return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
+    }
+
+    /// @notice Checks if the function selector is an ERC4626 view function
+    /// @param sig_ The function selector to check
+    /// @return True if the selector is an ERC4626 view function
+    function _isERC4626ViewFunction(bytes4 sig_) internal pure returns (bool) {
+        // Standard ERC4626 view functions
+        if (sig_ == this.previewDeposit.selector ||
+            sig_ == this.previewMint.selector ||
+            sig_ == this.previewRedeem.selector ||
+            sig_ == this.previewWithdraw.selector ||
+            sig_ == this.maxDeposit.selector ||
+            sig_ == this.maxMint.selector ||
+            sig_ == this.maxWithdraw.selector ||
+            sig_ == this.maxRedeem.selector) {
+            return true;
+        }
+        // Custom view functions (selectors hardcoded as they only exist in PlasmaVaultERC4626)
+        // getDepositFeeSharesExternal(uint256) = 0x9a344088
+        // getMarketBalanceLastUpdateTimestamp() = 0x2aedb0ba
+        // isMarketBalanceStale(uint256) = 0x9cc01f36
+        return sig_ == bytes4(0x9a344088) ||
+               sig_ == bytes4(0x2aedb0ba) ||
+               sig_ == bytes4(0x9cc01f36);
     }
 
     /// @notice The plasma vault base contract address
     /// @dev Retrieved from storage library
     function PLASMA_VAULT_BASE() public view returns (address) {
         return PlasmaVaultStorageLib.getPlasmaVaultBase();
+    }
+
+    /// @notice The plasma vault ERC4626 contract address
+    /// @dev Retrieved from storage library
+    function PLASMA_VAULT_ERC4626() public view returns (address) {
+        return PlasmaVaultStorageLib.getPlasmaVaultERC4626();
     }
 
     /// @notice Initializes the PlasmaVault with initialization data (for cloning)
@@ -1234,6 +1277,9 @@ contract PlasmaVault is
 
         PlasmaVaultStorageLib.setShareScaleMultiplier(10 ** _decimalsOffset());
         PlasmaVaultStorageLib.setPlasmaVaultBase(initData_.plasmaVaultBase);
+        if (initData_.plasmaVaultERC4626 != address(0)) {
+            PlasmaVaultStorageLib.setPlasmaVaultERC4626(initData_.plasmaVaultERC4626);
+        }
 
         initData_.plasmaVaultBase.functionDelegateCall(
             abi.encodeWithSelector(
@@ -1386,6 +1432,9 @@ contract PlasmaVault is
         dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
 
         AssetDistributionProtectionLib.checkLimits(dataToCheck);
+
+        // Record timestamp of balance update for staleness tracking
+        PlasmaVaultStorageLib.updateMarketBalanceLastUpdateTimestamp();
     }
 
     function _checkIfExistsMarket(uint256[] memory markets_, uint256 marketId_) internal pure returns (bool exists) {

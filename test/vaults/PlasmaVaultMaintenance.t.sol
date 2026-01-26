@@ -82,6 +82,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -120,6 +121,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -166,6 +168,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -202,6 +205,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -238,6 +242,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -271,6 +276,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -306,6 +312,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -352,6 +359,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -395,6 +403,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -437,6 +446,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -482,6 +492,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -523,6 +534,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );
@@ -2626,6 +2638,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 address(withdrawManager)
             )
         );
@@ -2910,6 +2923,7 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );

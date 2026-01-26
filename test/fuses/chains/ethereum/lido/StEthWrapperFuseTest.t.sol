@@ -73,6 +73,7 @@ contract StEthWrapperFuseTest is Test {
                 _setupFeeConfig(),
                 accessManager,
                 address(new PlasmaVaultBase()),
+                address(0),
                 withdrawManager
             )
         );

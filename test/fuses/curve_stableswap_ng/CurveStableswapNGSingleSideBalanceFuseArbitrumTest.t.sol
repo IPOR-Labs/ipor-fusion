@@ -109,6 +109,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 address(withdrawManager)
             )
         );
@@ -224,6 +225,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
+                address(0),
                 address(withdrawManager)
             )
         );
