@@ -107,8 +107,8 @@ jobs:
                   key: ${{ runner.os }}-modules-${{ hashFiles('**/package-lock.json') }}
 
             - name: Setup Foundry
-              # from tag: v1.2.0
-              uses: foundry-rs/foundry-toolchain@v1.2.0
+              # from tag: v1.7.0
+              uses: foundry-rs/foundry-toolchain@8789b3e21e6c11b2697f5eb56eddae542f746c10
               with:
                   version: stable
 
