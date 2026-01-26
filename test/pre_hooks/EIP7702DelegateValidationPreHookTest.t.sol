@@ -91,25 +91,33 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     address public userEOA;
 
     /// @notice Counter for generating unique EOA addresses that don't exist on mainnet
-    uint256 private _eoaCounter = 0x1234567890ABCDEF;
+    uint256 private _eoaCounter = 0xDEADBEEF_CAFE_BABE_1234;
 
     /// @notice Generates a fresh EOA address guaranteed to have no code
-    /// @dev Uses an incrementing counter to generate unique private keys
+    /// @dev Uses incrementing counter + contract address + unique salt to generate addresses
+    ///      that are virtually impossible to collide with existing mainnet contracts
     function _createFreshEOA(string memory label_) internal returns (address eoa) {
         _eoaCounter++;
-        uint256 privateKey = uint256(keccak256(abi.encodePacked(label_, _eoaCounter, block.timestamp)));
+        // Use high entropy: test contract address + counter + label + unique prefix
+        uint256 privateKey = uint256(
+            keccak256(
+                abi.encodePacked(
+                    "EIP7702_TEST_FRESH_EOA_V2_", // Unique prefix to avoid any collisions
+                    address(this),
+                    _eoaCounter,
+                    label_
+                )
+            )
+        );
+        // Ensure private key is valid (non-zero and less than secp256k1 order)
+        privateKey = (privateKey % 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140) + 1;
         eoa = vm.addr(privateKey);
-        // Ensure the address has no code (clear any existing code from fork)
-        vm.etch(eoa, "");
         vm.label(eoa, label_);
     }
 
-    /// @notice Sets EIP-7702 delegation code on an address, ensuring clean state first
-    /// @dev Clears any existing code before setting delegation code for consistent behavior
+    /// @notice Sets EIP-7702 delegation code on an address
+    /// @dev Creates delegation code: 0xef0100 || delegateTarget (23 bytes total)
     function _setDelegationCode(address eoa_, address delegateTarget_) internal {
-        // First clear any existing code to ensure consistent behavior across Foundry versions
-        vm.etch(eoa_, "");
-        // Now set the EIP-7702 delegation code
         bytes memory delegationCode = abi.encodePacked(bytes3(0xef0100), delegateTarget_);
         vm.etch(eoa_, delegationCode);
     }
