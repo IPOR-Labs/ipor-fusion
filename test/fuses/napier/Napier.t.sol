@@ -120,6 +120,7 @@ contract NapierFuseTest is Test {
     address private _napierPtPriceFeed;
     address private _napierLpPriceFeed;
     address private _napierYtPriceFeed;
+    address private _gauntletUSDCPriceFeed;
     address private _lpTwapOracle;
 
     // Fuses
@@ -417,14 +418,17 @@ contract NapierFuseTest is Test {
         _napierPtPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
         _napierLpPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
         _napierYtPriceFeed = address(new NapierYtLinearPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
-        address[] memory assets = new address[](3);
+        _gauntletUSDCPriceFeed = address(new ERC4626PriceFeed(GAUNTLET_USDC_PRIME)); 
+        address[] memory assets = new address[](4);
         assets[0] = principalToken;
         assets[1] = pool;
-        assets[2] = yt;
-        address[] memory sources = new address[](3); // Price feed contract address
+        assets[2] = yt; 
+        assets[3] = GAUNTLET_USDC_PRIME;
+        address[] memory sources = new address[](4); // Price feed contract address
         sources[0] = _napierPtPriceFeed;
         sources[1] = _napierLpPriceFeed;
         sources[2] = _napierYtPriceFeed;
+        sources[3] = _gauntletUSDCPriceFeed;
         vm.startPrank(SET_ASSETS_PRICES_SOURCES_ACCOUNT);
         _priceOracleMiddleware.setAssetsPricesSources(assets, sources);
         vm.stopPrank();
