@@ -117,11 +117,11 @@ contract NapierFuseTest is Test {
 
     // Price feeds
     address private _ptLinearOracle;
+    address private _lpTwapOracle;
     address private _napierPtPriceFeed;
     address private _napierLpPriceFeed;
     address private _napierYtPriceFeed;
     address private _gauntletUSDCPriceFeed;
-    address private _lpTwapOracle;
 
     // Fuses
     address private _supplyFuse;
@@ -510,7 +510,7 @@ contract NapierFuseTest is Test {
         // so we don't need to call it manually in setUp
     }
 
-    function test_Setup_ConfiguresYtPriceFeedSource() public {
+    function test_Setup_ConfiguresYtPriceFeedSource() public view {
         address yt = IPrincipalToken(principalToken).i_yt();
         address ytSource = _priceOracleMiddleware.getSourceOfAssetPrice(yt);
         address ptSource = _priceOracleMiddleware.getSourceOfAssetPrice(principalToken);
