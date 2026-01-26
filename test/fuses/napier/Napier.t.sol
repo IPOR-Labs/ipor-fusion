@@ -76,13 +76,17 @@ interface IChainlinkOracleFactory {
     ) external returns (address instance);
 }
 
-contract NapierSupplyFuseTest is Test {
+contract NapierFuseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
 
     address private constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     address private constant POOL_MANAGER = 0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32;
+
+
+    // IPOR role accounts
+    address constant SET_ASSETS_PRICES_SOURCES_ACCOUNT = 0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569;
 
     ///  assets
     address private constant GAUNTLET_USDC_PRIME = 0x7c574174DA4b2be3f705c6244B4BfA0815a8B3Ed;
@@ -107,7 +111,9 @@ contract NapierSupplyFuseTest is Test {
     PlasmaVault private _plasmaVault;
     address private _priceOracle;
     IporFusionAccessManager private _accessManager;
-    PriceOracleMiddleware private _priceOracleMiddleware;
+    PriceOracleMiddleware private _priceOracleMiddleware =
+        PriceOracleMiddleware(0xd19D0C917844b996B09c48A9FF622177Af219C79);
+
 
     // Price feeds
     address private _ptLinearOracle;
@@ -138,11 +144,6 @@ contract NapierSupplyFuseTest is Test {
         vm.label(GAUNTLET_USDC_PRIME, "gauntletUSDC");
         vm.label(USDC, "USDC");
         vm.label(WETH, "WETH");
-
-        // Deploy price oracle middleware
-        vm.startPrank(ATOMIST);
-        _priceOracleMiddleware = PriceOracleMiddlewareHelper.getArbitrumPriceOracleMiddleware();
-        vm.stopPrank();
 
         DeployMinimalPlasmaVaultParams memory params = DeployMinimalPlasmaVaultParams({
             underlyingToken: USDC,
@@ -424,7 +425,7 @@ contract NapierSupplyFuseTest is Test {
         sources[0] = _napierPtPriceFeed;
         sources[1] = _napierLpPriceFeed;
         sources[2] = _napierYtPriceFeed;
-        vm.startPrank(_priceOracleMiddleware.owner());
+        vm.startPrank(SET_ASSETS_PRICES_SOURCES_ACCOUNT);
         _priceOracleMiddleware.setAssetsPricesSources(assets, sources);
         vm.stopPrank();
 
