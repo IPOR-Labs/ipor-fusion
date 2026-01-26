@@ -5,6 +5,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -56,7 +57,10 @@ contract BalancerTest is Test {
 
         FusionFactory fusionFactory = FusionFactory(_FUSION_FACTORY);
 
-        _fusionInstance = fusionFactory.create("Balancer", "F_BAL", _FW_ETH, 0, _ATOMIST);
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
+        _fusionInstance = fusionFactory.create("Balancer", "F_BAL", _FW_ETH, 0, _ATOMIST, 0);
 
         vm.startPrank(_ATOMIST);
         IporFusionAccessManager(_fusionInstance.accessManager).grantRole(Roles.ATOMIST_ROLE, _ATOMIST, 0);

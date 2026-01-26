@@ -40,6 +40,16 @@ library FusionFactoryStorageLib {
         address priceManagerFactory;
     }
 
+    /// @notice Fee package structure for vault creation
+    /// @param managementFee Management fee with 2 decimals (10000 = 100%)
+    /// @param performanceFee Performance fee with 2 decimals (10000 = 100%)
+    /// @param feeRecipient Address that receives the fees
+    struct FeePackage {
+        uint256 managementFee;
+        uint256 performanceFee;
+        address feeRecipient;
+    }
+
     struct AddressType {
         address value;
     }
@@ -50,6 +60,11 @@ library FusionFactoryStorageLib {
 
     struct AddressArrayType {
         address[] value;
+    }
+
+    /// @dev ERC-7201 namespaced storage struct for DAO fee packages
+    struct DaoFeePackagesStorage {
+        FeePackage[] packages;
     }
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryVersion")) - 1)) & ~bytes32(uint256(0xff))
@@ -107,15 +122,9 @@ library FusionFactoryStorageLib {
     bytes32 private constant BURN_REQUEST_FEE_FUSE_ADDRESS =
         0xf011e505a711b4f906e6e0cfcd988c477cb335d6eb81d8284628276cae32ab00;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoFeeRecipientAddress")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant DAO_FEE_RECIPIENT_ADDRESS =
-        0xe26401adf3cefb9a94bf1fba47a8129fd18fd2e2e83de494ce289a832073a500;
-
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoManagementFee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant DAO_MANAGEMENT_FEE = 0x8fc808da4bdddf1c57ae4d57b8d77cb4183e940f6bb88a2aecb349605eb51800;
-
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.IporDaoPerformanceFee")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant DAO_PERFORMANCE_FEE = 0x3d6b96d1c7d5b94a3af077c0baedb5f7745382ef440582d67ffa3542d73b9f00;
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FeePackages")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant DAO_FEE_PACKAGES_STORAGE_SLOT =
+        0x59feb9265c4719d36ddde95dfd6b130deb8154e067cc891498b39e0bd8956900;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.WithdrawWindowInSeconds")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant WITHDRAW_WINDOW_IN_SECONDS =
@@ -200,18 +209,6 @@ library FusionFactoryStorageLib {
 
     function getBurnRequestFeeFuseAddress() internal view returns (address) {
         return _getBurnRequestFeeFuseAddressSlot().value;
-    }
-
-    function getDaoFeeRecipientAddress() internal view returns (address) {
-        return _getDaoFeeRecipientAddressSlot().value;
-    }
-
-    function getDaoManagementFee() internal view returns (uint256) {
-        return _getDaoManagementFeeSlot().value;
-    }
-
-    function getDaoPerformanceFee() internal view returns (uint256) {
-        return _getDaoPerformanceFeeSlot().value;
     }
 
     function getWithdrawWindowInSeconds() internal view returns (uint256) {
@@ -301,18 +298,6 @@ library FusionFactoryStorageLib {
 
     function setBurnRequestFeeFuseAddress(address value) internal {
         _getBurnRequestFeeFuseAddressSlot().value = value;
-    }
-
-    function setDaoFeeRecipientAddress(address value) internal {
-        _getDaoFeeRecipientAddressSlot().value = value;
-    }
-
-    function setDaoManagementFee(uint256 value) internal {
-        _getDaoManagementFeeSlot().value = value;
-    }
-
-    function setDaoPerformanceFee(uint256 value) internal {
-        _getDaoPerformanceFeeSlot().value = value;
     }
 
     function setWithdrawWindowInSeconds(uint256 value) internal {
@@ -461,24 +446,6 @@ library FusionFactoryStorageLib {
         }
     }
 
-    function _getDaoFeeRecipientAddressSlot() private pure returns (AddressType storage $) {
-        assembly {
-            $.slot := DAO_FEE_RECIPIENT_ADDRESS
-        }
-    }
-
-    function _getDaoManagementFeeSlot() private pure returns (Uint256Type storage $) {
-        assembly {
-            $.slot := DAO_MANAGEMENT_FEE
-        }
-    }
-
-    function _getDaoPerformanceFeeSlot() private pure returns (Uint256Type storage $) {
-        assembly {
-            $.slot := DAO_PERFORMANCE_FEE
-        }
-    }
-
     function _getWithdrawWindowInSecondsSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := WITHDRAW_WINDOW_IN_SECONDS
@@ -494,6 +461,44 @@ library FusionFactoryStorageLib {
     function _getPlasmaVaultCoreBaseAddressSlot() private pure returns (AddressType storage $) {
         assembly {
             $.slot := PLASMA_VAULT_CORE_BASE_ADDRESS
+        }
+    }
+
+    // ============ DAO Fee Packages Storage Functions ============
+
+    function _getDaoFeePackagesStorageSlot() private pure returns (DaoFeePackagesStorage storage $) {
+        assembly {
+            $.slot := DAO_FEE_PACKAGES_STORAGE_SLOT
+        }
+    }
+
+    /// @notice Returns all DAO fee packages
+    /// @return Array of DAO fee packages
+    function getDaoFeePackages() internal view returns (FeePackage[] memory) {
+        return _getDaoFeePackagesStorageSlot().packages;
+    }
+
+    /// @notice Returns a specific DAO fee package by index
+    /// @param index_ Index of the DAO fee package
+    /// @return DAO fee package at the specified index
+    function getDaoFeePackage(uint256 index_) internal view returns (FeePackage memory) {
+        return _getDaoFeePackagesStorageSlot().packages[index_];
+    }
+
+    /// @notice Returns the number of DAO fee packages
+    /// @return Number of DAO fee packages
+    function getDaoFeePackagesLength() internal view returns (uint256) {
+        return _getDaoFeePackagesStorageSlot().packages.length;
+    }
+
+    /// @notice Sets DAO fee packages (replaces entire array)
+    /// @param packages_ Array of DAO fee packages to set
+    function setDaoFeePackages(FeePackage[] memory packages_) internal {
+        delete _getDaoFeePackagesStorageSlot().packages;
+        FeePackage[] storage storagePackages = _getDaoFeePackagesStorageSlot().packages;
+        uint256 length = packages_.length;
+        for (uint256 i; i < length; ++i) {
+            storagePackages.push(packages_[i]);
         }
     }
 }

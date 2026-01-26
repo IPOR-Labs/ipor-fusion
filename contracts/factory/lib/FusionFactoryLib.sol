@@ -35,7 +35,6 @@ library FusionFactoryLib {
     );
 
     error InvalidFactoryAddress();
-    error InvalidFeeValue();
     error InvalidAddress();
     error BurnRequestFeeFuseNotSet();
     error BalanceFuseBurnRequestFeeNotSet();
@@ -46,6 +45,22 @@ library FusionFactoryLib {
     error InvalidPlasmaVaultAdmin();
     error InvalidWithdrawWindow();
     error InvalidIporDaoFeeRecipient();
+
+    /// @notice Thrown when DAO fee package index is out of bounds
+    /// @param index Requested index
+    /// @param length Array length
+    error DaoFeePackageIndexOutOfBounds(uint256 index, uint256 length);
+
+    /// @notice Thrown when DAO fee packages array is empty
+    error DaoFeePackagesArrayEmpty();
+
+    /// @notice Thrown when fee exceeds maximum allowed value
+    /// @param fee The invalid fee value
+    /// @param maxFee Maximum allowed fee
+    error FeeExceedsMaximum(uint256 fee, uint256 maxFee);
+
+    /// @notice Thrown when fee recipient is zero address
+    error FeeRecipientZeroAddress();
 
     function initialize(
         address[] memory initialPlasmaVaultAdminArray_,
@@ -101,7 +116,8 @@ library FusionFactoryLib {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_,
-        bool withAdmin_
+        bool withAdmin_,
+        uint256 daoFeePackageIndex_
     ) public returns (FusionFactoryLogicLib.FusionInstance memory fusionAddresses) {
         _initializeCommonFields(fusionAddresses, assetName_, assetSymbol_, underlyingToken_, owner_);
         fusionAddresses = _create(
@@ -111,7 +127,8 @@ library FusionFactoryLib {
             underlyingToken_,
             redemptionDelayInSeconds_,
             owner_,
-            withAdmin_
+            withAdmin_,
+            daoFeePackageIndex_
         );
         _emitEvent(fusionAddresses);
         return fusionAddresses;
@@ -123,7 +140,8 @@ library FusionFactoryLib {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_,
-        bool withAdmin_
+        bool withAdmin_,
+        uint256 daoFeePackageIndex_
     ) public returns (FusionFactoryLogicLib.FusionInstance memory fusionAddresses) {
         _initializeCommonFields(fusionAddresses, assetName_, assetSymbol_, underlyingToken_, owner_);
         fusionAddresses = FusionFactoryLogicLib.doClone(
@@ -133,7 +151,8 @@ library FusionFactoryLib {
             underlyingToken_,
             redemptionDelayInSeconds_,
             owner_,
-            withAdmin_
+            withAdmin_,
+            daoFeePackageIndex_
         );
         _emitEvent(fusionAddresses);
         return fusionAddresses;
@@ -160,6 +179,15 @@ library FusionFactoryLib {
         fusionAddresses.plasmaVaultBase = FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
     }
 
+    function _validateAndGetDaoFeePackage(
+        uint256 index_
+    ) internal view returns (FusionFactoryStorageLib.FeePackage memory) {
+        uint256 length = FusionFactoryStorageLib.getDaoFeePackagesLength();
+        if (length == 0) revert DaoFeePackagesArrayEmpty();
+        if (index_ >= length) revert DaoFeePackageIndexOutOfBounds(index_, length);
+        return FusionFactoryStorageLib.getDaoFeePackage(index_);
+    }
+
     function _create(
         FusionFactoryLogicLib.FusionInstance memory fusionAddresses,
         string memory assetName_,
@@ -167,10 +195,13 @@ library FusionFactoryLib {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_,
-        bool withAdmin_
+        bool withAdmin_,
+        uint256 daoFeePackageIndex_
     ) internal returns (FusionFactoryLogicLib.FusionInstance memory) {
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib
             .getFactoryAddresses();
+
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage = _validateAndGetDaoFeePackage(daoFeePackageIndex_);
 
         fusionAddresses.accessManager = AccessManagerFactory(factoryAddresses.accessManagerFactory).create(
             fusionAddresses.index,
@@ -189,11 +220,6 @@ library FusionFactoryLib {
             FusionFactoryStorageLib.getPriceOracleMiddleware()
         );
 
-        address daoFeeRecipientAddress = FusionFactoryStorageLib.getDaoFeeRecipientAddress();
-        if (daoFeeRecipientAddress == address(0)) {
-            revert InvalidIporDaoFeeRecipient();
-        }
-
         fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).create(
             fusionAddresses.index,
             PlasmaVaultInitData({
@@ -203,9 +229,9 @@ library FusionFactoryLib {
                 priceOracleMiddleware: fusionAddresses.priceManager,
                 feeConfig: FeeConfig({
                     feeFactory: factoryAddresses.feeManagerFactory,
-                    iporDaoManagementFee: FusionFactoryStorageLib.getDaoManagementFee(),
-                    iporDaoPerformanceFee: FusionFactoryStorageLib.getDaoPerformanceFee(),
-                    iporDaoFeeRecipientAddress: daoFeeRecipientAddress
+                    iporDaoManagementFee: daoFeePackage.managementFee,
+                    iporDaoPerformanceFee: daoFeePackage.performanceFee,
+                    iporDaoFeeRecipientAddress: daoFeePackage.feeRecipient
                 }),
                 accessManager: fusionAddresses.accessManager,
                 plasmaVaultBase: fusionAddresses.plasmaVaultBase,
@@ -226,7 +252,7 @@ library FusionFactoryLib {
                 fusionAddresses,
                 owner_,
                 withAdmin_,
-                daoFeeRecipientAddress,
+                daoFeePackage.feeRecipient,
                 true
             );
     }

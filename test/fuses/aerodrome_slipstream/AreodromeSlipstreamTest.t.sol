@@ -16,6 +16,7 @@ import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsCl
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AreodromeSlipstreamCollectFuse, AreodromeSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
 import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
@@ -95,12 +96,16 @@ contract AreodromeSlipstreamTest is Test {
         fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
         vm.stopPrank();
 
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
         FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "AreodromeSlipstream",
             "VSS",
             _UNDERLYING_TOKEN,
             0,
-            _ATOMIST
+            _ATOMIST,
+            0
         );
 
         _plasmaVault = PlasmaVault(fusionInstance.plasmaVault);

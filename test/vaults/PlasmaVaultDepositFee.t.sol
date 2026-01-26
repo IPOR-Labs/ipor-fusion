@@ -12,6 +12,7 @@ import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaim
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
@@ -72,12 +73,16 @@ contract PlasmaVaultDepositFeeTest is Test {
         fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
         vm.stopPrank();
 
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
         FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "AreodromeSlipstream",
             "VSS",
             _UNDERLYING_TOKEN,
             0,
-            _ATOMIST
+            _ATOMIST,
+            0
         );
 
         _plasmaVault = PlasmaVault(fusionInstance.plasmaVault);
