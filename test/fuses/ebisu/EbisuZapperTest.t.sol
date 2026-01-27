@@ -1123,7 +1123,6 @@ contract EbisuZapperTest is Test {
             troveData.entireDebt - 200, // 500 - 200
             "Debt was not updated by fuse"
         );
-
     }
     // --- helpers ---
 

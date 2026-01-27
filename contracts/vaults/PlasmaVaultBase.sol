@@ -257,12 +257,7 @@ contract PlasmaVaultBase is
         address votesExtension = PlasmaVaultStorageLib.getPlasmaVaultVotesExtension();
         if (votesExtension != address(0)) {
             votesExtension.functionDelegateCall(
-                abi.encodeWithSelector(
-                    IPlasmaVaultVotesExtension.transferVotingUnits.selector,
-                    from_,
-                    to_,
-                    value_
-                )
+                abi.encodeWithSelector(IPlasmaVaultVotesExtension.transferVotingUnits.selector, from_, to_, value_)
             );
         }
     }

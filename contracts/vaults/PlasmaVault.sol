@@ -301,23 +301,23 @@ contract PlasmaVault is
     /// @return True if the selector is an ERC4626 view function
     function _isERC4626ViewFunction(bytes4 sig_) internal pure returns (bool) {
         // Standard ERC4626 view functions
-        if (sig_ == this.previewDeposit.selector ||
+        if (
+            sig_ == this.previewDeposit.selector ||
             sig_ == this.previewMint.selector ||
             sig_ == this.previewRedeem.selector ||
             sig_ == this.previewWithdraw.selector ||
             sig_ == this.maxDeposit.selector ||
             sig_ == this.maxMint.selector ||
             sig_ == this.maxWithdraw.selector ||
-            sig_ == this.maxRedeem.selector) {
+            sig_ == this.maxRedeem.selector
+        ) {
             return true;
         }
         // Custom view functions (selectors hardcoded as they only exist in PlasmaVaultErc4626View)
         // getDepositFeeSharesExternal(uint256) = 0x9a344088
         // getMarketBalanceLastUpdateTimestamp() = 0x2aedb0ba
         // isMarketBalanceStale(uint256) = 0x9cc01f36
-        return sig_ == bytes4(0x9a344088) ||
-               sig_ == bytes4(0x2aedb0ba) ||
-               sig_ == bytes4(0x9cc01f36);
+        return sig_ == bytes4(0x9a344088) || sig_ == bytes4(0x2aedb0ba) || sig_ == bytes4(0x9cc01f36);
     }
 
     /// @notice Checks if the function selector is a Votes function
@@ -340,17 +340,18 @@ contract PlasmaVault is
         // numCheckpoints(address) = 0x6fcfff45
         // checkpoints(address,uint32) = 0xf1127ed8
         // transferVotingUnits(address,address,uint256) = 0x3c7b2e40
-        return sig_ == bytes4(0x9ab24eb0) ||  // getVotes(address)
-               sig_ == bytes4(0x3a46b1a8) ||  // getPastVotes(address,uint256)
-               sig_ == bytes4(0x8e539e8c) ||  // getPastTotalSupply(uint256)
-               sig_ == bytes4(0x587cde1e) ||  // delegates(address)
-               sig_ == bytes4(0x5c19a95c) ||  // delegate(address)
-               sig_ == bytes4(0xc3cda520) ||  // delegateBySig(...)
-               sig_ == bytes4(0x6fcfff45) ||  // numCheckpoints(address)
-               sig_ == bytes4(0xf1127ed8) ||  // checkpoints(address,uint32)
-               sig_ == bytes4(0x91ddadf4) ||  // clock()
-               sig_ == bytes4(0x4bf5d7e9) ||  // CLOCK_MODE()
-               sig_ == bytes4(0x3c7b2e40);    // transferVotingUnits(address,address,uint256)
+        return
+            sig_ == bytes4(0x9ab24eb0) || // getVotes(address)
+            sig_ == bytes4(0x3a46b1a8) || // getPastVotes(address,uint256)
+            sig_ == bytes4(0x8e539e8c) || // getPastTotalSupply(uint256)
+            sig_ == bytes4(0x587cde1e) || // delegates(address)
+            sig_ == bytes4(0x5c19a95c) || // delegate(address)
+            sig_ == bytes4(0xc3cda520) || // delegateBySig(...)
+            sig_ == bytes4(0x6fcfff45) || // numCheckpoints(address)
+            sig_ == bytes4(0xf1127ed8) || // checkpoints(address,uint32)
+            sig_ == bytes4(0x91ddadf4) || // clock()
+            sig_ == bytes4(0x4bf5d7e9) || // CLOCK_MODE()
+            sig_ == bytes4(0x3c7b2e40); // transferVotingUnits(address,address,uint256)
     }
 
     /// @notice The plasma vault base contract address

@@ -507,7 +507,11 @@ contract TransientStorageMapperFuseTest is Test {
 
         // Expected: 1000 * 10^18 = 1_000_000_000_000_000_000_000
         uint256 expectedAmount = 1000 * 1e18;
-        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount, "Should convert USDC (6 decimals) to DAI (18 decimals) correctly");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            expectedAmount,
+            "Should convert USDC (6 decimals) to DAI (18 decimals) correctly"
+        );
     }
 
     /// @notice Test decimal conversion: scale down from 18 to 6 decimals (DAI -> USDC style)
@@ -544,7 +548,11 @@ contract TransientStorageMapperFuseTest is Test {
 
         // Expected: 1000 * 10^6 = 1_000_000_000
         uint256 expectedAmount = 1000 * 1e6;
-        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount, "Should convert DAI (18 decimals) to USDC (6 decimals) correctly");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            expectedAmount,
+            "Should convert DAI (18 decimals) to USDC (6 decimals) correctly"
+        );
     }
 
     /// @notice Test decimal conversion: scale up from 8 to 18 decimals (WBTC style)
@@ -581,7 +589,11 @@ contract TransientStorageMapperFuseTest is Test {
 
         // Expected: 1.5 * 10^18 = 1_500_000_000_000_000_000
         uint256 expectedAmount = 15 * 1e17;
-        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount, "Should convert WBTC (8 decimals) to 18 decimals correctly");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            expectedAmount,
+            "Should convert WBTC (8 decimals) to 18 decimals correctly"
+        );
     }
 
     /// @notice Test decimal conversion: same decimals should not change value
@@ -651,7 +663,11 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Should be exactly the same (early return, no conversion cycle)
-        assertEq(mock.getInput(fuseTo, 0), complexValue, "Complex bytes32 value should remain unchanged with same type and decimals");
+        assertEq(
+            mock.getInput(fuseTo, 0),
+            complexValue,
+            "Complex bytes32 value should remain unchanged with same type and decimals"
+        );
     }
 
     /// @notice Test that same decimals but different types still performs conversion
@@ -687,7 +703,11 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Should convert properly even though decimals are the same
-        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert UINT128 to UINT256 correctly even with same decimals");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            uint256(value),
+            "Should convert UINT128 to UINT256 correctly even with same decimals"
+        );
     }
 
     /// @notice Test decimal conversion with zero value
@@ -790,7 +810,11 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Expected: 100 * 10^18
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 100 * 1e18, "Should convert UINT128 (6 decimals) to UINT256 (18 decimals) correctly");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            100 * 1e18,
+            "Should convert UINT128 (6 decimals) to UINT256 (18 decimals) correctly"
+        );
     }
 
     /// @notice Test decimal conversion scale down with precision loss
@@ -828,7 +852,11 @@ contract TransientStorageMapperFuseTest is Test {
         // Expected: 1000.123456 USDC (loses precision after 6 decimals)
         // 1000123456789012345678 / 10^12 = 1000123456
         uint256 expectedAmount = 1000123456;
-        assertEq(uint256(mock.getInput(fuseTo, 0)), expectedAmount, "Should scale down from 18 to 6 decimals with precision loss");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            expectedAmount,
+            "Should scale down from 18 to 6 decimals with precision loss"
+        );
     }
 
     /// @notice Test mapping with UNKNOWN type bypasses conversion
@@ -863,7 +891,11 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // When fromType is UNKNOWN, value should pass through unchanged
-        assertEq(uint256(mock.getInput(fuseTo, 0)), amount, "UNKNOWN type should bypass conversion and pass value unchanged");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            amount,
+            "UNKNOWN type should bypass conversion and pass value unchanged"
+        );
     }
 
     /// @notice Test address type conversion preserves address
@@ -897,7 +929,11 @@ contract TransientStorageMapperFuseTest is Test {
 
         mock.enter(data);
 
-        assertEq(address(uint160(uint256(mock.getInput(fuseTo, 0)))), testAddress, "ADDRESS type conversion should preserve address value");
+        assertEq(
+            address(uint160(uint256(mock.getInput(fuseTo, 0)))),
+            testAddress,
+            "ADDRESS type conversion should preserve address value"
+        );
     }
 
     /// @notice Test bool type conversion
@@ -1288,7 +1324,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(value), "Should convert positive INT256 to UINT256 correctly");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            uint256(value),
+            "Should convert positive INT256 to UINT256 correctly"
+        );
     }
 
     /// @notice Test negative INT256 to UINT256 reverts
@@ -1480,7 +1520,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(uint160(testAddr)), "Should convert ADDRESS to UINT256 correctly");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            uint256(uint160(testAddr)),
+            "Should convert ADDRESS to UINT256 correctly"
+        );
     }
 
     /// @notice Test UINT256 to ADDRESS conversion (within uint160 range)
@@ -1513,7 +1557,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(address(uint160(uint256(mock.getInput(fuseTo, 0)))), address(0xDEAD), "Should convert UINT256 to ADDRESS correctly");
+        assertEq(
+            address(uint160(uint256(mock.getInput(fuseTo, 0)))),
+            address(0xDEAD),
+            "Should convert UINT256 to ADDRESS correctly"
+        );
     }
 
     /// @notice Test UINT256 > uint160.max to ADDRESS reverts
@@ -2084,7 +2132,11 @@ contract TransientStorageMapperFuseTest is Test {
         mock.enter(data);
 
         // Value should NOT be scaled - decimals ignored for ADDRESS
-        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(uint160(testAddr)), "ADDRESS conversion should ignore decimals");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            uint256(uint160(testAddr)),
+            "ADDRESS conversion should ignore decimals"
+        );
     }
 
     /// @notice Test decimals are ignored for BOOL conversion
@@ -2558,7 +2610,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint64(uint256(mock.getInput(fuseTo, 0))), uint64(value), "Should convert UINT256 to UINT64 correctly");
+        assertEq(
+            uint64(uint256(mock.getInput(fuseTo, 0))),
+            uint64(value),
+            "Should convert UINT256 to UINT64 correctly"
+        );
     }
 
     /// @notice Test UINT256 to UINT32 conversion
@@ -2591,7 +2647,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint32(uint256(mock.getInput(fuseTo, 0))), uint32(value), "Should convert UINT256 to UINT32 correctly");
+        assertEq(
+            uint32(uint256(mock.getInput(fuseTo, 0))),
+            uint32(value),
+            "Should convert UINT256 to UINT32 correctly"
+        );
     }
 
     /// @notice Test UINT256 to UINT16 conversion
@@ -2624,7 +2684,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint16(uint256(mock.getInput(fuseTo, 0))), uint16(value), "Should convert UINT256 to UINT16 correctly");
+        assertEq(
+            uint16(uint256(mock.getInput(fuseTo, 0))),
+            uint16(value),
+            "Should convert UINT256 to UINT16 correctly"
+        );
     }
 
     /// @notice Test UINT256 to UINT8 conversion
@@ -3185,7 +3249,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(uint256(value)), "Should convert UINT128 to INT256 correctly");
+        assertEq(
+            int256(uint256(mock.getInput(fuseTo, 0))),
+            int256(uint256(value)),
+            "Should convert UINT128 to INT256 correctly"
+        );
     }
 
     /// @notice Test UINT256 to INT128 conversion within range
@@ -3256,7 +3324,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), uint256(int256(value)), "Should convert positive INT256 to UINT256 correctly");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            uint256(int256(value)),
+            "Should convert positive INT256 to UINT256 correctly"
+        );
     }
 
     /// @notice Test positive INT256 to UINT128 conversion
@@ -3289,7 +3361,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint128(uint256(mock.getInput(fuseTo, 0))), uint128(uint256(value)), "Should convert positive INT256 to UINT128 correctly");
+        assertEq(
+            uint128(uint256(mock.getInput(fuseTo, 0))),
+            uint128(uint256(value)),
+            "Should convert positive INT256 to UINT128 correctly"
+        );
     }
 
     // ============================================
@@ -3491,7 +3567,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), int256(12345), "Should convert BYTES32 to INT256 correctly");
+        assertEq(
+            int256(uint256(mock.getInput(fuseTo, 0))),
+            int256(12345),
+            "Should convert BYTES32 to INT256 correctly"
+        );
     }
 
     /// @notice Test BYTES32 to ADDRESS conversion
@@ -3524,7 +3604,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(address(uint160(uint256(mock.getInput(fuseTo, 0)))), testAddr, "Should convert BYTES32 to ADDRESS correctly");
+        assertEq(
+            address(uint160(uint256(mock.getInput(fuseTo, 0)))),
+            testAddr,
+            "Should convert BYTES32 to ADDRESS correctly"
+        );
     }
 
     /// @notice Test BYTES32 non-zero to BOOL conversion
@@ -3722,7 +3806,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(mock.getInput(fuseTo, 0), bytes32(uint256(uint160(testAddr))), "Should convert ADDRESS to BYTES32 correctly");
+        assertEq(
+            mock.getInput(fuseTo, 0),
+            bytes32(uint256(uint160(testAddr))),
+            "Should convert ADDRESS to BYTES32 correctly"
+        );
     }
 
     // ============================================
@@ -3759,7 +3847,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000 * 1e18, "Should convert INT256 (6 decimals) to UINT256 (18 decimals) correctly");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            1000 * 1e18,
+            "Should convert INT256 (6 decimals) to UINT256 (18 decimals) correctly"
+        );
     }
 
     /// @notice Test UINT256 to INT256 with decimal conversion (line 250-251)
@@ -3792,7 +3884,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), 500 * 1e18, "Should convert UINT256 (6 decimals) to INT256 (18 decimals) correctly");
+        assertEq(
+            int256(uint256(mock.getInput(fuseTo, 0))),
+            500 * 1e18,
+            "Should convert UINT256 (6 decimals) to INT256 (18 decimals) correctly"
+        );
     }
 
     /// @notice Test INT256 to INT256 same decimals (line 300 - early return)
@@ -3825,7 +3921,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(int256(uint256(mock.getInput(fuseTo, 0))), value, "INT256 to INT256 with same decimals should remain unchanged");
+        assertEq(
+            int256(uint256(mock.getInput(fuseTo, 0))),
+            value,
+            "INT256 to INT256 with same decimals should remain unchanged"
+        );
     }
 
     /// @notice Test UINT256 to UINT256 same decimals (line 441 - early return)
@@ -3858,7 +3958,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), value, "UINT256 to UINT256 with same decimals should remain unchanged");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            value,
+            "UINT256 to UINT256 with same decimals should remain unchanged"
+        );
     }
 
     // ============================================
@@ -3895,7 +3999,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), value, "UINT256 to UINT256 with no decimals should remain unchanged (backward compatibility)");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            value,
+            "UINT256 to UINT256 with no decimals should remain unchanged (backward compatibility)"
+        );
     }
 
     /// @notice Test existing decimal conversion unchanged (backward compatibility)
@@ -3928,7 +4036,11 @@ contract TransientStorageMapperFuseTest is Test {
         TransientStorageMapperEnterData memory data = TransientStorageMapperEnterData({items: items});
         mock.enter(data);
 
-        assertEq(uint256(mock.getInput(fuseTo, 0)), 1000 * 1e18, "Decimal conversion should work correctly (backward compatibility)");
+        assertEq(
+            uint256(mock.getInput(fuseTo, 0)),
+            1000 * 1e18,
+            "Decimal conversion should work correctly (backward compatibility)"
+        );
     }
 
     /// @notice Test existing UNKNOWN type bypass unchanged (backward compatibility)

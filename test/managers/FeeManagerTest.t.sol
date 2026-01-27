@@ -106,9 +106,9 @@ contract FeeManagerTest is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(_accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-            plasmaVaultERC4626: address(0),
+                plasmaVaultERC4626: address(0),
                 withdrawManager: _withdrawManager,
-            plasmaVaultVotesExtension: address(0)
+                plasmaVaultVotesExtension: address(0)
             })
         );
 

@@ -2366,15 +2366,15 @@ contract PlasmaVaultWithdrawTest is Test {
         // For 1% fee, correct multiplier is 1e18 / (1e18 - 1e16) = 1e18 / 0.99e18 ≈ 1.010101...
         // Wrong additive formula would give: 1 + 0.01 = 1.01
         uint256 expectedRatio1Percent = (baseShares * 1e18) / (1e18 - fee1Percent);
-        
+
         // Allow 1 wei tolerance for rounding
         assertApproxEqAbs(
-            sharesWithFee1Percent, 
-            expectedRatio1Percent, 
-            1, 
+            sharesWithFee1Percent,
+            expectedRatio1Percent,
+            1,
             "1% fee: previewWithdraw should use multiplicative inverse formula"
         );
-        
+
         // Verify the ratio is ~1.0101, not ~1.01 (which would be the additive bug)
         // 1.0101... * 1e18 = 1010101010101010101
         // 1.01 * 1e18 = 1010000000000000000
@@ -2390,14 +2390,14 @@ contract PlasmaVaultWithdrawTest is Test {
         // For 10% fee, correct multiplier is 1e18 / 0.9e18 ≈ 1.1111...
         // Wrong additive formula would give: 1 + 0.1 = 1.1
         uint256 expectedRatio10Percent = (baseShares * 1e18) / (1e18 - fee10Percent);
-        
+
         assertApproxEqAbs(
-            sharesWithFee10Percent, 
-            expectedRatio10Percent, 
-            1, 
+            sharesWithFee10Percent,
+            expectedRatio10Percent,
+            1,
             "10% fee: previewWithdraw should use multiplicative inverse formula"
         );
-        
+
         // Verify the ratio is ~1.1111, not ~1.1
         uint256 actualRatio10Percent = (sharesWithFee10Percent * 1e18) / baseShares;
         assertGt(actualRatio10Percent, 1100000000000000000, "10% fee ratio should be > 1.1 (additive bug)");
@@ -2427,7 +2427,7 @@ contract PlasmaVaultWithdrawTest is Test {
         //when
         // Get shares needed to withdraw targetAssets
         uint256 sharesNeeded = plasmaVault.previewWithdraw(targetAssets);
-        
+
         // Now check: if we redeem those shares, do we get back targetAssets?
         uint256 assetsFromRedeem = plasmaVault.previewRedeem(sharesNeeded);
 
@@ -2435,16 +2435,16 @@ contract PlasmaVaultWithdrawTest is Test {
         // The round-trip should return approximately the original assets
         // Allow small tolerance for rounding (both functions may round)
         assertApproxEqRel(
-            assetsFromRedeem, 
-            targetAssets, 
+            assetsFromRedeem,
+            targetAssets,
             1e15, // 0.1% tolerance for rounding
             "previewWithdraw and previewRedeem should be algebraic inverses"
         );
-        
+
         // More strict: assets from redeem should be >= target (since previewWithdraw rounds up)
         assertGe(
-            assetsFromRedeem, 
-            targetAssets, 
+            assetsFromRedeem,
+            targetAssets,
             "previewRedeem(previewWithdraw(assets)) should return >= original assets"
         );
     }
@@ -2472,27 +2472,27 @@ contract PlasmaVaultWithdrawTest is Test {
         // For 50% fee: 1 / (1 - 0.5) = 2x multiplier
         // Wrong additive formula would give: 1 + 0.5 = 1.5x
         uint256 expectedShares50Percent = (baseShares * 1e18) / (1e18 - fee50Percent);
-        
+
         assertApproxEqAbs(
-            sharesWithFee50Percent, 
-            expectedShares50Percent, 
-            1, 
+            sharesWithFee50Percent,
+            expectedShares50Percent,
+            1,
             "50% fee: should require 2x shares, not 1.5x"
         );
-        
+
         // Verify the ratio is exactly 2x (not 1.5x from additive bug)
         uint256 actualRatio = (sharesWithFee50Percent * 1e18) / baseShares;
         assertGt(actualRatio, 1900000000000000000, "50% fee ratio should be close to 2x");
         assertLt(actualRatio, 2100000000000000000, "50% fee ratio should be close to 2x");
-        
+
         // Test very small fee (0.01%)
         uint256 feeSmall = 1e14; // 0.01%
         WithdrawManager(withdrawManager).updateWithdrawFee(feeSmall);
         uint256 sharesWithSmallFee = plasmaVault.previewWithdraw(assetsToWithdraw);
-        
+
         // Should be slightly more than base shares
         assertGt(sharesWithSmallFee, baseShares, "Small fee should require more shares than no fee");
-        
+
         // Ratio should be very close to 1
         uint256 smallFeeRatio = (sharesWithSmallFee * 1e18) / baseShares;
         assertGt(smallFeeRatio, 1e18, "Small fee ratio should be > 1");

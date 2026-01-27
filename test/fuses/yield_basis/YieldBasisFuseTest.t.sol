@@ -828,7 +828,11 @@ contract YieldBasisFuseTest is Test {
         address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
         address[] memory approvedTargets = new address[](1);
         approvedTargets[0] = plasmaVaultCoreBase;
-        address contextManagerBase = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(0, accessManagerBase, approvedTargets);
+        address contextManagerBase = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
+            0,
+            accessManagerBase,
+            approvedTargets
+        );
 
         vm.startPrank(atomist);
         fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), atomist);

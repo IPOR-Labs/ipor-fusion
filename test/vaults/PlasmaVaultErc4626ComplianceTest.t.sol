@@ -66,12 +66,7 @@ contract PlasmaVaultErc4626ComplianceTest is Test {
         // Deploy price oracle middleware
         PriceOracleMiddleware priceOracleImpl = new PriceOracleMiddleware(address(0));
         _priceOracle = PriceOracleMiddleware(
-            address(
-                new ERC1967Proxy(
-                    address(priceOracleImpl),
-                    abi.encodeWithSignature("initialize(address)", ATOMIST)
-                )
-            )
+            address(new ERC1967Proxy(address(priceOracleImpl), abi.encodeWithSignature("initialize(address)", ATOMIST)))
         );
 
         // Deploy mock price feed for the underlying token ($1 = 1e8 with 8 decimals)
@@ -104,7 +99,7 @@ contract PlasmaVaultErc4626ComplianceTest is Test {
                 plasmaVaultBase: plasmaVaultBase,
                 plasmaVaultERC4626: plasmaVaultErc4626View,
                 withdrawManager: address(_withdrawManager),
-            plasmaVaultVotesExtension: address(0)
+                plasmaVaultVotesExtension: address(0)
             })
         );
 
@@ -115,11 +110,7 @@ contract PlasmaVaultErc4626ComplianceTest is Test {
             address(_accessManager),
             address(_plasmaVault)
         );
-        _accessManager.setupInitRoles(
-            _plasmaVault,
-            address(_withdrawManager),
-            address(rewardsClaimManager)
-        );
+        _accessManager.setupInitRoles(_plasmaVault, address(_withdrawManager), address(rewardsClaimManager));
         vm.stopPrank();
 
         // Provide tokens to users

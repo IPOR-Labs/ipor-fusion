@@ -80,9 +80,9 @@ contract MorphoFlashLoanFuseTest is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-            plasmaVaultERC4626: address(0),
+                plasmaVaultERC4626: address(0),
                 withdrawManager: withdrawManager,
-            plasmaVaultVotesExtension: address(0)
+                plasmaVaultVotesExtension: address(0)
             })
         );
 

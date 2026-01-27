@@ -1242,7 +1242,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
     // Voting Checkpoint Tests for BurnRequestFeeFuse
     // ============================================
     // These tests verify that the BurnRequestFeeFuse correctly updates
-    // voting checkpoints when burning shares 
+    // voting checkpoints when burning shares
     // ============================================
 
     /**
@@ -1356,10 +1356,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 burnAmount = initialBalance / 2;
 
         FuseAction[] memory actions = new FuseAction[](1);
-        actions[0] = FuseAction(
-            address(_burnRequestFeeFuse),
-            abi.encodeWithSignature("enter((uint256))", burnAmount)
-        );
+        actions[0] = FuseAction(address(_burnRequestFeeFuse), abi.encodeWithSignature("enter((uint256))", burnAmount));
 
         // when - Execute partial burn
         vm.startPrank(_ALPHA);
@@ -1431,11 +1428,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 delegateeVotesAfter = IVotes(_plasmaVault).getVotes(delegatee);
 
         // CRITICAL: Delegatee's voting power should be reduced to zero
-        assertEq(
-            delegateeVotesAfter,
-            0,
-            "Delegatee's voting power should be zero after burning delegator's shares"
-        );
+        assertEq(delegateeVotesAfter, 0, "Delegatee's voting power should be zero after burning delegator's shares");
     }
 
     /**

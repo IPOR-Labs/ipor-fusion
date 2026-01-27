@@ -316,7 +316,10 @@ contract PlasmaVaultVotesExtension is IPlasmaVaultVotesExtension {
 
     /// @dev Returns the domain separator for the current chain
     function _domainSeparatorV4() internal view returns (bytes32) {
-        return keccak256(abi.encode(EIP712_TYPE_HASH, _EIP712NameHash(), _EIP712VersionHash(), block.chainid, address(this)));
+        return
+            keccak256(
+                abi.encode(EIP712_TYPE_HASH, _EIP712NameHash(), _EIP712VersionHash(), block.chainid, address(this))
+            );
     }
 
     /// @dev Returns the hash of the fully encoded EIP712 message

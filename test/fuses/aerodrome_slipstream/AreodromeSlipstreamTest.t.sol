@@ -780,12 +780,7 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         // Expect PoolNotDeployed error since these fake tokens don't have a deployed pool
-        bytes memory errorData = abi.encodeWithSelector(
-            PoolNotDeployed.selector,
-            token0,
-            token1,
-            tickSpacing
-        );
+        bytes memory errorData = abi.encodeWithSelector(PoolNotDeployed.selector, token0, token1, tickSpacing);
 
         // when
         vm.startPrank(_ALPHA);

@@ -127,10 +127,7 @@ contract PlasmaVaultVotesExtensionTest is Test {
 
         // USER1 has no votes, USER2 has USER1's votes
         assertEq(IPlasmaVaultVotesExtension(address(plasmaVault)).getVotes(USER1), 0);
-        assertEq(
-            IPlasmaVaultVotesExtension(address(plasmaVault)).getVotes(USER2),
-            plasmaVault.balanceOf(USER1)
-        );
+        assertEq(IPlasmaVaultVotesExtension(address(plasmaVault)).getVotes(USER2), plasmaVault.balanceOf(USER1));
 
         // Check delegates() returns USER2
         assertEq(IPlasmaVaultVotesExtension(address(plasmaVault)).delegates(USER1), USER2);
