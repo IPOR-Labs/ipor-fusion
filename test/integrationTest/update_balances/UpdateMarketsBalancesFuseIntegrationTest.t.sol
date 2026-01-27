@@ -93,7 +93,8 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
             plasmaVaultERC4626: address(0),
-                withdrawManager: withdrawManager
+                withdrawManager: withdrawManager,
+            plasmaVaultVotesExtension: address(0)
             })
         );
         vm.stopPrank();

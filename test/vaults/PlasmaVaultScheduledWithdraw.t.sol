@@ -6,6 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, MarketSubstratesConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVaultVotesExtension} from "../../contracts/vaults/PlasmaVaultVotesExtension.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager, WithdrawRequestInfo} from "../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -64,8 +65,9 @@ contract PlasmaVaultScheduledWithdraw is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(_accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-            plasmaVaultERC4626: address(0),
-                withdrawManager: _withdrawManager
+                plasmaVaultERC4626: address(0),
+                withdrawManager: _withdrawManager,
+                plasmaVaultVotesExtension: address(new PlasmaVaultVotesExtension())
             })
         );
 

@@ -69,7 +69,8 @@ contract InitializeAccessManagerTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                address(withdrawManager)
+                address(withdrawManager),
+                address(0)
             )
         );
 

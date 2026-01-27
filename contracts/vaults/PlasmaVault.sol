@@ -86,12 +86,15 @@ struct PlasmaVaultInitData {
     /// @notice Address of the base contract providing common functionality
     /// @dev Implements core vault logic through delegatecall
     address plasmaVaultBase;
-    /// @notice Address of the ERC4626 view functions contract
+    /// @notice Address of the ERC4626 view functions contract (PlasmaVaultErc4626View)
     /// @dev Implements ERC4626 preview/max functions through delegatecall to reduce main contract size
     address plasmaVaultERC4626;
     /// @notice Address of the withdraw manager contract
     /// @dev Controls withdrawal permissions and limits, zero address disables managed withdrawals
     address withdrawManager;
+    /// @notice Address of the votes extension contract (PlasmaVaultVotesExtension)
+    /// @dev Implements optional ERC20Votes functionality through delegatecall, zero address disables voting
+    address plasmaVaultVotesExtension;
 }
 
 /// @title Market Balance Fuse Configuration
@@ -236,6 +239,7 @@ contract PlasmaVault is
     error WithdrawManagerInvalidSharesToRelease(uint256 sharesToRelease);
     error PermitFailed();
     error WithdrawManagerNotSet();
+    error VotesExtensionNotEnabled();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event DepositFeeRealized(address recipient, uint256 feeShares);
@@ -280,6 +284,15 @@ contract PlasmaVault is
             }
         }
 
+        // Route Votes functions to dedicated extension contract (optional)
+        if (_isVotesFunction(sig)) {
+            address votesExtension = PlasmaVaultStorageLib.getPlasmaVaultVotesExtension();
+            if (votesExtension != address(0)) {
+                return votesExtension.functionDelegateCall(msg.data);
+            }
+            revert VotesExtensionNotEnabled();
+        }
+
         return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
     }
 
@@ -298,7 +311,7 @@ contract PlasmaVault is
             sig_ == this.maxRedeem.selector) {
             return true;
         }
-        // Custom view functions (selectors hardcoded as they only exist in PlasmaVaultERC4626)
+        // Custom view functions (selectors hardcoded as they only exist in PlasmaVaultErc4626View)
         // getDepositFeeSharesExternal(uint256) = 0x9a344088
         // getMarketBalanceLastUpdateTimestamp() = 0x2aedb0ba
         // isMarketBalanceStale(uint256) = 0x9cc01f36
@@ -307,16 +320,56 @@ contract PlasmaVault is
                sig_ == bytes4(0x9cc01f36);
     }
 
+    /// @notice Checks if the function selector is a Votes function
+    /// @param sig_ The function selector to check
+    /// @return True if the selector is a Votes function (IERC5805/IVotes/IERC6372)
+    function _isVotesFunction(bytes4 sig_) internal pure returns (bool) {
+        // IVotes functions
+        // getVotes(address) = 0x9ab24eb0
+        // getPastVotes(address,uint256) = 0x3a46b1a8
+        // getPastTotalSupply(uint256) = 0x8e539e8c
+        // delegates(address) = 0x587cde1e
+        // delegate(address) = 0x5c19a95c
+        // delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32) = 0xc3cda520
+        //
+        // IERC6372 functions
+        // clock() = 0x91ddadf4
+        // CLOCK_MODE() = 0x4bf5d7e9
+        //
+        // Extension-specific functions
+        // numCheckpoints(address) = 0x6fcfff45
+        // checkpoints(address,uint32) = 0xf1127ed8
+        // transferVotingUnits(address,address,uint256) = 0x3c7b2e40
+        return sig_ == bytes4(0x9ab24eb0) ||  // getVotes(address)
+               sig_ == bytes4(0x3a46b1a8) ||  // getPastVotes(address,uint256)
+               sig_ == bytes4(0x8e539e8c) ||  // getPastTotalSupply(uint256)
+               sig_ == bytes4(0x587cde1e) ||  // delegates(address)
+               sig_ == bytes4(0x5c19a95c) ||  // delegate(address)
+               sig_ == bytes4(0xc3cda520) ||  // delegateBySig(...)
+               sig_ == bytes4(0x6fcfff45) ||  // numCheckpoints(address)
+               sig_ == bytes4(0xf1127ed8) ||  // checkpoints(address,uint32)
+               sig_ == bytes4(0x91ddadf4) ||  // clock()
+               sig_ == bytes4(0x4bf5d7e9) ||  // CLOCK_MODE()
+               sig_ == bytes4(0x3c7b2e40);    // transferVotingUnits(address,address,uint256)
+    }
+
     /// @notice The plasma vault base contract address
     /// @dev Retrieved from storage library
     function PLASMA_VAULT_BASE() public view returns (address) {
         return PlasmaVaultStorageLib.getPlasmaVaultBase();
     }
 
-    /// @notice The plasma vault ERC4626 contract address
-    /// @dev Retrieved from storage library
+    /// @notice The plasma vault ERC4626 view contract address (PlasmaVaultErc4626View)
+    /// @dev Retrieved from storage library. This contract provides ERC4626 compliant view functions.
     function PLASMA_VAULT_ERC4626() public view returns (address) {
         return PlasmaVaultStorageLib.getPlasmaVaultERC4626();
+    }
+
+    /// @notice The plasma vault votes extension contract address (PlasmaVaultVotesExtension)
+    /// @dev Retrieved from storage library. This contract provides optional ERC20Votes functionality.
+    /// @return The address of the votes extension contract, or address(0) if voting is not enabled
+    function PLASMA_VAULT_VOTES_EXTENSION() public view returns (address) {
+        return PlasmaVaultStorageLib.getPlasmaVaultVotesExtension();
     }
 
     /// @notice Initializes the PlasmaVault with initialization data (for cloning)
@@ -1279,6 +1332,9 @@ contract PlasmaVault is
         PlasmaVaultStorageLib.setPlasmaVaultBase(initData_.plasmaVaultBase);
         if (initData_.plasmaVaultERC4626 != address(0)) {
             PlasmaVaultStorageLib.setPlasmaVaultERC4626(initData_.plasmaVaultERC4626);
+        }
+        if (initData_.plasmaVaultVotesExtension != address(0)) {
+            PlasmaVaultStorageLib.setPlasmaVaultVotesExtension(initData_.plasmaVaultVotesExtension);
         }
 
         initData_.plasmaVaultBase.functionDelegateCall(

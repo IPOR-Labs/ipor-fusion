@@ -736,8 +736,9 @@ library PlasmaVaultStorageLib {
         0x5bb34fc23414cfe7e422518e1d8590877bcc5dcacad5f8689bfd98e9a05ac600;
 
     /**
-     * @dev Storage slot for PlasmaVaultERC4626 address. Computed as:
+     * @dev Storage slot for PlasmaVaultErc4626View address. Computed as:
      * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultERC4626")) - 1)) & ~bytes32(uint256(0xff))
+     * @notice Stores address of PlasmaVaultErc4626View contract which provides ERC4626 compliant view functions
      */
     bytes32 private constant PLASMA_VAULT_ERC4626_SLOT =
         0x3a8d9c8f5b7e2d1a0f6c4b3e8d7a2c1f5b9e8d3a7c6f2e1b0a9d8c7f6e5b4a00;
@@ -749,6 +750,14 @@ library PlasmaVaultStorageLib {
      */
     bytes32 private constant MARKET_BALANCE_LAST_UPDATE_SLOT =
         0xd249011a2df6f5e5a53a76d2d33daa4a8cdeff9b71ef47a3bf61897813733800;
+
+    /**
+     * @dev Storage slot for PlasmaVaultVotesExtension address. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultVotesExtension")) - 1)) & ~bytes32(uint256(0xff))
+     * @notice Stores address of PlasmaVaultVotesExtension contract which provides optional ERC20Votes functionality
+     */
+    bytes32 private constant PLASMA_VAULT_VOTES_EXTENSION_SLOT =
+        0x9a8f1e5b3c7d2f4a6e8b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e00;
 
     /**
      * @notice Maps callback signatures to their handler contracts
@@ -1170,8 +1179,8 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    /// @notice Gets the PlasmaVaultERC4626 address from storage
-    /// @return The address of the PlasmaVaultERC4626 contract
+    /// @notice Gets the PlasmaVaultErc4626View address from storage
+    /// @return The address of the PlasmaVaultErc4626View contract (ERC4626 view functions)
     function getPlasmaVaultERC4626() internal view returns (address) {
         address erc4626;
         assembly {
@@ -1180,8 +1189,8 @@ library PlasmaVaultStorageLib {
         return erc4626;
     }
 
-    /// @notice Sets the PlasmaVaultERC4626 address in storage
-    /// @param erc4626_ The address of the PlasmaVaultERC4626 contract
+    /// @notice Sets the PlasmaVaultErc4626View address in storage
+    /// @param erc4626_ The address of the PlasmaVaultErc4626View contract
     function setPlasmaVaultERC4626(address erc4626_) internal {
         assembly {
             sstore(PLASMA_VAULT_ERC4626_SLOT, erc4626_)
@@ -1202,6 +1211,24 @@ library PlasmaVaultStorageLib {
     function updateMarketBalanceLastUpdateTimestamp() internal {
         assembly {
             sstore(MARKET_BALANCE_LAST_UPDATE_SLOT, timestamp())
+        }
+    }
+
+    /// @notice Gets the PlasmaVaultVotesExtension address from storage
+    /// @return The address of the PlasmaVaultVotesExtension contract (optional ERC20Votes functionality)
+    function getPlasmaVaultVotesExtension() internal view returns (address) {
+        address votesExtension;
+        assembly {
+            votesExtension := sload(PLASMA_VAULT_VOTES_EXTENSION_SLOT)
+        }
+        return votesExtension;
+    }
+
+    /// @notice Sets the PlasmaVaultVotesExtension address in storage
+    /// @param votesExtension_ The address of the PlasmaVaultVotesExtension contract
+    function setPlasmaVaultVotesExtension(address votesExtension_) internal {
+        assembly {
+            sstore(PLASMA_VAULT_VOTES_EXTENSION_SLOT, votesExtension_)
         }
     }
 }

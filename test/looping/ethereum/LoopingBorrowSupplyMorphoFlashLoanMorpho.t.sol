@@ -137,7 +137,8 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
             plasmaVaultERC4626: address(0),
-            withdrawManager: _withdrawManager
+            withdrawManager: _withdrawManager,
+            plasmaVaultVotesExtension: address(0)
         });
 
         vm.startPrank(_ATOMIST);

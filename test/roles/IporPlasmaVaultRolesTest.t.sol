@@ -672,7 +672,8 @@ contract IporPlasmaVaultRolesTest is Test {
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                address(_withdrawManager)
+                address(_withdrawManager),
+                address(0)
             )
         );
         vm.stopPrank();

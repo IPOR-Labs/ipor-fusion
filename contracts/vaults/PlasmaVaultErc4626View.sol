@@ -9,9 +9,11 @@ import {PlasmaVaultFeesLib} from "./lib/PlasmaVaultFeesLib.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 
 /**
- * @title PlasmaVaultERC4626
+ * @title PlasmaVaultErc4626View
  * @notice ERC4626 compliant view functions delegated from PlasmaVault
- * @dev This contract is called via delegatecall from PlasmaVault to reduce main contract size
+ * @dev This contract is called via delegatecall from PlasmaVault to reduce main contract size.
+ *      The "View" suffix indicates this contract contains only view functions for reading
+ *      ERC4626 state. It acts as a "lens" into the vault's ERC4626 interface.
  *
  * Contains:
  * - previewDeposit, previewMint, previewRedeem, previewWithdraw
@@ -23,7 +25,7 @@ import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
  * - All preview/max functions wrapped in try/catch to ensure MUST NOT revert requirement
  * - Proper fee inclusion in all calculations
  */
-contract PlasmaVaultERC4626 {
+contract PlasmaVaultErc4626View {
     using Math for uint256;
 
     /// @notice Simulates deposit at current block given current on-chain conditions

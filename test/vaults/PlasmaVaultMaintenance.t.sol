@@ -83,7 +83,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -122,7 +123,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -169,7 +171,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -206,7 +209,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -243,7 +247,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -277,7 +282,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -313,7 +319,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -360,7 +367,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -404,7 +412,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -447,7 +456,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -493,7 +503,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -535,7 +546,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -2639,7 +2651,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                address(withdrawManager)
+                address(withdrawManager),
+                address(0)
             )
         );
 
@@ -2924,7 +2937,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 

@@ -56,7 +56,8 @@ contract PlasmaVaultLibStaleEntriesTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 

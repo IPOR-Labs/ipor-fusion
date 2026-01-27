@@ -110,7 +110,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                address(withdrawManager)
+                address(withdrawManager),
+                address(0)
             )
         );
 
@@ -226,7 +227,8 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
                 address(accessManager),
                 address(new PlasmaVaultBase()),
                 address(0),
-                address(withdrawManager)
+                address(withdrawManager),
+                address(0)
             )
         );
 

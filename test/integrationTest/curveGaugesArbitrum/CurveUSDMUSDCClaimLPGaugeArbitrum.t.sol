@@ -658,7 +658,8 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 accessManager: address(instances.accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
             plasmaVaultERC4626: address(0),
-                withdrawManager: address(withdrawManager)
+                withdrawManager: address(withdrawManager),
+            plasmaVaultVotesExtension: address(0)
             })
         );
     }

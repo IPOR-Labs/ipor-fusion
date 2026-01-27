@@ -130,7 +130,8 @@ contract FusionFactoryTest is Test {
                 accessManager: accessManagerBase,
                 plasmaVaultBase: plasmaVaultBase,
             plasmaVaultERC4626: address(0),
-                withdrawManager: withdrawManagerBase
+                withdrawManager: withdrawManagerBase,
+            plasmaVaultVotesExtension: address(0)
             })
         );
 

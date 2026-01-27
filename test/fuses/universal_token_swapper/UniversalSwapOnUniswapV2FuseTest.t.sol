@@ -73,7 +73,8 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
                 address(0),
-                _withdrawManager
+                _withdrawManager,
+                address(0)
             )
         );
 
