@@ -15,13 +15,11 @@ import {IGauge} from "./ext/IGauge.sol";
 import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodromeLib.sol";
 
 /// @title AerodromeBalanceFuse
-/// @notice Fuse for Aerodrome protocol responsible for calculating the balance of the Plasma Vault in Aerodrome protocol
-/// @dev This fuse calculates the total balance by iterating through all market substrates (pools and gauges) configured for the given MARKET_ID.
-///      For each substrate, it calculates:
-///      1. Balance from liquidity: The value of LP tokens held, calculated as a proportion of pool reserves
-///      2. Balance from fees: Accumulated fees calculated using index deltas and claimable amounts
-///      The final balance is converted to USD using the price oracle middleware and normalized to WAD (18 decimals).
-///      Substrates in this fuse can be either Pool addresses or Gauge addresses. For gauges, the underlying pool is retrieved.
+/// @notice Calculates the USD value of Plasma Vault positions in Aerodrome pools and gauges
+/// @dev This fuse only calculates LIQUIDITY value (LP token value based on reserves).
+///      REWARDS (AERO emissions) are NOT included - they are handled separately by RewardsManager and reward fuses.
+///      TRADING FEES for pool positions are included as they accrue directly to LP holders.
+///      For gauge positions, trading fees go to veAERO voters (not stakers), so they are not counted.
 /// @author IPOR Labs
 contract AerodromeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
@@ -33,43 +31,20 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
     address public immutable VERSION;
 
     /// @notice The market ID associated with this fuse
-    /// @dev This ID is used to retrieve the list of substrates (pools/gauges) configured for this market
     uint256 public immutable MARKET_ID;
 
-    /// @notice Constructor to initialize the fuse with a market ID
-    /// @param marketId_ The unique identifier for the market configuration
-    /// @dev The market ID is used to retrieve the list of substrates (pools/gauges) that this fuse will track.
-    ///      VERSION is set to the address of this contract instance for tracking purposes.
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
-    /// @notice Calculates the total balance of the Plasma Vault in Aerodrome protocol
-    /// @dev This function iterates through all substrates (pools/gauges) configured for the MARKET_ID and calculates:
-    ///      1. For each substrate, retrieves the underlying pool address:
-    ///         - If substrate is a Gauge: retrieves the staking token (pool) from the gauge
-    ///         - If substrate is a Pool: uses the pool address directly
-    ///      2. Gets the LP token balance (liquidity) held by the vault for that pool
-    ///      3. Calculates balance from liquidity: proportionally calculates the value of underlying tokens
-    ///         based on the LP token balance relative to total supply and pool reserves
-    ///      4. Calculates balance from fees (Pool substrates only):
-    ///         - For Pool substrates: includes trading fees claimable by the vault
-    ///         - For Gauge substrates: trading fees are NOT included because when LP tokens are staked
-    ///           in a Gauge, trading fees go to the Aerodrome voting/bribe system (FeesVotingReward),
-    ///           not to the vault. The vault only receives AERO token rewards from gauges.
-    ///      5. Converts all balances to USD using price oracle middleware
-    ///      6. Normalizes results to WAD (18 decimals) and sums all balances
-    ///      The calculation methodology ensures that:
-    ///      - LP token value is always included in the balance
-    ///      - Trading fees are only included when the vault directly holds LP tokens (Pool substrate)
-    ///      - All token amounts are converted to USD using oracle prices
-    ///      - Final result is normalized to WAD precision (18 decimals) for consistency
-    /// @return The total balance of the Plasma Vault in Aerodrome protocol, normalized to WAD (18 decimals)
+    /// @return The balance of the Plasma Vault in USD, represented in 18 decimals
+    /// @dev For Pool positions: LP value + trading fees
+    ///      For Gauge positions: LP value only (rewards handled by RewardsManager)
     function balanceOf() external view override returns (uint256) {
-        bytes32[] memory pools = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
 
-        uint256 len = pools.length;
+        uint256 len = substrates.length;
 
         if (len == 0) {
             return 0;
@@ -83,30 +58,29 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         bool isGauge;
 
         for (uint256 i; i < len; ++i) {
-            substrate = AerodromeSubstrateLib.bytes32ToSubstrate(pools[i]);
+            substrate = AerodromeSubstrateLib.bytes32ToSubstrate(substrates[i]);
 
             if (substrate.substrateType == AerodromeSubstrateType.Gauge) {
+                // GAUGE: Only liquidity value (rewards handled by RewardsManager)
                 pool = IGauge(substrate.substrateAddress).stakingToken();
                 liquidity = IERC20(substrate.substrateAddress).balanceOf(address(this));
-                isGauge = true;
+
+                if (liquidity > 0) {
+                    balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
+                }
+                // NOTE: AERO emissions are NOT counted here - use AerodromeGaugeClaimFuse
+                // and RewardsManager to handle rewards separately
             } else if (substrate.substrateType == AerodromeSubstrateType.Pool) {
+                // POOL: Liquidity value + trading fees
                 pool = substrate.substrateAddress;
                 liquidity = IERC20(pool).balanceOf(address(this));
-                isGauge = false;
-            } else {
-                continue;
-            }
 
-            if (liquidity > 0) {
-                balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                // Only include trading fees for Pool substrates.
-                // When LP tokens are staked in a Gauge, trading fees go to FeesVotingReward (voter/bribe system),
-                // not to the vault. The vault's supplyIndex and claimable values in the pool will be zero/stale
-                // since it doesn't hold LP tokens directly. Including fees for Gauge substrates would incorrectly
-                // attribute the entire historical fee index growth to the vault, massively inflating the balance.
-                if (!isGauge) {
-                    balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
+                if (liquidity > 0) {
+                    balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
                 }
+                // Always calculate fees - claimable fees may exist even when liquidity is zero
+                // (e.g., after withdrawing LP tokens but before claiming accumulated fees)
+                balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
             }
         }
 
