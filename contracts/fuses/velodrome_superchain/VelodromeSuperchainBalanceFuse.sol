@@ -14,65 +14,64 @@ import {ILeafGauge} from "./ext/ILeafGauge.sol";
 import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
 
 /// @title VelodromeSuperchainBalanceFuse
-/// @notice Contract responsible for managing Velodrome Basic Vault balance calculations
-/// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome pools and gauges
-/// It calculates total USD value of vault's liquidity positions and accrued fees across multiple Velodrome substrates
-/// The balance calculations support both direct pool positions and staked gauge positions
-
+/// @notice Calculates the USD value of Plasma Vault positions in Velodrome Superchain pools and gauges
+/// @dev This fuse only calculates LIQUIDITY value (LP token value based on reserves).
+///      REWARDS (VELO emissions) are NOT included - they are handled separately by RewardsManager and reward fuses.
+///      TRADING FEES for pool positions are included as they accrue directly to LP holders.
+///      For gauge positions, trading fees go to veVELO voters (not stakers), so they are not counted.
+/// @author IPOR Labs
 contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
     error InvalidPool();
 
     /// @notice Address of this fuse contract version
-    /// @dev Immutable value set in constructor, used for tracking and versioning
     address public immutable VERSION;
 
     /// @notice Market ID this fuse operates on
-    /// @dev Immutable value set in constructor, used to retrieve market substrates (Velodrome pool and gauge addresses)
     uint256 public immutable MARKET_ID;
 
-    /**
-     * @notice Initializes the VelodromeSuperchainBalanceFuse with a market ID
-     * @param marketId_ The market ID used to identify the market and retrieve substrates
-     */
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
-    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
+    /// @return The balance of the Plasma Vault in USD, represented in 18 decimals
+    /// @dev For Pool positions: LP value + trading fees
+    ///      For Gauge positions: LP value only (rewards handled by RewardsManager)
     function balanceOf() external view override returns (uint256) {
-        bytes32[] memory pools = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-
-        uint256 len = pools.length;
-
-        if (len == 0) {
-            return 0;
-        }
+        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        uint256 len = substrates.length;
+        if (len == 0) return 0;
 
         uint256 balance;
-        address pool;
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
-        uint256 liquidity;
         VelodromeSuperchainSubstrate memory substrate;
 
         for (uint256 i; i < len; ++i) {
-            substrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(pools[i]);
+            substrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(substrates[i]);
+            address substrateAddress = substrate.substrateAddress;
 
             if (substrate.substrateType == VelodromeSuperchainSubstrateType.Gauge) {
-                pool = ILeafGauge(substrate.substrateAddress).stakingToken();
-                liquidity = IERC20(substrate.substrateAddress).balanceOf(address(this));
-            } else if (substrate.substrateType == VelodromeSuperchainSubstrateType.Pool) {
-                pool = substrate.substrateAddress;
-                liquidity = IERC20(pool).balanceOf(address(this));
-            } else {
-                continue;
-            }
+                // GAUGE: Only liquidity value (rewards handled by RewardsManager)
+                address pool = ILeafGauge(substrateAddress).stakingToken();
+                uint256 liquidity = ILeafGauge(substrateAddress).balanceOf(address(this));
 
-            if (liquidity > 0) {
-                balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
+                if (liquidity > 0) {
+                    balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
+                }
+                // NOTE: VELO emissions are NOT counted here - use VelodromeSuperchainGaugeClaimFuse
+                // and RewardsManager to handle rewards separately
+            } else if (substrate.substrateType == VelodromeSuperchainSubstrateType.Pool) {
+                // POOL: Liquidity value + trading fees
+                uint256 liquidity = IERC20(substrateAddress).balanceOf(address(this));
+
+                if (liquidity > 0) {
+                    balance += _calculateBalanceFromLiquidity(substrateAddress, priceOracleMiddleware, liquidity);
+                }
+                // Always calculate fees - claimable fees may exist even when liquidity is zero
+                // (e.g., after withdrawing LP tokens but before claiming accumulated fees)
+                balance += _calculateBalanceFromPoolFees(substrateAddress, priceOracleMiddleware, liquidity);
             }
         }
         return balance;
@@ -104,7 +103,13 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
         return balanceInUsd;
     }
 
-    function _calculateBalanceFromFees(
+    /// @notice Calculate fee balance for direct pool positions (LP tokens held by vault in the pool)
+    /// @dev For pool positions, fees accrue directly to the vault address in the pool's fee tracking
+    /// @param pool_ The pool address
+    /// @param priceOracleMiddleware_ The price oracle middleware address
+    /// @param liquidity_ The vault's LP token balance in the pool
+    /// @return balanceInUsd The USD value of accrued fees
+    function _calculateBalanceFromPoolFees(
         address pool_,
         address priceOracleMiddleware_,
         uint256 liquidity_

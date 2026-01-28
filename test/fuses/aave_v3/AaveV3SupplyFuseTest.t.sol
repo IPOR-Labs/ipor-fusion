@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
@@ -12,6 +13,8 @@ import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
 contract AaveV3SupplyFuseTest is Test {
+    using SafeERC20 for ERC20;
+
     struct SupportedToken {
         address asset;
         string name;
@@ -22,6 +25,10 @@ contract AaveV3SupplyFuseTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
     address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
+    /// @dev USDT address - deal() doesn't work with USDT due to proxy storage layout
+    address private constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    /// @dev Binance wallet - USDT whale
+    address private constant USDT_WHALE = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
     SupportedToken private activeTokens;
 
     function setUp() public {
@@ -197,6 +204,11 @@ contract AaveV3SupplyFuseTest is Test {
             // USDC
             vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
             ERC20(asset).transfer(to, amount);
+        } else if (asset == USDT) {
+            // Note: deal() doesn't work with USDT due to proxy storage layout, use whale transfer instead
+            // Also USDT.transfer() returns void instead of bool, so we must use safeTransfer
+            vm.prank(USDT_WHALE);
+            ERC20(asset).safeTransfer(to, amount);
         } else {
             deal(asset, to, amount);
         }

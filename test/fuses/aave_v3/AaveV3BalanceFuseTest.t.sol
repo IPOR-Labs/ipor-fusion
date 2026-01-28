@@ -25,6 +25,10 @@ contract AaveV3BalanceFuseTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
     address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
+    /// @dev USDT address - deal() doesn't work with USDT due to proxy storage layout
+    address private constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    /// @dev Binance wallet - USDT whale
+    address private constant USDT_WHALE = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
 
     SupportedToken private activeTokens;
 
@@ -110,7 +114,13 @@ contract AaveV3BalanceFuseTest is Test {
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        deal(asset, to, amount);
+        if (asset == USDT) {
+            // Note: deal() doesn't work with USDT due to proxy storage layout, use whale transfer instead
+            vm.prank(USDT_WHALE);
+            ERC20(asset).safeTransfer(to, amount);
+        } else {
+            deal(asset, to, amount);
+        }
     }
 
     modifier iterateSupportedTokens() {
