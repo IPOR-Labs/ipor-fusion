@@ -41,47 +41,63 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
         MARKET_ID = marketId_;
     }
 
-    /// @return The balance of the Plasma Vault in associated with Fuse Balance marketId in USD, represented in 18 decimals
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory pools = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-
         uint256 len = pools.length;
-
-        if (len == 0) {
-            return 0;
-        }
+        if (len == 0) return 0;
 
         uint256 balance;
-        address pool;
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
-        uint256 liquidity;
         VelodromeSuperchainSubstrate memory substrate;
 
         for (uint256 i; i < len; ++i) {
             substrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(pools[i]);
+            address substrateAddress = substrate.substrateAddress;
 
             if (substrate.substrateType == VelodromeSuperchainSubstrateType.Gauge) {
-                address gauge = substrate.substrateAddress;
-                pool = ILeafGauge(gauge).stakingToken();
-                liquidity = IERC20(gauge).balanceOf(address(this));
+                // GAUGE: Liquidity Value + Earned Emissions ($VELO)
+                address pool = ILeafGauge(substrateAddress).stakingToken();
+                uint256 liquidity = ILeafGauge(substrateAddress).balanceOf(address(this));
 
                 if (liquidity > 0) {
                     balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                    // For gauge positions: use gauge's fee caches prorated by vault's share
-                    balance += _calculateBalanceFromGaugeFees(gauge, pool, priceOracleMiddleware);
+                    // For gauge positions: count emission rewards instead of trading fees
+                    balance += _calculateBalanceFromRewards(substrateAddress, priceOracleMiddleware);
                 }
             } else if (substrate.substrateType == VelodromeSuperchainSubstrateType.Pool) {
-                pool = substrate.substrateAddress;
-                liquidity = IERC20(pool).balanceOf(address(this));
+                // POOL: Liquidity Value + Trading Fees
+                uint256 liquidity = IERC20(substrateAddress).balanceOf(address(this));
 
                 if (liquidity > 0) {
-                    balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                    // For pool positions: use pool's fee indices keyed to vault address
-                    balance += _calculateBalanceFromPoolFees(pool, priceOracleMiddleware, liquidity);
+                    balance += _calculateBalanceFromLiquidity(substrateAddress, priceOracleMiddleware, liquidity);
+                    balance += _calculateBalanceFromPoolFees(substrateAddress, priceOracleMiddleware, liquidity);
                 }
             }
         }
         return balance;
+    }
+
+    /// @notice Calculates the USD value of accumulated emission rewards ($VELO/$AERO)
+    function _calculateBalanceFromRewards(
+        address gauge_,
+        address priceOracleMiddleware_
+    ) private view returns (uint256 balanceInUsd) {
+        // Velodrome V2 Gauge: earned(address) returns the amount of reward tokens
+        uint256 earnedAmount = ILeafGauge(gauge_).earned(address(this));
+
+        if (earnedAmount > 0) {
+            // In Velodrome Superchain the reward is always the native token (VELO)
+            // In Aerodrome it's AERO. We retrieve the reward token address from the Gauge.
+            address rewardToken = ILeafGauge(gauge_).rewardToken();
+            
+            (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(rewardToken);
+            
+            balanceInUsd = IporMath.convertToWad(
+                earnedAmount * price,
+                IERC20Metadata(rewardToken).decimals() + priceDecimals
+            );
+        }
+        return balanceInUsd;
     }
 
     function _calculateBalanceFromLiquidity(
@@ -158,61 +174,6 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
             );
             balanceInUsd += IporMath.convertToWad(
                 claimable1 * price1,
-                IERC20Metadata(token1).decimals() + priceDecimals1
-            );
-        }
-
-        return balanceInUsd;
-    }
-
-    /// @notice Calculate fee balance for gauge-staked positions
-    /// @dev When LP tokens are staked in a gauge, the pool accrues fees to the gauge (or its feesVotingReward),
-    ///      not to the original depositor. This function uses the gauge's cached fee amounts (fees0/fees1)
-    ///      and prorates them by the vault's share of the gauge's total staked supply.
-    /// @param gauge_ The gauge address where LP tokens are staked
-    /// @param pool_ The underlying pool address (for token addresses)
-    /// @param priceOracleMiddleware_ The price oracle middleware address
-    /// @return balanceInUsd The USD value of the vault's prorated share of gauge fees
-    function _calculateBalanceFromGaugeFees(
-        address gauge_,
-        address pool_,
-        address priceOracleMiddleware_
-    ) private view returns (uint256 balanceInUsd) {
-        uint256 gaugeTotalSupply = ILeafGauge(gauge_).totalSupply();
-
-        // If no one has staked in the gauge, there are no fees to prorate
-        if (gaugeTotalSupply == 0) {
-            return 0;
-        }
-
-        uint256 vaultStake = ILeafGauge(gauge_).balanceOf(address(this));
-
-        // Get the gauge's cached fee amounts
-        uint256 gaugeFees0 = ILeafGauge(gauge_).fees0();
-        uint256 gaugeFees1 = ILeafGauge(gauge_).fees1();
-
-        // Prorate fees by vault's share of the gauge
-        uint256 vaultFees0 = (gaugeFees0 * vaultStake) / gaugeTotalSupply;
-        uint256 vaultFees1 = (gaugeFees1 * vaultStake) / gaugeTotalSupply;
-
-        if (vaultFees0 > 0) {
-            address token0 = IPool(pool_).token0();
-            (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
-                token0
-            );
-            balanceInUsd += IporMath.convertToWad(
-                vaultFees0 * price0,
-                IERC20Metadata(token0).decimals() + priceDecimals0
-            );
-        }
-
-        if (vaultFees1 > 0) {
-            address token1 = IPool(pool_).token1();
-            (uint256 price1, uint256 priceDecimals1) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
-                token1
-            );
-            balanceInUsd += IporMath.convertToWad(
-                vaultFees1 * price1,
                 IERC20Metadata(token1).decimals() + priceDecimals1
             );
         }
