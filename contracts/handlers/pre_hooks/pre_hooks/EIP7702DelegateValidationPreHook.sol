@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IPreHook} from "../IPreHook.sol";
 import {PreHooksLib} from "../PreHooksLib.sol";
+import {ContextClientStorageLib} from "../../../managers/context/ContextClientStorageLib.sol";
 
 /// @title EIP7702DelegateValidationPreHook
 /// @author IPOR Labs
@@ -16,24 +17,26 @@ import {PreHooksLib} from "../PreHooksLib.sol";
 /// - Delegate target: implementation address (20 bytes)
 ///
 /// Validation Flow:
-/// 1. Check if msg.sender has code size of exactly 23 bytes
-/// 2. If yes, read the code and verify the 0xef0100 prefix
-/// 3. Extract the delegate target (last 20 bytes)
-/// 4. Check if delegate target is in the whitelist (substrates)
-/// 5. If not whitelisted, revert with InvalidDelegateTarget
+/// 1. Get effective sender (context sender if set, otherwise msg.sender)
+/// 2. Check if the effective sender has code size of exactly 23 bytes
+/// 3. If yes, read the code and verify the 0xef0100 prefix
+/// 4. Extract the delegate target (last 20 bytes)
+/// 5. Check if delegate target is in the whitelist (substrates)
+/// 6. If not whitelisted, revert with InvalidDelegateTarget
 ///
 /// Key features:
-/// - Validates EIP-7702 delegate targets for msg.sender (the direct caller)
+/// - Validates EIP-7702 delegate targets for the effective sender (context sender or msg.sender)
 /// - Whitelist managed through substrates by governance
 /// - Allows regular EOA without delegation to pass
 /// - Allows contracts with different code sizes to pass
 /// - Gas efficient implementation using assembly
+/// - Supports ContextManager for delegated calls
 ///
-/// Why msg.sender instead of tx.origin:
-/// - In EIP-7702, when SmartWallet code runs in EOA's context, msg.sender is the EOA
-/// - This correctly validates the account that has the delegation
-/// - Avoids security concerns associated with tx.origin
-/// - Standard security practice for access control
+/// Sender resolution:
+/// - Uses ContextClientStorageLib.getSenderFromContext() to determine the effective sender
+/// - When context is set (via ContextManager), uses the context sender
+/// - When no context is set, falls back to msg.sender
+/// - This enables validation for both direct calls and calls through ContextManager
 contract EIP7702DelegateValidationPreHook is IPreHook {
     /// @notice EIP-7702 delegation designator prefix
     bytes3 private constant EIP7702_PREFIX = 0xef0100;
@@ -46,7 +49,7 @@ contract EIP7702DelegateValidationPreHook is IPreHook {
     address public immutable VERSION;
 
     /// @notice Error thrown when an EIP-7702 delegated account has a non-whitelisted delegate target
-    /// @param sender The msg.sender address that has the delegation
+    /// @param sender The effective sender address (from context or msg.sender) that has the delegation
     /// @param delegateTarget The delegate target address that is not whitelisted
     error InvalidDelegateTarget(address sender, address delegateTarget);
 
@@ -56,13 +59,14 @@ contract EIP7702DelegateValidationPreHook is IPreHook {
     }
 
     /// @notice Executes the pre-hook logic to validate EIP-7702 delegate targets
-    /// @dev Checks if msg.sender has an EIP-7702 delegation and validates the delegate target against the whitelist.
+    /// @dev Checks if the effective sender has an EIP-7702 delegation and validates the delegate target against the whitelist.
     ///      Regular EOAs without delegation are allowed to pass without validation.
-    ///      Note: Uses msg.sender because in EIP-7702 context, when SmartWallet code executes in EOA's context,
-    ///      the EOA address becomes msg.sender. This correctly identifies accounts with delegations.
+    ///      Note: Uses ContextClientStorageLib.getSenderFromContext() to support both direct calls and
+    ///      calls through ContextManager. When no context is set, it falls back to msg.sender.
     /// @param selector_ The function selector of the main operation that will be executed
     function run(bytes4 selector_) external view {
-        address delegateTarget = _getDelegateTarget(msg.sender);
+        address sender = ContextClientStorageLib.getSenderFromContext();
+        address delegateTarget = _getDelegateTarget(sender);
 
         // Regular EOA without delegation - allow to pass
         if (delegateTarget == address(0)) {
@@ -71,7 +75,7 @@ contract EIP7702DelegateValidationPreHook is IPreHook {
 
         // Check whitelist from substrates
         if (!_isWhitelisted(selector_, delegateTarget)) {
-            revert InvalidDelegateTarget(msg.sender, delegateTarget);
+            revert InvalidDelegateTarget(sender, delegateTarget);
         }
     }
 

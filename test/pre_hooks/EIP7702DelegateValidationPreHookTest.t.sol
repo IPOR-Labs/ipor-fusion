@@ -15,6 +15,7 @@ import {IporFusionAccessManagerHelper} from "../test_helpers/IporFusionAccessMan
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {TestAddresses} from "../test_helpers/TestAddresses.sol";
+import {ContextManager, ExecuteData} from "../../contracts/managers/context/ContextManager.sol";
 
 /// @title Mock Smart Wallet for EIP-7702 testing
 /// @notice Simulates a smart wallet that an EOA can delegate to via EIP-7702
@@ -83,6 +84,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
     EIP7702DelegateValidationPreHook public preHook;
     PlasmaVault public plasmaVault;
     IporFusionAccessManager public accessManager;
+    ContextManager public contextManager;
 
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
@@ -146,7 +148,7 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         vm.startPrank(TestAddresses.ATOMIST);
         (plasmaVault, ) = PlasmaVaultHelper.deployMinimalPlasmaVault(params);
         accessManager = plasmaVault.accessManagerOf();
-        accessManager.setupInitRoles(
+        contextManager = accessManager.setupInitRoles(
             plasmaVault,
             address(0x123),
             address(new RewardsClaimManager(address(accessManager), address(plasmaVault)))
@@ -893,5 +895,229 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         );
         plasmaVault.deposit(50e6, alice);
         vm.stopPrank();
+    }
+
+    // ============================================
+    // ContextManager Integration Tests
+    // ============================================
+
+    /// @notice Test that pre-hook validates context sender when called through ContextManager
+    /// @dev This test verifies the key change: using _getSenderFromContext() instead of msg.sender
+    ///      When ContextManager calls the vault:
+    ///      - msg.sender = ContextManager (no EIP-7702 code)
+    ///      - context sender = userEOA (has EIP-7702 delegation)
+    ///      The pre-hook should validate the context sender's delegation, not msg.sender
+    ///      Note: contextManager is initialized in setUp with proper TECH_CONTEXT_MANAGER_ROLE permissions
+    function testContextManager_ShouldValidateContextSenderDelegation() public {
+        // ========== STEP 1: Deploy and whitelist a SmartWallet ==========
+        MockSmartWallet trustedSmartWallet = new MockSmartWallet();
+
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(preHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](1);
+        substrates[0][0] = bytes32(uint256(uint160(address(trustedSmartWallet))));
+
+        vm.prank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+
+        // ========== STEP 4: Set up userEOA with EIP-7702 delegation ==========
+        _setDelegationCode(userEOA, address(trustedSmartWallet));
+
+        // Verify delegation code is set
+        assertEq(userEOA.code.length, 23, "EOA should have 23-byte delegation code");
+
+        // ========== STEP 5: userEOA approves vault for USDC ==========
+        vm.prank(userEOA);
+        IERC20(USDC).approve(address(plasmaVault), 100e6);
+
+        // ========== STEP 6: Call vault through ContextManager ==========
+        // When ContextManager.runWithContext is called:
+        // - ContextManager calls setupContext(userEOA) on vault
+        // - ContextManager calls deposit() on vault
+        //   - msg.sender = ContextManager (NOT userEOA)
+        //   - context sender = userEOA (set by setupContext)
+        // - Pre-hook should use context sender (userEOA) for validation
+        // - ContextManager calls clearContext() on vault
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(plasmaVault);
+
+        bytes[] memory datas = new bytes[](1);
+        datas[0] = abi.encodeWithSelector(PlasmaVault.deposit.selector, 50e6, userEOA);
+
+        ExecuteData memory executeData = ExecuteData({targets: targets, datas: datas});
+
+        // Call from userEOA through ContextManager
+        // ContextManager will set userEOA as context sender
+        vm.prank(userEOA);
+        contextManager.runWithContext(executeData);
+
+        // ========== STEP 7: Verify deposit succeeded ==========
+        assertTrue(
+            IERC20(address(plasmaVault)).balanceOf(userEOA) > 0,
+            "Deposit through ContextManager should succeed when context sender has whitelisted delegation"
+        );
+    }
+
+    /// @notice Test that pre-hook rejects non-whitelisted delegation when called through ContextManager
+    /// @dev Verifies that context sender with non-whitelisted delegation is blocked
+    ///      Note: contextManager is initialized in setUp with proper TECH_CONTEXT_MANAGER_ROLE permissions
+    function testContextManager_ShouldRevertForNonWhitelistedContextSenderDelegation() public {
+        // ========== STEP 1: Deploy SmartWallets - whitelist only one ==========
+        MockSmartWallet whitelistedWallet = new MockSmartWallet();
+        MockSmartWallet nonWhitelistedWallet = new MockSmartWallet();
+
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(preHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](1);
+        substrates[0][0] = bytes32(uint256(uint160(address(whitelistedWallet)))); // Only whitelist one
+
+        vm.prank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+
+        // ========== STEP 4: Set up userEOA with NON-whitelisted delegation ==========
+        _setDelegationCode(userEOA, address(nonWhitelistedWallet));
+
+        // ========== STEP 5: userEOA approves vault for USDC ==========
+        vm.prank(userEOA);
+        IERC20(USDC).approve(address(plasmaVault), 100e6);
+
+        // ========== STEP 6: Call vault through ContextManager - should revert ==========
+        address[] memory targets = new address[](1);
+        targets[0] = address(plasmaVault);
+
+        bytes[] memory datas = new bytes[](1);
+        datas[0] = abi.encodeWithSelector(PlasmaVault.deposit.selector, 50e6, userEOA);
+
+        ExecuteData memory executeData = ExecuteData({targets: targets, datas: datas});
+
+        // Pre-hook should check context sender (userEOA) and find non-whitelisted delegation
+        vm.prank(userEOA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EIP7702DelegateValidationPreHook.InvalidDelegateTarget.selector,
+                userEOA, // context sender, not ContextManager
+                address(nonWhitelistedWallet)
+            )
+        );
+        contextManager.runWithContext(executeData);
+    }
+
+    /// @notice Test that regular user without delegation passes through ContextManager
+    /// @dev Verifies that context sender without any EIP-7702 code passes validation
+    ///      Note: contextManager is initialized in setUp with proper TECH_CONTEXT_MANAGER_ROLE permissions
+    function testContextManager_ShouldAllowContextSenderWithoutDelegation() public {
+        // ========== STEP 1: Configure pre-hook with some whitelist ==========
+        MockSmartWallet someWallet = new MockSmartWallet();
+
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(preHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](1);
+        substrates[0][0] = bytes32(uint256(uint160(address(someWallet))));
+
+        vm.prank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+
+        // ========== STEP 4: userEOA has NO delegation code (regular EOA) ==========
+        // userEOA is a fresh address with no code
+
+        // ========== STEP 5: userEOA approves vault for USDC ==========
+        vm.prank(userEOA);
+        IERC20(USDC).approve(address(plasmaVault), 100e6);
+
+        // ========== STEP 6: Call vault through ContextManager ==========
+        address[] memory targets = new address[](1);
+        targets[0] = address(plasmaVault);
+
+        bytes[] memory datas = new bytes[](1);
+        datas[0] = abi.encodeWithSelector(PlasmaVault.deposit.selector, 50e6, userEOA);
+
+        ExecuteData memory executeData = ExecuteData({targets: targets, datas: datas});
+
+        // Context sender (userEOA) has no delegation code - should pass
+        vm.prank(userEOA);
+        contextManager.runWithContext(executeData);
+
+        // ========== STEP 7: Verify deposit succeeded ==========
+        assertTrue(
+            IERC20(address(plasmaVault)).balanceOf(userEOA) > 0,
+            "Deposit through ContextManager should succeed for regular EOA without delegation"
+        );
+    }
+
+    /// @notice Critical test: Demonstrates that ContextManager is NOT validated, only context sender is
+    /// @dev This test proves that the pre-hook correctly uses _getSenderFromContext():
+    ///      - ContextManager (msg.sender) has no EIP-7702 code
+    ///      - If pre-hook used msg.sender, it would skip validation entirely
+    ///      - But pre-hook uses context sender, so userEOA's delegation is validated
+    ///      Note: contextManager is initialized in setUp with proper TECH_CONTEXT_MANAGER_ROLE permissions
+    function testContextManager_ValidatesContextSenderNotMsgSender() public {
+        // ========== Configure pre-hook with empty whitelist ==========
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = PlasmaVault.deposit.selector;
+
+        address[] memory preHooks = new address[](1);
+        preHooks[0] = address(preHook);
+
+        bytes32[][] memory substrates = new bytes32[][](1);
+        substrates[0] = new bytes32[](0); // Empty whitelist
+
+        vm.prank(TestAddresses.ATOMIST);
+        PlasmaVaultGovernance(address(plasmaVault)).setPreHookImplementations(selectors, preHooks, substrates);
+
+        // ========== Set up userEOA with EIP-7702 delegation ==========
+        MockSmartWallet userWallet = new MockSmartWallet();
+        _setDelegationCode(userEOA, address(userWallet));
+
+        vm.prank(userEOA);
+        IERC20(USDC).approve(address(plasmaVault), 100e6);
+
+        // ========== Call through ContextManager ==========
+        address[] memory targets = new address[](1);
+        targets[0] = address(plasmaVault);
+
+        bytes[] memory datas = new bytes[](1);
+        datas[0] = abi.encodeWithSelector(PlasmaVault.deposit.selector, 50e6, userEOA);
+
+        ExecuteData memory executeData = ExecuteData({targets: targets, datas: datas});
+
+        // ========== This is the critical assertion ==========
+        // If pre-hook used msg.sender (ContextManager), it would:
+        // - Check ContextManager's code size (large contract, not 23 bytes)
+        // - Skip validation entirely (not EIP-7702)
+        // - PASS the transaction
+        //
+        // But since pre-hook uses _getSenderFromContext() (userEOA), it:
+        // - Checks userEOA's code size (23 bytes - EIP-7702)
+        // - Extracts delegate target (userWallet)
+        // - Checks whitelist (empty - NOT whitelisted)
+        // - REVERTS with InvalidDelegateTarget
+        //
+        // This proves the pre-hook correctly validates context sender!
+
+        vm.prank(userEOA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EIP7702DelegateValidationPreHook.InvalidDelegateTarget.selector,
+                userEOA, // Context sender is validated, not ContextManager
+                address(userWallet)
+            )
+        );
+        contextManager.runWithContext(executeData);
     }
 }
