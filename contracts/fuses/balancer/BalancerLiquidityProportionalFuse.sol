@@ -237,6 +237,10 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
             revert BalancerLiquidityProportionalFuseUnsupportedPool(data_.pool);
         }
 
+        // Validate that all tokens in the pool are granted as TOKEN substrates for this market
+        // This prevents withdrawing non-whitelisted tokens into the vault
+        BalancerSubstrateLib.validatePoolTokensGranted(MARKET_ID, data_.pool);
+
         if (data_.exactBptAmountIn == 0) {
             return amountsOut;
         }

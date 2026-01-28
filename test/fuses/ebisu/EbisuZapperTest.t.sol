@@ -8,6 +8,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, 
 import {EbisuZapperCreateFuse, EbisuZapperCreateFuseEnterData, EbisuZapperCreateFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
 
 import {EbisuAdjustInterestRateFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol";
+import {EbisuAdjustTroveFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol";
 
 import {EbisuZapperBalanceFuse} from "../../../contracts/fuses/ebisu/EbisuZapperBalanceFuse.sol";
 import {ITroveManager} from "../../../contracts/fuses/ebisu/ext/ITroveManager.sol";
@@ -90,6 +91,7 @@ contract EbisuZapperTest is Test {
     UniversalTokenSwapperFuse private swapFuse;
     TransientStorageSetterFuse private transientStorageSetterFuse;
     EbisuAdjustInterestRateFuse private adjustRateFuse;
+    EbisuAdjustTroveFuse private adjustTroveFuse;
 
     address private accessManager;
     PriceOracleMiddleware private priceOracle;
@@ -1052,6 +1054,75 @@ contract EbisuZapperTest is Test {
         assertEq(troveData.annualInterestRate, newRate, "Interest rate was not updated by fuse");
     }
 
+    function testShouldAdjustTroveViaFuseEbisu() public {
+        testShouldEnterToEbisuZapper();
+
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), SUSDE_ZAPPER, 1);
+        ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
+        ITroveManager.LatestTroveData memory initialTroveData = troveManager.getLatestTroveData(troveId);
+
+        EbisuAdjustTroveFuse.EbisuAdjustTroveFuseEnterData memory adjustData = EbisuAdjustTroveFuse
+            .EbisuAdjustTroveFuseEnterData({
+                zapper: SUSDE_ZAPPER,
+                registry: SUSDE_REGISTRY,
+                collChange: 1000,
+                debtChange: 500,
+                isCollIncrease: true,
+                isDebtIncrease: true,
+                maxUpfrontFee: 5 * 1e18
+            });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(adjustTroveFuse),
+            abi.encodeWithSelector(EbisuAdjustTroveFuse.enter.selector, adjustData)
+        );
+
+        plasmaVault.execute(calls);
+
+        ITroveManager.LatestTroveData memory troveData = troveManager.getLatestTroveData(troveId);
+        assertEq(
+            troveData.entireColl,
+            initialTroveData.entireColl + adjustData.collChange,
+            "Collateral was not updated by fuse"
+        );
+        assertEq(
+            troveData.entireDebt,
+            initialTroveData.entireDebt + adjustData.debtChange,
+            "Debt was not updated by fuse"
+        );
+
+        // same but with coll and debt decrease
+        adjustData = EbisuAdjustTroveFuse.EbisuAdjustTroveFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            registry: SUSDE_REGISTRY,
+            collChange: 500,
+            debtChange: 200,
+            isCollIncrease: false,
+            isDebtIncrease: false,
+            maxUpfrontFee: 5 * 1e18
+        });
+
+        calls[0] = FuseAction(
+            address(adjustTroveFuse),
+            abi.encodeWithSelector(EbisuAdjustTroveFuse.enter.selector, adjustData)
+        );
+
+        plasmaVault.execute(calls);
+        ITroveManager.LatestTroveData memory finalTroveData = troveManager.getLatestTroveData(troveId);
+        assertEq(
+            finalTroveData.entireColl,
+            troveData.entireColl - 500, // 1000 - 500
+            "Collateral was not updated by fuse"
+        );
+        assertEq(
+            finalTroveData.entireDebt,
+            troveData.entireDebt - 200, // 500 - 200
+            "Debt was not updated by fuse"
+        );
+
+    }
     // --- helpers ---
 
     function _setupMarketConfigs(
@@ -1113,13 +1184,15 @@ contract EbisuZapperTest is Test {
         transientStorageSetterFuse = new TransientStorageSetterFuse();
 
         adjustRateFuse = new EbisuAdjustInterestRateFuse(IporFusionMarkets.EBISU);
+        adjustTroveFuse = new EbisuAdjustTroveFuse(IporFusionMarkets.EBISU);
 
-        fuses = new address[](5);
+        fuses = new address[](6);
         fuses[0] = address(zapperFuse);
         fuses[1] = address(leverModifyFuse);
         fuses[2] = address(adjustRateFuse);
-        fuses[3] = address(swapFuse);
-        fuses[4] = address(transientStorageSetterFuse);
+        fuses[3] = address(adjustTroveFuse);
+        fuses[4] = address(swapFuse);
+        fuses[5] = address(transientStorageSetterFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
