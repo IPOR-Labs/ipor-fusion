@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {ICLFactory} from "./ext/ICLFactory.sol";
+
+/// @notice Error when pool does not exist (not deployed)
+error PoolNotDeployed(address token0, address token1, int24 tickSpacing);
+
+/// @notice Error when pool has no code (defense-in-depth check)
+error PoolHasNoCode(address pool);
 
 enum VelodromeSuperchainSlipstreamSubstrateType {
     UNDEFINED,
@@ -17,8 +22,6 @@ struct VelodromeSuperchainSlipstreamSubstrate {
 }
 
 library VelodromeSuperchainSlipstreamSubstrateLib {
-    error TokensNotSorted();
-
     function substrateToBytes32(
         VelodromeSuperchainSlipstreamSubstrate memory substrate_
     ) internal pure returns (bytes32) {
@@ -32,45 +35,37 @@ library VelodromeSuperchainSlipstreamSubstrateLib {
         substrate.substrateAddress = PlasmaVaultConfigLib.bytes32ToAddress(bytes32Substrate_);
     }
 
-    /// @dev Velodrome V3 Pool Key
-
-    /// @notice The identifying key of the pool
-    struct PoolKey {
-        address token0;
-        address token1;
-        int24 tickSpacing;
-    }
-
+    /// @notice Returns the pool address from the factory for the given token pair and tick spacing
+    /// @dev Uses authoritative lookup from the factory instead of CREATE2 prediction.
+    ///      This approach is upgrade-safe: it returns the actual deployed pool address
+    ///      regardless of any factory implementation upgrades.
+    /// @param factory_ The CL factory contract address
+    /// @param tokenA_ The first token of a pool, unsorted
+    /// @param tokenB_ The second token of a pool, unsorted
+    /// @param tickSpacing_ The tick spacing of the pool
+    /// @return pool The contract address of the deployed pool
+    /// @custom:revert PoolNotDeployed When no pool exists for the given parameters
+    /// @custom:revert PoolHasNoCode When the returned pool address has no code (defense-in-depth)
     function getPoolAddress(
         address factory_,
         address tokenA_,
         address tokenB_,
         int24 tickSpacing_
     ) internal view returns (address pool) {
-        PoolKey memory key = _getPoolKey(tokenA_, tokenB_, tickSpacing_);
-        pool = _computeAddress(factory_, key);
-    }
+        // Sort tokens to match factory's expected order
+        (address token0, address token1) = tokenA_ < tokenB_ ? (tokenA_, tokenB_) : (tokenB_, tokenA_);
 
-    /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
-    /// @param tokenA_ The first token of a pool, unsorted
-    /// @param tokenB_ The second token of a pool, unsorted
-    /// @param tickSpacing_ The tick spacing of the pool
-    /// @return Poolkey The pool details with ordered token0 and token1 assignments
-    function _getPoolKey(address tokenA_, address tokenB_, int24 tickSpacing_) private pure returns (PoolKey memory) {
-        if (tokenA_ > tokenB_) (tokenA_, tokenB_) = (tokenB_, tokenA_);
-        return PoolKey({token0: tokenA_, token1: tokenB_, tickSpacing: tickSpacing_});
-    }
+        // Query the factory for the actual deployed pool address
+        pool = ICLFactory(factory_).getPool(token0, token1, tickSpacing_);
 
-    /// @notice Deterministically computes the pool address given the factory and PoolKey
-    /// @param factory_ The CL factory contract address
-    /// @param key_ The PoolKey
-    /// @return pool The contract address of the V3 pool
-    function _computeAddress(address factory_, PoolKey memory key_) private view returns (address pool) {
-        if (key_.token0 >= key_.token1) revert TokensNotSorted();
-        pool = Clones.predictDeterministicAddress({
-            implementation: ICLFactory(factory_).poolImplementation(),
-            salt: keccak256(abi.encode(key_.token0, key_.token1, key_.tickSpacing)),
-            deployer: factory_
-        });
+        // Verify pool exists (factory returns address(0) if not deployed)
+        if (pool == address(0)) {
+            revert PoolNotDeployed(token0, token1, tickSpacing_);
+        }
+
+        // Defense-in-depth: verify the pool has code deployed
+        if (pool.code.length == 0) {
+            revert PoolHasNoCode(pool);
+        }
     }
 }

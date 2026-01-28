@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
@@ -146,6 +147,12 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
+        // Track the tokenId in storage to prevent DoS via unbounded NFT enumeration
+        FuseStorageLib.AerodromeSlipstreamTokenIds storage tokensIds = FuseStorageLib
+            .getAerodromeSlipstreamTokenIds();
+        tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
+        tokensIds.tokenIds.push(tokenId);
+
         emit AreodromeSlipstreamNewPositionFuseEnter(
             VERSION,
             tokenId,
@@ -214,7 +221,7 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
     }
 
     /// @notice Burns NFT positions
-    /// @dev Burns all token IDs in the provided array
+    /// @dev Burns all token IDs in the provided array and removes them from storage tracking
     /// @param closePositions The data containing array of token IDs to burn
     /// @return tokenIds The array of burned token IDs
     function exit(
@@ -226,10 +233,35 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
             return new uint256[](0);
         }
 
-        for (uint256 i; i < len; i++) {
-            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
+        FuseStorageLib.AerodromeSlipstreamTokenIds storage storedTokenIds = FuseStorageLib
+            .getAerodromeSlipstreamTokenIds();
+        uint256 storageLen = storedTokenIds.tokenIds.length;
+        uint256 tokenIndex;
+        uint256 lastTokenId;
+        uint256 tokenId;
 
-            emit AreodromeSlipstreamNewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
+        for (uint256 i; i < len; i++) {
+            tokenId = closePositions.tokenIds[i];
+
+            // Remove tokenId from storage using swap-and-pop pattern
+            tokenIndex = storedTokenIds.indexes[tokenId];
+
+            // Only remove if the token exists in storage (index exists and matches)
+            if (storageLen > 0 && tokenIndex < storageLen && storedTokenIds.tokenIds[tokenIndex] == tokenId) {
+                if (tokenIndex != storageLen - 1) {
+                    lastTokenId = storedTokenIds.tokenIds[storageLen - 1];
+                    storedTokenIds.tokenIds[tokenIndex] = lastTokenId;
+                    storedTokenIds.indexes[lastTokenId] = tokenIndex;
+                }
+
+                storedTokenIds.tokenIds.pop();
+                delete storedTokenIds.indexes[tokenId];
+                --storageLen;
+            }
+
+            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
+
+            emit AreodromeSlipstreamNewPositionFuseExit(VERSION, tokenId);
         }
 
         return closePositions.tokenIds;

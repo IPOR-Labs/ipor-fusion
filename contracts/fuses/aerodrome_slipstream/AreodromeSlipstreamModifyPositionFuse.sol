@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IFuseCommon} from "../IFuseCommon.sol";
@@ -291,7 +292,7 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 
         uint256 tokenId = TypeConversionLib.toUint256(inputs[0]);
-        uint128 liquidity = uint128(TypeConversionLib.toUint256(inputs[1]));
+        uint128 liquidity = SafeCast.toUint128(TypeConversionLib.toUint256(inputs[1]));
         uint256 amount0Min = TypeConversionLib.toUint256(inputs[2]);
         uint256 amount1Min = TypeConversionLib.toUint256(inputs[3]);
         uint256 deadline = TypeConversionLib.toUint256(inputs[4]);

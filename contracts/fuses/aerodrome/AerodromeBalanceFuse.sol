@@ -55,6 +55,7 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         uint256 liquidity;
         AerodromeSubstrate memory substrate;
+        bool isGauge;
 
         for (uint256 i; i < len; ++i) {
             substrate = AerodromeSubstrateLib.bytes32ToSubstrate(substrates[i]);
@@ -159,6 +160,10 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
     ///
     ///      The index delta approach ensures accurate fee tracking even if fees accumulate between balance checks.
     ///      Only positive deltas are considered to avoid underflow issues.
+    ///
+    ///      IMPORTANT: This function should only be called for Pool substrates where the vault directly holds
+    ///      LP tokens. For Gauge substrates, trading fees go to the FeesVotingReward contract (voter/bribe system),
+    ///      not to the vault, so this function should not be called.
     /// @param pool_ The address of the Aerodrome pool
     /// @param priceOracleMiddleware_ The address of the price oracle middleware for USD price conversion
     /// @param liquidity_ The amount of LP tokens held by the vault

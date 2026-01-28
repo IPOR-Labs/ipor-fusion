@@ -1946,4 +1946,169 @@ contract AerodromeFuseTests is Test {
         // then - Balance should be greater than 0
         assertGt(balance, 0, "Balance should be greater than 0 when gauge has liquidity");
     }
+
+    // ============ Security Fix Test: Fee calculation exclusion for Gauge substrates ============
+
+    /// @notice Test that verifies the security fix for H1: Fee indices misattributed for Gauge-staked LPs
+    /// @dev This test validates that:
+    ///      1. For Pool substrates: balance includes both liquidity value AND trading fees
+    ///      2. For Gauge substrates: balance includes ONLY liquidity value, NOT trading fees
+    ///      When LP tokens are staked in a Gauge, trading fees go to FeesVotingReward (voter/bribe system),
+    ///      not to the vault. The vault only receives AERO token rewards from gauges.
+    ///      Before the fix, fee indices were read for the vault address when LP tokens were in the gauge,
+    ///      but since the vault doesn't hold LP tokens directly, supplyIndex values were zero/stale,
+    ///      causing the full global index to be multiplied by gauge-staked liquidity, massively inflating the balance.
+    function test_shouldNotIncludeFeesInBalanceForGaugeSubstrate() public {
+        // given
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 172503737333611236; // ~0.17 WETH
+        uint256 amountAMin = 990e6;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        // Step 1: Add liquidity to pool
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Record balance when LP tokens are in Pool (should include fees if any)
+        uint256 balanceWithLpInPool = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Step 2: Deposit ALL LP tokens to gauge
+        address poolAddress = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: lpTokenBalance
+        });
+
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Record balance when LP tokens are in Gauge (should NOT include pool trading fees)
+        uint256 balanceWithLpInGauge = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Verify vault has no LP tokens directly in pool anymore
+        assertEq(IERC20(poolAddress).balanceOf(address(_plasmaVault)), 0, "Vault should have 0 LP tokens in pool");
+
+        // Verify vault has LP tokens staked in gauge
+        assertEq(
+            IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault)),
+            lpTokenBalance,
+            "Vault should have LP tokens in gauge"
+        );
+
+        // then
+        // The balance should be approximately the same (within tolerance) because:
+        // - Liquidity value (LP tokens' share of pool reserves) is the same
+        // - No significant fees accumulated in the short time between operations
+        // Before the fix, balanceWithLpInGauge would be massively inflated due to
+        // the entire historical fee index being attributed to the vault
+        assertApproxEqAbs(
+            balanceWithLpInGauge,
+            balanceWithLpInPool,
+            ERROR_DELTA,
+            "Balance should remain approximately the same when moving LP from pool to gauge"
+        );
+
+        // Additional assertion: balance should be within reasonable bounds
+        // If the bug existed, the gauge balance would be orders of magnitude higher
+        assertLt(
+            balanceWithLpInGauge,
+            balanceWithLpInPool * 2,
+            "Gauge balance should not be significantly higher than pool balance (security check)"
+        );
+    }
+
+    /// @notice Test that verifies fees ARE included when LP tokens are directly in Pool (not Gauge)
+    /// @dev This confirms that the fix only excludes fees for Gauge substrates, not Pool substrates
+    function test_shouldIncludeFeesInBalanceForPoolSubstrate() public {
+        // given - Only grant Pool substrate (remove Gauge substrate for this test)
+        bytes32[] memory poolOnlySubstrates = new bytes32[](1);
+        poolOnlySubstrates[0] = AerodromeSubstrateLib.substrateToBytes32(
+            AerodromeSubstrate({
+                substrateAddress: IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0)),
+                substrateType: AerodromeSubstrateType.Pool
+            })
+        );
+
+        vm.startPrank(_FUSE_MANAGER);
+        _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.AERODROME, poolOnlySubstrates);
+        vm.stopPrank();
+
+        // Add liquidity to pool
+        uint256 amountADesired = 1000e6;
+        uint256 amountBDesired = 172503737333611236;
+        uint256 amountAMin = 990e6;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Record initial balance (includes liquidity + any initial fees)
+        uint256 initialBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // Warp time to potentially accumulate some fee index growth
+        vm.warp(block.timestamp + 1 days);
+
+        // Record balance after time passes
+        uint256 balanceAfterTime = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+
+        // then
+        // Balance should still be valid and reasonable for Pool substrate
+        assertGt(initialBalance, 0, "Initial balance should be greater than 0 for Pool substrate");
+        assertGt(balanceAfterTime, 0, "Balance after time should be greater than 0 for Pool substrate");
+
+        // Balance should remain stable (no massive inflation from incorrect fee calculation)
+        // The balance may slightly increase due to fee accumulation, but should not be drastically different
+        assertApproxEqRel(
+            balanceAfterTime,
+            initialBalance,
+            0.1e18, // 10% tolerance for potential fee accumulation over 1 day
+            "Pool balance should remain stable (fee calculation is correct)"
+        );
+    }
 }

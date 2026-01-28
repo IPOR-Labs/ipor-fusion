@@ -130,12 +130,19 @@ contract BalancerTest is Test {
         vm.stopPrank();
 
         // Setup market substrates
-        bytes32[] memory balancerSubstrates = new bytes32[](2);
+        bytes32[] memory balancerSubstrates = new bytes32[](4);
         balancerSubstrates[0] = BalancerSubstrateLib.substrateToBytes32(
             BalancerSubstrate({substrateType: BalancerSubstrateType.POOL, substrateAddress: _BALANCER_POOL})
         );
         balancerSubstrates[1] = BalancerSubstrateLib.substrateToBytes32(
             BalancerSubstrate({substrateType: BalancerSubstrateType.GAUGE, substrateAddress: _BALANCER_GAUGE})
+        );
+        // Grant TOKEN substrates for pool's underlying tokens (required for exit operations)
+        balancerSubstrates[2] = BalancerSubstrateLib.substrateToBytes32(
+            BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: _FWST_ETH})
+        );
+        balancerSubstrates[3] = BalancerSubstrateLib.substrateToBytes32(
+            BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: _FW_ETH})
         );
         vm.startPrank(_FUSE_MANAGER);
         PlasmaVaultGovernance(_fusionInstance.plasmaVault).grantMarketSubstrates(

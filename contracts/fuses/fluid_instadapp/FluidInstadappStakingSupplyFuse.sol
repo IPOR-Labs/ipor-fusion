@@ -116,10 +116,13 @@ contract FluidInstadappStakingSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address stakingPool = TypeConversionLib.toAddress(params_[1]);
 
+        // Use previewWithdraw instead of convertToShares for withdrawal flows.
+        // previewWithdraw rounds UP to ensure enough shares are burned to cover the requested underlying amount,
+        // while convertToShares rounds DOWN which is only appropriate for deposits.
         _exit(
             FluidInstadappStakingSupplyFuseExitData({
                 stakingPool: stakingPool,
-                fluidTokenAmount: IERC4626(IFluidLendingStakingRewards(stakingPool).stakingToken()).convertToShares(
+                fluidTokenAmount: IERC4626(IFluidLendingStakingRewards(stakingPool).stakingToken()).previewWithdraw(
                     amount
                 )
             }),

@@ -18,6 +18,7 @@ interface IAddressesRegistry {
     function branchCollGasCompensationCap() external view returns (uint256);
 
     function collToken() external view returns (IERC20Metadata);
+    function boldToken() external view returns (IERC20Metadata);
     function borrowerOperations() external view returns (IBorrowerOperations);
     function troveManager() external view returns (ITroveManager);
     function priceFeed() external view returns (IPriceFeed);

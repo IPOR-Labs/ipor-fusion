@@ -23,4 +23,13 @@ interface IBorrowerOperations {
         uint256 _lowerHint,
         uint256 _maxUpfrontFee
     ) external;
+
+    function adjustTrove(
+        uint256 _troveId,
+        uint256 _collChange,
+        bool _isCollIncrease,
+        uint256 _boldChange,
+        bool _isDebtIncrease,
+        uint256 _maxUpfrontFee
+    ) external;
 }
