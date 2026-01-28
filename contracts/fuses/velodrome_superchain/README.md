@@ -7,6 +7,25 @@ Velodrome Superchain integration enables IPOR Fusion to interact with Velodrome 
 **What Velodrome Superchain does:**
 Velodrome is the central liquidity hub for the Superchain ecosystem. Users can provide liquidity to AMM pools (stable or volatile) to earn trading fees, and stake their LP tokens in gauges to earn VELO token emissions. The protocol uses a vote-escrow model where veVELO holders direct emissions to gauges.
 
+## Responsibility Separation
+
+### VelodromeSuperchainBalanceFuse
+Calculates the USD value of Plasma Vault positions:
+- **Pool positions:** LP token value (based on reserves) + accumulated trading fees
+- **Gauge positions:** LP token value only (staked LP tokens)
+
+**Does NOT include:** VELO emission rewards
+
+### RewardsManager + Reward Fuses
+Handle all reward-related operations:
+- `VelodromeSuperchainGaugeClaimFuse` - claims VELO rewards from gauges
+- `RewardsManager` - manages reward distribution and accounting
+
+This separation allows for:
+- Cleaner balance calculations (only principal + fees)
+- Flexible reward handling strategies
+- Independent reward claiming schedules
+
 ## Architecture Diagram
 
 ```
@@ -34,13 +53,13 @@ Velodrome is the central liquidity hub for the Superchain ecosystem. Users can p
    │   VALUE   │          │   FEES    │ │   VALUE   │       │ EMISSIONS │
    └───────────┘          └───────────┘ └───────────┘       └───────────┘
          │                       │           │                     │
-         │  token0 + token1      │           │                     │ earned()
+         │  token0 + token1      │           │                     │
          │  proportional to      │           │                     │
          │  LP share             │           │                     │
          ▼                       ▼           ▼                     ▼
    ┌─────────────────────────────────┐ ┌─────────────────────────────────┐
-   │         USD VALUE (Pool)        │ │        USD VALUE (Gauge)        │
-   │  = LP Value + Trading Fees      │ │  = LP Value + VELO Rewards      │
+   │         BalanceFuse             │ │       RewardsManager            │
+   │  = LP Value + Trading Fees      │ │  (handles VELO separately)      │
    └─────────────────────────────────┘ └─────────────────────────────────┘
 ```
 
@@ -58,7 +77,7 @@ SCENARIO A: LP tokens held directly in Pool
          │
          ▼
     ┌─────────┐     Trading Fees      ┌──────────────┐
-    │  Pool   │ ───────────────────►  │ PlasmaVault  │  ✓ YOU GET FEES
+    │  Pool   │ ───────────────────►  │ PlasmaVault  │  ✓ COUNTED IN BALANCE
     └─────────┘   (claimable0/1)      └──────────────┘
          │
          │ NO staking = NO emissions
@@ -78,11 +97,18 @@ SCENARIO B: LP tokens staked in Gauge
     │  Pool   │ ───────────────────►  │ FeesVotingReward │ ──► veVELO Voters
     └─────────┘                       └──────────────────┘
                                               │
-                                              │  ✗ NOT TO YOU!
+                                              │  ✗ NOT TO STAKERS!
                                               ▼
     ┌─────────┐      VELO Emissions   ┌──────────────┐
-    │  Gauge  │ ───────────────────►  │ PlasmaVault  │  ✓ YOU GET EMISSIONS
+    │  Gauge  │ ───────────────────►  │ PlasmaVault  │  ✓ HANDLED BY RewardsManager
     └─────────┘       (earned)        └──────────────┘
+                                              │
+                                              │  
+                                              ▼
+                                      ┌──────────────────┐
+                                      │  RewardsManager  │
+                                      │  + Claim Fuses   │
+                                      └──────────────────┘
 ```
 
 ## Balance Calculation Summary
@@ -95,21 +121,26 @@ SCENARIO B: LP tokens staked in Gauge
 ├────────────────┼─────────────────────────┼─────────────────────────┤
 │ Trading Fees   │  ✓ claimable0/1 + delta │  ✗ (go to veVELO)       │
 ├────────────────┼─────────────────────────┼─────────────────────────┤
-│ VELO Emissions │  ✗ (not staked)         │  ✓ earned()             │
+│ VELO Emissions │  ✗ (not staked)         │  ✗ (RewardsManager)     │
 └────────────────┴─────────────────────────┴─────────────────────────┘
 ```
 
 ## Components
 
-### Fuses
+### Balance Fuse
 
 | Contract | Purpose |
 |----------|---------|
-| `VelodromeSuperchainBalanceFuse` | Calculates total USD value of positions |
+| `VelodromeSuperchainBalanceFuse` | Calculates USD value of LP positions + trading fees (NO rewards) |
+
+### Action Fuses
+
+| Contract | Purpose |
+|----------|---------|
 | `VelodromeSuperchainLiquidityFuse` | Add/remove liquidity to pools |
 | `VelodromeSuperchainGaugeFuse` | Stake/unstake LP tokens in gauges |
 
-### Reward Fuses
+### Reward Fuses (handled by RewardsManager)
 
 | Contract | Purpose |
 |----------|---------|
@@ -174,7 +205,7 @@ VelodromeSuperchainGaugeFuseEnterData memory data = VelodromeSuperchainGaugeFuse
 });
 ```
 
-### Claim Rewards
+### Claim Rewards (via RewardsManager)
 
 ```solidity
 address[] memory gauges = new address[](1);
@@ -186,7 +217,7 @@ VelodromeSuperchainGaugeClaimFuse(claimFuse).claim(gauges);
 
 Required price feeds:
 - All pool underlying tokens (e.g., USDC/USD, WETH/USD)
-- VELO/USD (for emission rewards valuation)
+- VELO/USD is **NOT required** for BalanceFuse (rewards not counted)
 
 ## Security Considerations
 
@@ -204,56 +235,3 @@ Required price feeds:
 - Token address validation (non-zero)
 - Substrate type validation
 - Liquidity amount validation
-
----
-
-## Comparison with Other Integrations
-
-### Standard Fuse Pattern
-
-All IPOR Fusion protocol integrations follow the same pattern:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    STANDARD FUSE ARCHITECTURE                    │
-└─────────────────────────────────────────────────────────────────┘
-
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  Balance Fuse    │     │  Action Fuses    │     │  Claim Fuses     │
-│                  │     │                  │     │                  │
-│ balanceOf()      │     │ enter()          │     │ claim()          │
-│ → USD value      │     │ exit()           │     │ → to RewardsMgr  │
-└──────────────────┘     └──────────────────┘     └──────────────────┘
-        │                        │                        │
-        │                        │                        │
-        ▼                        ▼                        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         External Protocol                        │
-│              (Velodrome, Aave, Morpho, Balancer, etc.)          │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Balance Fuse Patterns
-
-| Protocol | Position Types | What's Counted |
-|----------|---------------|----------------|
-| **Velodrome Superchain** | Pool, Gauge | LP value + fees (Pool) / LP value + emissions (Gauge) |
-| **Aerodrome** | Pool, Gauge | LP value + fees (Pool only) |
-| **Aave V3** | Supply | aToken balance + interest |
-| **Morpho** | Supply, Borrow | Supply balance - borrow balance |
-| **Balancer** | Pool, Gauge | BPT value based on pool tokens |
-| **Compound V3** | Supply | cToken balance + interest |
-
-### Key Differences
-
-1. **AMM protocols** (Velodrome, Aerodrome, Balancer):
-   - Track LP token value + fees/rewards
-   - Different fee distribution for staked vs unstaked positions
-
-2. **Lending protocols** (Aave, Morpho, Compound):
-   - Track supply/borrow positions
-   - Interest accrues automatically
-
-3. **Staking protocols** (Gauges, Convex, StakeDAO):
-   - Track staked tokens + emission rewards
-   - Rewards need explicit claiming

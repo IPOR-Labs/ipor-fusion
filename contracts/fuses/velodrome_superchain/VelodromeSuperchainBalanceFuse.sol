@@ -14,36 +14,34 @@ import {ILeafGauge} from "./ext/ILeafGauge.sol";
 import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
 
 /// @title VelodromeSuperchainBalanceFuse
-/// @notice Contract responsible for managing Velodrome Basic Vault balance calculations
-/// @dev This contract handles balance tracking for Plasma Vault positions in Velodrome pools and gauges
-/// It calculates total USD value of vault's liquidity positions and accrued fees across multiple Velodrome substrates
-/// The balance calculations support both direct pool positions and staked gauge positions
-
+/// @notice Calculates the USD value of Plasma Vault positions in Velodrome Superchain pools and gauges
+/// @dev This fuse only calculates LIQUIDITY value (LP token value based on reserves).
+///      REWARDS (VELO emissions) are NOT included - they are handled separately by RewardsManager and reward fuses.
+///      TRADING FEES for pool positions are included as they accrue directly to LP holders.
+///      For gauge positions, trading fees go to veVELO voters (not stakers), so they are not counted.
+/// @author IPOR Labs
 contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
 
     error InvalidPool();
 
     /// @notice Address of this fuse contract version
-    /// @dev Immutable value set in constructor, used for tracking and versioning
     address public immutable VERSION;
 
     /// @notice Market ID this fuse operates on
-    /// @dev Immutable value set in constructor, used to retrieve market substrates (Velodrome pool and gauge addresses)
     uint256 public immutable MARKET_ID;
 
-    /**
-     * @notice Initializes the VelodromeSuperchainBalanceFuse with a market ID
-     * @param marketId_ The market ID used to identify the market and retrieve substrates
-     */
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
+    /// @return The balance of the Plasma Vault in USD, represented in 18 decimals
+    /// @dev For Pool positions: LP value + trading fees
+    ///      For Gauge positions: LP value only (rewards handled by RewardsManager)
     function balanceOf() external view override returns (uint256) {
-        bytes32[] memory pools = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
-        uint256 len = pools.length;
+        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        uint256 len = substrates.length;
         if (len == 0) return 0;
 
         uint256 balance;
@@ -51,53 +49,32 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
         VelodromeSuperchainSubstrate memory substrate;
 
         for (uint256 i; i < len; ++i) {
-            substrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(pools[i]);
+            substrate = VelodromeSuperchainSubstrateLib.bytes32ToSubstrate(substrates[i]);
             address substrateAddress = substrate.substrateAddress;
 
             if (substrate.substrateType == VelodromeSuperchainSubstrateType.Gauge) {
-                // GAUGE: Liquidity Value + Earned Emissions ($VELO)
+                // GAUGE: Only liquidity value (rewards handled by RewardsManager)
                 address pool = ILeafGauge(substrateAddress).stakingToken();
                 uint256 liquidity = ILeafGauge(substrateAddress).balanceOf(address(this));
 
                 if (liquidity > 0) {
                     balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                    // For gauge positions: count emission rewards instead of trading fees
-                    balance += _calculateBalanceFromRewards(substrateAddress, priceOracleMiddleware);
                 }
+                // NOTE: VELO emissions are NOT counted here - use VelodromeSuperchainGaugeClaimFuse
+                // and RewardsManager to handle rewards separately
             } else if (substrate.substrateType == VelodromeSuperchainSubstrateType.Pool) {
-                // POOL: Liquidity Value + Trading Fees
+                // POOL: Liquidity value + trading fees
                 uint256 liquidity = IERC20(substrateAddress).balanceOf(address(this));
 
                 if (liquidity > 0) {
                     balance += _calculateBalanceFromLiquidity(substrateAddress, priceOracleMiddleware, liquidity);
-                    balance += _calculateBalanceFromPoolFees(substrateAddress, priceOracleMiddleware, liquidity);
                 }
+                // Always calculate fees - claimable fees may exist even when liquidity is zero
+                // (e.g., after withdrawing LP tokens but before claiming accumulated fees)
+                balance += _calculateBalanceFromPoolFees(substrateAddress, priceOracleMiddleware, liquidity);
             }
         }
         return balance;
-    }
-
-    /// @notice Calculates the USD value of accumulated emission rewards ($VELO/$AERO)
-    function _calculateBalanceFromRewards(
-        address gauge_,
-        address priceOracleMiddleware_
-    ) private view returns (uint256 balanceInUsd) {
-        // Velodrome V2 Gauge: earned(address) returns the amount of reward tokens
-        uint256 earnedAmount = ILeafGauge(gauge_).earned(address(this));
-
-        if (earnedAmount > 0) {
-            // In Velodrome Superchain the reward is always the native token (VELO)
-            // In Aerodrome it's AERO. We retrieve the reward token address from the Gauge.
-            address rewardToken = ILeafGauge(gauge_).rewardToken();
-            
-            (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(rewardToken);
-            
-            balanceInUsd = IporMath.convertToWad(
-                earnedAmount * price,
-                IERC20Metadata(rewardToken).decimals() + priceDecimals
-            );
-        }
-        return balanceInUsd;
     }
 
     function _calculateBalanceFromLiquidity(
