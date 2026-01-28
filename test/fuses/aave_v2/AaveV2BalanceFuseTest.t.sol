@@ -65,7 +65,13 @@ contract AaveV2BalanceFuseTest is Test {
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        deal(asset, to, amount);
+        if (asset == 0xdAC17F958D2ee523a2206206994597C13D831ec7) {
+            // USDT: deal() fails due to stdStorage slot detection issue with proxy storage layout.
+            // Write directly to balances mapping (slot 2) in TetherToken contract.
+            vm.store(asset, keccak256(abi.encode(to, uint256(2))), bytes32(amount));
+        } else {
+            deal(asset, to, amount);
+        }
     }
 
     modifier iterateSupportedTokens() {
