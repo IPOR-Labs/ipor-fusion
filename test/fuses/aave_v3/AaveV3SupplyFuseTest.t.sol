@@ -197,6 +197,10 @@ contract AaveV3SupplyFuseTest is Test {
             // USDC
             vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
             ERC20(asset).transfer(to, amount);
+        } else if (asset == 0xdAC17F958D2ee523a2206206994597C13D831ec7) {
+            // USDT: deal() fails due to stdStorage slot detection issue with proxy storage layout.
+            // Write directly to balances mapping (slot 2) in TetherToken contract.
+            vm.store(asset, keccak256(abi.encode(to, uint256(2))), bytes32(amount));
         } else {
             deal(asset, to, amount);
         }

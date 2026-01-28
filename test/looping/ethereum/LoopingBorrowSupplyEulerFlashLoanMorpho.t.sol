@@ -317,7 +317,9 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
         ERC20(_USDC).transfer(_USER, 10_000e6);
 
-        deal(_USDT, _USER, 10_000e6);
+        // USDT: deal() fails due to stdStorage slot detection issue with proxy storage layout.
+        // Write directly to balances mapping (slot 2) in TetherToken contract.
+        vm.store(_USDT, keccak256(abi.encode(_USER, uint256(2))), bytes32(uint256(10_000e6)));
         deal(_WST_ETH, _USER, 100e18);
 
         vm.startPrank(_USER);

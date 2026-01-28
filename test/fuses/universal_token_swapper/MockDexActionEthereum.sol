@@ -18,12 +18,16 @@ contract MockDexActionEthereum is Test {
     }
 
     function returnExtra1000Usdt(address executor) external {
-        deal(USDT, address(this), 1_000e6);
+        // USDT: deal() fails due to stdStorage slot detection issue with proxy storage layout.
+        // Write directly to balances mapping (slot 2) in TetherToken contract.
+        vm.store(USDT, keccak256(abi.encode(address(this), uint256(2))), bytes32(uint256(1_000e6)));
         ERC20(USDT).safeTransfer(executor, 1_000e6);
     }
 
     function returnExtra500Usdt(address executor) external {
-        deal(USDT, address(this), 1_000e6);
+        // USDT: deal() fails due to stdStorage slot detection issue with proxy storage layout.
+        // Write directly to balances mapping (slot 2) in TetherToken contract.
+        vm.store(USDT, keccak256(abi.encode(address(this), uint256(2))), bytes32(uint256(1_000e6)));
         ERC20(USDT).safeTransfer(executor, 500e6);
     }
 }
