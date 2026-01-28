@@ -5,7 +5,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
-import {IPlasmaVaultVotesExtension} from "../interfaces/IPlasmaVaultVotesExtension.sol";
+import {IPlasmaVaultVotesPlugin} from "../interfaces/IPlasmaVaultVotesPlugin.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
@@ -52,7 +52,7 @@ import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
  * - ContextClient: Context Management
  *
  * Voting Support:
- * - Voting functionality is now provided by optional PlasmaVaultVotesExtension
+ * - Voting functionality is now provided by optional PlasmaVaultVotesPlugin
  * - When votes extension is enabled, voting units are updated during transfers
  * - Vaults without voting save gas on every transfer (~2800-9800 gas)
  *
@@ -253,11 +253,11 @@ contract PlasmaVaultBase is
             }
         }
 
-        /// @dev Conditionally update voting units if votes extension is enabled
-        address votesExtension = PlasmaVaultStorageLib.getPlasmaVaultVotesExtension();
-        if (votesExtension != address(0)) {
-            votesExtension.functionDelegateCall(
-                abi.encodeWithSelector(IPlasmaVaultVotesExtension.transferVotingUnits.selector, from_, to_, value_)
+        /// @dev Conditionally update voting units if votes plugin is enabled
+        address votesPlugin = PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
+        if (votesPlugin != address(0)) {
+            votesPlugin.functionDelegateCall(
+                abi.encodeWithSelector(IPlasmaVaultVotesPlugin.transferVotingUnits.selector, from_, to_, value_)
             );
         }
     }

@@ -156,7 +156,7 @@ contract FuseManagerTimelockCancelTest is Test {
                 plasmaVaultBase: plasmaVaultBase,
                 plasmaVaultERC4626: address(0),
                 withdrawManager: withdrawManagerBase,
-                plasmaVaultVotesExtension: address(0)
+                plasmaVaultVotesPlugin: address(0)
             })
         );
 

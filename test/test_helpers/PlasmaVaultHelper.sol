@@ -48,7 +48,7 @@ library PlasmaVaultHelper {
             plasmaVaultBase: address(new PlasmaVaultBase()),
             plasmaVaultERC4626: address(0),
             withdrawManager: withdrawManager,
-            plasmaVaultVotesExtension: address(0)
+            plasmaVaultVotesPlugin: address(0)
         });
 
         plasmaVault = new PlasmaVault();
@@ -77,7 +77,7 @@ library PlasmaVaultHelper {
             plasmaVaultBase: address(new PlasmaVaultBase()),
             plasmaVaultERC4626: address(0),
             withdrawManager: withdrawManager,
-            plasmaVaultVotesExtension: address(0)
+            plasmaVaultVotesPlugin: address(0)
         });
 
         plasmaVault = new PlasmaVault();

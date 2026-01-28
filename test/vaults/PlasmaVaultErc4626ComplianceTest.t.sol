@@ -99,7 +99,7 @@ contract PlasmaVaultErc4626ComplianceTest is Test {
                 plasmaVaultBase: plasmaVaultBase,
                 plasmaVaultERC4626: plasmaVaultErc4626View,
                 withdrawManager: address(_withdrawManager),
-                plasmaVaultVotesExtension: address(0)
+                plasmaVaultVotesPlugin: address(0)
             })
         );
 

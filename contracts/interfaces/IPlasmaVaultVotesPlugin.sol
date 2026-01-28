@@ -5,8 +5,8 @@ import {IERC5805} from "@openzeppelin/contracts/interfaces/IERC5805.sol";
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 
 /**
- * @title IPlasmaVaultVotesExtension
- * @notice Interface for the optional PlasmaVault Votes Extension
+ * @title IPlasmaVaultVotesPlugin
+ * @notice Interface for the optional PlasmaVault Votes Plugin
  * @dev Extends IERC5805 (which combines IVotes and IERC6372) with additional methods
  *
  * This interface defines the contract that provides optional ERC20Votes functionality
@@ -25,9 +25,9 @@ import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol
  *
  * Gas Optimization:
  * - Vaults without governance save ~2800-9800 gas per transfer
- * - Only vaults that enable this extension pay the voting overhead
+ * - Only vaults that enable this plugin pay the voting overhead
  */
-interface IPlasmaVaultVotesExtension is IERC5805 {
+interface IPlasmaVaultVotesPlugin is IERC5805 {
     /**
      * @notice Transfers voting units from one address to another
      * @dev Called by PlasmaVaultBase._update() during token transfers

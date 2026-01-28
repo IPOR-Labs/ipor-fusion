@@ -6,12 +6,12 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
-import {IPlasmaVaultVotesExtension} from "../interfaces/IPlasmaVaultVotesExtension.sol";
-import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
+import {IPlasmaVaultVotesPlugin} from "../../interfaces/IPlasmaVaultVotesPlugin.sol";
+import {ContextClientStorageLib} from "../../managers/context/ContextClientStorageLib.sol";
 
 /**
- * @title PlasmaVaultVotesExtension
- * @notice Optional extension providing ERC20Votes functionality for PlasmaVault
+ * @title PlasmaVaultVotesPlugin
+ * @notice Optional plugin providing ERC20Votes functionality for PlasmaVault
  * @dev This contract is called via delegatecall from PlasmaVault to provide voting capabilities
  *
  * Architecture:
@@ -32,7 +32,7 @@ import {ContextClientStorageLib} from "../managers/context/ContextClientStorageL
  *
  * @custom:security-contact security@ipor.io
  */
-contract PlasmaVaultVotesExtension is IPlasmaVaultVotesExtension {
+contract PlasmaVaultVotesPlugin is IPlasmaVaultVotesPlugin {
     using Checkpoints for Checkpoints.Trace208;
 
     // ============ Constants ============
@@ -195,20 +195,20 @@ contract PlasmaVaultVotesExtension is IPlasmaVaultVotesExtension {
         _delegate(signer, delegatee);
     }
 
-    // ============ Extension-specific Methods ============
+    // ============ Plugin-specific Methods ============
 
-    /// @inheritdoc IPlasmaVaultVotesExtension
+    /// @inheritdoc IPlasmaVaultVotesPlugin
     function transferVotingUnits(address from_, address to_, uint256 amount_) external {
         _transferVotingUnits(from_, to_, amount_);
     }
 
-    /// @inheritdoc IPlasmaVaultVotesExtension
+    /// @inheritdoc IPlasmaVaultVotesPlugin
     function numCheckpoints(address account_) public view virtual returns (uint32) {
         VotesStorage storage $ = _getVotesStorage();
         return SafeCast.toUint32($._delegateCheckpoints[account_].length());
     }
 
-    /// @inheritdoc IPlasmaVaultVotesExtension
+    /// @inheritdoc IPlasmaVaultVotesPlugin
     function checkpoints(address account_, uint32 pos_) public view virtual returns (Checkpoints.Checkpoint208 memory) {
         VotesStorage storage $ = _getVotesStorage();
         return $._delegateCheckpoints[account_].at(pos_);

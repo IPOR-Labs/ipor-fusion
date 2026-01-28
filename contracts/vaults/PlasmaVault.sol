@@ -92,9 +92,9 @@ struct PlasmaVaultInitData {
     /// @notice Address of the withdraw manager contract
     /// @dev Controls withdrawal permissions and limits, zero address disables managed withdrawals
     address withdrawManager;
-    /// @notice Address of the votes extension contract (PlasmaVaultVotesExtension)
+    /// @notice Address of the votes plugin contract (PlasmaVaultVotesPlugin)
     /// @dev Implements optional ERC20Votes functionality through delegatecall, zero address disables voting
-    address plasmaVaultVotesExtension;
+    address plasmaVaultVotesPlugin;
 }
 
 /// @title Market Balance Fuse Configuration
@@ -239,7 +239,7 @@ contract PlasmaVault is
     error WithdrawManagerInvalidSharesToRelease(uint256 sharesToRelease);
     error PermitFailed();
     error WithdrawManagerNotSet();
-    error VotesExtensionNotEnabled();
+    error VotesPluginNotEnabled();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event DepositFeeRealized(address recipient, uint256 feeShares);
@@ -284,13 +284,13 @@ contract PlasmaVault is
             }
         }
 
-        // Route Votes functions to dedicated extension contract (optional)
+        // Route Votes functions to dedicated plugin contract (optional)
         if (_isVotesFunction(sig)) {
-            address votesExtension = PlasmaVaultStorageLib.getPlasmaVaultVotesExtension();
-            if (votesExtension != address(0)) {
-                return votesExtension.functionDelegateCall(msg.data);
+            address votesPlugin = PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
+            if (votesPlugin != address(0)) {
+                return votesPlugin.functionDelegateCall(msg.data);
             }
-            revert VotesExtensionNotEnabled();
+            revert VotesPluginNotEnabled();
         }
 
         return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
@@ -366,11 +366,11 @@ contract PlasmaVault is
         return PlasmaVaultStorageLib.getPlasmaVaultERC4626();
     }
 
-    /// @notice The plasma vault votes extension contract address (PlasmaVaultVotesExtension)
+    /// @notice The plasma vault votes plugin contract address (PlasmaVaultVotesPlugin)
     /// @dev Retrieved from storage library. This contract provides optional ERC20Votes functionality.
-    /// @return The address of the votes extension contract, or address(0) if voting is not enabled
-    function PLASMA_VAULT_VOTES_EXTENSION() public view returns (address) {
-        return PlasmaVaultStorageLib.getPlasmaVaultVotesExtension();
+    /// @return The address of the votes plugin contract, or address(0) if voting is not enabled
+    function PLASMA_VAULT_VOTES_PLUGIN() public view returns (address) {
+        return PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
     }
 
     /// @notice Initializes the PlasmaVault with initialization data (for cloning)
@@ -1334,8 +1334,8 @@ contract PlasmaVault is
         if (initData_.plasmaVaultERC4626 != address(0)) {
             PlasmaVaultStorageLib.setPlasmaVaultERC4626(initData_.plasmaVaultERC4626);
         }
-        if (initData_.plasmaVaultVotesExtension != address(0)) {
-            PlasmaVaultStorageLib.setPlasmaVaultVotesExtension(initData_.plasmaVaultVotesExtension);
+        if (initData_.plasmaVaultVotesPlugin != address(0)) {
+            PlasmaVaultStorageLib.setPlasmaVaultVotesPlugin(initData_.plasmaVaultVotesPlugin);
         }
 
         initData_.plasmaVaultBase.functionDelegateCall(

@@ -659,7 +659,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
                 plasmaVaultBase: address(new PlasmaVaultBase()),
                 plasmaVaultERC4626: address(0),
                 withdrawManager: address(withdrawManager),
-                plasmaVaultVotesExtension: address(0)
+                plasmaVaultVotesPlugin: address(0)
             })
         );
     }

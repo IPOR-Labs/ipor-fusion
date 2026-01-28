@@ -752,11 +752,11 @@ library PlasmaVaultStorageLib {
         0xd249011a2df6f5e5a53a76d2d33daa4a8cdeff9b71ef47a3bf61897813733800;
 
     /**
-     * @dev Storage slot for PlasmaVaultVotesExtension address. Computed as:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultVotesExtension")) - 1)) & ~bytes32(uint256(0xff))
-     * @notice Stores address of PlasmaVaultVotesExtension contract which provides optional ERC20Votes functionality
+     * @dev Storage slot for PlasmaVaultVotesPlugin address. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultVotesPlugin")) - 1)) & ~bytes32(uint256(0xff))
+     * @notice Stores address of PlasmaVaultVotesPlugin contract which provides optional ERC20Votes functionality
      */
-    bytes32 private constant PLASMA_VAULT_VOTES_EXTENSION_SLOT =
+    bytes32 private constant PLASMA_VAULT_VOTES_PLUGIN_SLOT =
         0x9a8f1e5b3c7d2f4a6e8b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e00;
 
     /**
@@ -1214,21 +1214,21 @@ library PlasmaVaultStorageLib {
         }
     }
 
-    /// @notice Gets the PlasmaVaultVotesExtension address from storage
-    /// @return The address of the PlasmaVaultVotesExtension contract (optional ERC20Votes functionality)
-    function getPlasmaVaultVotesExtension() internal view returns (address) {
-        address votesExtension;
+    /// @notice Gets the PlasmaVaultVotesPlugin address from storage
+    /// @return The address of the PlasmaVaultVotesPlugin contract (optional ERC20Votes functionality)
+    function getPlasmaVaultVotesPlugin() internal view returns (address) {
+        address votesPlugin;
         assembly {
-            votesExtension := sload(PLASMA_VAULT_VOTES_EXTENSION_SLOT)
+            votesPlugin := sload(PLASMA_VAULT_VOTES_PLUGIN_SLOT)
         }
-        return votesExtension;
+        return votesPlugin;
     }
 
-    /// @notice Sets the PlasmaVaultVotesExtension address in storage
-    /// @param votesExtension_ The address of the PlasmaVaultVotesExtension contract
-    function setPlasmaVaultVotesExtension(address votesExtension_) internal {
+    /// @notice Sets the PlasmaVaultVotesPlugin address in storage
+    /// @param votesPlugin_ The address of the PlasmaVaultVotesPlugin contract
+    function setPlasmaVaultVotesPlugin(address votesPlugin_) internal {
         assembly {
-            sstore(PLASMA_VAULT_VOTES_EXTENSION_SLOT, votesExtension_)
+            sstore(PLASMA_VAULT_VOTES_PLUGIN_SLOT, votesPlugin_)
         }
     }
 }
