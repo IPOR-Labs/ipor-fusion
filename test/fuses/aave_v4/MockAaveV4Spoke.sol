@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title MockAaveV4Spoke
-/// @notice Mock implementation of IAaveV4Spoke for testing Aave V4 fuses
+/// @notice Mock implementation of IAaveV4Spoke aligned with real Aave V4 ISpokeBase/ISpoke interface
 contract MockAaveV4Spoke is IAaveV4Spoke {
     using SafeERC20 for IERC20;
 
@@ -25,17 +25,15 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
 
     mapping(uint256 => ReserveData) public reserveData;
     mapping(uint256 => mapping(address => PositionData)) public positions;
-    uint256[] public reserveIds;
+    uint256 public reserveCount;
 
     bool public shouldRevertOnWithdraw;
 
     /// @dev Share rate: shares = amount * shareRateNumerator / shareRateDenominator
-    ///      Default 1:1 (both = 1). Set to e.g. (90, 100) for 90% shares per amount.
     uint256 public shareRateNumerator = 1;
     uint256 public shareRateDenominator = 1;
 
-    /// @dev Withdraw rate: withdrawn = min(amount, maxWithdraw) * withdrawRateNumerator / withdrawRateDenominator
-    ///      Default 1:1. Set to e.g. (90, 100) to return 90% of requested amount.
+    /// @dev Withdraw rate: withdrawn = capped * withdrawRateNumerator / withdrawRateDenominator
     uint256 public withdrawRateNumerator = 1;
     uint256 public withdrawRateDenominator = 1;
 
@@ -49,6 +47,7 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
         withdrawRateDenominator = denominator_;
     }
 
+    /// @dev Adds a reserve. reserveId is the sequential index (0, 1, 2, ...)
     function addReserve(uint256 reserveId_, address asset_) external {
         reserveData[reserveId_] = ReserveData({
             asset: asset_,
@@ -57,14 +56,22 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
             totalSupplyAssets: 0,
             totalBorrowAssets: 0
         });
-        reserveIds.push(reserveId_);
+        if (reserveId_ >= reserveCount) {
+            reserveCount = reserveId_ + 1;
+        }
     }
 
     function setShouldRevertOnWithdraw(bool shouldRevert_) external {
         shouldRevertOnWithdraw = shouldRevert_;
     }
 
-    function supply(uint256 reserveId, uint256 amount, address onBehalfOf) external returns (uint256 shares) {
+    // ============ Supply / Withdraw ============
+
+    function supply(
+        uint256 reserveId,
+        uint256 amount,
+        address onBehalfOf
+    ) external returns (uint256 shares, uint256 suppliedAmount) {
         ReserveData storage reserve = reserveData[reserveId];
         IERC20(reserve.asset).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -72,28 +79,44 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
         positions[reserveId][onBehalfOf].supplyShares += shares;
         reserve.totalSupplyShares += shares;
         reserve.totalSupplyAssets += amount;
+        suppliedAmount = amount;
     }
 
-    function withdraw(uint256 reserveId, uint256 amount, address to) external returns (uint256 withdrawn) {
+    function withdraw(
+        uint256 reserveId,
+        uint256 amount,
+        address onBehalfOf
+    ) external returns (uint256 withdrawnShares, uint256 withdrawnAmount) {
         if (shouldRevertOnWithdraw) {
             revert("MockAaveV4Spoke: withdraw reverted");
         }
 
         ReserveData storage reserve = reserveData[reserveId];
-        uint256 supplyShares = positions[reserveId][msg.sender].supplyShares;
+        uint256 supplyShares = positions[reserveId][onBehalfOf].supplyShares;
 
-        uint256 maxWithdraw = supplyShares;
-        uint256 capped = amount > maxWithdraw ? maxWithdraw : amount;
-        withdrawn = capped * withdrawRateNumerator / withdrawRateDenominator;
+        // Convert shares to assets for capping (1:1 in default mock)
+        uint256 maxWithdrawAssets = supplyShares * shareRateDenominator / shareRateNumerator;
+        uint256 capped = amount > maxWithdrawAssets ? maxWithdrawAssets : amount;
+        withdrawnAmount = capped * withdrawRateNumerator / withdrawRateDenominator;
 
-        positions[reserveId][msg.sender].supplyShares -= withdrawn;
-        reserve.totalSupplyShares -= withdrawn;
-        reserve.totalSupplyAssets -= withdrawn;
+        // Calculate shares to burn
+        withdrawnShares = withdrawnAmount * shareRateNumerator / shareRateDenominator;
 
-        IERC20(reserve.asset).safeTransfer(to, withdrawn);
+        positions[reserveId][onBehalfOf].supplyShares -= withdrawnShares;
+        reserve.totalSupplyShares -= withdrawnShares;
+        reserve.totalSupplyAssets -= withdrawnAmount;
+
+        // Caller (msg.sender) receives tokens, like real Aave V4
+        IERC20(reserve.asset).safeTransfer(msg.sender, withdrawnAmount);
     }
 
-    function borrow(uint256 reserveId, uint256 amount, address onBehalfOf) external returns (uint256 shares) {
+    // ============ Borrow / Repay ============
+
+    function borrow(
+        uint256 reserveId,
+        uint256 amount,
+        address onBehalfOf
+    ) external returns (uint256 shares, uint256 borrowedAmount) {
         ReserveData storage reserve = reserveData[reserveId];
 
         shares = amount * shareRateNumerator / shareRateDenominator;
@@ -102,61 +125,71 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
         reserve.totalBorrowAssets += amount;
 
         IERC20(reserve.asset).safeTransfer(msg.sender, amount);
+        borrowedAmount = amount;
     }
 
-    function repay(uint256 reserveId, uint256 amount, address onBehalfOf) external returns (uint256 repaid) {
+    function repay(
+        uint256 reserveId,
+        uint256 amount,
+        address onBehalfOf
+    ) external returns (uint256 repaidShares, uint256 repaidAmount) {
         ReserveData storage reserve = reserveData[reserveId];
         uint256 borrowShares = positions[reserveId][onBehalfOf].borrowShares;
 
-        uint256 maxRepay = borrowShares;
-        repaid = amount > maxRepay ? maxRepay : amount;
+        // Convert borrow shares to assets for capping
+        uint256 maxRepayAssets = borrowShares * shareRateDenominator / shareRateNumerator;
+        repaidAmount = amount > maxRepayAssets ? maxRepayAssets : amount;
 
-        IERC20(reserve.asset).safeTransferFrom(msg.sender, address(this), repaid);
+        IERC20(reserve.asset).safeTransferFrom(msg.sender, address(this), repaidAmount);
 
-        positions[reserveId][onBehalfOf].borrowShares -= repaid;
-        reserve.totalBorrowShares -= repaid;
-        reserve.totalBorrowAssets -= repaid;
+        repaidShares = repaidAmount * shareRateNumerator / shareRateDenominator;
+        positions[reserveId][onBehalfOf].borrowShares -= repaidShares;
+        reserve.totalBorrowShares -= repaidShares;
+        reserve.totalBorrowAssets -= repaidAmount;
     }
 
-    function getPosition(
-        uint256 reserveId,
-        address user
-    ) external view returns (uint256 supplyShares, uint256 borrowShares) {
-        PositionData memory pos = positions[reserveId][user];
-        return (pos.supplyShares, pos.borrowShares);
+    // ============ User Position Queries ============
+
+    function getUserSuppliedShares(uint256 reserveId, address user) external view returns (uint256) {
+        return positions[reserveId][user].supplyShares;
     }
 
-    function getReserve(
-        uint256 reserveId
-    )
-        external
-        view
-        returns (
-            address asset,
-            uint256 totalSupplyShares,
-            uint256 totalBorrowShares,
-            uint256 totalSupplyAssets,
-            uint256 totalBorrowAssets
-        )
-    {
+    function getUserSuppliedAssets(uint256 reserveId, address user) external view returns (uint256) {
+        // Convert shares to assets using share rate
+        return positions[reserveId][user].supplyShares * shareRateDenominator / shareRateNumerator;
+    }
+
+    function getUserTotalDebt(uint256 reserveId, address user) external view returns (uint256) {
+        // Convert borrow shares to assets using share rate
+        return positions[reserveId][user].borrowShares * shareRateDenominator / shareRateNumerator;
+    }
+
+    // ============ Reserve Queries ============
+
+    function getReserveCount() external view returns (uint256) {
+        return reserveCount;
+    }
+
+    function getReserve(uint256 reserveId) external view returns (Reserve memory) {
         ReserveData memory r = reserveData[reserveId];
-        return (r.asset, r.totalSupplyShares, r.totalBorrowShares, r.totalSupplyAssets, r.totalBorrowAssets);
+        return Reserve({
+            underlying: r.asset,
+            hub: address(0),
+            assetId: 0,
+            decimals: 0,
+            dynamicConfigKey: 0,
+            collateralRisk: 0,
+            flags: 0
+        });
     }
 
-    // 1:1 conversion for testing simplicity
-    function convertToSupplyAssets(uint256, uint256 shares) external pure returns (uint256 assets) {
-        return shares;
+    // ============ Reserve Aggregate Queries ============
+
+    function getReserveSuppliedAssets(uint256 reserveId) external view returns (uint256) {
+        return reserveData[reserveId].totalSupplyAssets;
     }
 
-    function convertToDebtAssets(uint256, uint256 shares) external pure returns (uint256 assets) {
-        return shares;
-    }
-
-    function getReserveCount() external view returns (uint256 count) {
-        return reserveIds.length;
-    }
-
-    function getReserveId(uint256 index) external view returns (uint256 reserveId) {
-        return reserveIds[index];
+    function getReserveTotalDebt(uint256 reserveId) external view returns (uint256) {
+        return reserveData[reserveId].totalBorrowAssets;
     }
 }

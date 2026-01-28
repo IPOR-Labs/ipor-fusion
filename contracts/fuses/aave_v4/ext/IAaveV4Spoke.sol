@@ -2,86 +2,116 @@
 pragma solidity 0.8.30;
 
 /// @title IAaveV4Spoke
-/// @notice Interface for Aave V4 Spoke contracts in the Hub & Spoke architecture
+/// @notice Interface for Aave V4 Spoke contracts in the Hub & Spoke architecture.
+///         Aligned with the real ISpokeBase / ISpoke from aave/aave-v4.
 /// @dev Spoke contracts serve as the user-facing interface with their own risk profile.
 ///      Positions are tracked per-Spoke using share-based accounting.
 interface IAaveV4Spoke {
+    // ============ Supply / Withdraw ============
+
     /// @notice Supplies assets into the Spoke's reserve
     /// @param reserveId The reserve identifier within this Spoke
     /// @param amount The amount of underlying tokens to supply
     /// @param onBehalfOf The address that will receive the supply position
     /// @return shares The amount of supply shares minted
-    function supply(uint256 reserveId, uint256 amount, address onBehalfOf) external returns (uint256 shares);
+    /// @return suppliedAmount The amount of underlying assets supplied
+    function supply(
+        uint256 reserveId,
+        uint256 amount,
+        address onBehalfOf
+    ) external returns (uint256 shares, uint256 suppliedAmount);
 
-    /// @notice Withdraws assets from the Spoke's reserve
+    /// @notice Withdraws assets from the Spoke's reserve.
+    ///         The caller receives the withdrawn tokens.
     /// @param reserveId The reserve identifier within this Spoke
-    /// @param amount The amount of underlying tokens to withdraw
-    /// @param to The address that will receive the withdrawn tokens
-    /// @return withdrawn The actual amount of underlying tokens withdrawn
-    function withdraw(uint256 reserveId, uint256 amount, address to) external returns (uint256 withdrawn);
+    /// @param amount The amount of underlying tokens to withdraw (type(uint256).max for full withdrawal)
+    /// @param onBehalfOf The owner of the position to remove supply shares from
+    /// @return withdrawnShares The amount of supply shares burned
+    /// @return withdrawnAmount The amount of underlying tokens withdrawn
+    function withdraw(
+        uint256 reserveId,
+        uint256 amount,
+        address onBehalfOf
+    ) external returns (uint256 withdrawnShares, uint256 withdrawnAmount);
 
-    /// @notice Borrows assets from the Spoke's reserve
+    // ============ Borrow / Repay ============
+
+    /// @notice Borrows assets from the Spoke's reserve.
+    ///         The caller receives the borrowed tokens.
     /// @param reserveId The reserve identifier within this Spoke
     /// @param amount The amount of underlying tokens to borrow
-    /// @param onBehalfOf The address that will receive the borrow position
-    /// @return shares The amount of borrow shares created
-    function borrow(uint256 reserveId, uint256 amount, address onBehalfOf) external returns (uint256 shares);
+    /// @param onBehalfOf The address against which debt is generated
+    /// @return shares The amount of borrow (drawn) shares created
+    /// @return borrowedAmount The amount of underlying assets borrowed
+    function borrow(
+        uint256 reserveId,
+        uint256 amount,
+        address onBehalfOf
+    ) external returns (uint256 shares, uint256 borrowedAmount);
 
     /// @notice Repays borrowed assets to the Spoke's reserve
     /// @param reserveId The reserve identifier within this Spoke
     /// @param amount The amount of underlying tokens to repay
     /// @param onBehalfOf The address whose debt will be reduced
-    /// @return repaid The actual amount of underlying tokens repaid
-    function repay(uint256 reserveId, uint256 amount, address onBehalfOf) external returns (uint256 repaid);
+    /// @return repaidShares The amount of drawn shares burned
+    /// @return repaidAmount The amount of underlying tokens repaid
+    function repay(
+        uint256 reserveId,
+        uint256 amount,
+        address onBehalfOf
+    ) external returns (uint256 repaidShares, uint256 repaidAmount);
 
-    /// @notice Returns the position of a user in a specific reserve
+    // ============ User Position Queries ============
+
+    /// @notice Returns the amount of supply shares held by a user for a given reserve
     /// @param reserveId The reserve identifier
     /// @param user The address of the user
-    /// @return supplyShares The amount of supply shares held by the user
-    /// @return borrowShares The amount of borrow shares (debt) held by the user
-    function getPosition(
-        uint256 reserveId,
-        address user
-    ) external view returns (uint256 supplyShares, uint256 borrowShares);
+    /// @return The amount of supply shares
+    function getUserSuppliedShares(uint256 reserveId, address user) external view returns (uint256);
 
-    /// @notice Returns the reserve configuration
+    /// @notice Returns the amount of supply assets for a user (shares converted to assets)
     /// @param reserveId The reserve identifier
-    /// @return asset The address of the underlying ERC20 token
-    /// @return totalSupplyShares The total supply shares in the reserve
-    /// @return totalBorrowShares The total borrow shares in the reserve
-    /// @return totalSupplyAssets The total underlying assets supplied
-    /// @return totalBorrowAssets The total underlying assets borrowed
-    function getReserve(
-        uint256 reserveId
-    )
-        external
-        view
-        returns (
-            address asset,
-            uint256 totalSupplyShares,
-            uint256 totalBorrowShares,
-            uint256 totalSupplyAssets,
-            uint256 totalBorrowAssets
-        );
+    /// @param user The address of the user
+    /// @return The amount of supplied assets
+    function getUserSuppliedAssets(uint256 reserveId, address user) external view returns (uint256);
 
-    /// @notice Converts supply shares to underlying asset amount
+    /// @notice Returns the total debt of a specific user for a given reserve (drawn + premium)
     /// @param reserveId The reserve identifier
-    /// @param shares The amount of supply shares to convert
-    /// @return assets The equivalent amount of underlying assets
-    function convertToSupplyAssets(uint256 reserveId, uint256 shares) external view returns (uint256 assets);
+    /// @param user The address of the user
+    /// @return The total debt amount in underlying asset units
+    function getUserTotalDebt(uint256 reserveId, address user) external view returns (uint256);
 
-    /// @notice Converts borrow shares to underlying debt amount
+    // ============ Reserve Queries ============
+
+    /// @notice Returns the number of listed reserves on the Spoke
+    /// @return The number of reserves
+    function getReserveCount() external view returns (uint256);
+
+    /// @notice Reserve level data
+    struct Reserve {
+        address underlying;
+        address hub; // IHubBase but stored as address for cross-version compat
+        uint16 assetId;
+        uint8 decimals;
+        uint24 dynamicConfigKey;
+        uint24 collateralRisk;
+        uint8 flags; // ReserveFlags packed as uint8
+    }
+
+    /// @notice Returns the reserve struct data
     /// @param reserveId The reserve identifier
-    /// @param shares The amount of borrow shares to convert
-    /// @return assets The equivalent amount of underlying debt
-    function convertToDebtAssets(uint256 reserveId, uint256 shares) external view returns (uint256 assets);
+    /// @return The reserve struct
+    function getReserve(uint256 reserveId) external view returns (Reserve memory);
 
-    /// @notice Returns the total number of reserves in this Spoke
-    /// @return count The number of reserves
-    function getReserveCount() external view returns (uint256 count);
+    // ============ Reserve Aggregate Queries ============
 
-    /// @notice Returns the reserve ID at a given index
-    /// @param index The index in the reserves list
-    /// @return reserveId The reserve identifier
-    function getReserveId(uint256 index) external view returns (uint256 reserveId);
+    /// @notice Returns the total amount of supplied assets of a given reserve
+    /// @param reserveId The reserve identifier
+    /// @return The amount of supplied assets
+    function getReserveSuppliedAssets(uint256 reserveId) external view returns (uint256);
+
+    /// @notice Returns the total debt of a given reserve (drawn + premium)
+    /// @param reserveId The reserve identifier
+    /// @return The total debt amount
+    function getReserveTotalDebt(uint256 reserveId) external view returns (uint256);
 }

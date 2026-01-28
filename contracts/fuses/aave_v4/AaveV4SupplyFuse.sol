@@ -135,7 +135,7 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         ERC20(data_.asset).forceApprove(data_.spoke, finalAmount);
 
-        uint256 shares = IAaveV4Spoke(data_.spoke).supply(data_.reserveId, finalAmount, address(this));
+        (uint256 shares, ) = IAaveV4Spoke(data_.spoke).supply(data_.reserveId, finalAmount, address(this));
 
         if (shares < data_.minShares) {
             revert AaveV4SupplyFuseInsufficientShares(shares, data_.minShares);
@@ -243,13 +243,12 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         _validateSubstrates("exit", data_.asset, data_.spoke);
 
-        (uint256 supplyShares, ) = IAaveV4Spoke(data_.spoke).getPosition(data_.reserveId, address(this));
+        uint256 supplyAssets = IAaveV4Spoke(data_.spoke).getUserSuppliedAssets(data_.reserveId, address(this));
 
-        if (supplyShares == 0) {
+        if (supplyAssets == 0) {
             return (data_.asset, 0);
         }
 
-        uint256 supplyAssets = IAaveV4Spoke(data_.spoke).convertToSupplyAssets(data_.reserveId, supplyShares);
         uint256 finalAmount = IporMath.min(supplyAssets, data_.amount);
 
         if (finalAmount == 0) {
@@ -258,24 +257,25 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         if (catchExceptions_) {
             try IAaveV4Spoke(data_.spoke).withdraw(data_.reserveId, finalAmount, address(this)) returns (
-                uint256 withdrawn
+                uint256,
+                uint256 withdrawnAmount
             ) {
-                if (withdrawn < data_.minAmount) {
-                    revert AaveV4SupplyFuseInsufficientAmount(withdrawn, data_.minAmount);
+                if (withdrawnAmount < data_.minAmount) {
+                    revert AaveV4SupplyFuseInsufficientAmount(withdrawnAmount, data_.minAmount);
                 }
-                emit AaveV4SupplyFuseExit(VERSION, data_.spoke, data_.asset, data_.reserveId, withdrawn);
-                return (data_.asset, withdrawn);
+                emit AaveV4SupplyFuseExit(VERSION, data_.spoke, data_.asset, data_.reserveId, withdrawnAmount);
+                return (data_.asset, withdrawnAmount);
             } catch {
                 emit AaveV4SupplyFuseExitFailed(VERSION, data_.spoke, data_.asset, data_.reserveId, finalAmount);
                 return (data_.asset, 0);
             }
         } else {
-            uint256 withdrawn = IAaveV4Spoke(data_.spoke).withdraw(data_.reserveId, finalAmount, address(this));
-            if (withdrawn < data_.minAmount) {
-                revert AaveV4SupplyFuseInsufficientAmount(withdrawn, data_.minAmount);
+            (, uint256 withdrawnAmount) = IAaveV4Spoke(data_.spoke).withdraw(data_.reserveId, finalAmount, address(this));
+            if (withdrawnAmount < data_.minAmount) {
+                revert AaveV4SupplyFuseInsufficientAmount(withdrawnAmount, data_.minAmount);
             }
-            emit AaveV4SupplyFuseExit(VERSION, data_.spoke, data_.asset, data_.reserveId, withdrawn);
-            return (data_.asset, withdrawn);
+            emit AaveV4SupplyFuseExit(VERSION, data_.spoke, data_.asset, data_.reserveId, withdrawnAmount);
+            return (data_.asset, withdrawnAmount);
         }
     }
 

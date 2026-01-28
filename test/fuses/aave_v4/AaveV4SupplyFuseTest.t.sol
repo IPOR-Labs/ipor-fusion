@@ -83,7 +83,7 @@ contract AaveV4SupplyFuseTest is Test {
         uint256 balanceAfter = token.balanceOf(address(vaultMock));
         assertEq(balanceBefore - balanceAfter, amount, "Vault balance should decrease by amount");
 
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, amount, "Supply shares should equal amount (1:1 in mock)");
     }
 
@@ -100,7 +100,7 @@ contract AaveV4SupplyFuseTest is Test {
         );
 
         // then - no state change
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, 0);
     }
 
@@ -122,7 +122,7 @@ contract AaveV4SupplyFuseTest is Test {
         );
 
         // then - should supply only available balance
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, vaultBalance, "Should supply only available balance");
     }
 
@@ -235,7 +235,7 @@ contract AaveV4SupplyFuseTest is Test {
         uint256 balanceAfter = token.balanceOf(address(vaultMock));
         assertEq(balanceAfter - balanceBefore, amount, "Vault balance should increase by withdrawn amount");
 
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, 0, "Supply shares should be zero after full withdrawal");
     }
 
@@ -265,7 +265,7 @@ contract AaveV4SupplyFuseTest is Test {
         );
 
         // then - no change
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, amount, "Supply shares should not change");
     }
 
@@ -295,7 +295,7 @@ contract AaveV4SupplyFuseTest is Test {
         );
 
         // then - should only withdraw available (capped at position)
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, 0, "All shares should be withdrawn");
     }
 
@@ -360,7 +360,7 @@ contract AaveV4SupplyFuseTest is Test {
         vaultMock.instantWithdraw(params);
 
         // then
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, 0, "All shares should be withdrawn via instant withdraw");
     }
 
@@ -421,7 +421,7 @@ contract AaveV4SupplyFuseTest is Test {
         vaultMock.enterAaveV4SupplyTransient();
 
         // then
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, amount, "Supply should succeed via transient storage");
 
         bytes32[] memory outputs = vaultMock.getOutputs(address(supplyFuse));
@@ -458,7 +458,7 @@ contract AaveV4SupplyFuseTest is Test {
         vaultMock.exitAaveV4SupplyTransient();
 
         // then
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, 0, "All supply should be withdrawn via transient exit");
 
         bytes32[] memory outputs = vaultMock.getOutputs(address(supplyFuse));
@@ -486,7 +486,7 @@ contract AaveV4SupplyFuseTest is Test {
         );
 
         // then - no supply should occur
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, 0, "Should not supply when vault has zero balance");
     }
 
@@ -504,7 +504,7 @@ contract AaveV4SupplyFuseTest is Test {
         );
 
         // then - should return early with zero
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, 0, "Supply shares should remain 0");
     }
 
@@ -606,7 +606,7 @@ contract AaveV4SupplyFuseTest is Test {
         );
 
         // then - supply succeeded
-        (uint256 supplyShares, ) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 supplyShares = spoke.getUserSuppliedShares(RESERVE_ID, address(vaultMock));
         assertEq(supplyShares, expectedShares, "Supply should succeed when shares == minShares");
     }
 

@@ -86,7 +86,7 @@ contract AaveV4BorrowFuseTest is Test {
         uint256 balanceAfter = token.balanceOf(address(vaultMock));
         assertEq(balanceAfter - balanceBefore, borrowAmount, "Vault should receive borrowed tokens");
 
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, borrowAmount, "Borrow shares should equal amount");
     }
 
@@ -103,7 +103,7 @@ contract AaveV4BorrowFuseTest is Test {
         );
 
         // then
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, 0);
     }
 
@@ -205,7 +205,7 @@ contract AaveV4BorrowFuseTest is Test {
         );
 
         // then
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, 0, "Borrow shares should be zero after full repay");
     }
 
@@ -234,7 +234,7 @@ contract AaveV4BorrowFuseTest is Test {
         );
 
         // then
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, borrowAmount, "Borrow shares should not change");
     }
 
@@ -270,7 +270,7 @@ contract AaveV4BorrowFuseTest is Test {
         );
 
         // then - only partial repay
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, borrowAmount - currentBalance, "Should repay only available balance");
     }
 
@@ -333,7 +333,7 @@ contract AaveV4BorrowFuseTest is Test {
         );
 
         // then - repay succeeded (would have failed without approval)
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, 0);
     }
 
@@ -356,7 +356,7 @@ contract AaveV4BorrowFuseTest is Test {
         vaultMock.enterAaveV4BorrowTransient();
 
         // then
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, amount, "Borrow should succeed via transient storage");
 
         bytes32[] memory outputs = vaultMock.getOutputs(address(borrowFuse));
@@ -391,7 +391,7 @@ contract AaveV4BorrowFuseTest is Test {
         vaultMock.exitAaveV4BorrowTransient();
 
         // then
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, 0, "All debt should be repaid via transient exit");
 
         bytes32[] memory outputs = vaultMock.getOutputs(address(borrowFuse));
@@ -433,7 +433,7 @@ contract AaveV4BorrowFuseTest is Test {
         );
 
         // then - borrow shares should not change (repayAmount == 0 early return)
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, borrowAmount, "Borrow shares should not change when vault has 0 balance");
     }
 
@@ -530,8 +530,9 @@ contract AaveV4BorrowFuseTest is Test {
         );
 
         // then - borrow succeeded
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
-        assertEq(borrowShares, expectedShares, "Borrow should succeed when shares == minShares");
+        // getUserTotalDebt returns assets (shares * denominator / numerator), so 900e18 * 100/90 = 1000e18
+        uint256 borrowDebt = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
+        assertEq(borrowDebt, amount, "Borrow should succeed when shares == minShares");
     }
 
     function testShouldRevertWhenRepaidSharesBelowMinSharesRepaidOnExit() public {
@@ -549,22 +550,18 @@ contract AaveV4BorrowFuseTest is Test {
 
         // Change share rate so repay reduces fewer shares than expected
         // With 1:1 borrow, we have 1000e18 borrow shares
-        // Now set rate to 90/100: repay(500e18) transfers 500 tokens but removes only 450 shares
+        // Now set rate to 90/100: repay(500e18) → repaidShares = 500 * 90/100 = 450e18
         spoke.setShareRate(90, 100);
 
         uint256 repayAmount = 500e18;
-
-        // The BorrowFuse computes sharesRepaid = borrowSharesBefore - borrowSharesAfter
-        // In mock, repay caps at min(amount, borrowShares)=500, repaid=500
-        // borrowShares go from 1000 to 500, so sharesRepaid = 500
-        // To trigger slippage, we need minSharesRepaid > 500
-        uint256 minSharesRepaid = 600e18;
+        uint256 expectedSharesRepaid = repayAmount * 90 / 100; // 450e18
+        uint256 minSharesRepaid = 600e18; // require more than actual
 
         // when/then
         vm.expectRevert(
             abi.encodeWithSelector(
                 AaveV4BorrowFuse.AaveV4BorrowFuseInsufficientSharesRepaid.selector,
-                repayAmount, // sharesRepaid = 500e18 (mock reduces by repaid amount)
+                expectedSharesRepaid,
                 minSharesRepaid
             )
         );
@@ -608,7 +605,7 @@ contract AaveV4BorrowFuseTest is Test {
         );
 
         // then - repay succeeded, remaining debt = 500e18
-        (, uint256 borrowShares) = spoke.getPosition(RESERVE_ID, address(vaultMock));
+        uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, borrowAmount - repayAmount, "Remaining debt should be 500e18");
     }
 }

@@ -17,8 +17,7 @@ import {IAaveV4Spoke} from "./ext/IAaveV4Spoke.sol";
 /// @author IPOR Labs
 /// @notice Fuse for Aave V4 protocol responsible for calculating the balance of the Plasma Vault in USD
 /// @dev Iterates over Spoke substrates and calculates the net value of all positions (supply - debt) in USD.
-///      Uses share-based accounting: positions are stored as shares and converted to underlying assets
-///      via Spoke.convertToSupplyAssets() / convertToDebtAssets() before pricing.
+///      Uses getUserSuppliedAssets() and getUserTotalDebt() to get position values in asset units.
 ///      Prices are obtained from PlasmaVault's PriceOracleMiddleware.
 ///      Final balance is normalized to WAD (18 decimals).
 contract AaveV4BalanceFuse is IMarketBalanceFuse {
@@ -50,7 +49,7 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
     }
 
     /// @notice Calculates the total balance of the Plasma Vault in Aave V4 protocol
-    /// @dev Iterates over Spoke substrates, queries positions in each reserve, converts shares to assets,
+    /// @dev Iterates over Spoke substrates, queries positions in each reserve,
     ///      prices via PriceOracleMiddleware, and returns the total net USD value in 18 decimals.
     ///      Reverts if total debt exceeds total supply value (negative balance).
     /// @return The total balance in USD, normalized to WAD (18 decimals)
@@ -94,8 +93,9 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
         uint256 reserveCount = spoke_.getReserveCount();
         address plasmaVault = address(this);
 
+        // Reserves are indexed sequentially from 0 in Aave V4
         for (uint256 r; r < reserveCount; ++r) {
-            spokeBalance += _calculateReserveBalance(spoke_, spoke_.getReserveId(r), plasmaVault, priceOracleMiddleware_);
+            spokeBalance += _calculateReserveBalance(spoke_, r, plasmaVault, priceOracleMiddleware_);
         }
 
         return spokeBalance;
@@ -103,7 +103,7 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
 
     /// @notice Calculates the balance for a single reserve in a Spoke
     /// @param spoke_ The Aave V4 Spoke contract
-    /// @param reserveId_ The reserve ID
+    /// @param reserveId_ The reserve ID (sequential index starting from 0)
     /// @param plasmaVault_ The PlasmaVault address
     /// @param priceOracleMiddleware_ The price oracle middleware address
     /// @return The net balance in WAD for the reserve (supply - debt)
@@ -113,31 +113,22 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
         address plasmaVault_,
         address priceOracleMiddleware_
     ) private view returns (int256) {
-        (uint256 supplyShares, uint256 borrowShares) = spoke_.getPosition(reserveId_, plasmaVault_);
+        uint256 supplyAssets = spoke_.getUserSuppliedAssets(reserveId_, plasmaVault_);
+        uint256 debtAssets = spoke_.getUserTotalDebt(reserveId_, plasmaVault_);
 
-        if (supplyShares == 0 && borrowShares == 0) {
+        if (supplyAssets == 0 && debtAssets == 0) {
             return 0;
         }
 
-        (address asset, , , , ) = spoke_.getReserve(reserveId_);
+        IAaveV4Spoke.Reserve memory reserve = spoke_.getReserve(reserveId_);
 
-        uint256 supplyAssets;
-        uint256 debtAssets;
-
-        if (supplyShares > 0) {
-            supplyAssets = spoke_.convertToSupplyAssets(reserveId_, supplyShares);
-        }
-        if (borrowShares > 0) {
-            debtAssets = spoke_.convertToDebtAssets(reserveId_, borrowShares);
-        }
-
-        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(asset);
+        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(reserve.underlying);
         if (price == 0) {
             revert Errors.UnsupportedQuoteCurrencyFromOracle();
         }
 
         int256 netAmount = int256(supplyAssets) - int256(debtAssets);
 
-        return IporMath.convertToWadInt(netAmount * int256(price), IERC20Metadata(asset).decimals() + priceDecimals);
+        return IporMath.convertToWadInt(netAmount * int256(price), IERC20Metadata(reserve.underlying).decimals() + priceDecimals);
     }
 }

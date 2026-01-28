@@ -127,7 +127,7 @@ contract AaveV4BorrowFuse is IFuseCommon {
 
         _validateSubstrates("enter", data_.asset, data_.spoke);
 
-        uint256 shares = IAaveV4Spoke(data_.spoke).borrow(data_.reserveId, data_.amount, address(this));
+        (uint256 shares, ) = IAaveV4Spoke(data_.spoke).borrow(data_.reserveId, data_.amount, address(this));
 
         if (shares < data_.minShares) {
             revert AaveV4BorrowFuseInsufficientShares(shares, data_.minShares);
@@ -182,14 +182,9 @@ contract AaveV4BorrowFuse is IFuseCommon {
             return (data_.asset, 0);
         }
 
-        (, uint256 borrowSharesBefore) = IAaveV4Spoke(data_.spoke).getPosition(data_.reserveId, address(this));
-
         ERC20(data_.asset).forceApprove(data_.spoke, repayAmount);
 
-        uint256 repaid = IAaveV4Spoke(data_.spoke).repay(data_.reserveId, repayAmount, address(this));
-
-        (, uint256 borrowSharesAfter) = IAaveV4Spoke(data_.spoke).getPosition(data_.reserveId, address(this));
-        uint256 sharesRepaid = borrowSharesBefore - borrowSharesAfter;
+        (uint256 sharesRepaid, uint256 repaid) = IAaveV4Spoke(data_.spoke).repay(data_.reserveId, repayAmount, address(this));
 
         if (sharesRepaid < data_.minSharesRepaid) {
             revert AaveV4BorrowFuseInsufficientSharesRepaid(sharesRepaid, data_.minSharesRepaid);
