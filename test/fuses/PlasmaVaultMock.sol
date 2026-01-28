@@ -16,6 +16,8 @@ import {CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../..
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {AaveV4SupplyFuseEnterData, AaveV4SupplyFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
+import {AaveV4BorrowFuseEnterData, AaveV4BorrowFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4BorrowFuse.sol";
 import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -133,6 +135,46 @@ contract PlasmaVaultMock {
 
     function exitMorphoSupply(MorphoSupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((bytes32,uint256))", data));
+    }
+
+    function enterAaveV4Supply(AaveV4SupplyFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,uint256))", data_)
+        );
+    }
+
+    function exitAaveV4Supply(AaveV4SupplyFuseExitData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,address,uint256,uint256,uint256))", data_)
+        );
+    }
+
+    function enterAaveV4SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitAaveV4SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
+    function enterAaveV4Borrow(AaveV4BorrowFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,uint256))", data_)
+        );
+    }
+
+    function exitAaveV4Borrow(AaveV4BorrowFuseExitData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,address,uint256,uint256,uint256))", data_)
+        );
+    }
+
+    function enterAaveV4BorrowTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitAaveV4BorrowTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 
     //solhint-disable-next-line
