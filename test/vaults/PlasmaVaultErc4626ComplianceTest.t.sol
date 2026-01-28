@@ -541,3 +541,324 @@ contract MockPriceFeed {
         return (1, _price, block.timestamp, block.timestamp, 1);
     }
 }
+
+// ============================================================================
+// COMPREHENSIVE WITHDRAW FEE TESTS (ERC4626 Compliance)
+// ============================================================================
+
+/// @title PlasmaVaultErc4626WithdrawFeeTest
+/// @notice Tests ERC4626 compliance with withdraw fee configurations
+/// @dev Tests the previewWithdraw and previewRedeem formulas with various fee levels
+///      This test suite specifically validates the fix for the previewWithdraw fee formula bug
+contract PlasmaVaultErc4626WithdrawFeeTest is Test {
+    using Math for uint256;
+    using IporFusionAccessManagerHelper for IporFusionAccessManager;
+
+    address private constant ATOMIST = TestAddresses.ATOMIST;
+    address private constant USER = TestAddresses.USER;
+    address private constant USER2 = TestAddresses.ALPHA;
+
+    MockERC20 private _underlyingToken;
+    PlasmaVault private _plasmaVault;
+    PlasmaVaultGovernance private _plasmaVaultGovernance;
+    IporFusionAccessManager private _accessManager;
+    WithdrawManager private _withdrawManager;
+    PriceOracleMiddleware private _priceOracle;
+
+    function setUp() public {
+        _underlyingToken = new MockERC20("Mock USDC", "mUSDC", 6);
+        _accessManager = new IporFusionAccessManager(ATOMIST, 0);
+
+        address plasmaVaultBase = address(new PlasmaVaultBase());
+        address plasmaVaultErc4626View = address(new PlasmaVaultErc4626View());
+
+        _withdrawManager = new WithdrawManager(address(_accessManager));
+
+        // Deploy price oracle
+        PriceOracleMiddleware priceOracleImpl = new PriceOracleMiddleware(address(0));
+        _priceOracle = PriceOracleMiddleware(
+            address(new ERC1967Proxy(address(priceOracleImpl), abi.encodeWithSignature("initialize(address)", ATOMIST)))
+        );
+
+        MockPriceFeed mockPriceFeed = new MockPriceFeed(1e8, 8);
+
+        vm.startPrank(ATOMIST);
+        address[] memory assets = new address[](1);
+        assets[0] = address(_underlyingToken);
+        address[] memory sources = new address[](1);
+        sources[0] = address(mockPriceFeed);
+        _priceOracle.setAssetsPricesSources(assets, sources);
+        vm.stopPrank();
+
+        FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
+
+        _plasmaVault = new PlasmaVault();
+
+        vm.startPrank(ATOMIST);
+        _plasmaVault.proxyInitialize(
+            PlasmaVaultInitData({
+                assetName: "Test Plasma Vault Fee",
+                assetSymbol: "tPLASMAFEE",
+                underlyingToken: address(_underlyingToken),
+                priceOracleMiddleware: address(_priceOracle),
+                feeConfig: feeConfig,
+                accessManager: address(_accessManager),
+                plasmaVaultBase: plasmaVaultBase,
+                plasmaVaultERC4626: plasmaVaultErc4626View,
+                withdrawManager: address(_withdrawManager),
+                plasmaVaultVotesPlugin: address(0)
+            })
+        );
+
+        _plasmaVaultGovernance = PlasmaVaultGovernance(address(_plasmaVault));
+
+        RewardsClaimManager rewardsClaimManager = new RewardsClaimManager(
+            address(_accessManager),
+            address(_plasmaVault)
+        );
+        _accessManager.setupInitRoles(_plasmaVault, address(_withdrawManager), address(rewardsClaimManager));
+
+        // Grant ATOMIST the role to update withdraw fee
+        _accessManager.grantRole(Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE, ATOMIST, 0);
+        vm.stopPrank();
+
+        deal(address(_underlyingToken), USER, 10_000_000e6);
+        deal(address(_underlyingToken), USER2, 10_000_000e6);
+    }
+
+    // ============ WITHDRAW FEE TESTS ============
+
+    /// @notice Tests previewRedeem accuracy with withdraw fees
+    function testPreviewRedeemWithWithdrawFee() public {
+        // First deposit
+        uint256 shares = _depositAsUser(USER, 10_000e6);
+
+        // Set 5% withdraw fee
+        vm.prank(ATOMIST);
+        _withdrawManager.updateWithdrawFee(5e16); // 5%
+
+        uint256 previewedAssets = _plasmaVault.previewRedeem(shares);
+
+        vm.startPrank(USER);
+        uint256 actualAssets = _plasmaVault.redeem(shares, USER, USER);
+        vm.stopPrank();
+
+        // ERC4626: previewRedeem MUST return as close to actual as possible
+        // Preview should underestimate assets received (pessimistic)
+        assertGe(actualAssets, previewedAssets, "Actual assets should be >= previewed with withdraw fee");
+        assertApproxEqRel(actualAssets, previewedAssets, 1e15, "Preview should be accurate with withdraw fee");
+    }
+
+    /// @notice Tests previewWithdraw accuracy with withdraw fees - CRITICAL TEST for fixed bug
+    /// @dev This test validates the fix for the previewWithdraw formula:
+    ///      CORRECT: shares = sharesForAssets * (1e18 + withdrawFee) / 1e18
+    ///      BUG WAS: shares = sharesForAssets * 1e18 / (1e18 - withdrawFee) [WRONG!]
+    function testPreviewWithdrawWithWithdrawFee() public {
+        // First deposit
+        _depositAsUser(USER, 10_000e6);
+
+        // Set 5% withdraw fee
+        vm.prank(ATOMIST);
+        _withdrawManager.updateWithdrawFee(5e16); // 5%
+
+        uint256 withdrawAmount = 5_000e6;
+        uint256 previewedShares = _plasmaVault.previewWithdraw(withdrawAmount);
+
+        vm.startPrank(USER);
+        uint256 actualShares = _plasmaVault.withdraw(withdrawAmount, USER, USER);
+        vm.stopPrank();
+
+        // ERC4626: previewWithdraw MUST return as close to actual as possible
+        // Preview should overestimate shares burned (pessimistic)
+        assertLe(actualShares, previewedShares, "Actual shares should be <= previewed with withdraw fee");
+        assertApproxEqRel(actualShares, previewedShares, 1e15, "Preview should be accurate with withdraw fee");
+    }
+
+    /// @notice Tests maxWithdraw with withdraw fee
+    function testMaxWithdrawWithFee() public {
+        _depositAsUser(USER, 10_000e6);
+
+        // Set 10% withdraw fee
+        vm.prank(ATOMIST);
+        _withdrawManager.updateWithdrawFee(1e17); // 10%
+
+        uint256 maxWith = _plasmaVault.maxWithdraw(USER);
+        uint256 noFeeMaxWith = _plasmaVault.convertToAssets(_plasmaVault.balanceOf(USER));
+
+        // With withdraw fee, maxWithdraw should be less than without fee
+        assertLt(maxWith, noFeeMaxWith, "maxWithdraw should be reduced by withdraw fee");
+
+        // User should be able to withdraw up to maxWithdraw
+        vm.startPrank(USER);
+        _plasmaVault.withdraw(maxWith, USER, USER);
+        vm.stopPrank();
+    }
+
+    /// @notice Tests mathematical consistency of withdraw fee formula
+    /// @dev Verifies: shares_burned = shares_for_assets * (1 + feeRate)
+    function testWithdrawFeeFormulaConsistency() public {
+        // Set various fee levels and verify formula
+        uint256[] memory feeRates = new uint256[](4);
+        feeRates[0] = 1e16;  // 1%
+        feeRates[1] = 5e16;  // 5%
+        feeRates[2] = 1e17;  // 10%
+        feeRates[3] = 2e17;  // 20%
+
+        for (uint256 i = 0; i < feeRates.length; i++) {
+            // Reset state for each fee level
+            setUp();
+            _depositAsUser(USER, 10_000e6);
+
+            vm.prank(ATOMIST);
+            _withdrawManager.updateWithdrawFee(feeRates[i]);
+
+            uint256 assets = 1000e6;
+            uint256 sharesWithoutFee = _plasmaVault.convertToShares(assets);
+            // Correct formula: totalShares = sharesForAssets * (1e18 + feeRate) / 1e18
+            uint256 expectedSharesWithFee = sharesWithoutFee.mulDiv(1e18 + feeRates[i], 1e18, Math.Rounding.Ceil);
+            uint256 previewedShares = _plasmaVault.previewWithdraw(assets);
+
+            assertApproxEqRel(
+                previewedShares,
+                expectedSharesWithFee,
+                1e15,
+                "previewWithdraw formula should match expected calculation"
+            );
+        }
+    }
+
+    /// @notice Tests that previewRedeem formula is correct with withdraw fee
+    /// @dev Verifies: assets_received = convertToAssets(shares * (1e18 - feeRate) / 1e18)
+    function testRedeemFeeFormulaConsistency() public {
+        // Set various fee levels and verify formula
+        uint256[] memory feeRates = new uint256[](4);
+        feeRates[0] = 1e16;  // 1%
+        feeRates[1] = 5e16;  // 5%
+        feeRates[2] = 1e17;  // 10%
+        feeRates[3] = 2e17;  // 20%
+
+        for (uint256 i = 0; i < feeRates.length; i++) {
+            // Reset state for each fee level
+            setUp();
+            _depositAsUser(USER, 10_000e6);
+
+            vm.prank(ATOMIST);
+            _withdrawManager.updateWithdrawFee(feeRates[i]);
+
+            uint256 shares = 1000e9;
+            // Correct formula: effectiveShares = shares * (1e18 - feeRate) / 1e18
+            uint256 effectiveShares = shares.mulDiv(1e18 - feeRates[i], 1e18, Math.Rounding.Floor);
+            uint256 expectedAssets = _plasmaVault.convertToAssets(effectiveShares);
+            uint256 previewedAssets = _plasmaVault.previewRedeem(shares);
+
+            assertApproxEqRel(
+                previewedAssets,
+                expectedAssets,
+                1e15,
+                "previewRedeem formula should match expected calculation"
+            );
+        }
+    }
+
+    /// @notice Tests functions with extreme withdraw fee (50%)
+    function testExtremeWithdrawFee() public {
+        _depositAsUser(USER, 10_000e6);
+
+        // Set high withdraw fee (50%)
+        vm.prank(ATOMIST);
+        _withdrawManager.updateWithdrawFee(5e17); // 50%
+
+        // Preview functions MUST NOT revert (ERC4626 requirement)
+        _plasmaVault.previewRedeem(1000e9);
+        _plasmaVault.previewWithdraw(1000e6);
+        _plasmaVault.maxWithdraw(USER);
+        _plasmaVault.maxRedeem(USER);
+
+        // Verify maxWithdraw calculation with 50% fee
+        // Formula: effectiveShares = ownerShares * 1e18 / (1e18 + feeRate)
+        // With 50% fee (5e17): effectiveShares = ownerShares * 1e18 / 1.5e18 = ownerShares * 2/3
+        // So maxWithdraw ≈ 66.67% of full balance (not 50%)
+        uint256 maxWith = _plasmaVault.maxWithdraw(USER);
+        uint256 fullBalance = _plasmaVault.convertToAssets(_plasmaVault.balanceOf(USER));
+        uint256 expectedMaxWith = fullBalance.mulDiv(1e18, 1e18 + 5e17, Math.Rounding.Floor);
+        assertApproxEqRel(maxWith, expectedMaxWith, 1e15, "maxWithdraw should follow formula: balance / (1 + feeRate)");
+    }
+
+    /// @notice Tests preview functions return 0 for 0 input with withdraw fee
+    function testPreviewReturnsZeroForZeroInputWithFee() public {
+        vm.prank(ATOMIST);
+        _withdrawManager.updateWithdrawFee(1e17); // 10%
+
+        assertEq(_plasmaVault.previewRedeem(0), 0, "previewRedeem(0) should return 0");
+        assertEq(_plasmaVault.previewWithdraw(0), 0, "previewWithdraw(0) should return 0");
+    }
+
+    /// @notice Tests deposit->redeem roundtrip with withdraw fee
+    function testDepositRedeemRoundtripWithWithdrawFee() public {
+        // Set 10% withdraw fee
+        vm.prank(ATOMIST);
+        _withdrawManager.updateWithdrawFee(1e17); // 10%
+
+        uint256 depositAmount = 10_000e6;
+        uint256 shares = _depositAsUser(USER, depositAmount);
+
+        vm.startPrank(USER);
+        uint256 assetsReceived = _plasmaVault.redeem(shares, USER, USER);
+        vm.stopPrank();
+
+        // With 10% withdraw fee: effective assets = depositAmount * 0.90 = 9000
+        uint256 expectedMin = depositAmount * 90 / 100;
+
+        assertApproxEqRel(assetsReceived, expectedMin, 1e15, "Roundtrip should account for withdraw fee");
+        assertLt(assetsReceived, depositAmount, "Should receive less than deposited due to fee");
+    }
+
+    /// @notice Tests that maxWithdraw + fee calculation is consistent
+    function testMaxWithdrawPlusFeeEqualsBalance() public {
+        _depositAsUser(USER, 10_000e6);
+
+        // Set 10% withdraw fee
+        vm.prank(ATOMIST);
+        _withdrawManager.updateWithdrawFee(1e17); // 10%
+
+        uint256 maxWith = _plasmaVault.maxWithdraw(USER);
+        uint256 sharesForMaxWith = _plasmaVault.previewWithdraw(maxWith);
+        uint256 userBalance = _plasmaVault.balanceOf(USER);
+
+        // The shares needed to withdraw maxWith should equal user's balance
+        assertApproxEqRel(
+            sharesForMaxWith,
+            userBalance,
+            1e15,
+            "previewWithdraw(maxWithdraw) should equal user balance"
+        );
+    }
+
+    // ============ TOTALASSETS COMPLIANCE TEST ============
+
+    /// @notice Tests that totalAssets returns gross assets (ERC4626 compliant)
+    function testTotalAssetsReturnsGrossAssets() public {
+        uint256 depositAmount = 10_000e6;
+        _depositAsUser(USER, depositAmount);
+
+        uint256 totalAssets = _plasmaVault.totalAssets();
+
+        // totalAssets should equal deposited assets (no external protocols in this test)
+        assertEq(totalAssets, depositAmount, "totalAssets should return gross assets");
+
+        // Even after time passes (management fee accrual), totalAssets should remain gross
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 totalAssetsAfterTime = _plasmaVault.totalAssets();
+        assertEq(totalAssetsAfterTime, depositAmount, "totalAssets should remain gross after time");
+    }
+
+    // ============ HELPER FUNCTIONS ============
+
+    function _depositAsUser(address user_, uint256 amount_) internal returns (uint256 shares) {
+        vm.startPrank(user_);
+        _underlyingToken.approve(address(_plasmaVault), amount_);
+        shares = _plasmaVault.deposit(amount_, user_);
+        vm.stopPrank();
+    }
+}

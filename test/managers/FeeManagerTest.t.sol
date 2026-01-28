@@ -309,7 +309,7 @@ contract FeeManagerTest is Test {
         uint256 balanceAfter = PlasmaVault(_plasmaVault).balanceOf(performanceAccount);
 
         assertEq(balanceBefore, 0, "balanceBefore should be 0");
-        assertEq(balanceAfter, 61442014522, "balanceAfter should be 61442014522");
+        assertEq(balanceAfter, 68199072121, "balanceAfter should be 68199072121");
     }
 
     function testShouldHarvestPerformance() external {
@@ -340,14 +340,14 @@ contract FeeManagerTest is Test {
         uint256 balanceFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 balanceDaoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        assertEq(balancePerformanceAccountBefore, 61442014522, "balancePerformanceAccountBefore should be 61442014522");
+        assertEq(balancePerformanceAccountBefore, 68199072121, "balancePerformanceAccountBefore should be 68199072121");
         assertApproxEqAbs(balancePerformanceAccountAfter, 0, 100, "balancePerformanceAccountAfter should be 0");
 
         assertEq(balanceFeeRecipientBefore, 0, "balanceFeeRecipientBefore should be 0");
-        assertEq(balanceFeeRecipientAfter, 30721007261, "balanceFeeRecipientAfter should be 30721007261");
+        assertEq(balanceFeeRecipientAfter, 34099536060, "balanceFeeRecipientAfter should be 34099536060");
 
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
-        assertEq(balanceDaoFeeRecipientAfter, 30721007261, "balanceDaoFeeRecipientAfter should be 30721007261");
+        assertEq(balanceDaoFeeRecipientAfter, 34099536060, "balanceDaoFeeRecipientAfter should be 34099536060");
     }
 
     function testShouldHarvestPerformanceWhenAtomistSetZero() external {
@@ -386,9 +386,9 @@ contract FeeManagerTest is Test {
 
         assertApproxEqAbs(
             balancePerformanceAccountBefore,
-            30721007261,
+            34099536060,
             100,
-            "balancePerformanceAccountBefore should be 30721007261"
+            "balancePerformanceAccountBefore should be 34099536060"
         );
         assertEq(balancePerformanceAccountAfter, 0, "balancePerformanceAccountAfter should be 0");
 
@@ -398,9 +398,9 @@ contract FeeManagerTest is Test {
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
         assertApproxEqAbs(
             balanceDaoFeeRecipientAfter,
-            30721007261,
+            34099536060,
             100,
-            "balanceDaoFeeRecipientAfter should be 30721007261"
+            "balanceDaoFeeRecipientAfter should be 34099536060"
         );
     }
 

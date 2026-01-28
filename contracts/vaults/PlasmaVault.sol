@@ -432,7 +432,7 @@ contract PlasmaVault is
         uint256 marketIndex;
         uint256 fuseMarketId;
 
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBefore = _getNetTotalAssets();
 
         PlasmaVaultLib.executeStarted();
 
@@ -485,7 +485,7 @@ contract PlasmaVault is
         if (marketIds_.length == 0) {
             return totalAssets();
         }
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBefore = _getNetTotalAssets();
         _updateMarketsBalances(marketIds_);
         _addPerformanceFee(totalAssetsBefore);
 
@@ -776,7 +776,7 @@ contract PlasmaVault is
         /// @dev first realize management fee, then other actions
         _realizeManagementFee();
 
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBefore = _getNetTotalAssets();
 
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
@@ -849,10 +849,11 @@ contract PlasmaVault is
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
 
             if (withdrawFee > 0) {
-                // Scale by 1e18 / (1e18 - withdrawFee) to add proportional fee on top of pre-fee shares
-                // This is the algebraic inverse of previewRedeem which uses (1e18 - withdrawFee) / 1e18
+                // Calculate total shares needed: sharesForAssets + feeShares
+                // where feeShares = sharesForAssets * withdrawFee / 1e18
+                // So totalShares = sharesForAssets * (1e18 + withdrawFee) / 1e18
                 // Round up since we're computing required shares
-                return Math.mulDiv(super.previewWithdraw(assets_), 1e18, 1e18 - withdrawFee, Math.Rounding.Ceil);
+                return Math.mulDiv(super.previewWithdraw(assets_), 1e18 + withdrawFee, 1e18, Math.Rounding.Ceil);
             }
         }
         return super.previewWithdraw(assets_);
@@ -1103,7 +1104,7 @@ contract PlasmaVault is
     }
 
     /// @notice Returns the total assets in the vault
-    /// @dev Calculates net total assets after management fee deduction
+    /// @dev ERC4626 compliant - returns gross total assets inclusive of all fees
     ///
     /// Calculation Flow:
     /// 1. Gross Assets
@@ -1111,20 +1112,37 @@ contract PlasmaVault is
     ///    - Adds market positions
     ///    - Includes pending operations
     ///
-    /// 2. Fee Deduction
-    ///    - Calculates unrealized management fees
-    ///    - Subtracts from gross total
-    ///    - Handles edge cases
+    /// ERC4626 Compliance:
+    /// - Returns gross assets as per ERC4626 spec requirement that totalAssets
+    ///   "MUST be inclusive of any fees that are charged against assets in the Vault"
+    /// - For net assets after fee deduction, use _getNetTotalAssets() internally
     ///
     /// Important Notes:
     /// - Excludes runtime accrued market interest
     /// - Excludes runtime accrued performance fees
-    /// - Considers management fee impact
-    /// - Returns 0 if fees exceed assets
+    /// - Does NOT deduct unrealized management fees (ERC4626 compliant)
     ///
-    /// @return uint256 Net total assets in underlying token decimals
+    /// @return uint256 Gross total assets in underlying token decimals
     /// @custom:access Public view function, no role restrictions
     function totalAssets() public view virtual override returns (uint256) {
+        return _getGrossTotalAssets();
+    }
+
+    /// @notice Returns net total assets after unrealized management fee deduction
+    /// @dev Used internally for calculations that require fee-adjusted asset values
+    ///
+    /// Calculation Flow:
+    /// 1. Gets gross total assets
+    /// 2. Calculates unrealized management fees
+    /// 3. Subtracts fees from gross total
+    /// 4. Returns 0 if fees exceed assets
+    ///
+    /// Use Cases:
+    /// - Performance fee calculations (comparing before/after values)
+    /// - Internal accounting where fee impact matters
+    ///
+    /// @return uint256 Net total assets in underlying token decimals
+    function _getNetTotalAssets() internal view returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
         uint256 unrealizedManagementFee = PlasmaVaultFeesLib.getUnrealizedManagementFee(grossTotalAssets);
 
@@ -1278,7 +1296,7 @@ contract PlasmaVault is
         /// @dev first realize management fee, then other actions
         _realizeManagementFee();
 
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBefore = _getNetTotalAssets();
 
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
@@ -1403,7 +1421,7 @@ contract PlasmaVault is
     }
 
     function _addPerformanceFee(uint256 totalAssetsBefore_) internal {
-        uint256 totalAssetsAfter = totalAssets();
+        uint256 totalAssetsAfter = _getNetTotalAssets();
 
         if (totalAssetsAfter < totalAssetsBefore_) {
             return;

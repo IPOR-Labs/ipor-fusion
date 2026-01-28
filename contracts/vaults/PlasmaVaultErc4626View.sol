@@ -85,10 +85,11 @@ contract PlasmaVaultErc4626View {
         if (withdrawManager != address(0)) {
             try WithdrawManager(withdrawManager).getWithdrawFee() returns (uint256 withdrawFee) {
                 if (withdrawFee > 0) {
-                    // Scale by 1e18 / (1e18 - withdrawFee) to add proportional fee on top of pre-fee shares
-                    // This is the algebraic inverse of previewRedeem which uses (1e18 - withdrawFee) / 1e18
+                    // Calculate total shares needed: sharesForAssets + feeShares
+                    // where feeShares = sharesForAssets * withdrawFee / 1e18
+                    // So totalShares = sharesForAssets * (1e18 + withdrawFee) / 1e18
                     // Round up since we're computing required shares
-                    return Math.mulDiv(_previewWithdraw(assets_), 1e18, 1e18 - withdrawFee, Math.Rounding.Ceil);
+                    return Math.mulDiv(_previewWithdraw(assets_), 1e18 + withdrawFee, 1e18, Math.Rounding.Ceil);
                 }
             } catch {
                 // ERC4626: MUST NOT revert - return preview without fee as fallback
