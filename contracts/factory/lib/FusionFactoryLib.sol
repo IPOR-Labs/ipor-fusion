@@ -189,7 +189,8 @@ library FusionFactoryLib {
             revert InvalidIporDaoFeeRecipient();
         }
 
-        fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).create(
+        fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).clone(
+            FusionFactoryStorageLib.getPlasmaVaultCoreBaseAddress(),
             fusionAddresses.index,
             PlasmaVaultInitData({
                 assetName: assetName_,
@@ -204,7 +205,9 @@ library FusionFactoryLib {
                 }),
                 accessManager: fusionAddresses.accessManager,
                 plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-                withdrawManager: fusionAddresses.withdrawManager
+                plasmaVaultERC4626: address(0),
+                withdrawManager: fusionAddresses.withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
 

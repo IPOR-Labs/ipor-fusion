@@ -197,7 +197,7 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
             INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
 
             tokenIndex = tokensIds.indexes[tokenId];
-            
+
             if (tokenIndex != len - 1) {
                 lastTokenId = tokensIds.tokenIds[len - 1];
                 tokensIds.tokenIds[tokenIndex] = lastTokenId;
@@ -206,7 +206,7 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
 
             tokensIds.tokenIds.pop();
             delete tokensIds.indexes[tokenId];
-            
+
             --len;
 
             tokenIds[closedIndex] = tokenId;

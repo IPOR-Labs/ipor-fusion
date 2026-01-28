@@ -128,7 +128,9 @@ contract UniversalReaderTest is Test {
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            withdrawManager: _withdrawManager
+            plasmaVaultERC4626: address(0),
+            withdrawManager: _withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         vm.startPrank(_ATOMIST);

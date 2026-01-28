@@ -144,7 +144,9 @@ contract EbisuZapperTest is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                address(new WithdrawManager(accessManager))
+                address(0),
+                address(new WithdrawManager(accessManager)),
+                address(0)
             )
         );
 
@@ -1121,7 +1123,6 @@ contract EbisuZapperTest is Test {
             troveData.entireDebt - 200, // 500 - 200
             "Debt was not updated by fuse"
         );
-
     }
     // --- helpers ---
 

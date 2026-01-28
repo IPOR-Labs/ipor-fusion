@@ -83,7 +83,9 @@ contract UniswapV3PositionFuseTest is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                _withdrawManager
+                address(0),
+                _withdrawManager,
+                address(0)
             )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(

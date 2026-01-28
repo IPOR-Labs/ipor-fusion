@@ -76,7 +76,9 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: withdrawManager
+                plasmaVaultERC4626: address(0),
+                withdrawManager: withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
 

@@ -129,7 +129,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -212,7 +214,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -283,7 +287,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -352,7 +358,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -418,7 +426,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -487,7 +497,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -596,7 +608,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -660,7 +674,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -761,7 +777,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -850,7 +868,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -940,7 +960,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -1152,7 +1174,9 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 

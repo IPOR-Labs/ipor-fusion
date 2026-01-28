@@ -35,7 +35,7 @@ contract ERC4626ZapInMevProtectionTest is Test {
         uint256 sharesBeforeAttack = plasmaVaultWeth.previewDeposit(userDepositAmount);
 
         // User sets minSharesOut with 0.5% slippage tolerance
-        uint256 minSharesWithSlippage = sharesBeforeAttack * 9950 / 10000;
+        uint256 minSharesWithSlippage = (sharesBeforeAttack * 9950) / 10000;
 
         // Attacker donates WETH directly to vault to manipulate exchange rate
         uint256 donationAmount = 1000e18;
@@ -106,7 +106,7 @@ contract ERC4626ZapInMevProtectionTest is Test {
 
         // Frontend calculates minSharesOut using previewDeposit with 0.5% slippage
         uint256 expectedShares = plasmaVaultWeth.previewDeposit(userDepositAmount);
-        uint256 minSharesWithSlippage = expectedShares * 9950 / 10000;
+        uint256 minSharesWithSlippage = (expectedShares * 9950) / 10000;
 
         ZapInData memory zapInData = _createZapInData(user, userDepositAmount, minSharesWithSlippage);
 
@@ -131,7 +131,7 @@ contract ERC4626ZapInMevProtectionTest is Test {
         uint256 sharesBeforeManipulation = plasmaVaultWeth.previewDeposit(userDepositAmount);
 
         // Conservative 1% slippage tolerance
-        uint256 minSharesConservative = sharesBeforeManipulation * 9900 / 10000;
+        uint256 minSharesConservative = (sharesBeforeManipulation * 9900) / 10000;
 
         // Large donation - significant rate manipulation
         uint256 largeDonation = 10000e18;
@@ -160,9 +160,9 @@ contract ERC4626ZapInMevProtectionTest is Test {
 
         // Test different slippage tolerances
         uint256[] memory slippages = new uint256[](3);
-        slippages[0] = 50;   // 0.5%
-        slippages[1] = 100;  // 1%
-        slippages[2] = 300;  // 3%
+        slippages[0] = 50; // 0.5%
+        slippages[1] = 100; // 1%
+        slippages[2] = 300; // 3%
 
         for (uint256 i = 0; i < slippages.length; i++) {
             // Reset state for each test
@@ -173,7 +173,7 @@ contract ERC4626ZapInMevProtectionTest is Test {
             deal(testUser, userDepositAmount);
 
             uint256 expectedShares = plasmaVaultWeth.previewDeposit(userDepositAmount);
-            uint256 minSharesOut = expectedShares * (10000 - slippages[i]) / 10000;
+            uint256 minSharesOut = (expectedShares * (10000 - slippages[i])) / 10000;
 
             ZapInData memory zapInData = _createZapInData(testUser, userDepositAmount, minSharesOut);
 
@@ -204,13 +204,14 @@ contract ERC4626ZapInMevProtectionTest is Test {
             nativeTokenAmount: 0
         });
 
-        return ZapInData({
-            vault: address(plasmaVaultWeth),
-            receiver: receiver,
-            minAmountToDeposit: ethAmount,
-            minSharesOut: minSharesOut,
-            assetsToRefundToSender: new address[](0),
-            calls: calls
-        });
+        return
+            ZapInData({
+                vault: address(plasmaVaultWeth),
+                receiver: receiver,
+                minAmountToDeposit: ethAmount,
+                minSharesOut: minSharesOut,
+                assetsToRefundToSender: new address[](0),
+                calls: calls
+            });
     }
 }

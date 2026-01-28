@@ -15,6 +15,13 @@ import {PriceOracleMiddlewareManagerLib} from "../../contracts/managers/price/Pr
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
+import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {AccessManagerFactory} from "../../contracts/factory/AccessManagerFactory.sol";
 
 /// @title ValidateAllAssetsPricesPreHookTest
 /// @notice Placeholder test suite for `ValidateAllAssetsPricesPreHook`
@@ -36,25 +43,36 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
 
         FusionFactory fusionFactoryImpl = new FusionFactory();
         FusionFactory factory = FusionFactory(FACTORY);
-        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = factory.getBaseAddresses();
-
-        PriceOracleMiddlewareManager priceOracleMiddlewareManager = new PriceOracleMiddlewareManager(
-            ADMIN,
-            baseAddresses.priceManagerBase
-        );
-        baseAddresses.priceManagerBase = address(priceOracleMiddlewareManager);
 
         vm.startPrank(ADMIN);
         factory.grantRole(keccak256("MAINTENANCE_MANAGER_ROLE"), ADMIN);
         factory.upgradeToAndCall(address(fusionFactoryImpl), "");
+
+        // Update factory addresses with new PlasmaVaultFactory
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = factory.getFactoryAddresses();
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
+        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory());
+        factory.updateFactoryAddresses(5, factoryAddresses);
+
+        // Deploy all base addresses for cloning
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        address accessManagerBase = address(new IporFusionAccessManager(ADMIN, 0));
+        address priceOracleMiddleware = factory.getPriceOracleMiddleware();
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(ADMIN, priceOracleMiddleware));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+        address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
+        address[] memory approvedTargets = new address[](1);
+        approvedTargets[0] = plasmaVaultCoreBase;
+        address contextManagerBase = address(new ContextManager(accessManagerBase, approvedTargets));
         factory.updateBaseAddresses(
             5,
-            baseAddresses.plasmaVaultCoreBase,
-            baseAddresses.accessManagerBase,
-            baseAddresses.priceManagerBase,
-            baseAddresses.withdrawManagerBase,
-            baseAddresses.rewardsManagerBase,
-            baseAddresses.contextManagerBase
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
         );
 
         _fusionInstance = factory.clone("TEST PLASMA VAULT", "TPLASMA", USDC, 0, ADMIN);

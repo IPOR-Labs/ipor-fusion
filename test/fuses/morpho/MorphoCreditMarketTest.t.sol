@@ -76,7 +76,9 @@ contract MorphoCreditMarketTest is Test {
                 _setupFeeConfig(),
                 accessManager,
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 

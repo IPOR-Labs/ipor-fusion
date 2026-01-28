@@ -68,7 +68,9 @@ contract InitializeAccessManagerTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                address(withdrawManager)
+                address(0),
+                address(withdrawManager),
+                address(0)
             )
         );
 

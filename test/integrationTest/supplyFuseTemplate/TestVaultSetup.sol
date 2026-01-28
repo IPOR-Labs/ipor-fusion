@@ -34,7 +34,9 @@ abstract contract TestVaultSetup is TestStorage {
                 feeConfig,
                 accessManager,
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
         vm.stopPrank();
@@ -75,7 +77,9 @@ abstract contract TestVaultSetup is TestStorage {
                 feeConfig,
                 accessManager,
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                address(0),
+                withdrawManager,
+                address(0)
             )
         );
 

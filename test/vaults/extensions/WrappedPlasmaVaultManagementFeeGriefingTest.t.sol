@@ -36,11 +36,11 @@ contract WrappedPlasmaVaultManagementFeeGriefingTest is Test {
             "Wrapped Fusion USDC",
             "wfUSDC",
             address(PLASMA_VAULT),
-            owner,                              // wrappedPlasmaVaultOwner
-            managementFeeRecipient,             // managementFeeAccount
-            MANAGEMENT_FEE_IN_PERCENTAGE,       // managementFeePercentage (0.3%)
-            owner,                              // performanceFeeAccount (use owner, fee is 0%)
-            0                                   // performanceFeePercentage (0%)
+            owner, // wrappedPlasmaVaultOwner
+            managementFeeRecipient, // managementFeeAccount
+            MANAGEMENT_FEE_IN_PERCENTAGE, // managementFeePercentage (0.3%)
+            owner, // performanceFeeAccount (use owner, fee is 0%)
+            0 // performanceFeePercentage (0%)
         );
 
         // Setup user
@@ -153,7 +153,11 @@ contract WrappedPlasmaVaultManagementFeeGriefingTest is Test {
         assertGt(recipientSharesAfter, recipientSharesBefore, "Large TVL should generate fees normally");
 
         // Verify timestamp is current
-        assertEq(wPlasmaVault.getManagementFeeData().lastUpdateTimestamp, block.timestamp, "Timestamp should be current");
+        assertEq(
+            wPlasmaVault.getManagementFeeData().lastUpdateTimestamp,
+            block.timestamp,
+            "Timestamp should be current"
+        );
     }
 
     /// @notice Verifies timestamp update only when shares > 0
@@ -214,11 +218,11 @@ contract WrappedPlasmaVaultManagementFeeGriefingTest is Test {
             "Zero Fee Vault",
             "zfUSDC",
             address(PLASMA_VAULT),
-            owner,                      // wrappedPlasmaVaultOwner
-            managementFeeRecipient,     // managementFeeAccount (required non-zero)
-            0,                          // managementFeePercentage (0%)
-            owner,                      // performanceFeeAccount (required non-zero)
-            0                           // performanceFeePercentage (0%)
+            owner, // wrappedPlasmaVaultOwner
+            managementFeeRecipient, // managementFeeAccount (required non-zero)
+            0, // managementFeePercentage (0%)
+            owner, // performanceFeeAccount (required non-zero)
+            0 // performanceFeePercentage (0%)
         );
 
         deal(USDC, user, 1_000_000e6);

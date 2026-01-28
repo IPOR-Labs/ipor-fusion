@@ -671,7 +671,9 @@ contract IporPlasmaVaultRolesTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
-                address(_withdrawManager)
+                address(0),
+                address(_withdrawManager),
+                address(0)
             )
         );
         vm.stopPrank();

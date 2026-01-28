@@ -179,7 +179,10 @@ contract BalancerLiquidityUnbalancedFuse is IFuseCommon {
                     !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                         MARKET_ID,
                         BalancerSubstrateLib.substrateToBytes32(
-                            BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: data_.tokens[i]})
+                            BalancerSubstrate({
+                                substrateType: BalancerSubstrateType.TOKEN,
+                                substrateAddress: data_.tokens[i]
+                            })
                         )
                     )
                 ) {

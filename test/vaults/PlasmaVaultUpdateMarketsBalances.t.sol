@@ -103,7 +103,9 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(_accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: _withdrawManager
+                plasmaVaultERC4626: address(0),
+                withdrawManager: _withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
         vm.stopPrank();
