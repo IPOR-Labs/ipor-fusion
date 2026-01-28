@@ -72,8 +72,10 @@ contract VelodromeSuperchainBalanceFuse is IMarketBalanceFuse {
 
             if (liquidity > 0) {
                 balance += _calculateBalanceFromLiquidity(pool, priceOracleMiddleware, liquidity);
-                balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
             }
+            // Always calculate fees - claimable fees may exist even when liquidity is zero
+            // (e.g., after withdrawing LP tokens but before claiming accumulated fees)
+            balance += _calculateBalanceFromFees(pool, priceOracleMiddleware, liquidity);
         }
         return balance;
     }
