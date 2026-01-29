@@ -107,7 +107,9 @@ library BalancerSubstrateLib {
             if (
                 !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                     marketId_,
-                    substrateToBytes32(BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: token}))
+                    substrateToBytes32(
+                        BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: token})
+                    )
                 )
             ) {
                 revert TokenNotGranted(token);
@@ -126,7 +128,9 @@ library BalancerSubstrateLib {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 marketId_,
-                substrateToBytes32(BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: token_}))
+                substrateToBytes32(
+                    BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: token_})
+                )
             )
         ) {
             revert TokenNotGranted(token_);

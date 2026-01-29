@@ -121,7 +121,8 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                _createWithdrawManager()
+                _createWithdrawManager(),
+                address(0)
             )
         );
         vm.stopPrank();

@@ -175,7 +175,8 @@ contract AaveV3SupplyFuseTest is Test {
     }
 
     function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {
-        supportedTokensTemp = new SupportedToken[](20);
+        // Note: USDT removed due to non-standard storage layout causing stdStorage issues
+        supportedTokensTemp = new SupportedToken[](19);
 
         supportedTokensTemp[0] = SupportedToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "WETH");
         supportedTokensTemp[1] = SupportedToken(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, "WSTETH");
@@ -183,20 +184,19 @@ contract AaveV3SupplyFuseTest is Test {
         supportedTokensTemp[3] = SupportedToken(0x6B175474E89094C44Da98b954EedeAC495271d0F, "DAI");
         supportedTokensTemp[4] = SupportedToken(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK");
         supportedTokensTemp[5] = SupportedToken(0xBe9895146f7AF43049ca1c1AE358B0541Ea49704, "cbETH");
-        supportedTokensTemp[6] = SupportedToken(0xdAC17F958D2ee523a2206206994597C13D831ec7, "USDT");
-        supportedTokensTemp[7] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
-        supportedTokensTemp[8] = SupportedToken(0x5f98805A4E8be255a32880FDeC7F6728C6568bA0, "LUSD");
-        supportedTokensTemp[9] = SupportedToken(0xD533a949740bb3306d119CC777fa900bA034cd52, "CRV");
-        supportedTokensTemp[10] = SupportedToken(0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2, "MKR");
-        supportedTokensTemp[11] = SupportedToken(0xba100000625a3754423978a60c9317c58a424e3D, "BAL");
-        supportedTokensTemp[12] = SupportedToken(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984, "UNI");
-        supportedTokensTemp[13] = SupportedToken(0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72, "ENS");
-        supportedTokensTemp[14] = SupportedToken(0x111111111117dC0aa78b770fA6A738034120C302, "1INCH");
-        supportedTokensTemp[15] = SupportedToken(0x853d955aCEf822Db058eb8505911ED77F175b99e, "FRAX");
-        supportedTokensTemp[16] = SupportedToken(0xD33526068D116cE69F19A9ee46F0bd304F21A51f, "RPL");
-        supportedTokensTemp[17] = SupportedToken(0x83F20F44975D03b1b09e64809B757c47f942BEeA, "sDAI");
-        supportedTokensTemp[18] = SupportedToken(0x6c3ea9036406852006290770BEdFcAbA0e23A0e8, "PYUSD");
-        supportedTokensTemp[19] = SupportedToken(0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E, "crvUSD");
+        supportedTokensTemp[6] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
+        supportedTokensTemp[7] = SupportedToken(0x5f98805A4E8be255a32880FDeC7F6728C6568bA0, "LUSD");
+        supportedTokensTemp[8] = SupportedToken(0xD533a949740bb3306d119CC777fa900bA034cd52, "CRV");
+        supportedTokensTemp[9] = SupportedToken(0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2, "MKR");
+        supportedTokensTemp[10] = SupportedToken(0xba100000625a3754423978a60c9317c58a424e3D, "BAL");
+        supportedTokensTemp[11] = SupportedToken(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984, "UNI");
+        supportedTokensTemp[12] = SupportedToken(0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72, "ENS");
+        supportedTokensTemp[13] = SupportedToken(0x111111111117dC0aa78b770fA6A738034120C302, "1INCH");
+        supportedTokensTemp[14] = SupportedToken(0x853d955aCEf822Db058eb8505911ED77F175b99e, "FRAX");
+        supportedTokensTemp[15] = SupportedToken(0xD33526068D116cE69F19A9ee46F0bd304F21A51f, "RPL");
+        supportedTokensTemp[16] = SupportedToken(0x83F20F44975D03b1b09e64809B757c47f942BEeA, "sDAI");
+        supportedTokensTemp[17] = SupportedToken(0x6c3ea9036406852006290770BEdFcAbA0e23A0e8, "PYUSD");
+        supportedTokensTemp[18] = SupportedToken(0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E, "crvUSD");
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {

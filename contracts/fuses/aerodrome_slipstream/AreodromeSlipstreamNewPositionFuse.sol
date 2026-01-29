@@ -148,8 +148,7 @@ contract AreodromeSlipstreamNewPositionFuse is IFuseCommon {
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
 
         // Track the tokenId in storage to prevent DoS via unbounded NFT enumeration
-        FuseStorageLib.AerodromeSlipstreamTokenIds storage tokensIds = FuseStorageLib
-            .getAerodromeSlipstreamTokenIds();
+        FuseStorageLib.AerodromeSlipstreamTokenIds storage tokensIds = FuseStorageLib.getAerodromeSlipstreamTokenIds();
         tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
         tokensIds.tokenIds.push(tokenId);
 

@@ -103,7 +103,8 @@ contract UniversalTokenSwapperWithVerificationFuseTest is Test {
                 _setupFeeConfig(),
                 _accessManager,
                 address(new PlasmaVaultBase()),
-                address(withdrawManager)
+                address(withdrawManager),
+                address(0)
             )
         );
         PlasmaVaultConfigurator.setupPlasmaVault(

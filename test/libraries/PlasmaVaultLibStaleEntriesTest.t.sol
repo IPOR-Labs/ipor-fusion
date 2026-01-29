@@ -55,7 +55,8 @@ contract PlasmaVaultLibStaleEntriesTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 

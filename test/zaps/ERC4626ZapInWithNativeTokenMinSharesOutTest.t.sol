@@ -79,11 +79,7 @@ contract ERC4626ZapInWithNativeTokenMinSharesOutTest is Test {
         // when/then
         vm.startPrank(user);
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "InsufficientSharesOut(uint256,uint256)",
-                EXPECTED_SHARES,
-                impossibleMinShares
-            )
+            abi.encodeWithSignature("InsufficientSharesOut(uint256,uint256)", EXPECTED_SHARES, impossibleMinShares)
         );
         zapIn.zapIn{value: ethAmount}(zapInData);
         vm.stopPrank();
@@ -150,11 +146,7 @@ contract ERC4626ZapInWithNativeTokenMinSharesOutTest is Test {
         // when/then - transaction reverts
         vm.startPrank(user);
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "InsufficientSharesOut(uint256,uint256)",
-                EXPECTED_SHARES,
-                impossibleMinShares
-            )
+            abi.encodeWithSignature("InsufficientSharesOut(uint256,uint256)", EXPECTED_SHARES, impossibleMinShares)
         );
         zapIn.zapIn{value: ethAmount}(zapInData);
         vm.stopPrank();
@@ -181,13 +173,14 @@ contract ERC4626ZapInWithNativeTokenMinSharesOutTest is Test {
             nativeTokenAmount: 0
         });
 
-        return ZapInData({
-            vault: address(plasmaVaultWeth),
-            receiver: user,
-            minAmountToDeposit: ethAmount,
-            minSharesOut: minSharesOut,
-            assetsToRefundToSender: new address[](0),
-            calls: calls
-        });
+        return
+            ZapInData({
+                vault: address(plasmaVaultWeth),
+                receiver: user,
+                minAmountToDeposit: ethAmount,
+                minSharesOut: minSharesOut,
+                assetsToRefundToSender: new address[](0),
+                calls: calls
+            });
     }
 }

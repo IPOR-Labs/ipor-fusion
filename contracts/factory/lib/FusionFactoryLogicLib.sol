@@ -152,7 +152,8 @@ library FusionFactoryLogicLib {
             }),
             accessManager: fusionAddresses.accessManager,
             plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-            withdrawManager: fusionAddresses.withdrawManager
+            withdrawManager: fusionAddresses.withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).clone(

@@ -880,7 +880,8 @@ contract CurveUSDMUSDCStakeLPGaugeArbitrum is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: address(withdrawManager)
+                withdrawManager: address(withdrawManager),
+                plasmaVaultVotesPlugin: address(0)
             })
         );
     }

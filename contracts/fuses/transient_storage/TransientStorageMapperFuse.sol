@@ -63,7 +63,11 @@ contract TransientStorageMapperFuse is IFuseCommon {
     error TransientStorageMapperFuseDecimalOverflow(uint256 value, uint256 fromDecimals, uint256 toDecimals);
     error TransientStorageMapperFuseSignedDecimalOverflow(int256 value, uint256 fromDecimals, uint256 toDecimals);
     error TransientStorageMapperFuseItemsArrayTooLarge(uint256 itemsLength, uint256 maxItems);
-    error TransientStorageMapperFuseDecimalDifferenceTooLarge(uint256 fromDecimals, uint256 toDecimals, uint256 maxDiff);
+    error TransientStorageMapperFuseDecimalDifferenceTooLarge(
+        uint256 fromDecimals,
+        uint256 toDecimals,
+        uint256 maxDiff
+    );
 
     /// @notice Maps transient storage data between fuses with optional type and decimal conversion
     /// @param data_ The data containing mapping instructions
@@ -112,18 +116,26 @@ contract TransientStorageMapperFuse is IFuseCommon {
     /// @param dataType_ The data type to check
     /// @return True if the data type is a signed integer type
     function _isSignedType(DataType dataType_) internal pure returns (bool) {
-        return dataType_ == DataType.INT256 || dataType_ == DataType.INT128 ||
-               dataType_ == DataType.INT64 || dataType_ == DataType.INT32 ||
-               dataType_ == DataType.INT16 || dataType_ == DataType.INT8;
+        return
+            dataType_ == DataType.INT256 ||
+            dataType_ == DataType.INT128 ||
+            dataType_ == DataType.INT64 ||
+            dataType_ == DataType.INT32 ||
+            dataType_ == DataType.INT16 ||
+            dataType_ == DataType.INT8;
     }
 
     /// @notice Checks if the data type is an unsigned integer type
     /// @param dataType_ The data type to check
     /// @return True if the data type is an unsigned integer type
     function _isUnsignedType(DataType dataType_) internal pure returns (bool) {
-        return dataType_ == DataType.UINT256 || dataType_ == DataType.UINT128 ||
-               dataType_ == DataType.UINT64 || dataType_ == DataType.UINT32 ||
-               dataType_ == DataType.UINT16 || dataType_ == DataType.UINT8;
+        return
+            dataType_ == DataType.UINT256 ||
+            dataType_ == DataType.UINT128 ||
+            dataType_ == DataType.UINT64 ||
+            dataType_ == DataType.UINT32 ||
+            dataType_ == DataType.UINT16 ||
+            dataType_ == DataType.UINT8;
     }
 
     /// @notice Checks if the data type supports decimal conversion
@@ -319,19 +331,19 @@ contract TransientStorageMapperFuse is IFuseCommon {
         if (fromDecimals_ == toDecimals_) {
             return value_;
         }
-        
+
         uint256 decimalDiff;
         if (fromDecimals_ < toDecimals_) {
             decimalDiff = toDecimals_ - fromDecimals_;
         } else {
             decimalDiff = fromDecimals_ - toDecimals_;
         }
-        
+
         // Validate that decimal difference is within reasonable bounds to prevent scale calculation overflow
         if (decimalDiff > MAX_DECIMAL_DIFF) {
             revert TransientStorageMapperFuseDecimalDifferenceTooLarge(fromDecimals_, toDecimals_, MAX_DECIMAL_DIFF);
         }
-        
+
         if (fromDecimals_ < toDecimals_) {
             // Scale up: multiply by 10^(toDecimals - fromDecimals)
             uint256 scale = 10 ** decimalDiff;
@@ -474,19 +486,19 @@ contract TransientStorageMapperFuse is IFuseCommon {
         if (fromDecimals_ == toDecimals_) {
             return value_;
         }
-        
+
         uint256 decimalDiff;
         if (fromDecimals_ < toDecimals_) {
             decimalDiff = toDecimals_ - fromDecimals_;
         } else {
             decimalDiff = fromDecimals_ - toDecimals_;
         }
-        
+
         // Validate that decimal difference is within reasonable bounds to prevent scale calculation overflow
         if (decimalDiff > MAX_DECIMAL_DIFF) {
             revert TransientStorageMapperFuseDecimalDifferenceTooLarge(fromDecimals_, toDecimals_, MAX_DECIMAL_DIFF);
         }
-        
+
         if (fromDecimals_ < toDecimals_) {
             // Scale up: multiply by 10^(toDecimals - fromDecimals)
             uint256 scale = 10 ** decimalDiff;

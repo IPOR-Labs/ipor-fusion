@@ -71,11 +71,7 @@ contract ERC4626ZapInMinSharesOutTest is Test {
 
         // when/then
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "InsufficientSharesOut(uint256,uint256)",
-                expectedShares,
-                impossibleMinShares
-            )
+            abi.encodeWithSignature("InsufficientSharesOut(uint256,uint256)", expectedShares, impossibleMinShares)
         );
         zapIn.zapIn(zapInData);
         vm.stopPrank();
@@ -145,11 +141,7 @@ contract ERC4626ZapInMinSharesOutTest is Test {
 
         // when/then
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "InsufficientSharesOut(uint256,uint256)",
-                expectedShares,
-                minSharesOut
-            )
+            abi.encodeWithSignature("InsufficientSharesOut(uint256,uint256)", expectedShares, minSharesOut)
         );
         zapIn.zapIn(zapInData);
         vm.stopPrank();
@@ -180,13 +172,14 @@ contract ERC4626ZapInMinSharesOutTest is Test {
             data: abi.encodeWithSelector(IERC20.approve.selector, address(plasmaVaultRUsdc), minAmountToDeposit)
         });
 
-        return ZapInData({
-            vault: address(plasmaVaultRUsdc),
-            receiver: user,
-            minAmountToDeposit: usdcAmount,
-            minSharesOut: minSharesOut,
-            assetsToRefundToSender: new address[](0),
-            calls: calls
-        });
+        return
+            ZapInData({
+                vault: address(plasmaVaultRUsdc),
+                receiver: user,
+                minAmountToDeposit: usdcAmount,
+                minSharesOut: minSharesOut,
+                assetsToRefundToSender: new address[](0),
+                calls: calls
+            });
     }
 }
