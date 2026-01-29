@@ -29,6 +29,9 @@ import {FeeManagerData, FeeManagerFactory, FeeConfig} from "../managers/fee/FeeM
 
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
+import {IVotesExtension} from "../interfaces/IVotesExtension.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
@@ -323,34 +326,30 @@ contract PlasmaVault is
     /// @param sig_ The function selector to check
     /// @return True if the selector is a Votes function (IERC5805/IVotes/IERC6372)
     function _isVotesFunction(bytes4 sig_) internal pure returns (bool) {
-        // IVotes functions
-        // getVotes(address) = 0x9ab24eb0
-        // getPastVotes(address,uint256) = 0x3a46b1a8
-        // getPastTotalSupply(uint256) = 0x8e539e8c
-        // delegates(address) = 0x587cde1e
-        // delegate(address) = 0x5c19a95c
-        // delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32) = 0xc3cda520
-        //
-        // IERC6372 functions
-        // clock() = 0x91ddadf4
-        // CLOCK_MODE() = 0x4bf5d7e9
-        //
-        // Extension-specific functions
-        // numCheckpoints(address) = 0x6fcfff45
-        // checkpoints(address,uint32) = 0xf1127ed8
-        // transferVotingUnits(address,address,uint256) = 0x3c7b2e40
-        return
-            sig_ == bytes4(0x9ab24eb0) || // getVotes(address)
-            sig_ == bytes4(0x3a46b1a8) || // getPastVotes(address,uint256)
-            sig_ == bytes4(0x8e539e8c) || // getPastTotalSupply(uint256)
-            sig_ == bytes4(0x587cde1e) || // delegates(address)
-            sig_ == bytes4(0x5c19a95c) || // delegate(address)
-            sig_ == bytes4(0xc3cda520) || // delegateBySig(...)
-            sig_ == bytes4(0x6fcfff45) || // numCheckpoints(address)
-            sig_ == bytes4(0xf1127ed8) || // checkpoints(address,uint32)
-            sig_ == bytes4(0x91ddadf4) || // clock()
-            sig_ == bytes4(0x4bf5d7e9) || // CLOCK_MODE()
-            sig_ == bytes4(0x3c7b2e40); // transferVotingUnits(address,address,uint256)
+        // IVotes functions (OpenZeppelin standard)
+        if (
+            sig_ == IVotes.getVotes.selector ||
+            sig_ == IVotes.getPastVotes.selector ||
+            sig_ == IVotes.getPastTotalSupply.selector ||
+            sig_ == IVotes.delegates.selector ||
+            sig_ == IVotes.delegate.selector ||
+            sig_ == IVotes.delegateBySig.selector
+        ) {
+            return true;
+        }
+
+        // IERC6372 functions (clock interface)
+        if (sig_ == IERC6372.clock.selector || sig_ == IERC6372.CLOCK_MODE.selector) {
+            return true;
+        }
+
+        // Extension-specific functions (ERC20VotesUpgradeable)
+        // Note: _transferVotingUnits is internal in OpenZeppelin, so it's not included here
+        if (sig_ == IVotesExtension.numCheckpoints.selector || sig_ == IVotesExtension.checkpoints.selector) {
+            return true;
+        }
+
+        return false;
     }
 
     /// @notice The plasma vault base contract address
