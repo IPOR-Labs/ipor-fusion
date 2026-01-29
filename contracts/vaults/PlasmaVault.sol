@@ -243,6 +243,7 @@ contract PlasmaVault is
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event DepositFeeRealized(address recipient, uint256 feeShares);
+    event ExecuteFinished();
 
     /// @notice Fallback function handling delegatecall execution and callbacks
     /// @dev Routes execution between callback handling and base contract delegation
@@ -315,9 +316,7 @@ contract PlasmaVault is
         }
         // Custom view functions (selectors hardcoded as they only exist in PlasmaVaultErc4626View)
         // getDepositFeeSharesExternal(uint256) = 0x9a344088
-        // getMarketBalanceLastUpdateTimestamp() = 0x2aedb0ba
-        // isMarketBalanceStale(uint256) = 0x9cc01f36
-        return sig_ == bytes4(0x9a344088) || sig_ == bytes4(0x2aedb0ba) || sig_ == bytes4(0x9cc01f36);
+        return sig_ == bytes4(0x9a344088);
     }
 
     /// @notice Checks if the function selector is a Votes function
@@ -456,6 +455,8 @@ contract PlasmaVault is
         _updateMarketsBalances(markets);
 
         _addPerformanceFee(totalAssetsBefore);
+
+        emit ExecuteFinished();
     }
 
     /// @notice Updates balances for specified markets and calculates performance fees
@@ -1507,9 +1508,6 @@ contract PlasmaVault is
         dataToCheck.totalBalanceInVault = _getGrossTotalAssets();
 
         AssetDistributionProtectionLib.checkLimits(dataToCheck);
-
-        // Record timestamp of balance update for staleness tracking
-        PlasmaVaultStorageLib.updateMarketBalanceLastUpdateTimestamp();
     }
 
     function _checkIfExistsMarket(uint256[] memory markets_, uint256 marketId_) internal pure returns (bool exists) {

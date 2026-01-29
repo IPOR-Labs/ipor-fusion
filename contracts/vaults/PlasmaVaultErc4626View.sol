@@ -19,7 +19,6 @@ import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
  * - previewDeposit, previewMint, previewRedeem, previewWithdraw
  * - maxDeposit, maxMint, maxWithdraw, maxRedeem
  * - getDepositFeeShares
- * - getMarketBalanceLastUpdateTimestamp, isMarketBalanceStale
  *
  * ERC4626 Compliance:
  * - All preview/max functions wrapped in try/catch to ensure MUST NOT revert requirement
@@ -188,25 +187,6 @@ contract PlasmaVaultErc4626View {
     /// @return feeShares Amount of shares that would be taken as fee
     function getDepositFeeSharesExternal(uint256 shares_) external view returns (uint256 feeShares) {
         (, feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(shares_);
-    }
-
-    /// @notice Returns the timestamp of the last market balance update
-    /// @dev Useful for integrators to determine staleness of totalAssets() value
-    /// @return timestamp Unix timestamp of the last balance update (0 if never updated)
-    function getMarketBalanceLastUpdateTimestamp() external view returns (uint32) {
-        return PlasmaVaultStorageLib.getMarketBalanceLastUpdateTimestamp();
-    }
-
-    /// @notice Checks if market balances are considered stale based on a threshold
-    /// @dev Helper function for integrators to validate data freshness
-    /// @param maxStalenessSeconds_ Maximum acceptable age of balance data in seconds
-    /// @return isStale True if balances haven't been updated within the threshold
-    function isMarketBalanceStale(uint256 maxStalenessSeconds_) external view returns (bool isStale) {
-        uint32 lastUpdate = PlasmaVaultStorageLib.getMarketBalanceLastUpdateTimestamp();
-        if (lastUpdate == 0) {
-            return true; // Never updated
-        }
-        return block.timestamp > lastUpdate + maxStalenessSeconds_;
     }
 
     // ============ Internal Helper Functions ============

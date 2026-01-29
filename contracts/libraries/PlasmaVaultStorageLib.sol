@@ -686,7 +686,12 @@ library PlasmaVaultStorageLib {
      * @dev Storage slot for withdraw manager contract address
      * @notice Manages withdrawal controls and permissions in the Plasma Vault
      *
-     * Calculation:
+     * LEGACY NOTE: This slot value does NOT match the formula below due to a historical implementation error.
+     * The value was derived from CALLBACK_HANDLER slot with a modified last byte (0x11 instead of 0x00).
+     * This CANNOT be changed as contracts are already deployed with this value.
+     * Correct value per formula would be: 0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100
+     *
+     * Documented calculation (not matching actual value):
      * keccak256(abi.encode(uint256(keccak256("io.ipor.WithdrawManager")) - 1)) & ~bytes32(uint256(0xff))
      *
      * Purpose:
@@ -741,15 +746,7 @@ library PlasmaVaultStorageLib {
      * @notice Stores address of PlasmaVaultErc4626View contract which provides ERC4626 compliant view functions
      */
     bytes32 private constant PLASMA_VAULT_ERC4626_SLOT =
-        0x3a8d9c8f5b7e2d1a0f6c4b3e8d7a2c1f5b9e8d3a7c6f2e1b0a9d8c7f6e5b4a00;
-
-    /**
-     * @dev Storage slot for market balance last update timestamp. Computed as:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.MarketBalanceLastUpdate")) - 1)) & ~bytes32(uint256(0xff))
-     * @notice Tracks when market balances were last updated for staleness detection
-     */
-    bytes32 private constant MARKET_BALANCE_LAST_UPDATE_SLOT =
-        0xd249011a2df6f5e5a53a76d2d33daa4a8cdeff9b71ef47a3bf61897813733800;
+        0x8aae8542c58825e61c3bf382f5d6e53faa4b221eaec8fc21553203145ffbb700;
 
     /**
      * @dev Storage slot for PlasmaVaultVotesPlugin address. Computed as:
@@ -757,7 +754,7 @@ library PlasmaVaultStorageLib {
      * @notice Stores address of PlasmaVaultVotesPlugin contract which provides optional ERC20Votes functionality
      */
     bytes32 private constant PLASMA_VAULT_VOTES_PLUGIN_SLOT =
-        0x9a8f1e5b3c7d2f4a6e8b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e00;
+        0x9a54c2c1797818ee85d1850742208f80368867ad13d3e45052e701201fa4af00;
 
     /**
      * @notice Maps callback signatures to their handler contracts
@@ -1194,23 +1191,6 @@ library PlasmaVaultStorageLib {
     function setPlasmaVaultERC4626(address erc4626_) internal {
         assembly {
             sstore(PLASMA_VAULT_ERC4626_SLOT, erc4626_)
-        }
-    }
-
-    /// @notice Gets the market balance last update timestamp from storage
-    /// @return ts Unix timestamp of the last balance update (0 if never updated)
-    function getMarketBalanceLastUpdateTimestamp() internal view returns (uint32) {
-        uint32 ts;
-        assembly {
-            ts := sload(MARKET_BALANCE_LAST_UPDATE_SLOT)
-        }
-        return ts;
-    }
-
-    /// @notice Updates the market balance last update timestamp to current block timestamp
-    function updateMarketBalanceLastUpdateTimestamp() internal {
-        assembly {
-            sstore(MARKET_BALANCE_LAST_UPDATE_SLOT, timestamp())
         }
     }
 

@@ -22,8 +22,6 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 /// @notice Interface for PlasmaVault ERC4626 view functions routed via fallback
 interface IPlasmaVaultErc4626View {
-    function getMarketBalanceLastUpdateTimestamp() external view returns (uint32);
-    function isMarketBalanceStale(uint256 maxStalenessSeconds) external view returns (bool);
     function getDepositFeeSharesExternal(uint256 shares) external view returns (uint256);
 }
 
@@ -448,42 +446,6 @@ contract PlasmaVaultErc4626ComplianceTest is Test {
 
         // Total supply should be 0 (or near 0 due to potential dust)
         assertLe(_plasmaVault.totalSupply(), 1000, "Total supply should be near 0 after full withdrawal");
-    }
-
-    // ============ STALENESS TRACKING TESTS ============
-
-    /// @notice Tests getMarketBalanceLastUpdateTimestamp
-    function testGetMarketBalanceLastUpdateTimestamp() public {
-        // Use interface to call functions routed via fallback
-        IPlasmaVaultErc4626View erc4626View = IPlasmaVaultErc4626View(address(_plasmaVault));
-
-        // Initially should be 0
-        uint32 initialTimestamp = erc4626View.getMarketBalanceLastUpdateTimestamp();
-        // Note: Initial timestamp may be set during vault creation
-
-        // After deposit, timestamp should be updated
-        _depositAsUser(USER, 10_000e6);
-        uint32 afterDepositTimestamp = erc4626View.getMarketBalanceLastUpdateTimestamp();
-        assertGe(afterDepositTimestamp, initialTimestamp, "Timestamp should be updated after deposit");
-    }
-
-    /// @notice Tests isMarketBalanceStale function - verifies it doesn't revert
-    /// @dev Note: This is a custom PlasmaVault feature, not part of ERC4626 standard.
-    ///      The timestamp is only updated when updateMarketsBalances is called with non-empty market IDs.
-    function testIsMarketBalanceStale() public view {
-        // Use interface to call functions routed via fallback
-        IPlasmaVaultErc4626View erc4626View = IPlasmaVaultErc4626View(address(_plasmaVault));
-
-        // Verify function doesn't revert with various threshold values
-        // Initially should be stale since no balance updates have occurred
-        bool isStale = erc4626View.isMarketBalanceStale(0);
-        assertTrue(isStale, "Should be stale when threshold is 0 and no updates occurred");
-
-        isStale = erc4626View.isMarketBalanceStale(3600);
-        assertTrue(isStale, "Should be stale before any market balance update");
-
-        isStale = erc4626View.isMarketBalanceStale(type(uint256).max);
-        assertTrue(isStale, "Should be stale even with max threshold when never updated");
     }
 
     /// @notice Tests PLASMA_VAULT_ERC4626 returns correct address
