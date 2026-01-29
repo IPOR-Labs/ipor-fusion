@@ -317,7 +317,10 @@ contract LoopingBorrowSupplyEulerFlashLoanMorpho is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
         ERC20(_USDC).transfer(_USER, 10_000e6);
 
-        deal(_USDT, _USER, 10_000e6);
+        // USDT - use whale transfer as deal() doesn't work with USDT's non-standard storage
+        // Use IToken interface because USDT doesn't return a boolean from transfer()
+        vm.prank(0xF977814e90dA44bFA03b6295A0616a897441aceC); // Binance 8
+        IToken(_USDT).transfer(_USER, 10_000e6);
         deal(_WST_ETH, _USER, 100e18);
 
         vm.startPrank(_USER);

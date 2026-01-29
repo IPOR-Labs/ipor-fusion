@@ -110,7 +110,14 @@ contract AaveV3BalanceFuseTest is Test {
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        deal(asset, to, amount);
+        if (asset == 0xdAC17F958D2ee523a2206206994597C13D831ec7) {
+            // USDT - use whale transfer as deal() doesn't work with USDT's non-standard storage
+            // Also use safeTransfer because USDT doesn't return a boolean
+            vm.prank(0xF977814e90dA44bFA03b6295A0616a897441aceC); // Binance 8
+            ERC20(asset).safeTransfer(to, amount);
+        } else {
+            deal(asset, to, amount);
+        }
     }
 
     modifier iterateSupportedTokens() {
