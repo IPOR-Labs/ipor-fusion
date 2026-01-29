@@ -67,6 +67,8 @@ contract EulerCreditMarketTest is Test {
     address private constant _WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address private constant _USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant _USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    /// @dev Binance wallet - USDT whale (deal() doesn't work with USDT due to proxy storage layout)
+    address private constant _USDT_WHALE = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
 
     ///  Oracle
     address private constant _ETH_USD_CHAINLINK = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -285,8 +287,9 @@ contract EulerCreditMarketTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
         ERC20(_USDC).transfer(_USER, 10_000e6);
 
-        // Note: USDT skipped due to non-standard storage layout causing stdStorage issues
-        // deal(_USDT, _USER, 10_000e6);
+        // Note: deal() doesn't work with USDT due to proxy storage layout, use whale transfer instead
+        vm.prank(_USDT_WHALE);
+        IToken(_USDT).transfer(_USER, 10_000e6);
         deal(_WST_ETH, _USER, 100e18);
 
         vm.startPrank(_USER);
@@ -299,8 +302,7 @@ contract EulerCreditMarketTest is Test {
         ERC20(_W_ETH).transfer(_plasmaVault, 100e18);
         ERC20(_ST_ETH).transfer(_plasmaVault, 100e18);
         ERC20(_WST_ETH).transfer(_plasmaVault, 100e18);
-        // Note: USDT transfer skipped due to non-standard storage layout causing stdStorage issues
-        // IToken(_USDT).transfer(_plasmaVault, 10_000e6);
+        IToken(_USDT).transfer(_plasmaVault, 10_000e6);
         vm.stopPrank();
 
         uint256[] memory marketIds = new uint256[](2);
@@ -404,8 +406,6 @@ contract EulerCreditMarketTest is Test {
     //******************************************************************************************************************
 
     function testShouldDepositToAllCollateralVaultWhenUseAccountOne() public {
-        // Skip: USDT has non-standard storage layout causing stdStorage issues with deal()
-        vm.skip(true);
         //given
         uint256 wethDepositAmount = 1e18;
         uint256 usdtDepositAmount = 100e6;
