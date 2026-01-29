@@ -83,7 +83,6 @@ contract PlasmaVaultVotesArchitectureTest is Test {
             feeConfig: FeeConfigHelper.createZeroFeeConfig(),
             accessManager: address(accessManager),
             plasmaVaultBase: address(plasmaVaultBase),
-            plasmaVaultERC4626: address(0),
             withdrawManager: withdrawManager,
             plasmaVaultVotesPlugin: withVotesPlugin ? address(votesPlugin) : address(0)
         });

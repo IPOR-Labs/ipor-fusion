@@ -205,7 +205,6 @@ library FusionFactoryLib {
                 }),
                 accessManager: fusionAddresses.accessManager,
                 plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-                plasmaVaultERC4626: address(0),
                 withdrawManager: fusionAddresses.withdrawManager,
                 plasmaVaultVotesPlugin: address(0)
             })

@@ -74,7 +74,6 @@ contract PlasmaVaultVotesPluginTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                address(0),
                 withdrawManager,
                 address(votesPlugin)
             )
@@ -256,7 +255,6 @@ contract PlasmaVaultVotesPluginTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                address(0),
                 withdrawManager,
                 address(0) // No votes plugin
             )

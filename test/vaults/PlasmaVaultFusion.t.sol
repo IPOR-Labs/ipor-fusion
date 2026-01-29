@@ -118,7 +118,6 @@ contract PlasmaVaultErc20FusionTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                address(0),
                 withdrawManager,
                 address(new PlasmaVaultVotesPlugin())
             )

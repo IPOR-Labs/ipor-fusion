@@ -65,7 +65,6 @@ contract PlasmaVaultScheduledWithdraw is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(_accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                plasmaVaultERC4626: address(0),
                 withdrawManager: _withdrawManager,
                 plasmaVaultVotesPlugin: address(new PlasmaVaultVotesPlugin())
             })

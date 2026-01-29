@@ -8,7 +8,6 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {PlasmaVault, PlasmaVaultInitData, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
-import {PlasmaVaultErc4626View} from "../../contracts/vaults/PlasmaVaultErc4626View.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -19,11 +18,6 @@ import {TestAddresses} from "../test_helpers/TestAddresses.sol";
 import {IporFusionAccessManagerHelper} from "../test_helpers/IporFusionAccessManagerHelper.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-
-/// @notice Interface for PlasmaVault ERC4626 view functions routed via fallback
-interface IPlasmaVaultErc4626View {
-    function getDepositFeeSharesExternal(uint256 shares) external view returns (uint256);
-}
 
 /// @title PlasmaVaultErc4626ComplianceTest
 /// @notice Comprehensive test suite verifying ERC4626 compliance for PlasmaVault
@@ -54,9 +48,8 @@ contract PlasmaVaultErc4626ComplianceTest is Test {
         // Deploy access manager
         _accessManager = new IporFusionAccessManager(ATOMIST, 0);
 
-        // Deploy PlasmaVaultBase and PlasmaVaultErc4626View
+        // Deploy PlasmaVaultBase
         address plasmaVaultBase = address(new PlasmaVaultBase());
-        address plasmaVaultErc4626View = address(new PlasmaVaultErc4626View());
 
         // Deploy withdraw manager
         _withdrawManager = new WithdrawManager(address(_accessManager));
@@ -95,7 +88,6 @@ contract PlasmaVaultErc4626ComplianceTest is Test {
                 feeConfig: feeConfig,
                 accessManager: address(_accessManager),
                 plasmaVaultBase: plasmaVaultBase,
-                plasmaVaultERC4626: plasmaVaultErc4626View,
                 withdrawManager: address(_withdrawManager),
                 plasmaVaultVotesPlugin: address(0)
             })
@@ -448,12 +440,6 @@ contract PlasmaVaultErc4626ComplianceTest is Test {
         assertLe(_plasmaVault.totalSupply(), 1000, "Total supply should be near 0 after full withdrawal");
     }
 
-    /// @notice Tests PLASMA_VAULT_ERC4626 returns correct address
-    function testPlasmaVaultErc4626AddressIsSet() public view {
-        address erc4626Addr = _plasmaVault.PLASMA_VAULT_ERC4626();
-        assertNotEq(erc4626Addr, address(0), "ERC4626 view address should be set");
-    }
-
     // ============ HELPER FUNCTIONS ============
 
     function _depositAsUser(address user_, uint256 amount_) internal returns (uint256 shares) {
@@ -532,7 +518,6 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
         _accessManager = new IporFusionAccessManager(ATOMIST, 0);
 
         address plasmaVaultBase = address(new PlasmaVaultBase());
-        address plasmaVaultErc4626View = address(new PlasmaVaultErc4626View());
 
         _withdrawManager = new WithdrawManager(address(_accessManager));
 
@@ -566,7 +551,6 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
                 feeConfig: feeConfig,
                 accessManager: address(_accessManager),
                 plasmaVaultBase: plasmaVaultBase,
-                plasmaVaultERC4626: plasmaVaultErc4626View,
                 withdrawManager: address(_withdrawManager),
                 plasmaVaultVotesPlugin: address(0)
             })

@@ -1037,7 +1037,6 @@ contract PlasmaVaultBasicTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                address(0),
                 address(withdrawManager),
                 address(0)
             )

@@ -100,7 +100,6 @@ contract RamsesClaimFuseTest is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                address(0),
                 _withdrawManager,
                 address(0)
             )

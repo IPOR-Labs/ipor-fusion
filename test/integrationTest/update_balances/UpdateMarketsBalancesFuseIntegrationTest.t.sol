@@ -92,7 +92,6 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                plasmaVaultERC4626: address(0),
                 withdrawManager: withdrawManager,
                 plasmaVaultVotesPlugin: address(0)
             })

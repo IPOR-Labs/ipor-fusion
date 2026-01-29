@@ -741,14 +741,6 @@ library PlasmaVaultStorageLib {
         0x5bb34fc23414cfe7e422518e1d8590877bcc5dcacad5f8689bfd98e9a05ac600;
 
     /**
-     * @dev Storage slot for PlasmaVaultErc4626View address. Computed as:
-     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultERC4626")) - 1)) & ~bytes32(uint256(0xff))
-     * @notice Stores address of PlasmaVaultErc4626View contract which provides ERC4626 compliant view functions
-     */
-    bytes32 private constant PLASMA_VAULT_ERC4626_SLOT =
-        0x8aae8542c58825e61c3bf382f5d6e53faa4b221eaec8fc21553203145ffbb700;
-
-    /**
      * @dev Storage slot for PlasmaVaultVotesPlugin address. Computed as:
      * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultVotesPlugin")) - 1)) & ~bytes32(uint256(0xff))
      * @notice Stores address of PlasmaVaultVotesPlugin contract which provides optional ERC20Votes functionality
@@ -1173,24 +1165,6 @@ library PlasmaVaultStorageLib {
     function setShareScaleMultiplier(uint256 multiplier_) internal {
         assembly {
             sstore(SHARE_SCALE_MULTIPLIER_SLOT, multiplier_)
-        }
-    }
-
-    /// @notice Gets the PlasmaVaultErc4626View address from storage
-    /// @return The address of the PlasmaVaultErc4626View contract (ERC4626 view functions)
-    function getPlasmaVaultERC4626() internal view returns (address) {
-        address erc4626;
-        assembly {
-            erc4626 := sload(PLASMA_VAULT_ERC4626_SLOT)
-        }
-        return erc4626;
-    }
-
-    /// @notice Sets the PlasmaVaultErc4626View address in storage
-    /// @param erc4626_ The address of the PlasmaVaultErc4626View contract
-    function setPlasmaVaultERC4626(address erc4626_) internal {
-        assembly {
-            sstore(PLASMA_VAULT_ERC4626_SLOT, erc4626_)
         }
     }
 
