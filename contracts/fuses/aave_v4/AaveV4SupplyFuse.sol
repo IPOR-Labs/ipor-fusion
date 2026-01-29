@@ -105,6 +105,12 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param substrate The unauthorized substrate bytes32 value
     error AaveV4SupplyFuseUnsupportedSubstrate(string action, bytes32 substrate);
 
+    /// @notice Thrown when the reserve's underlying asset does not match the expected asset
+    /// @param reserveId The reserve ID that was queried
+    /// @param expected The asset address provided in the fuse data
+    /// @param actual The underlying asset address returned by the Spoke for the given reserveId
+    error AaveV4SupplyFuseReserveAssetMismatch(uint256 reserveId, address expected, address actual);
+
     /// @notice Constructor for AaveV4SupplyFuse
     /// @param marketId_ The Market ID associated with the Fuse
     constructor(uint256 marketId_) {
@@ -126,6 +132,7 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
 
         _validateSubstrates("enter", data_.asset, data_.spoke);
+        _validateReserveAsset(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
 
         uint256 finalAmount = IporMath.min(ERC20(data_.asset).balanceOf(address(this)), data_.amount);
 
@@ -242,6 +249,7 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
 
         _validateSubstrates("exit", data_.asset, data_.spoke);
+        _validateReserveAsset(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
 
         uint256 supplyAssets = IAaveV4Spoke(data_.spoke).getUserSuppliedAssets(data_.reserveId, address(this));
 
@@ -292,6 +300,18 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         bytes32 spokeSubstrate = AaveV4SubstrateLib.encodeSpoke(spoke_);
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, spokeSubstrate)) {
             revert AaveV4SupplyFuseUnsupportedSubstrate(action_, spokeSubstrate);
+        }
+    }
+
+    /// @notice Validates that the reserve's underlying asset matches the expected asset
+    /// @dev Protects against reserve index shifts caused by Aave governance changes
+    /// @param spoke_ The Aave V4 Spoke contract
+    /// @param reserveId_ The reserve ID to validate
+    /// @param expectedAsset_ The asset address that the caller expects at this reserveId
+    function _validateReserveAsset(IAaveV4Spoke spoke_, uint256 reserveId_, address expectedAsset_) internal view {
+        address actual = spoke_.getReserve(reserveId_).underlying;
+        if (actual != expectedAsset_) {
+            revert AaveV4SupplyFuseReserveAssetMismatch(reserveId_, expectedAsset_, actual);
         }
     }
 }

@@ -114,4 +114,15 @@ interface IAaveV4Spoke {
     /// @param reserveId The reserve identifier
     /// @return The total debt amount
     function getReserveTotalDebt(uint256 reserveId) external view returns (uint256);
+
+    // ============ E-Mode ============
+
+    /// @notice Sets the E-Mode category for the caller
+    /// @param categoryId The E-Mode category ID (0 to disable)
+    function setUserEMode(uint8 categoryId) external;
+
+    /// @notice Returns the E-Mode category for a user
+    /// @param user The address of the user
+    /// @return The E-Mode category ID
+    function getUserEMode(address user) external view returns (uint8);
 }

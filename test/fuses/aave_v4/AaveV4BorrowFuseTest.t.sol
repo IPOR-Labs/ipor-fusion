@@ -608,4 +608,80 @@ contract AaveV4BorrowFuseTest is Test {
         uint256 borrowShares = spoke.getUserTotalDebt(RESERVE_ID, address(vaultMock));
         assertEq(borrowShares, borrowAmount - repayAmount, "Remaining debt should be 500e18");
     }
+
+    // ============ Reserve/Asset Mismatch Tests ============
+
+    function testShouldRevertWhenReserveAssetMismatchOnBorrow() public {
+        // given - token2 at reserve 2, but we pass token2 with reserveId=1 (which has token)
+        ERC20Mock token2 = new ERC20Mock("Token2", "TK2", 18);
+        spoke.addReserve(2, address(token2));
+
+        // Grant token2 substrate
+        bytes32[] memory substrates = new bytes32[](3);
+        substrates[0] = AaveV4SubstrateLib.encodeAsset(address(token));
+        substrates[1] = AaveV4SubstrateLib.encodeAsset(address(token2));
+        substrates[2] = AaveV4SubstrateLib.encodeSpoke(address(spoke));
+        vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
+
+        // when/then - reserveId=1 points to token, but data says token2
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AaveV4BorrowFuse.AaveV4BorrowFuseReserveAssetMismatch.selector,
+                RESERVE_ID,
+                address(token2),
+                address(token)
+            )
+        );
+        vaultMock.enterAaveV4Borrow(
+            AaveV4BorrowFuseEnterData({
+                spoke: address(spoke),
+                asset: address(token2),
+                reserveId: RESERVE_ID, // Points to token, not token2
+                amount: 100e18,
+                minShares: 0
+            })
+        );
+    }
+
+    function testShouldRevertWhenReserveAssetMismatchOnRepay() public {
+        // given - borrow token from reserve 1
+        vaultMock.enterAaveV4Borrow(
+            AaveV4BorrowFuseEnterData({
+                spoke: address(spoke),
+                asset: address(token),
+                reserveId: RESERVE_ID,
+                amount: 500e18,
+                minShares: 0
+            })
+        );
+
+        // Add token2 at reserve 2 and grant it
+        ERC20Mock token2 = new ERC20Mock("Token2", "TK2", 18);
+        spoke.addReserve(2, address(token2));
+
+        bytes32[] memory substrates = new bytes32[](3);
+        substrates[0] = AaveV4SubstrateLib.encodeAsset(address(token));
+        substrates[1] = AaveV4SubstrateLib.encodeAsset(address(token2));
+        substrates[2] = AaveV4SubstrateLib.encodeSpoke(address(spoke));
+        vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
+
+        // when/then - try to repay with wrong reserveId
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AaveV4BorrowFuse.AaveV4BorrowFuseReserveAssetMismatch.selector,
+                2, // reserveId 2
+                address(token), // expected
+                address(token2) // actual at reserveId 2
+            )
+        );
+        vaultMock.exitAaveV4Borrow(
+            AaveV4BorrowFuseExitData({
+                spoke: address(spoke),
+                asset: address(token),
+                reserveId: 2, // Points to token2, not token
+                amount: 100e18,
+                minSharesRepaid: 0
+            })
+        );
+    }
 }

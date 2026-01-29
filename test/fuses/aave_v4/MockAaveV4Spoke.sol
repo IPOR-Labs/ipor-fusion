@@ -26,6 +26,7 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
     mapping(uint256 => ReserveData) public reserveData;
     mapping(uint256 => mapping(address => PositionData)) public positions;
     uint256 public reserveCount;
+    mapping(address => uint8) public userEModes;
 
     bool public shouldRevertOnWithdraw;
 
@@ -191,5 +192,15 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
 
     function getReserveTotalDebt(uint256 reserveId) external view returns (uint256) {
         return reserveData[reserveId].totalBorrowAssets;
+    }
+
+    // ============ E-Mode ============
+
+    function setUserEMode(uint8 categoryId) external {
+        userEModes[msg.sender] = categoryId;
+    }
+
+    function getUserEMode(address user) external view returns (uint8) {
+        return userEModes[user];
     }
 }

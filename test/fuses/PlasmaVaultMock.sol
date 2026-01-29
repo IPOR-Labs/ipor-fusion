@@ -18,6 +18,7 @@ import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contrac
 import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
 import {AaveV4SupplyFuseEnterData, AaveV4SupplyFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
 import {AaveV4BorrowFuseEnterData, AaveV4BorrowFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4BorrowFuse.sol";
+import {AaveV4EModeFuseEnterData} from "../../contracts/fuses/aave_v4/AaveV4EModeFuse.sol";
 import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -175,6 +176,16 @@ contract PlasmaVaultMock {
 
     function exitAaveV4BorrowTransient() external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
+    function enterAaveV4EMode(AaveV4EModeFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,uint8))", data_)
+        );
+    }
+
+    function enterAaveV4EModeTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
     }
 
     //solhint-disable-next-line
