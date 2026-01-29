@@ -61,6 +61,14 @@ contract UniversalSwapOnMockDexTest is Test {
         );
 
         _mockDexActionEthereum = address(new MockDexActionEthereum());
+
+        // Pre-fund mock DEX with USDC and USDT for swap simulations
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17); // USDC whale
+        ERC20(USDC).transfer(_mockDexActionEthereum, 10_000e6);
+        // USDT - use safeTransfer because USDT doesn't return a boolean
+        vm.prank(0xF977814e90dA44bFA03b6295A0616a897441aceC); // Binance 8 - USDT whale
+        ERC20(USDT).safeTransfer(_mockDexActionEthereum, 10_000e6);
+
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         // plasma vault
