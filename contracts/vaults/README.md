@@ -80,17 +80,6 @@ Core ERC20 functionality that was extracted to reduce PlasmaVault size:
 
 **Storage:** Uses PlasmaVault's storage via delegatecall context.
 
-### PlasmaVaultErc4626View
-
-**Location:** `PlasmaVaultErc4626View.sol`
-
-ERC4626 view functions extracted to reduce PlasmaVault size:
-- `previewDeposit`, `previewMint`, `previewRedeem`, `previewWithdraw`
-- `maxDeposit`, `maxMint`, `maxWithdraw`, `maxRedeem`
-- Fee calculation helpers
-
-**Why separate?** These functions are complex and include fee calculations, withdraw manager checks, and must comply with ERC4626's "MUST NOT revert" requirement.
-
 ### Plugins (Optional Components)
 
 **Location:** `plugins/`
@@ -158,12 +147,10 @@ User → PlasmaVault.transfer()
      → [if VotesPlugin enabled] VotesPlugin.transferVotingUnits()
 ```
 
-### Preview Deposit (routed to ERC4626View)
+### Preview Deposit (direct in PlasmaVault)
 ```
 User → PlasmaVault.previewDeposit()
-     → fallback()
-     → _isERC4626ViewFunction() = true
-     → PlasmaVaultErc4626View.functionDelegateCall()
+     → (handled directly, no fallback routing)
 ```
 
 ### Delegate Votes (routed to VotesPlugin)

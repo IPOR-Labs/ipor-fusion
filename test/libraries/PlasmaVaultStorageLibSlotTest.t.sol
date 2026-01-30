@@ -186,13 +186,6 @@ contract PlasmaVaultStorageLibSlotTest is Test {
         assertEq(actualSlot, expectedSlot, "SHARE_SCALE_MULTIPLIER_SLOT mismatch");
     }
 
-    /// @notice Verifies PLASMA_VAULT_ERC4626_SLOT
-    function testPlasmaVaultErc4626SlotValue() public pure {
-        bytes32 expectedSlot = _computeSlot("io.ipor.fusion.PlasmaVaultERC4626");
-        bytes32 actualSlot = 0x8aae8542c58825e61c3bf382f5d6e53faa4b221eaec8fc21553203145ffbb700;
-        assertEq(actualSlot, expectedSlot, "PLASMA_VAULT_ERC4626_SLOT mismatch");
-    }
-
     /// @notice Verifies PLASMA_VAULT_VOTES_PLUGIN_SLOT
     function testPlasmaVaultVotesPluginSlotValue() public pure {
         bytes32 expectedSlot = _computeSlot("io.ipor.fusion.PlasmaVaultVotesPlugin");
