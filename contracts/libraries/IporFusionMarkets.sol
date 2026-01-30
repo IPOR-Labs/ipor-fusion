@@ -180,6 +180,13 @@ library IporFusionMarkets {
     /// @dev Used for executing Odos swaps via OdosSwapExecutor contract
     uint256 public constant ODOS_SWAPPER = 42;
 
+    /// @dev Aave V4 Hub & Spoke market
+    /// @dev Substrate type: AaveV4SubstrateType (Asset or Spoke)
+    /// @dev Substrate values: Encoded combination of type flag and address
+    ///      - Asset: AaveV4SubstrateLib.encodeAsset(tokenAddress) - ERC20 token address with flag 0x01
+    ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
+    uint256 public constant AAVE_V4 = 43;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
