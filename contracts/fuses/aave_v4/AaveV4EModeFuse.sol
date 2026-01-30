@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {AaveV4SubstrateLib} from "./AaveV4SubstrateLib.sol";
@@ -66,12 +67,9 @@ contract AaveV4EModeFuse is IFuseCommon {
     /// @notice Sets E-Mode category using transient storage for inputs
     /// @dev Reads spoke (0), eModeCategory (1) from transient storage
     function enterTransient() external {
-        bytes32 spokeBytes32 = TransientStorageLib.getInput(VERSION, 0);
-        bytes32 eModeCategoryBytes32 = TransientStorageLib.getInput(VERSION, 1);
-
         AaveV4EModeFuseEnterData memory data = AaveV4EModeFuseEnterData({
-            spoke: PlasmaVaultConfigLib.bytes32ToAddress(spokeBytes32),
-            eModeCategory: uint8(uint256(eModeCategoryBytes32))
+            spoke: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 0)),
+            eModeCategory: SafeCast.toUint8(uint256(TransientStorageLib.getInput(VERSION, 1)))
         });
 
         enter(data);

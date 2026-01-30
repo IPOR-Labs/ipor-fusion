@@ -99,14 +99,17 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
         uint256 reserveCount = spoke_.getReserveCount();
         address plasmaVault = address(this);
 
+        IAaveV4Spoke.Reserve memory reserve;
+        bytes32 assetSubstrate;
+
         // Reserves are indexed sequentially from 0 in Aave V4
         for (uint256 r; r < reserveCount; ++r) {
-            IAaveV4Spoke.Reserve memory reserve = spoke_.getReserve(r);
+            reserve = spoke_.getReserve(r);
 
             // Skip reserves whose underlying asset is not a granted substrate.
             // Supply/Borrow fuses enforce asset substrate validation, so the vault
             // cannot hold positions in reserves with non-granted assets.
-            bytes32 assetSubstrate = AaveV4SubstrateLib.encodeAsset(reserve.underlying);
+            assetSubstrate = AaveV4SubstrateLib.encodeAsset(reserve.underlying);
             if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, assetSubstrate)) {
                 continue;
             }

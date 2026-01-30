@@ -148,18 +148,12 @@ contract AaveV4BorrowFuse is IFuseCommon {
     /// @notice Enters (borrows) assets from Aave V4 protocol using transient storage for inputs
     /// @dev Reads spoke (0), asset (1), reserveId (2), amount (3), minShares (4) from transient storage
     function enterTransient() external {
-        bytes32 spokeBytes32 = TransientStorageLib.getInput(VERSION, 0);
-        bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 1);
-        bytes32 reserveIdBytes32 = TransientStorageLib.getInput(VERSION, 2);
-        bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 3);
-        bytes32 minSharesBytes32 = TransientStorageLib.getInput(VERSION, 4);
-
         AaveV4BorrowFuseEnterData memory data = AaveV4BorrowFuseEnterData({
-            spoke: PlasmaVaultConfigLib.bytes32ToAddress(spokeBytes32),
-            asset: PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32),
-            reserveId: TypeConversionLib.toUint256(reserveIdBytes32),
-            amount: TypeConversionLib.toUint256(amountBytes32),
-            minShares: TypeConversionLib.toUint256(minSharesBytes32)
+            spoke: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 0)),
+            asset: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 1)),
+            reserveId: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 2)),
+            amount: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 3)),
+            minShares: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 4))
         });
 
         (address returnedAsset, uint256 returnedAmount) = enter(data);
@@ -206,18 +200,12 @@ contract AaveV4BorrowFuse is IFuseCommon {
     /// @notice Exits (repays) assets to Aave V4 protocol using transient storage for inputs
     /// @dev Reads spoke (0), asset (1), reserveId (2), amount (3), minSharesRepaid (4) from transient storage
     function exitTransient() external {
-        bytes32 spokeBytes32 = TransientStorageLib.getInput(VERSION, 0);
-        bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 1);
-        bytes32 reserveIdBytes32 = TransientStorageLib.getInput(VERSION, 2);
-        bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 3);
-        bytes32 minSharesRepaidBytes32 = TransientStorageLib.getInput(VERSION, 4);
-
         AaveV4BorrowFuseExitData memory data = AaveV4BorrowFuseExitData({
-            spoke: PlasmaVaultConfigLib.bytes32ToAddress(spokeBytes32),
-            asset: PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32),
-            reserveId: TypeConversionLib.toUint256(reserveIdBytes32),
-            amount: TypeConversionLib.toUint256(amountBytes32),
-            minSharesRepaid: TypeConversionLib.toUint256(minSharesRepaidBytes32)
+            spoke: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 0)),
+            asset: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 1)),
+            reserveId: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 2)),
+            amount: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 3)),
+            minSharesRepaid: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 4))
         });
 
         (address returnedAsset, uint256 returnedAmount) = exit(data);

@@ -156,18 +156,12 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Enters (supplies) assets to Aave V4 protocol using transient storage for inputs
     /// @dev Reads spoke (0), asset (1), reserveId (2), amount (3), minShares (4) from transient storage
     function enterTransient() external {
-        bytes32 spokeBytes32 = TransientStorageLib.getInput(VERSION, 0);
-        bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 1);
-        bytes32 reserveIdBytes32 = TransientStorageLib.getInput(VERSION, 2);
-        bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 3);
-        bytes32 minSharesBytes32 = TransientStorageLib.getInput(VERSION, 4);
-
         AaveV4SupplyFuseEnterData memory data = AaveV4SupplyFuseEnterData({
-            spoke: PlasmaVaultConfigLib.bytes32ToAddress(spokeBytes32),
-            asset: PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32),
-            reserveId: TypeConversionLib.toUint256(reserveIdBytes32),
-            amount: TypeConversionLib.toUint256(amountBytes32),
-            minShares: TypeConversionLib.toUint256(minSharesBytes32)
+            spoke: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 0)),
+            asset: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 1)),
+            reserveId: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 2)),
+            amount: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 3)),
+            minShares: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 4))
         });
 
         (address returnedAsset, uint256 returnedAmount) = enter(data);
@@ -191,18 +185,12 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Exits (withdraws) assets from Aave V4 protocol using transient storage for inputs
     /// @dev Reads spoke (0), asset (1), reserveId (2), amount (3), minAmount (4) from transient storage
     function exitTransient() external {
-        bytes32 spokeBytes32 = TransientStorageLib.getInput(VERSION, 0);
-        bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 1);
-        bytes32 reserveIdBytes32 = TransientStorageLib.getInput(VERSION, 2);
-        bytes32 amountBytes32 = TransientStorageLib.getInput(VERSION, 3);
-        bytes32 minAmountBytes32 = TransientStorageLib.getInput(VERSION, 4);
-
         AaveV4SupplyFuseExitData memory data = AaveV4SupplyFuseExitData({
-            spoke: PlasmaVaultConfigLib.bytes32ToAddress(spokeBytes32),
-            asset: PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32),
-            reserveId: TypeConversionLib.toUint256(reserveIdBytes32),
-            amount: TypeConversionLib.toUint256(amountBytes32),
-            minAmount: TypeConversionLib.toUint256(minAmountBytes32)
+            spoke: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 0)),
+            asset: PlasmaVaultConfigLib.bytes32ToAddress(TransientStorageLib.getInput(VERSION, 1)),
+            reserveId: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 2)),
+            amount: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 3)),
+            minAmount: TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 4))
         });
 
         (address returnedAsset, uint256 returnedAmount) = _exit(data, false);
@@ -217,19 +205,13 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Performs instant withdrawal from Aave V4 protocol with exception handling
     /// @param params_ Array of parameters: [0] amount, [1] asset address, [2] spoke address, [3] reserveId, [4] minAmount
     function instantWithdraw(bytes32[] calldata params_) external override {
-        uint256 amount = uint256(params_[0]);
-        address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
-        address spoke = PlasmaVaultConfigLib.bytes32ToAddress(params_[2]);
-        uint256 reserveId = uint256(params_[3]);
-        uint256 minAmount = uint256(params_[4]);
-
         _exit(
             AaveV4SupplyFuseExitData({
-                spoke: spoke,
-                asset: asset,
-                reserveId: reserveId,
-                amount: amount,
-                minAmount: minAmount
+                spoke: PlasmaVaultConfigLib.bytes32ToAddress(params_[2]),
+                asset: PlasmaVaultConfigLib.bytes32ToAddress(params_[1]),
+                reserveId: uint256(params_[3]),
+                amount: uint256(params_[0]),
+                minAmount: uint256(params_[4])
             }),
             true
         );
