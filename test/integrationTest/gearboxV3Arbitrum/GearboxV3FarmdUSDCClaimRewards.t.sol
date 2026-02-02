@@ -75,7 +75,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: _withdrawManager
+                withdrawManager: _withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
 

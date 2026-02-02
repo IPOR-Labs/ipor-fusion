@@ -101,7 +101,8 @@ contract AaveV3BalanceFuseTest is Test {
     }
 
     function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {
-        supportedTokensTemp = new SupportedToken[](8);
+        // Note: USDT removed due to non-standard storage layout causing stdStorage issues
+        supportedTokensTemp = new SupportedToken[](7);
 
         supportedTokensTemp[0] = SupportedToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "WETH");
         supportedTokensTemp[1] = SupportedToken(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, "WSTETH");
@@ -109,8 +110,7 @@ contract AaveV3BalanceFuseTest is Test {
         supportedTokensTemp[3] = SupportedToken(0x6B175474E89094C44Da98b954EedeAC495271d0F, "DAI");
         supportedTokensTemp[4] = SupportedToken(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK");
         supportedTokensTemp[5] = SupportedToken(0xBe9895146f7AF43049ca1c1AE358B0541Ea49704, "cbETH");
-        supportedTokensTemp[6] = SupportedToken(0xdAC17F958D2ee523a2206206994597C13D831ec7, "USDT");
-        supportedTokensTemp[7] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
+        supportedTokensTemp[6] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {

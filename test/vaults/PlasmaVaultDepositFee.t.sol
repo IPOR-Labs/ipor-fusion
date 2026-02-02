@@ -20,6 +20,7 @@ import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {AccessManagerFactory} from "../../contracts/factory/AccessManagerFactory.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 
 contract PlasmaVaultDepositFeeTest is Test {
     // Test constants
@@ -70,6 +71,26 @@ contract PlasmaVaultDepositFeeTest is Test {
         fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), factoryAdmin);
         fusionFactory.updateFactoryAddresses(1000, factoryAddresses);
         fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
+
+        // Deploy all base addresses for cloning
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        address accessManagerBase = address(new IporFusionAccessManager(factoryAdmin, 0));
+        address priceOracleMiddleware = fusionFactory.getPriceOracleMiddleware();
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(factoryAdmin, priceOracleMiddleware));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+        address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
+        address[] memory approvedTargets = new address[](1);
+        approvedTargets[0] = plasmaVaultCoreBase;
+        address contextManagerBase = address(new ContextManager(accessManagerBase, approvedTargets));
+        fusionFactory.updateBaseAddresses(
+            1001,
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
+        );
         vm.stopPrank();
 
         FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(

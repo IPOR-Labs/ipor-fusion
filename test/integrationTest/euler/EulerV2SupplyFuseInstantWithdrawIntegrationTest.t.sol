@@ -88,7 +88,8 @@ contract EulerV2SupplyFuseInstantWithdrawIntegrationTest is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: withdrawManager
+                withdrawManager: withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
         vm.stopPrank();

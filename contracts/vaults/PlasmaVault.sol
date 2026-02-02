@@ -29,6 +29,9 @@ import {FeeManagerData, FeeManagerFactory, FeeConfig} from "../managers/fee/FeeM
 
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
+import {IPlasmaVaultVotesPlugin} from "../interfaces/IPlasmaVaultVotesPlugin.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
@@ -89,6 +92,9 @@ struct PlasmaVaultInitData {
     /// @notice Address of the withdraw manager contract
     /// @dev Controls withdrawal permissions and limits, zero address disables managed withdrawals
     address withdrawManager;
+    /// @notice Address of the votes plugin contract (PlasmaVaultVotesPlugin)
+    /// @dev Implements optional ERC20Votes functionality through delegatecall, zero address disables voting
+    address plasmaVaultVotesPlugin;
 }
 
 /// @title Market Balance Fuse Configuration
@@ -233,9 +239,11 @@ contract PlasmaVault is
     error WithdrawManagerInvalidSharesToRelease(uint256 sharesToRelease);
     error PermitFailed();
     error WithdrawManagerNotSet();
+    error VotesPluginNotEnabled();
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event DepositFeeRealized(address recipient, uint256 feeShares);
+    event ExecuteFinished();
 
     /// @notice Fallback function handling delegatecall execution and callbacks
     /// @dev Routes execution between callback handling and base contract delegation
@@ -265,15 +273,63 @@ contract PlasmaVault is
             /// @dev Handle callback can be done only during the execution of the FuseActions by Alpha
             CallbackHandlerLib.handleCallback();
             return "";
-        } else {
-            return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
         }
+
+        bytes4 sig = msg.sig;
+
+        // Route Votes functions to dedicated plugin contract (optional)
+        if (_isVotesFunction(sig)) {
+            address votesPlugin = PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
+            if (votesPlugin != address(0)) {
+                return votesPlugin.functionDelegateCall(msg.data);
+            }
+            revert VotesPluginNotEnabled();
+        }
+
+        return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
+    }
+
+    /// @notice Checks if the function selector is a Votes function
+    /// @param sig_ The function selector to check
+    /// @return True if the selector is a Votes function (IERC5805/IVotes/IERC6372)
+    function _isVotesFunction(bytes4 sig_) internal pure returns (bool) {
+        // IVotes functions (OpenZeppelin standard)
+        if (
+            sig_ == IVotes.getVotes.selector ||
+            sig_ == IVotes.getPastVotes.selector ||
+            sig_ == IVotes.getPastTotalSupply.selector ||
+            sig_ == IVotes.delegates.selector ||
+            sig_ == IVotes.delegate.selector ||
+            sig_ == IVotes.delegateBySig.selector
+        ) {
+            return true;
+        }
+
+        // IERC6372 functions (clock interface)
+        if (sig_ == IERC6372.clock.selector || sig_ == IERC6372.CLOCK_MODE.selector) {
+            return true;
+        }
+
+        // Extension-specific functions (ERC20VotesUpgradeable)
+        // Note: _transferVotingUnits is internal in OpenZeppelin, so it's not included here
+        if (sig_ == IPlasmaVaultVotesPlugin.numCheckpoints.selector || sig_ == IPlasmaVaultVotesPlugin.checkpoints.selector) {
+            return true;
+        }
+
+        return false;
     }
 
     /// @notice The plasma vault base contract address
     /// @dev Retrieved from storage library
     function PLASMA_VAULT_BASE() public view returns (address) {
         return PlasmaVaultStorageLib.getPlasmaVaultBase();
+    }
+
+    /// @notice The plasma vault votes plugin contract address (PlasmaVaultVotesPlugin)
+    /// @dev Retrieved from storage library. This contract provides optional ERC20Votes functionality.
+    /// @return The address of the votes plugin contract, or address(0) if voting is not enabled
+    function PLASMA_VAULT_VOTES_PLUGIN() public view returns (address) {
+        return PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
     }
 
     /// @notice Initializes the PlasmaVault with initialization data (for cloning)
@@ -335,7 +391,7 @@ contract PlasmaVault is
         uint256 marketIndex;
         uint256 fuseMarketId;
 
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBefore = _getNetTotalAssets();
 
         PlasmaVaultLib.executeStarted();
 
@@ -359,6 +415,8 @@ contract PlasmaVault is
         _updateMarketsBalances(markets);
 
         _addPerformanceFee(totalAssetsBefore);
+
+        emit ExecuteFinished();
     }
 
     /// @notice Updates balances for specified markets and calculates performance fees
@@ -388,7 +446,7 @@ contract PlasmaVault is
         if (marketIds_.length == 0) {
             return totalAssets();
         }
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBefore = _getNetTotalAssets();
         _updateMarketsBalances(marketIds_);
         _addPerformanceFee(totalAssetsBefore);
 
@@ -679,7 +737,7 @@ contract PlasmaVault is
         /// @dev first realize management fee, then other actions
         _realizeManagementFee();
 
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBefore = _getNetTotalAssets();
 
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
@@ -752,10 +810,11 @@ contract PlasmaVault is
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
 
             if (withdrawFee > 0) {
-                // Scale by 1e18 / (1e18 - withdrawFee) to add proportional fee on top of pre-fee shares
-                // This is the algebraic inverse of previewRedeem which uses (1e18 - withdrawFee) / 1e18
+                // Calculate total shares needed: sharesForAssets + feeShares
+                // where feeShares = sharesForAssets * withdrawFee / 1e18
+                // So totalShares = sharesForAssets * (1e18 + withdrawFee) / 1e18
                 // Round up since we're computing required shares
-                return Math.mulDiv(super.previewWithdraw(assets_), 1e18, 1e18 - withdrawFee, Math.Rounding.Ceil);
+                return Math.mulDiv(super.previewWithdraw(assets_), 1e18 + withdrawFee, 1e18, Math.Rounding.Ceil);
             }
         }
         return super.previewWithdraw(assets_);
@@ -1006,7 +1065,7 @@ contract PlasmaVault is
     }
 
     /// @notice Returns the total assets in the vault
-    /// @dev Calculates net total assets after management fee deduction
+    /// @dev ERC4626 compliant - returns gross total assets inclusive of all fees
     ///
     /// Calculation Flow:
     /// 1. Gross Assets
@@ -1014,20 +1073,37 @@ contract PlasmaVault is
     ///    - Adds market positions
     ///    - Includes pending operations
     ///
-    /// 2. Fee Deduction
-    ///    - Calculates unrealized management fees
-    ///    - Subtracts from gross total
-    ///    - Handles edge cases
+    /// ERC4626 Compliance:
+    /// - Returns gross assets as per ERC4626 spec requirement that totalAssets
+    ///   "MUST be inclusive of any fees that are charged against assets in the Vault"
+    /// - For net assets after fee deduction, use _getNetTotalAssets() internally
     ///
     /// Important Notes:
     /// - Excludes runtime accrued market interest
     /// - Excludes runtime accrued performance fees
-    /// - Considers management fee impact
-    /// - Returns 0 if fees exceed assets
+    /// - Does NOT deduct unrealized management fees (ERC4626 compliant)
     ///
-    /// @return uint256 Net total assets in underlying token decimals
+    /// @return uint256 Gross total assets in underlying token decimals
     /// @custom:access Public view function, no role restrictions
     function totalAssets() public view virtual override returns (uint256) {
+        return _getGrossTotalAssets();
+    }
+
+    /// @notice Returns net total assets after unrealized management fee deduction
+    /// @dev Used internally for calculations that require fee-adjusted asset values
+    ///
+    /// Calculation Flow:
+    /// 1. Gets gross total assets
+    /// 2. Calculates unrealized management fees
+    /// 3. Subtracts fees from gross total
+    /// 4. Returns 0 if fees exceed assets
+    ///
+    /// Use Cases:
+    /// - Performance fee calculations (comparing before/after values)
+    /// - Internal accounting where fee impact matters
+    ///
+    /// @return uint256 Net total assets in underlying token decimals
+    function _getNetTotalAssets() internal view returns (uint256) {
         uint256 grossTotalAssets = _getGrossTotalAssets();
         uint256 unrealizedManagementFee = PlasmaVaultFeesLib.getUnrealizedManagementFee(grossTotalAssets);
 
@@ -1181,7 +1257,7 @@ contract PlasmaVault is
         /// @dev first realize management fee, then other actions
         _realizeManagementFee();
 
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBefore = _getNetTotalAssets();
 
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
@@ -1234,6 +1310,9 @@ contract PlasmaVault is
 
         PlasmaVaultStorageLib.setShareScaleMultiplier(10 ** _decimalsOffset());
         PlasmaVaultStorageLib.setPlasmaVaultBase(initData_.plasmaVaultBase);
+        if (initData_.plasmaVaultVotesPlugin != address(0)) {
+            PlasmaVaultStorageLib.setPlasmaVaultVotesPlugin(initData_.plasmaVaultVotesPlugin);
+        }
 
         initData_.plasmaVaultBase.functionDelegateCall(
             abi.encodeWithSelector(
@@ -1300,7 +1379,7 @@ contract PlasmaVault is
     }
 
     function _addPerformanceFee(uint256 totalAssetsBefore_) internal {
-        uint256 totalAssetsAfter = totalAssets();
+        uint256 totalAssetsAfter = _getNetTotalAssets();
 
         if (totalAssetsAfter < totalAssetsBefore_) {
             return;

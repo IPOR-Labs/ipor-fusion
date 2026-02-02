@@ -203,7 +203,10 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param data_ Exit data structure
     /// @param catchExceptions_ If true, validates instant withdraw eligibility and catches exceptions
     /// @return withdrawnAssets The amount of underlying assets withdrawn
-    function _exit(EulerV2SupplyFuseExitData memory data_, bool catchExceptions_) internal returns (uint256 withdrawnAssets) {
+    function _exit(
+        EulerV2SupplyFuseExitData memory data_,
+        bool catchExceptions_
+    ) internal returns (uint256 withdrawnAssets) {
         // Validate canInstantWithdraw if catchExceptions_ is true
         if (catchExceptions_) {
             if (!EulerFuseLib.canInstantWithdraw(MARKET_ID, data_.eulerVault, data_.subAccount)) {

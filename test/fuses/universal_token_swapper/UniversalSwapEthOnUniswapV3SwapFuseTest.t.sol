@@ -103,7 +103,8 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
                 _setupFeeConfig(),
                 _accessManager,
                 address(new PlasmaVaultBase()),
-                _withdrawManager
+                _withdrawManager,
+                address(0)
             )
         );
 

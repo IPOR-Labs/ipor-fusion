@@ -107,7 +107,8 @@ contract OdosSwapperFuseTest is Test {
                 _setupFeeConfig(),
                 _accessManager,
                 address(new PlasmaVaultBase()),
-                _withdrawManager
+                _withdrawManager,
+                address(0)
             )
         );
 
@@ -171,7 +172,9 @@ contract OdosSwapperFuseTest is Test {
         );
 
         // when/then
-        vm.expectRevert(abi.encodeWithSelector(OdosSwapperFuse.OdosSwapperFuseUnsupportedAsset.selector, unsupportedToken));
+        vm.expectRevert(
+            abi.encodeWithSelector(OdosSwapperFuse.OdosSwapperFuseUnsupportedAsset.selector, unsupportedToken)
+        );
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
@@ -197,7 +200,9 @@ contract OdosSwapperFuseTest is Test {
         );
 
         // when/then
-        vm.expectRevert(abi.encodeWithSelector(OdosSwapperFuse.OdosSwapperFuseUnsupportedAsset.selector, unsupportedToken));
+        vm.expectRevert(
+            abi.encodeWithSelector(OdosSwapperFuse.OdosSwapperFuseUnsupportedAsset.selector, unsupportedToken)
+        );
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
@@ -286,7 +291,8 @@ contract OdosSwapperFuseTest is Test {
         // Calldata from Odos API /sor/quote/v3 at block 421193396
         // IMPORTANT: Generated with userAddr = 0x0 so receiver = msg.sender (executor)
         // This calldata swaps 1000 USDC -> ~0.2998 WETH
-        bytes memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
+        bytes
+            memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
 
         // minAmountOut = expectedOut * (1 - slippage) = 299864205733840000 * 0.99 ≈ 296865563676501600
         uint256 minAmountOut = 296865563676501600;
@@ -315,7 +321,6 @@ contract OdosSwapperFuseTest is Test {
         assertEq(vaultUsdcAfter, 0, "Vault should have swapped all USDC");
         assertGt(vaultWethAfter, minAmountOut, "Vault should have received WETH above minAmountOut");
         assertGt(vaultWethAfter, 0.29 ether, "Vault should have received approximately 0.3 WETH");
-
     }
 
     /// @notice Test that swap reverts when minAmountOut is not reached
@@ -327,7 +332,8 @@ contract OdosSwapperFuseTest is Test {
 
         // Calldata from Odos API /sor/quote/v3 at block 421193396
         // This calldata swaps 1000 USDC -> ~0.2998 WETH
-        bytes memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
+        bytes
+            memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
 
         // Set minAmountOut higher than what the swap will return (~0.2998 WETH)
         // We expect ~299864205733840000 but require 1 WETH (1e18) which is impossible
@@ -366,7 +372,8 @@ contract OdosSwapperFuseTest is Test {
         _depositToVault(depositAmount);
 
         // Calldata with userAddr = 0x0 so receiver = msg.sender
-        bytes memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
+        bytes
+            memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
 
         OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
             tokenIn: USDC,
@@ -543,7 +550,8 @@ contract OdosSwapperFuseTest is Test {
         _depositToVault(depositAmount);
 
         // Calldata from Odos API
-        bytes memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
+        bytes
+            memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
 
         // Calculate a minAmountOut that would fail with 1% slippage but pass with 2%
         // Expected output ~0.2998 WETH. With 2% slippage: 0.2998 * 0.98 = 0.2938 WETH
@@ -615,7 +623,9 @@ contract OdosSwapperFuseTest is Test {
 
         // when/then - use helper contract to test revert (library functions are inlined)
         SlippageEncoderHelper helper = new SlippageEncoderHelper();
-        vm.expectRevert(abi.encodeWithSelector(OdosSubstrateLib.OdosSubstrateLibSlippageOverflow.selector, overflowValue));
+        vm.expectRevert(
+            abi.encodeWithSelector(OdosSubstrateLib.OdosSubstrateLibSlippageOverflow.selector, overflowValue)
+        );
         helper.encodeSlippage(overflowValue);
     }
 

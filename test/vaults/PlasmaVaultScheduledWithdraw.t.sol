@@ -6,6 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, MarketSubstratesConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVaultVotesPlugin} from "../../contracts/vaults/plugins/PlasmaVaultVotesPlugin.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager, WithdrawRequestInfo} from "../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -64,7 +65,8 @@ contract PlasmaVaultScheduledWithdraw is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(_accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: _withdrawManager
+                withdrawManager: _withdrawManager,
+                plasmaVaultVotesPlugin: address(new PlasmaVaultVotesPlugin())
             })
         );
 
@@ -1239,7 +1241,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
     // Voting Checkpoint Tests for BurnRequestFeeFuse
     // ============================================
     // These tests verify that the BurnRequestFeeFuse correctly updates
-    // voting checkpoints when burning shares 
+    // voting checkpoints when burning shares
     // ============================================
 
     /**
@@ -1353,10 +1355,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 burnAmount = initialBalance / 2;
 
         FuseAction[] memory actions = new FuseAction[](1);
-        actions[0] = FuseAction(
-            address(_burnRequestFeeFuse),
-            abi.encodeWithSignature("enter((uint256))", burnAmount)
-        );
+        actions[0] = FuseAction(address(_burnRequestFeeFuse), abi.encodeWithSignature("enter((uint256))", burnAmount));
 
         // when - Execute partial burn
         vm.startPrank(_ALPHA);
@@ -1428,11 +1427,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 delegateeVotesAfter = IVotes(_plasmaVault).getVotes(delegatee);
 
         // CRITICAL: Delegatee's voting power should be reduced to zero
-        assertEq(
-            delegateeVotesAfter,
-            0,
-            "Delegatee's voting power should be zero after burning delegator's shares"
-        );
+        assertEq(delegateeVotesAfter, 0, "Delegatee's voting power should be zero after burning delegator's shares");
     }
 
     /**

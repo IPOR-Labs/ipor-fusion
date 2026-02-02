@@ -239,7 +239,8 @@ library FuseStorageLib {
      * - Essential for position ownership verification
      * - Prevents DoS via malicious NFT transfers to vault
      */
-    bytes32 private constant VELODROME_SUPERCHAIN_SLIPSTREAM_TOKEN_IDS = 0xadec8ab8bc14c5c231913cd378fa94ac5788a64fe4296974cef061d370402200;
+    bytes32 private constant VELODROME_SUPERCHAIN_SLIPSTREAM_TOKEN_IDS =
+        0xadec8ab8bc14c5c231913cd378fa94ac5788a64fe4296974cef061d370402200;
 
     /**
      * @dev Storage slot for managing Aerodrome Slipstream NFT position token IDs in the Plasma Vault
@@ -279,7 +280,8 @@ library FuseStorageLib {
      * - Essential for position ownership verification
      * - Prevents DoS via malicious NFT transfers to vault
      */
-    bytes32 private constant AERODROME_SLIPSTREAM_TOKEN_IDS = 0x0c954f82f9216b16230a9847b4d73bfde1ddedf5d9a25bf9eb22e669cbfcd600;
+    bytes32 private constant AERODROME_SLIPSTREAM_TOKEN_IDS =
+        0x0c954f82f9216b16230a9847b4d73bfde1ddedf5d9a25bf9eb22e669cbfcd600;
 
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {

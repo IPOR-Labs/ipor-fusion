@@ -99,7 +99,8 @@ contract LiquityStabilityPoolFuseTest is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                address(new WithdrawManager(accessManager))
+                address(new WithdrawManager(accessManager)),
+                address(0)
             )
         );
 

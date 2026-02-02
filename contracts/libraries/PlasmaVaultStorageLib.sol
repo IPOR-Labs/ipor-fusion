@@ -686,7 +686,12 @@ library PlasmaVaultStorageLib {
      * @dev Storage slot for withdraw manager contract address
      * @notice Manages withdrawal controls and permissions in the Plasma Vault
      *
-     * Calculation:
+     * LEGACY NOTE: This slot value does NOT match the formula below due to a historical implementation error.
+     * The value was derived from CALLBACK_HANDLER slot with a modified last byte (0x11 instead of 0x00).
+     * This CANNOT be changed as contracts are already deployed with this value.
+     * Correct value per formula would be: 0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100
+     *
+     * Documented calculation (not matching actual value):
      * keccak256(abi.encode(uint256(keccak256("io.ipor.WithdrawManager")) - 1)) & ~bytes32(uint256(0xff))
      *
      * Purpose:
@@ -734,6 +739,14 @@ library PlasmaVaultStorageLib {
      */
     bytes32 private constant SHARE_SCALE_MULTIPLIER_SLOT =
         0x5bb34fc23414cfe7e422518e1d8590877bcc5dcacad5f8689bfd98e9a05ac600;
+
+    /**
+     * @dev Storage slot for PlasmaVaultVotesPlugin address. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultVotesPlugin")) - 1)) & ~bytes32(uint256(0xff))
+     * @notice Stores address of PlasmaVaultVotesPlugin contract which provides optional ERC20Votes functionality
+     */
+    bytes32 private constant PLASMA_VAULT_VOTES_PLUGIN_SLOT =
+        0x9a54c2c1797818ee85d1850742208f80368867ad13d3e45052e701201fa4af00;
 
     /**
      * @notice Maps callback signatures to their handler contracts
@@ -1152,6 +1165,24 @@ library PlasmaVaultStorageLib {
     function setShareScaleMultiplier(uint256 multiplier_) internal {
         assembly {
             sstore(SHARE_SCALE_MULTIPLIER_SLOT, multiplier_)
+        }
+    }
+
+    /// @notice Gets the PlasmaVaultVotesPlugin address from storage
+    /// @return The address of the PlasmaVaultVotesPlugin contract (optional ERC20Votes functionality)
+    function getPlasmaVaultVotesPlugin() internal view returns (address) {
+        address votesPlugin;
+        assembly {
+            votesPlugin := sload(PLASMA_VAULT_VOTES_PLUGIN_SLOT)
+        }
+        return votesPlugin;
+    }
+
+    /// @notice Sets the PlasmaVaultVotesPlugin address in storage
+    /// @param votesPlugin_ The address of the PlasmaVaultVotesPlugin contract
+    function setPlasmaVaultVotesPlugin(address votesPlugin_) internal {
+        assembly {
+            sstore(PLASMA_VAULT_VOTES_PLUGIN_SLOT, votesPlugin_)
         }
     }
 }

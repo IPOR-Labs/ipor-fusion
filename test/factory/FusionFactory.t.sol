@@ -129,7 +129,8 @@ contract FusionFactoryTest is Test {
                 }),
                 accessManager: accessManagerBase,
                 plasmaVaultBase: plasmaVaultBase,
-                withdrawManager: withdrawManagerBase
+                withdrawManager: withdrawManagerBase,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
 
