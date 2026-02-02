@@ -16,7 +16,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
-import {IVotesExtension} from "../../contracts/interfaces/IVotesExtension.sol";
+import {IPlasmaVaultVotesPlugin} from "../../contracts/interfaces/IPlasmaVaultVotesPlugin.sol";
 import {IPlasmaVaultVotesPlugin} from "../../contracts/interfaces/IPlasmaVaultVotesPlugin.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 
@@ -450,7 +450,7 @@ contract PlasmaVaultVotesArchitectureTest is Test {
         (PlasmaVault vault, ) = _deployVault(true);
 
         // Initially 0 checkpoints
-        uint32 checkpoints = IVotesExtension(address(vault)).numCheckpoints(alice);
+        uint32 checkpoints = IPlasmaVaultVotesPlugin(address(vault)).numCheckpoints(alice);
         assertEq(checkpoints, 0, "Should have 0 checkpoints initially");
 
         // Alice deposits and delegates
@@ -460,7 +460,7 @@ contract PlasmaVaultVotesArchitectureTest is Test {
         IVotes(address(vault)).delegate(alice);
         vm.stopPrank();
 
-        checkpoints = IVotesExtension(address(vault)).numCheckpoints(alice);
+        checkpoints = IPlasmaVaultVotesPlugin(address(vault)).numCheckpoints(alice);
         assertEq(checkpoints, 1, "Should have 1 checkpoint after delegation");
 
         // Advance block and make another action
@@ -469,7 +469,7 @@ contract PlasmaVaultVotesArchitectureTest is Test {
         vm.prank(alice);
         vault.transfer(bob, 100e18);
 
-        checkpoints = IVotesExtension(address(vault)).numCheckpoints(alice);
+        checkpoints = IPlasmaVaultVotesPlugin(address(vault)).numCheckpoints(alice);
         assertEq(checkpoints, 2, "Should have 2 checkpoints after transfer");
     }
 
@@ -634,7 +634,7 @@ contract PlasmaVaultVotesArchitectureTest is Test {
         }
 
         // System should handle many checkpoints
-        uint32 checkpoints = IVotesExtension(address(vault)).numCheckpoints(alice);
+        uint32 checkpoints = IPlasmaVaultVotesPlugin(address(vault)).numCheckpoints(alice);
         assertGt(checkpoints, 0, "Should have checkpoints");
 
         // Should still be able to query votes

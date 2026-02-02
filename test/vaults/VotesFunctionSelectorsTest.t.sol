@@ -4,10 +4,10 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
-import {IVotesExtension} from "../../contracts/interfaces/IVotesExtension.sol";
+import {IPlasmaVaultVotesPlugin} from "../../contracts/interfaces/IPlasmaVaultVotesPlugin.sol";
 
 /// @title VotesFunctionSelectorsTest
-/// @notice Verifies that function selectors for IVotes, IERC6372, and IVotesExtension match expected values
+/// @notice Verifies that function selectors for IVotes, IERC6372, and IPlasmaVaultVotesPlugin match expected values
 /// @dev These tests ensure that the selectors used in PlasmaVault._isVotesFunction are correct
 contract VotesFunctionSelectorsTest is Test {
     // ============================================
@@ -51,15 +51,19 @@ contract VotesFunctionSelectorsTest is Test {
     }
 
     // ============================================
-    // IVotesExtension selectors
+    // IPlasmaVaultVotesPlugin selectors
     // ============================================
 
-    function testIVotesExtension_numCheckpoints_selector() public pure {
-        assertEq(IVotesExtension.numCheckpoints.selector, bytes4(0x6fcfff45), "numCheckpoints selector mismatch");
+    function testIPlasmaVaultVotesPlugin_numCheckpoints_selector() public pure {
+        assertEq(IPlasmaVaultVotesPlugin.numCheckpoints.selector, bytes4(0x6fcfff45), "numCheckpoints selector mismatch");
     }
 
-    function testIVotesExtension_checkpoints_selector() public pure {
-        assertEq(IVotesExtension.checkpoints.selector, bytes4(0xf1127ed8), "checkpoints selector mismatch");
+    function testIPlasmaVaultVotesPlugin_checkpoints_selector() public pure {
+        assertEq(IPlasmaVaultVotesPlugin.checkpoints.selector, bytes4(0xf1127ed8), "checkpoints selector mismatch");
+    }
+
+    function testIPlasmaVaultVotesPlugin_transferVotingUnits_selector() public pure {
+        assertEq(IPlasmaVaultVotesPlugin.transferVotingUnits.selector, bytes4(0x0d207a0f), "transferVotingUnits selector mismatch");
     }
 
     // Note: _transferVotingUnits is internal in OpenZeppelin ERC20VotesUpgradeable,
@@ -111,11 +115,16 @@ contract VotesFunctionSelectorsTest is Test {
 
     function testSelector_numCheckpoints_keccak() public pure {
         bytes4 computed = bytes4(keccak256("numCheckpoints(address)"));
-        assertEq(IVotesExtension.numCheckpoints.selector, computed, "numCheckpoints keccak mismatch");
+        assertEq(IPlasmaVaultVotesPlugin.numCheckpoints.selector, computed, "numCheckpoints keccak mismatch");
     }
 
     function testSelector_checkpoints_keccak() public pure {
         bytes4 computed = bytes4(keccak256("checkpoints(address,uint32)"));
-        assertEq(IVotesExtension.checkpoints.selector, computed, "checkpoints keccak mismatch");
+        assertEq(IPlasmaVaultVotesPlugin.checkpoints.selector, computed, "checkpoints keccak mismatch");
+    }
+
+    function testSelector_transferVotingUnits_keccak() public pure {
+        bytes4 computed = bytes4(keccak256("transferVotingUnits(address,address,uint256)"));
+        assertEq(IPlasmaVaultVotesPlugin.transferVotingUnits.selector, computed, "transferVotingUnits keccak mismatch");
     }
 }

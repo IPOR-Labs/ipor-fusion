@@ -31,7 +31,7 @@ import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
-import {IVotesExtension} from "../interfaces/IVotesExtension.sol";
+import {IPlasmaVaultVotesPlugin} from "../interfaces/IPlasmaVaultVotesPlugin.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
@@ -312,7 +312,7 @@ contract PlasmaVault is
 
         // Extension-specific functions (ERC20VotesUpgradeable)
         // Note: _transferVotingUnits is internal in OpenZeppelin, so it's not included here
-        if (sig_ == IVotesExtension.numCheckpoints.selector || sig_ == IVotesExtension.checkpoints.selector) {
+        if (sig_ == IPlasmaVaultVotesPlugin.numCheckpoints.selector || sig_ == IPlasmaVaultVotesPlugin.checkpoints.selector) {
             return true;
         }
 
