@@ -16,6 +16,8 @@ import {CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../..
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../contracts/fuses/midas/MidasSupplyFuse.sol";
+import {MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
 import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -219,6 +221,30 @@ contract PlasmaVaultMock {
     /// @return outputs Array of output values
     function getOutputs(address account_) external view returns (bytes32[] memory) {
         return TransientStorageLib.getOutputs(account_);
+    }
+
+    function enterMidasSupply(MidasSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,address))", data)
+        );
+    }
+
+    function enterMidasRequestSupply(MidasRequestSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,address))", data)
+        );
+    }
+
+    function exitMidasSupply(MidasSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,uint256,uint256,address,address))", data)
+        );
+    }
+
+    function exitMidasRequestSupply(MidasRequestSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,uint256,address,address))", data)
+        );
     }
 
     function execute(address fuse_, bytes calldata data_) external {
