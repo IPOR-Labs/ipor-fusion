@@ -39,6 +39,9 @@ struct NapierSwapYtExitFuseData {
 contract NapierSwapYtFuse is NapierUniversalRouterFuse {
     using SafeERC20 for ERC20;
 
+    /// @notice Error thrown when amountIn is zero
+    error NapierSwapYtFuseInvalidAmountIn();
+
     /// @param version Address of this contract version
     /// @param pool Address of the Napier V2 toki pool
     /// @param tokenIn Asset supplied into the router
@@ -71,6 +74,10 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
             revert NapierFuseIInvalidToken();
+        }
+
+        if (data_.amountIn == 0) {
+            revert NapierSwapYtFuseInvalidAmountIn();
         }
 
         // Buy YT with the underlying token
@@ -111,6 +118,10 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenOut)) {
             revert NapierFuseIInvalidToken();
+        }
+
+        if (data_.amountIn == 0) {
+            revert NapierSwapYtFuseInvalidAmountIn();
         }
 
         // Sell PT for the underlying token
