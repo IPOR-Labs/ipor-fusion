@@ -67,7 +67,7 @@ PlasmaVault
 -   **`NapierUniversalRouterFuse`:** Immutable `VERSION`, `MARKET_ID`, and router reference, plus `_getPoolKey` for `ITokiPoolToken`.
 -   **`NapierSupplyFuse`:** Issues PT+YT via underlying or vault asset, chaining `VAULT_CONNECTOR_DEPOSIT` + `PT_SUPPLY` when needed.
 -   **`NapierRedeemFuse`:** Post-expiry PT redemption for underlying or vault asset using `PT_REDEEM` and optional `VAULT_CONNECTOR_REDEEM`.
--   **`NapierCombineFuse`:** Burns equal PT and YT balances before/after expiry to exit into the underlying or vault asset.
+-   **`NapierCombineFuse`:** Burns equal PT and YT balances before/after expiry to exit into the underlying or vault asset, enforcing a minimum tokenOut amount.
 -   **`NapierCollectFuse`:** Calls `IPrincipalToken.collect` to realize accrued yield and reward tokens.
 -   **`NapierDepositFuse`:** Adds/removes liquidity proportionally using both currency0 (underlying) and currency1 (PT) tokens.
 -   **`NapierZapDepositFuse`:** Zaps single-sided liquidity using only currency0 (underlying) tokens, automatically splitting and keeping YT. Maturity-aware exit logic uses swap (pre-maturity) or redeem (post-maturity).
@@ -113,19 +113,24 @@ Vault automation should track `principalToken.maturity()` and settlement status 
 
 1. Validate PT and tokenIn substrates.
 2. Encode `PT_SUPPLY` plus optional `VAULT_CONNECTOR_DEPOSIT`.
-3. Transfer `amountIn` to the router, run `execute`, measure PT delta, emit `NapierSupplyFuseEnter`.
+3. Transfer `amountIn` to the router, run `execute`, measure PT delta.
+4. Revert if minted principals are below `minPrincipalsAmount`.
+5. Emit `NapierSupplyFuseEnter`.
 
 ### NapierRedeemFuse – Redeem PT post-maturity
 
 1. Validate PT and tokenOut.
 2. Encode `PT_REDEEM` (and `VAULT_CONNECTOR_REDEEM` if needed).
-3. Transfer PT to router, execute, compute tokenOut delta, emit `NapierRedeemFuseEnter`.
+3. Transfer PT to router, execute, compute tokenOut delta.
+4. Revert if `amountOut` is below `minTokenOutAmount`.
+5. Emit `NapierRedeemFuseEnter`.
 
 ### NapierCombineFuse – Burn PT+YT
 
 1. Ensure PT, YT, and tokenOut are granted.
 2. Transfer equal PT/YT to router, run `PT_COMBINE`, optionally unwrap to asset.
-3. Emit `NapierCombineFuseEnter` with returned amount.
+3. Revert if `amountOut` is below `minTokenOutAmount`.
+4. Emit `NapierCombineFuseEnter` with returned amount.
 
 ### NapierCollectFuse – Harvest yield + rewards
 
@@ -186,11 +191,13 @@ Vault automation should track `principalToken.maturity()` and settlement status 
 ### NapierSwapPtFuse – Uniswap V4 PT swaps
 
 1. Validate pool + currencies.
-2. Build V4 action bundle (`SWAP_EXACT_IN_SINGLE`, `SETTLE`, `TAKE_ALL`), passing `minimumAmount` to TAKE_ALL.
-3. Transfer tokenIn to router, execute, verify output, emit swap event.
+2. Revert if `amountIn` is zero.
+3. Build V4 action bundle (`SWAP_EXACT_IN_SINGLE`, `SETTLE`, `TAKE_ALL`), passing `minimumAmount` to TAKE_ALL.
+4. Transfer tokenIn to router, execute, verify output, emit swap event.
 
 ### NapierSwapYtFuse – YT swaps via universal router
 
 1. Validate pool, underlying, and YT.
-2. Encode `YT_SWAP_UNDERLYING_FOR_YT` or `YT_SWAP_YT_FOR_UNDERLYING` with approximation + min-out params (default binary search config applies when `eps` is zero).
-3. Force-approve Permit2 for the token before execution, run the router call, then reset the Permit2 approval; emit swap event.
+2. Revert if `amountIn` is zero.
+3. Encode `YT_SWAP_UNDERLYING_FOR_YT` or `YT_SWAP_YT_FOR_UNDERLYING` with approximation + min-out params (default binary search config applies when `eps` is zero).
+4. Force-approve Permit2 for the token before execution, run the router call, then reset the Permit2 approval; emit swap event.
