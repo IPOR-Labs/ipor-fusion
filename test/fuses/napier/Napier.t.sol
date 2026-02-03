@@ -1033,6 +1033,21 @@ contract NapierFuseTest is Test {
         assertGt(ptBalanceAfter, ptBalanceBefore, "PT balance");
     }
 
+    function test_SwapPt_RevertWhen_AmountInZero() public {
+        NapierSwapPtFuseData memory data = NapierSwapPtFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 0,
+            minimumAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierSwapPtFuse.NapierSwapPtFuseInvalidAmountIn.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
     /// @notice Test selling PT for underlying token via swap
     function test_SwapPt_Exit() public {
         // First, supply some PTs so the vault has PTs to swap
@@ -1212,6 +1227,22 @@ contract NapierFuseTest is Test {
         assertGt(ytBalanceAfter, ytBalanceBefore, "YT balance");
     }
 
+    function test_SwapYt_Enter_RevertWhen_AmountInZero() public {
+        NapierSwapYtEnterFuseData memory data = NapierSwapYtEnterFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 0,
+            minimumAmount: 0,
+            approxParams: ApproximationParams({guessMin: 0, guessMax: 0, eps: 0})
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierSwapYtFuse.NapierSwapYtFuseInvalidAmountIn.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
     /// @notice Test selling YT for underlying token via swap
     function test_SwapYt_Exit() public {
         address yt = IPrincipalToken(principalToken).i_yt();
@@ -1247,6 +1278,21 @@ contract NapierFuseTest is Test {
 
         uint256 ytBalanceAfter = ERC20(yt).balanceOf(address(_plasmaVault));
         assertEq(ytBalanceAfter, ytBalanceBefore - amountIn, "YT balance");
+    }
+
+    function test_SwapYt_Exit_RevertWhen_AmountInZero() public {
+        NapierSwapYtExitFuseData memory data = NapierSwapYtExitFuseData({
+            pool: ITokiPoolToken(pool),
+            amountIn: 0,
+            minimumAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.exit, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierSwapYtFuse.NapierSwapYtFuseInvalidAmountIn.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
     }
 
     /// @notice Test revert when pool is not granted as substrate for YT swaps (enter)
