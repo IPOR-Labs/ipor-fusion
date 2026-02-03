@@ -28,9 +28,6 @@ contract NapierYtLinearPriceFeed is IPriceFeed {
     /// @notice Address of the Napier liquidity token (Toki pool token)
     address public immutable LIQUIDITY_TOKEN;
 
-    /// @notice Address of the price oracle middleware expected to supply USD prices
-    address public immutable PRICE_MIDDLEWARE;
-
     /// @notice Address of the asset used as base for the pricing asset
     address public immutable BASE;
 
@@ -46,8 +43,8 @@ contract NapierYtLinearPriceFeed is IPriceFeed {
     error PriceOracleInvalidBaseAsset();
 
     /// @notice Configure the YT price feed
-    constructor(address priceMiddleware_, address tokiChainlinkOracle_) {
-        if (tokiChainlinkOracle_ == address(0) || priceMiddleware_ == address(0)) {
+    constructor(address tokiChainlinkOracle_) {
+        if (tokiChainlinkOracle_ == address(0)) {
             revert PriceOracleZeroAddress();
         }
 
@@ -69,7 +66,6 @@ contract NapierYtLinearPriceFeed is IPriceFeed {
 
         TOKI_CHAINLINK_ORACLE = ITokiChainlinkCompatOracle(tokiChainlinkOracle_);
         LIQUIDITY_TOKEN = liquidityToken;
-        PRICE_MIDDLEWARE = priceMiddleware_;
         BASE = IPrincipalToken(pt).i_yt();
         QUOTE = quote;
         MATURITY = IPrincipalToken(pt).maturity();
@@ -101,7 +97,7 @@ contract NapierYtLinearPriceFeed is IPriceFeed {
         (, int256 unitPtPrice, , , ) = TOKI_CHAINLINK_ORACLE.latestRoundData();
         int256 unitPrice = PT_PAR_PRICE - unitPtPrice;
 
-        (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(QUOTE);
+        (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(msg.sender).getAssetPrice(QUOTE);
 
         price = ((unitPrice.toUint256() * assetPrice) / 10 ** priceDecimals).toInt256();
 
@@ -116,8 +112,8 @@ contract NapierYtLinearPriceFeed is IPriceFeed {
         time = block.timestamp;
     }
 
-    /// @notice Returns the current price of the configured quote asset from the middleware
+    /// @notice Returns the current price of the configured quote asset from the caller middleware
     function getPricingAssetPrice() external view returns (uint256 price, uint256 decimals_) {
-        return IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(QUOTE);
+        return IPriceOracleMiddleware(msg.sender).getAssetPrice(QUOTE);
     }
 }

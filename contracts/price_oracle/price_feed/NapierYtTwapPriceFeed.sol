@@ -30,9 +30,6 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
     /// @notice Napier liquidity token (Toki pool token)
     address public immutable LIQUIDITY_TOKEN;
 
-    /// @notice Price oracle middleware expected to supply USD prices
-    address public immutable PRICE_MIDDLEWARE;
-
     /// @notice Base asset being priced (YT token)
     address public immutable BASE;
 
@@ -61,13 +58,12 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
 
     /// @notice Configure the YT price feed
     constructor(
-        address priceMiddleware_,
         address tokiOracle_,
         address liquidityToken_,
         uint32 twapWindow_,
         address quote_
     ) {
-        if (tokiOracle_ == address(0) || priceMiddleware_ == address(0) || liquidityToken_ == address(0)) {
+        if (tokiOracle_ == address(0) || liquidityToken_ == address(0)) {
             revert PriceOracleZeroAddress();
         }
 
@@ -96,7 +92,6 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
 
         TOKI_ORACLE = ITokiOracle(tokiOracle_);
         LIQUIDITY_TOKEN = liquidityToken_;
-        PRICE_MIDDLEWARE = priceMiddleware_;
         BASE = yt;
         QUOTE = quote_;
         TWAP_WINDOW = twapWindow_;
@@ -142,7 +137,7 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
             ? unitPriceQuote * 10 ** (18 - quoteDecimals)
             : unitPriceQuote / 10 ** (quoteDecimals - 18);
 
-        (uint256 quoteUsdPrice, uint256 quoteUsdDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(
+        (uint256 quoteUsdPrice, uint256 quoteUsdDecimals) = IPriceOracleMiddleware(msg.sender).getAssetPrice(
             QUOTE
         );
 
@@ -155,8 +150,8 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
         time = block.timestamp;
     }
 
-    /// @notice Returns the current price of the configured quote asset from the middleware
+    /// @notice Returns the current price of the configured quote asset from the caller middleware
     function getPricingAssetPrice() external view returns (uint256 price, uint256 decimals_) {
-        return IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(QUOTE);
+        return IPriceOracleMiddleware(msg.sender).getAssetPrice(QUOTE);
     }
 }

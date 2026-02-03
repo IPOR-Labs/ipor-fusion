@@ -10,8 +10,8 @@ import {ITokiChainlinkCompatOracle} from "./ext/ITokiChainlinkCompatOracle.sol";
 /// @notice Provides USD price data for Napier PT tokens using the Toki chainlink compatible oracle
 /// @dev Implementation notes:
 /// - Expects the provided Toki chainlink compatible oracle to be pre-initialized and populated for the pool
-/// - PriceOracleMiddleware must have a source configured for the chosen pricing asset (asset or underlying),
-///   as determined by the Toki oracle's immutable configuration
+/// - PriceOracleMiddleware (msg.sender) must have a source configured for the chosen pricing asset
+///   (asset or underlying), as determined by the Toki oracle's immutable configuration
 contract NapierPtLpPriceFeed is IPriceFeed {
     using SafeCast for *;
 
@@ -23,9 +23,6 @@ contract NapierPtLpPriceFeed is IPriceFeed {
     /// @notice Address of the Napier liquidity token (Toki pool token)
     address public immutable LIQUIDITY_TOKEN;
 
-    /// @notice Address of the price oracle middleware expected to supply USD prices
-    address public immutable PRICE_MIDDLEWARE;
-
     /// @notice Address of the asset used as base for the pricing asset (either PT or LP)
     address public immutable BASE;
 
@@ -35,8 +32,8 @@ contract NapierPtLpPriceFeed is IPriceFeed {
     error PriceOracleZeroAddress();
     error PriceOracleInvalidPrice();
 
-    constructor(address priceMiddleware_, address tokiChainlinkOracle_) {
-        if (tokiChainlinkOracle_ == address(0) || priceMiddleware_ == address(0)) {
+    constructor(address tokiChainlinkOracle_) {
+        if (tokiChainlinkOracle_ == address(0)) {
             revert PriceOracleZeroAddress();
         }
 
@@ -45,7 +42,6 @@ contract NapierPtLpPriceFeed is IPriceFeed {
 
         TOKI_CHAINLINK_ORACLE = ITokiChainlinkCompatOracle(tokiChainlinkOracle_);
         LIQUIDITY_TOKEN = liquidityToken;
-        PRICE_MIDDLEWARE = priceMiddleware_;
         BASE = base;
         QUOTE = quote;
     }
@@ -68,7 +64,7 @@ contract NapierPtLpPriceFeed is IPriceFeed {
     {
         (, int256 unitPrice, , , ) = TOKI_CHAINLINK_ORACLE.latestRoundData();
 
-        (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(QUOTE);
+        (uint256 assetPrice, uint256 priceDecimals) = IPriceOracleMiddleware(msg.sender).getAssetPrice(QUOTE);
 
         price = ((unitPrice.toUint256() * assetPrice) / 10 ** priceDecimals).toInt256();
 
@@ -77,12 +73,5 @@ contract NapierPtLpPriceFeed is IPriceFeed {
         }
 
         time = block.timestamp;
-    }
-
-    /// @notice Returns the current price of the configured pricing asset from the middleware
-    /// @return price Asset price expressed in USD
-    /// @return decimals_ Number of decimals returned by the middleware
-    function getPricingAssetPrice() external view returns (uint256 price, uint256 decimals_) {
-        return IPriceOracleMiddleware(PRICE_MIDDLEWARE).getAssetPrice(QUOTE);
     }
 }
