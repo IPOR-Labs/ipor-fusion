@@ -530,7 +530,8 @@ contract NapierFuseTest is Test {
         NapierSupplyFuseEnterData memory data = NapierSupplyFuseEnterData({
             principalToken: IPrincipalToken(principalToken),
             tokenIn: USDC,
-            amountIn: amountIn
+            amountIn: amountIn,
+            minPrincipalsAmount: 0
         });
 
         _test_Supply(data);
@@ -541,7 +542,8 @@ contract NapierFuseTest is Test {
         NapierSupplyFuseEnterData memory data = NapierSupplyFuseEnterData({
             principalToken: IPrincipalToken(principalToken),
             tokenIn: GAUNTLET_USDC_PRIME,
-            amountIn: amountIn
+            amountIn: amountIn,
+            minPrincipalsAmount: 0
         });
 
         _test_Supply(data);
@@ -554,7 +556,8 @@ contract NapierFuseTest is Test {
         NapierSupplyFuseEnterData memory data = NapierSupplyFuseEnterData({
             principalToken: IPrincipalToken(badToken),
             tokenIn: USDC,
-            amountIn: amountIn
+            amountIn: amountIn,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -575,7 +578,8 @@ contract NapierFuseTest is Test {
         NapierSupplyFuseEnterData memory data = NapierSupplyFuseEnterData({
             principalToken: pt,
             tokenIn: tokenIn,
-            amountIn: 1298937
+            amountIn: 1298937,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -583,6 +587,36 @@ contract NapierFuseTest is Test {
 
         vm.prank(ALPHA);
         vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_Supply_RevertWhen_MinPrincipalsTooHigh() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        uint256 amountIn = 10 ** ERC20(USDC).decimals();
+
+        uint256 preview;
+        if (USDC == pt.underlying()) {
+            preview = pt.previewSupply(amountIn);
+        } else if (USDC == pt.i_asset()) {
+            address underlyingToken = pt.underlying();
+            uint256 shares = IERC4626(underlyingToken).previewDeposit(amountIn);
+            preview = pt.previewSupply(shares);
+        } else {
+            revert("Invalid token");
+        }
+
+        NapierSupplyFuseEnterData memory data = NapierSupplyFuseEnterData({
+            principalToken: pt,
+            tokenIn: USDC,
+            amountIn: amountIn,
+            minPrincipalsAmount: preview + 1
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _supplyFuse, data: abi.encodeCall(NapierSupplyFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierSupplyFuse.NapierSupplyFuseInsufficientPrincipals.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -621,7 +655,7 @@ contract NapierFuseTest is Test {
         IPrincipalToken pt = IPrincipalToken(principalToken);
 
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals()})
+            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
         );
 
         // Get the actual PT balance after supply
@@ -634,7 +668,8 @@ contract NapierFuseTest is Test {
         NapierRedeemFuseEnterData memory data = NapierRedeemFuseEnterData({
             principalToken: pt,
             tokenOut: GAUNTLET_USDC_PRIME,
-            principals: ptBalance
+            principals: ptBalance,
+            minTokenOutAmount: 0
         });
         _test_Redeem(data);
     }
@@ -646,7 +681,8 @@ contract NapierFuseTest is Test {
             NapierSupplyFuseEnterData({
                 principalToken: pt,
                 tokenIn: GAUNTLET_USDC_PRIME,
-                amountIn: 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals()
+                amountIn: 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(),
+                minPrincipalsAmount: 0
             })
         );
 
@@ -659,7 +695,8 @@ contract NapierFuseTest is Test {
         NapierRedeemFuseEnterData memory data = NapierRedeemFuseEnterData({
             principalToken: pt,
             tokenOut: USDC,
-            principals: ptBalance
+            principals: ptBalance,
+            minTokenOutAmount: 0
         });
         _test_Redeem(data);
     }
@@ -675,7 +712,8 @@ contract NapierFuseTest is Test {
         NapierRedeemFuseEnterData memory data = NapierRedeemFuseEnterData({
             principalToken: pt,
             tokenOut: tokenOut,
-            principals: 1298937
+            principals: 1298937,
+            minTokenOutAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -717,6 +755,33 @@ contract NapierFuseTest is Test {
         assertApproxEqAbs(tokenOutBalanceAfter, tokenOutBalanceBefore + preview, 2, "Token out balance");
     }
 
+    function test_Redeem_RevertWhen_MinTokenOutTooHigh() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+
+        _test_Supply(
+            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+        );
+
+        uint256 ptBalance = pt.balanceOf(address(_plasmaVault));
+
+        vm.warp(pt.maturity() + 1);
+
+        uint256 preview = pt.previewRedeem(ptBalance);
+        NapierRedeemFuseEnterData memory data = NapierRedeemFuseEnterData({
+            principalToken: pt,
+            tokenOut: GAUNTLET_USDC_PRIME,
+            principals: ptBalance,
+            minTokenOutAmount: preview + 1
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _redeemFuse, data: abi.encodeCall(NapierRedeemFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierRedeemFuse.NapierRedeemFuseInsufficientTokenOut.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
     function test_Redeem_RevertWhen_TokenNotGranted() public {
         address badToken = makeAddr("badToken");
 
@@ -724,7 +789,8 @@ contract NapierFuseTest is Test {
         NapierRedeemFuseEnterData memory data = NapierRedeemFuseEnterData({
             principalToken: IPrincipalToken(badToken),
             tokenOut: USDC,
-            principals: amountIn
+            principals: amountIn,
+            minTokenOutAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -744,7 +810,7 @@ contract NapierFuseTest is Test {
 
         // First, supply some PTs so the vault has a position to collect from
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals()})
+            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
         );
 
         uint256 mockScale = (IResolver(pt.i_resolver()).scale() * 15) / 10;
@@ -805,7 +871,7 @@ contract NapierFuseTest is Test {
 
         // Arrange: ensure the vault holds PTs and YTs by supplying underlying
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals()})
+            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
         );
 
         uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
@@ -817,7 +883,8 @@ contract NapierFuseTest is Test {
         NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
             principalToken: pt,
             tokenOut: GAUNTLET_USDC_PRIME,
-            principals: principals
+            principals: principals,
+            minTokenOutAmount: 0
         });
 
         _test_Combine(data);
@@ -832,7 +899,8 @@ contract NapierFuseTest is Test {
             NapierSupplyFuseEnterData({
                 principalToken: pt,
                 tokenIn: GAUNTLET_USDC_PRIME,
-                amountIn: 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals()
+                amountIn: 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(),
+                minPrincipalsAmount: 0
             })
         );
 
@@ -845,7 +913,8 @@ contract NapierFuseTest is Test {
         NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
             principalToken: pt,
             tokenOut: pt.i_asset(),
-            principals: principals
+            principals: principals,
+            minTokenOutAmount: 0
         });
 
         _test_Combine(data);
@@ -890,7 +959,8 @@ contract NapierFuseTest is Test {
         NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
             principalToken: IPrincipalToken(badToken),
             tokenOut: USDC,
-            principals: 1000
+            principals: 1000,
+            minTokenOutAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -898,6 +968,36 @@ contract NapierFuseTest is Test {
 
         vm.prank(ALPHA);
         vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_Combine_RevertWhen_MinTokenOutTooHigh() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        address yt = pt.i_yt();
+
+        _test_Supply(
+            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+        );
+
+        uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
+        uint256 ytBalanceBefore = ERC20(yt).balanceOf(address(_plasmaVault));
+
+        uint256 principals = ptBalanceBefore < ytBalanceBefore ? ptBalanceBefore : ytBalanceBefore;
+        assertGt(principals, 0, "Principals must be positive");
+
+        uint256 preview = pt.previewCombine(principals);
+        NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
+            principalToken: pt,
+            tokenOut: GAUNTLET_USDC_PRIME,
+            principals: principals,
+            minTokenOutAmount: preview + 1
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _combineFuse, data: abi.encodeCall(NapierCombineFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierCombineFuse.NapierCombineFuseInsufficientTokenOut.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -940,7 +1040,8 @@ contract NapierFuseTest is Test {
             NapierSupplyFuseEnterData({
                 principalToken: IPrincipalToken(principalToken),
                 tokenIn: USDC,
-                amountIn: 1000 * 10 ** ERC20(USDC).decimals()
+                amountIn: 1000 * 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
             })
         );
 
@@ -1119,7 +1220,8 @@ contract NapierFuseTest is Test {
             NapierSupplyFuseEnterData({
                 principalToken: IPrincipalToken(principalToken),
                 tokenIn: USDC,
-                amountIn: 100 * 10 ** ERC20(USDC).decimals()
+                amountIn: 100 * 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
             })
         );
 
@@ -1469,7 +1571,8 @@ contract NapierFuseTest is Test {
             NapierSupplyFuseEnterData({
                 principalToken: pt,
                 tokenIn: USDC,
-                amountIn: 1_000 * 10 ** ERC20(USDC).decimals()
+                amountIn: 1_000 * 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
             })
         );
 
@@ -1542,7 +1645,8 @@ contract NapierFuseTest is Test {
             NapierSupplyFuseEnterData({
                 principalToken: pt,
                 tokenIn: USDC,
-                amountIn: 1_000 * 10 ** ERC20(USDC).decimals()
+                amountIn: 1_000 * 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
             })
         );
 
