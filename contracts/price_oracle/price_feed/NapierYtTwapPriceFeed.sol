@@ -44,6 +44,9 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
 
     address public immutable UNDERLYING_TOKEN;
 
+    /// @notice Expiry date
+    uint256 public immutable MATURITY;
+
     /// @notice Decimals for YT and PT
     uint8 internal immutable BASE_DECIMALS;
 
@@ -74,8 +77,9 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
 
         PoolKey memory key = ITokiPoolToken(liquidityToken_).i_poolKey();
         address underlying = Currency.unwrap(key.currency0);
-        address baseAsset = IPrincipalToken(Currency.unwrap(key.currency1)).i_asset();
-        address yt = IPrincipalToken(Currency.unwrap(key.currency1)).i_yt();
+        address principalToken = Currency.unwrap(key.currency1);
+        address baseAsset = IPrincipalToken(principalToken).i_asset();
+        address yt = IPrincipalToken(principalToken).i_yt();
 
         // Allow either underlying token (e.g. YearnUSDC) or base asset (e.g. USDC)
         if (quote_ != underlying && quote_ != baseAsset) {
@@ -97,6 +101,7 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
         QUOTE = quote_;
         TWAP_WINDOW = twapWindow_;
         UNDERLYING_TOKEN = underlying;
+        MATURITY = IPrincipalToken(principalToken).maturity();
         BASE_DECIMALS = IERC20Metadata(yt).decimals();
         QUOTE_DECIMALS = IERC20Metadata(quote_).decimals();
     }
@@ -117,6 +122,12 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
             uint80 /* answeredInRound */
         )
     {
+        // Note Consider YT price to be 1 wei instead of zero, to bypass price validation.
+        // 1 wei would be small enough not to affect the vault value
+        if (block.timestamp >= MATURITY) {
+            return (0, 1, 0, block.timestamp, 0);
+        }
+
         // Use one whole YT unit as base; YT shares follow principal token decimals
         uint256 baseUnit = 10 ** BASE_DECIMALS;
         uint8 quoteDecimals = QUOTE_DECIMALS;

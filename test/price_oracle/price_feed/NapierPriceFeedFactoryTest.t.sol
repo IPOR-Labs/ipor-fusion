@@ -362,6 +362,27 @@ contract NapierPriceFeedFactoryTest is Test {
         assertEq(ytFeed.TWAP_WINDOW(), uint32(TWAP_WINDOW), "twap window");
     }
 
+    function testYtTwapPriceFeedPostExpiryReturnsMinimalPrice() public {
+        address priceFeedAddress = feedFactory.createYtTwapPriceFeed(
+            PRICE_MIDDLEWARE,
+            NapierConstants.ARB_TOKI_ORACLE,
+            pool,
+            uint32(TWAP_WINDOW),
+            USDC
+        );
+
+        NapierYtTwapPriceFeed ytFeed = NapierYtTwapPriceFeed(priceFeedAddress);
+        uint256 maturity = IPrincipalToken(principalToken).maturity();
+
+        vm.warp(maturity + 1);
+
+        vm.prank(PRICE_MIDDLEWARE);
+        (, int256 price, , uint256 timestamp, ) = ytFeed.latestRoundData();
+
+        assertEq(price, 1, "price should be minimal non-zero after maturity");
+        assertEq(timestamp, block.timestamp, "timestamp should match");
+    }
+
     function testCreateYtLinearPriceFeed() public {
         NapierYtLinearPriceFeed ytFeed = new NapierYtLinearPriceFeed(PRICE_MIDDLEWARE, address(linearOracle));
 
@@ -374,6 +395,19 @@ contract NapierPriceFeedFactoryTest is Test {
         vm.prank(PRICE_MIDDLEWARE);
         (, int256 price, , uint256 timestamp, ) = ytFeed.latestRoundData();
         assertGt(price, 0, "price should be positive");
+        assertEq(timestamp, block.timestamp, "timestamp should match");
+    }
+
+    function testYtLinearPriceFeedPostExpiryReturnsMinimalPrice() public {
+        NapierYtLinearPriceFeed ytFeed = new NapierYtLinearPriceFeed(PRICE_MIDDLEWARE, address(linearOracle));
+        uint256 maturity = IPrincipalToken(principalToken).maturity();
+
+        vm.warp(maturity + 1);
+
+        vm.prank(PRICE_MIDDLEWARE);
+        (, int256 price, , uint256 timestamp, ) = ytFeed.latestRoundData();
+
+        assertEq(price, 1, "price should be minimal non-zero after maturity");
         assertEq(timestamp, block.timestamp, "timestamp should match");
     }
 
