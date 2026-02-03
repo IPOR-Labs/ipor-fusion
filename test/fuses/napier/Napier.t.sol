@@ -415,9 +415,9 @@ contract NapierFuseTest is Test {
             abi.encode(pool, pool, USDC, LP_TWAP_WINDOW), // liquidityToken, base, quote, twapWindow
             ""
         );
-        _napierPtPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
-        _napierLpPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
-        _napierYtPriceFeed = address(new NapierYtLinearPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
+        _napierPtPriceFeed = address(new NapierPtLpPriceFeed(_ptLinearOracle));
+        _napierLpPriceFeed = address(new NapierPtLpPriceFeed(_lpTwapOracle));
+        _napierYtPriceFeed = address(new NapierYtLinearPriceFeed(_ptLinearOracle));
         _gauntletUSDCPriceFeed = address(new ERC4626PriceFeed(GAUNTLET_USDC_PRIME)); 
         address[] memory assets = new address[](4);
         assets[0] = principalToken;
