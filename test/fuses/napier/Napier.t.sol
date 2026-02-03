@@ -48,6 +48,7 @@ import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawMana
 import {NapierHelper, ITokiHook, ITokiOracle} from "./NapierHelper.sol";
 import {LogExpMath} from "@pendle/core-v2/contracts/core/libraries/math/LogExpMath.sol";
 import {NapierPtLpPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierPtLpPriceFeed.sol";
+import {NapierYtLinearPriceFeed} from "../../../contracts/price_oracle/price_feed/NapierYtLinearPriceFeed.sol";
 import {ERC4626PriceFeed} from "../../../contracts/price_oracle/price_feed/ERC4626PriceFeed.sol";
 import {ApproximationParams} from "../../../contracts/fuses/napier/ext/ApproximationParams.sol";
 import {NapierConstants} from "./NapierConstants.sol";
@@ -75,13 +76,17 @@ interface IChainlinkOracleFactory {
     ) external returns (address instance);
 }
 
-contract NapierSupplyFuseTest is Test {
+contract NapierFuseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;
     using PlasmaVaultHelper for PlasmaVault;
     using IporFusionAccessManagerHelper for IporFusionAccessManager;
 
     address private constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     address private constant POOL_MANAGER = 0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32;
+
+
+    // IPOR role accounts
+    address constant SET_ASSETS_PRICES_SOURCES_ACCOUNT = 0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569;
 
     ///  assets
     address private constant GAUNTLET_USDC_PRIME = 0x7c574174DA4b2be3f705c6244B4BfA0815a8B3Ed;
@@ -106,13 +111,17 @@ contract NapierSupplyFuseTest is Test {
     PlasmaVault private _plasmaVault;
     address private _priceOracle;
     IporFusionAccessManager private _accessManager;
-    PriceOracleMiddleware private _priceOracleMiddleware;
+    PriceOracleMiddleware private _priceOracleMiddleware =
+        PriceOracleMiddleware(0xd19D0C917844b996B09c48A9FF622177Af219C79);
+
 
     // Price feeds
-    address private _ptLinarOracle;
+    address private _ptLinearOracle;
+    address private _lpTwapOracle;
     address private _napierPtPriceFeed;
     address private _napierLpPriceFeed;
-    address private _lpTwapOracle;
+    address private _napierYtPriceFeed;
+    address private _gauntletUSDCPriceFeed;
 
     // Fuses
     address private _supplyFuse;
@@ -136,11 +145,6 @@ contract NapierSupplyFuseTest is Test {
         vm.label(GAUNTLET_USDC_PRIME, "gauntletUSDC");
         vm.label(USDC, "USDC");
         vm.label(WETH, "WETH");
-
-        // Deploy price oracle middleware
-        vm.startPrank(ATOMIST);
-        _priceOracleMiddleware = PriceOracleMiddlewareHelper.getArbitrumPriceOracleMiddleware();
-        vm.stopPrank();
 
         DeployMinimalPlasmaVaultParams memory params = DeployMinimalPlasmaVaultParams({
             underlyingToken: USDC,
@@ -401,7 +405,7 @@ contract NapierSupplyFuseTest is Test {
         // By default, on Ethereum the system uses Chainlink registry for price feeds.
         // On all chains, it uses a general priceOracleMiddleware predefined by IPOR DAO.
         // However, any price feed can be overridden in the PriceOracleMiddlewareManager.
-        _ptLinarOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
+        _ptLinearOracle = IChainlinkOracleFactory(NapierConstants.ARB_CHAINLINK_COMPT_ORACLE_FACTORY).clone(
             NapierConstants.ARB_TOKI_LINEAR_PRICE_ORACLE_IMPL,
             abi.encode(pool, principalToken, USDC, 100), // liquidityToken, base, quote, discountRatePerYearBps
             ""
@@ -411,15 +415,21 @@ contract NapierSupplyFuseTest is Test {
             abi.encode(pool, pool, USDC, LP_TWAP_WINDOW), // liquidityToken, base, quote, twapWindow
             ""
         );
-        _napierPtPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _ptLinarOracle));
+        _napierPtPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
         _napierLpPriceFeed = address(new NapierPtLpPriceFeed(address(_priceOracleMiddleware), _lpTwapOracle));
-        address[] memory assets = new address[](2);
+        _napierYtPriceFeed = address(new NapierYtLinearPriceFeed(address(_priceOracleMiddleware), _ptLinearOracle));
+        _gauntletUSDCPriceFeed = address(new ERC4626PriceFeed(GAUNTLET_USDC_PRIME)); 
+        address[] memory assets = new address[](4);
         assets[0] = principalToken;
         assets[1] = pool;
-        address[] memory sources = new address[](2); // Price feed contract address
+        assets[2] = yt; 
+        assets[3] = GAUNTLET_USDC_PRIME;
+        address[] memory sources = new address[](4); // Price feed contract address
         sources[0] = _napierPtPriceFeed;
         sources[1] = _napierLpPriceFeed;
-        vm.startPrank(_priceOracleMiddleware.owner());
+        sources[2] = _napierYtPriceFeed;
+        sources[3] = _gauntletUSDCPriceFeed;
+        vm.startPrank(SET_ASSETS_PRICES_SOURCES_ACCOUNT);
         _priceOracleMiddleware.setAssetsPricesSources(assets, sources);
         vm.stopPrank();
 
@@ -456,7 +466,7 @@ contract NapierSupplyFuseTest is Test {
         _plasmaVault.addBalanceFusesToVault(IporFusionMarkets.ERC4626_0001, address(erc4626Balance));
 
         // Add ZeroBalanceFuse for NAPIER market (balance is tracked through ERC20_VAULT_BALANCE dependency)
-        ZeroBalanceFuse napierBalance = new ZeroBalanceFuse(IporFusionMarkets.NAPIER);
+        ERC20BalanceFuse napierBalance = new ERC20BalanceFuse(IporFusionMarkets.NAPIER);
         _plasmaVault.addBalanceFusesToVault(IporFusionMarkets.NAPIER, address(napierBalance));
 
         // Convert vault from private to public mode.
@@ -498,6 +508,17 @@ contract NapierSupplyFuseTest is Test {
 
         // Note: updateMarketsBalances is called automatically by execute() function
         // so we don't need to call it manually in setUp
+    }
+
+    function test_Setup_ConfiguresYtPriceFeedSource() public view {
+        address yt = IPrincipalToken(principalToken).i_yt();
+        address ytSource = _priceOracleMiddleware.getSourceOfAssetPrice(yt);
+        address ptSource = _priceOracleMiddleware.getSourceOfAssetPrice(principalToken);
+        address lpSource = _priceOracleMiddleware.getSourceOfAssetPrice(pool);
+
+        assertEq(ytSource, _napierYtPriceFeed, "YT price feed source");
+        assertEq(ptSource, _napierPtPriceFeed, "PT price feed source");
+        assertEq(lpSource, _napierLpPriceFeed, "LP price feed source");
     }
 
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
