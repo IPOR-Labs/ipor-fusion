@@ -16,10 +16,12 @@ import {NapierUniversalRouterFuse} from "./NapierUniversalRouterFuse.sol";
 /// @param principalToken Principal Token address to supply to
 /// @param tokenIn Asset to issue PT/YT with
 /// @param amountIn Amount of the asset to issue PT/YT with
+/// @param minPrincipalsAmount Minimum amount of PTs/YTs expected to receive
 struct NapierSupplyFuseEnterData {
     IPrincipalToken principalToken;
     address tokenIn;
     uint256 amountIn;
+    uint256 minPrincipalsAmount;
 }
 
 /// @title NapierSupplyFuse
@@ -34,6 +36,8 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
     /// @param tokenIn Asset supplied into the router
     /// @param principals Amount of PTs/YTs issued to the vault
     event NapierSupplyFuseEnter(address version, address principalToken, address tokenIn, uint256 principals);
+    /// @notice Error thrown when received principals are less than the minimum requested
+    error NapierSupplyFuseInsufficientPrincipals();
 
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
@@ -102,6 +106,9 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
         ROUTER.execute(commands, inputs);
 
         uint256 principals = pt.balanceOf(address(this)) - balanceBefore;
+        if (principals < data_.minPrincipalsAmount) {
+            revert NapierSupplyFuseInsufficientPrincipals();
+        }
 
         emit NapierSupplyFuseEnter(VERSION, address(data_.principalToken), data_.tokenIn, principals);
     }

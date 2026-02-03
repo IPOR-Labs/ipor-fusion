@@ -16,10 +16,12 @@ import {NapierUniversalRouterFuse} from "./NapierUniversalRouterFuse.sol";
 /// @param principalToken Principal Token address to redeem from
 /// @param tokenOut Asset to redeem PT/YT for
 /// @param principals Amount of the PTs/YTs to redeem
+/// @param minTokenOutAmount Minimum amount of tokenOut expected to receive
 struct NapierCombineFuseEnterData {
     IPrincipalToken principalToken;
     address tokenOut;
     uint256 principals;
+    uint256 minTokenOutAmount;
 }
 
 /// @title NapierCombineFuse
@@ -34,6 +36,8 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
     /// @param tokenOut Asset supplied into the router
     /// @param amountOut Amount of tokens received
     event NapierCombineFuseEnter(address version, address principalToken, address tokenOut, uint256 amountOut);
+    /// @notice Error thrown when received tokenOut is less than the minimum requested
+    error NapierCombineFuseInsufficientTokenOut();
 
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
@@ -98,6 +102,9 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
         ROUTER.execute(commands, inputs);
 
         uint256 amountOut = ERC20(data_.tokenOut).balanceOf(address(this)) - balanceBefore;
+        if (amountOut < data_.minTokenOutAmount) {
+            revert NapierCombineFuseInsufficientTokenOut();
+        }
 
         emit NapierCombineFuseEnter(VERSION, address(data_.principalToken), data_.tokenOut, amountOut);
     }
