@@ -24,6 +24,7 @@ library LibPermit2 {
     /// @notice Resets Permit2 approval after execution
     /// @param token The token to reset approval for
     function resetPermit2Approval(address token, address spender) internal {
+        // Solady requires an infinite amount to Permi2 approval
         IPermit2(PERMIT2).approve(token, spender, 0, uint48(block.timestamp));
     }
 }
