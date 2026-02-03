@@ -37,6 +37,9 @@ contract NapierYtLinearPriceFeed is IPriceFeed {
     /// @notice Address of the asset used for pricing
     address public immutable QUOTE;
 
+    /// @notice Expiry date
+    uint256 public immutable MATURITY;
+
     error PriceOracleZeroAddress();
     error PriceOracleInvalidPrice();
     error PriceOracleInvalidQuoteAsset();
@@ -69,6 +72,7 @@ contract NapierYtLinearPriceFeed is IPriceFeed {
         PRICE_MIDDLEWARE = priceMiddleware_;
         BASE = IPrincipalToken(pt).i_yt();
         QUOTE = quote;
+        MATURITY = IPrincipalToken(pt).maturity();
     }
 
     function decimals() public pure override returns (uint8) {
@@ -87,6 +91,12 @@ contract NapierYtLinearPriceFeed is IPriceFeed {
             uint80 /* answeredInRound */
         )
     {
+        // Note Consider YT price to be 1 wei instead of zero, to bypass price validation.
+        // 1 wei would be small enough not to affect the vault value
+        if (block.timestamp >= MATURITY) {
+            return (0, 1, 0, block.timestamp, 0);
+        }
+
         // YT price in asset = 1 - PT price in asset
         (, int256 unitPtPrice, , , ) = TOKI_CHAINLINK_ORACLE.latestRoundData();
         int256 unitPrice = PT_PAR_PRICE - unitPtPrice;
