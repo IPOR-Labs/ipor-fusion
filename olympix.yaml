@@ -1,0 +1,81 @@
+# Olympix Configuration for ipor-fusion
+# Documentation: https://olympix.github.io/
+
+version: "1.0"
+
+# Project configuration
+project:
+  name: "ipor-fusion"
+  type: "foundry"
+
+# Source files to analyze
+sources:
+  - "contracts/**/*.sol"
+
+# Test files location
+tests:
+  - "test/**/*.sol"
+
+# Exclude patterns (libraries, mocks, interfaces)
+exclude:
+  - "node_modules/**"
+  - "lib/**"
+  - "test/**/Mock*.sol"
+  - "test/**/*Mock.sol"
+  - "contracts/interfaces/**"
+
+# Compiler settings (matching foundry.toml)
+compiler:
+  version: "0.8.30"
+  evm_version: "cancun"
+  optimizer:
+    enabled: true
+    runs: 10000000
+
+# Remappings (matching foundry.toml)
+remappings:
+  - "@openzeppelin/=node_modules/@openzeppelin/"
+  - "@uniswap/v3-core/=node_modules/@uniswap/v3-core/"
+  - "ds-test/=lib/forge-std/lib/ds-test/src/"
+  - "forge-std/=lib/forge-std/src/"
+  - "foundry-random=lib/foundry-random/src/"
+  - "@ethereum-vault-connector/=node_modules/ethereum-vault-connector/"
+  - "@pendle/core-v2/=node_modules/@pendle/core-v2/"
+
+# Analysis configuration
+analysis:
+  # Enable all security detectors
+  detectors:
+    - reentrancy
+    - unchecked-calls
+    - integer-overflow
+    - access-control
+    - front-running
+    - oracle-manipulation
+    - flash-loan-attacks
+    - storage-collision
+    - uninitialized-storage
+    - delegatecall-injection
+    - signature-malleability
+    - dos-attacks
+    - precision-loss
+
+  # Severity levels to report
+  severity:
+    - critical
+    - high
+    - medium
+    - low
+    - informational
+
+# Test generation settings
+test_generation:
+  enabled: true
+  output_dir: "test/olympix"
+  coverage_target: 80
+
+# CI/CD integration
+ci:
+  fail_on_severity: "high"
+  generate_report: true
+  report_format: "json"
