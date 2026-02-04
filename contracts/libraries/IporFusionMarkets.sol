@@ -187,6 +187,14 @@ library IporFusionMarkets {
     ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
     uint256 public constant AAVE_V4 = 43;
 
+    /// @dev Velora Swapper market for optimized token swapping via Velora/ParaSwap Augustus v6.2
+    /// @dev Substrate type: VeloraSubstrateType (Token or Slippage)
+    /// @dev Substrate values:
+    ///      - Token: Allowed token addresses for swapping (encoded with VeloraSubstrateLib.encodeTokenSubstrate)
+    ///      - Slippage: Custom slippage limit in WAD (encoded with VeloraSubstrateLib.encodeSlippageSubstrate)
+    /// @dev Used for executing Velora swaps via VeloraSwapExecutor contract
+    uint256 public constant VELORA_SWAPPER = 44;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 

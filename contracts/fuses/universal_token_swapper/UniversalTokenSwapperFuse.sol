@@ -12,24 +12,27 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {SwapExecutor, SwapExecutorData} from "./SwapExecutor.sol";
+import {UniversalTokenSwapperSubstrateLib} from "./UniversalTokenSwapperSubstrateLib.sol";
 
 /// @notice Data structure used for executing a swap operation.
-/// @param  targets - The array of addresses to which the call will be made.
-/// @param  data - Data to be executed on the targets.
+/// @param targets The array of addresses to which the call will be made
+/// @param data Data to be executed on the targets
 struct UniversalTokenSwapperData {
     address[] targets;
     bytes[] data;
 }
 
 /// @notice Data structure used for entering a swap operation.
-/// @param  tokenIn - The token that is to be transferred from the plasmaVault to the swapExecutor.
-/// @param  tokenOut - The token that will be returned to the plasmaVault after the operation is completed.
-/// @param  amountIn - The amount that needs to be transferred to the swapExecutor for executing swaps.
-/// @param  data - A set of data required to execute token swaps
+/// @param tokenIn The token that is to be transferred from the plasmaVault to the swapExecutor
+/// @param tokenOut The token that will be returned to the plasmaVault after the operation is completed
+/// @param amountIn The amount that needs to be transferred to the swapExecutor for executing swaps
+/// @param minAmountOut Minimum acceptable amount of tokenOut (alpha-specified slippage protection)
+/// @param data A set of data required to execute token swaps
 struct UniversalTokenSwapperEnterData {
     address tokenIn;
     address tokenOut;
     uint256 amountIn;
+    uint256 minAmountOut;
     UniversalTokenSwapperData data;
 }
 
@@ -45,18 +48,27 @@ struct Balances {
     uint256 tokenOutBalanceAfter;
 }
 
-/**
- * @title UniversalTokenSwapperFuse
- * @notice Universal fuse contract designed to execute swap operations on any DEX and validate slippage
- * @dev This contract provides a generic interface for executing token swaps across multiple DEX protocols.
- *      It validates asset permissions, executes swaps via an external executor, tracks balances,
- *      and enforces slippage protection using price oracle middleware. Supports transient storage
- *      for gas-efficient parameter passing.
- * @author IPOR Labs
- */
+/// @notice Struct containing validated substrate data (tokens, targets, slippage)
+/// @param tokenInGranted Whether tokenIn is in the allowed substrates
+/// @param tokenOutGranted Whether tokenOut is in the allowed substrates
+/// @param slippageWad The slippage limit in WAD (or 0 if not found)
+/// @param grantedTargets Bitmask of which targets are granted (bit i = targets[i] granted)
+struct SubstrateValidationResult {
+    bool tokenInGranted;
+    bool tokenOutGranted;
+    uint256 slippageWad;
+    uint256 grantedTargets;
+}
+
+/// @title UniversalTokenSwapperFuse
+/// @notice This contract is designed to execute every swap operation and check the slippage on any DEX.
+/// @dev Executes in PlasmaVault storage context via delegatecall.
+///      CRITICAL: This contract MUST NOT contain storage variables.
+///      Slippage is now configurable via substrate or defaults to DEFAULT_SLIPPAGE_WAD.
 contract UniversalTokenSwapperFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
+    /// @notice Emitted when entering a swap operation
     event UniversalTokenSwapperFuseEnter(
         address version,
         address tokenIn,
@@ -64,35 +76,52 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         uint256 tokenInDelta,
         uint256 tokenOutDelta
     );
-    error UniversalTokenSwapperFuseUnsupportedAsset(address asset);
-    error UniversalTokenSwapperFuseSlippageFail();
-    error UniversalTokenSwapperFuseInvalidExecutorAddress();
 
+    /// @notice Error thrown when asset is not in the substrate configuration
+    error UniversalTokenSwapperFuseUnsupportedAsset(address asset);
+    /// @notice Error thrown when USD-based slippage check fails
+    error UniversalTokenSwapperFuseSlippageFail();
+    /// @notice Error thrown when minAmountOut is not reached
+    error UniversalTokenSwapperFuseMinAmountOutNotReached(uint256 expected, uint256 actual);
+    /// @notice Error thrown when price oracle returns zero price
+    error UniversalTokenSwapperFuseInvalidPrice(address asset);
+    /// @notice Error thrown when price oracle middleware is not configured
+    error UniversalTokenSwapperFuseInvalidPriceOracleMiddleware();
+    /// @notice Error thrown when amountIn is zero
+    error UniversalTokenSwapperFuseZeroAmount();
+    /// @notice Error thrown when marketId is zero
+    error UniversalTokenSwapperFuseInvalidMarketId();
+    /// @notice Error thrown when slippage exceeds 100%
+    error UniversalTokenSwapperFuseSlippageExceeds100Percent(uint256 slippageWad);
+    /// @notice Error thrown when targets array is empty
+    error UniversalTokenSwapperFuseEmptyTargets();
+    /// @notice Error thrown when targets and data arrays have different lengths
+    error UniversalTokenSwapperFuseArrayLengthMismatch();
+
+    /// @notice Fuse version identifier (set to deployment address)
     address public immutable VERSION;
+    /// @notice Market identifier for this fuse instance
     uint256 public immutable MARKET_ID;
+    /// @notice Address of the swap executor contract
     address public immutable EXECUTOR;
-    /// @dev slippageReverse in WAD decimals, 1e18 - slippage;
-    uint256 public immutable SLIPPAGE_REVERSE;
+
+    /// @notice Default slippage in WAD (1e16 = 1%)
+    uint256 public constant DEFAULT_SLIPPAGE_WAD = 1e16;
+
     uint256 private constant _ONE = 1e18;
 
     /**
-     * @notice Initializes the UniversalTokenSwapperFuse with market ID, executor address, and slippage tolerance
+     * @notice Initializes the UniversalTokenSwapperFuse with market ID and executor address
      * @param marketId_ The market ID used to identify the market and validate asset permissions
-     * @param executor_ The address of the swap executor contract (must not be address(0))
-     * @param slippageReverse_ The slippage tolerance in WAD decimals (1e18 - slippage percentage)
-     * @dev Reverts if executor_ is zero address or slippageReverse_ exceeds 1e18
+     * @dev Reverts if marketId_ is zero
      */
-    constructor(uint256 marketId_, address executor_, uint256 slippageReverse_) {
-        if (executor_ == address(0)) {
-            revert UniversalTokenSwapperFuseInvalidExecutorAddress();
-        }
-        if (slippageReverse_ > _ONE) {
-            revert UniversalTokenSwapperFuseSlippageFail();
+    constructor(uint256 marketId_) {
+        if (marketId_ == 0) {
+            revert UniversalTokenSwapperFuseInvalidMarketId();
         }
         VERSION = address(this);
         MARKET_ID = marketId_;
-        EXECUTOR = executor_;
-        SLIPPAGE_REVERSE = _ONE - slippageReverse_;
+        EXECUTOR = address(new SwapExecutor());
     }
 
     /// @notice Enters the swap operation
@@ -104,23 +133,43 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     function enter(
         UniversalTokenSwapperEnterData memory data_
     ) public returns (address tokenIn, address tokenOut, uint256 tokenInDelta, uint256 tokenOutDelta) {
-        tokenIn = data_.tokenIn;
-        tokenOut = data_.tokenOut;
+        if (data_.amountIn == 0) {
+            revert UniversalTokenSwapperFuseZeroAmount();
+        }
 
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
+        uint256 targetsLength = data_.data.targets.length;
+        if (targetsLength == 0) {
+            revert UniversalTokenSwapperFuseEmptyTargets();
+        }
+        if (targetsLength != data_.data.data.length) {
+            revert UniversalTokenSwapperFuseArrayLengthMismatch();
+        }
+
+        SubstrateValidationResult memory validation = _validateSubstrates(
+            data_.tokenIn,
+            data_.tokenOut,
+            data_.data.targets
+        );
+        if (!validation.tokenInGranted) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
         }
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
+        if (!validation.tokenOutGranted) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenOut);
         }
 
-        uint256 dexsLength = data_.data.targets.length;
-
-        for (uint256 i; i < dexsLength; ++i) {
-            if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.data.targets[i])) {
-                revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
+        // Check all targets are granted using bitmask
+        uint256 expectedMask = (1 << targetsLength) - 1;
+        if (validation.grantedTargets != expectedMask) {
+            // Find first non-granted target for error message
+            for (uint256 i; i < targetsLength; ++i) {
+                if ((validation.grantedTargets & (1 << i)) == 0) {
+                    revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
+                }
             }
         }
+
+        tokenIn = data_.tokenIn;
+        tokenOut = data_.tokenOut;
 
         address plasmaVault = address(this);
 
@@ -130,13 +179,6 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
             tokenInBalanceAfter: 0,
             tokenOutBalanceAfter: 0
         });
-
-        if (data_.amountIn == 0) {
-            tokenInDelta = 0;
-            tokenOutDelta = 0;
-            _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
-            return (tokenIn, tokenOut, tokenInDelta, tokenOutDelta);
-        }
 
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
@@ -167,35 +209,45 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
         tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
 
-        _checkSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+        // Check minAmountOut protection (if specified)
+        if (data_.minAmountOut > 0 && tokenOutDelta < data_.minAmountOut) {
+            revert UniversalTokenSwapperFuseMinAmountOutNotReached(data_.minAmountOut, tokenOutDelta);
+        }
+
+        _validateUsdSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta, validation.slippageWad);
 
         _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
     }
 
-    /**
-     * @notice Checks slippage tolerance for the swap operation
-     * @dev Validates that the output token amount meets the minimum slippage requirement
-     *      by comparing the USD value of output tokens against the USD value of input tokens.
-     *      Uses price oracle middleware to get current token prices and converts amounts to USD.
-     *      Reverts if the output/input ratio is below the SLIPPAGE_REVERSE threshold.
-     * @param tokenIn_ The input token address
-     * @param tokenOut_ The output token address
-     * @param tokenInDelta_ The amount of input token consumed in the swap
-     * @param tokenOutDelta_ The amount of output token received from the swap
-     * @custom:reverts UniversalTokenSwapperFuseSlippageFail If slippage exceeds the allowed tolerance
-     */
-    function _checkSlippage(
+    /// @notice Validates USD-based slippage protection
+    /// @param tokenIn_ The input token address
+    /// @param tokenOut_ The output token address
+    /// @param tokenInDelta_ The amount of input token spent
+    /// @param tokenOutDelta_ The amount of output token received
+    /// @param slippageWad_ The slippage limit in WAD
+    function _validateUsdSlippage(
         address tokenIn_,
         address tokenOut_,
         uint256 tokenInDelta_,
-        uint256 tokenOutDelta_
-    ) private view {
+        uint256 tokenOutDelta_,
+        uint256 slippageWad_
+    ) internal view {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+        if (priceOracleMiddleware == address(0)) {
+            revert UniversalTokenSwapperFuseInvalidPriceOracleMiddleware();
+        }
 
         (uint256 tokenInPrice, uint256 tokenInPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
             .getAssetPrice(tokenIn_);
+        if (tokenInPrice == 0) {
+            revert UniversalTokenSwapperFuseInvalidPrice(tokenIn_);
+        }
+
         (uint256 tokenOutPrice, uint256 tokenOutPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
             .getAssetPrice(tokenOut_);
+        if (tokenOutPrice == 0) {
+            revert UniversalTokenSwapperFuseInvalidPrice(tokenOut_);
+        }
 
         uint256 amountUsdInDelta = IporMath.convertToWad(
             tokenInDelta_ * tokenInPrice,
@@ -206,10 +258,62 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
             IERC20Metadata(tokenOut_).decimals() + tokenOutPriceDecimals
         );
 
+        if (amountUsdInDelta == 0) {
+            revert UniversalTokenSwapperFuseSlippageFail();
+        }
+
         uint256 quotient = IporMath.division(amountUsdOutDelta * 1e18, amountUsdInDelta);
 
-        if (quotient < SLIPPAGE_REVERSE) {
+        uint256 slippageReverse = _ONE - slippageWad_;
+
+        if (quotient < slippageReverse) {
             revert UniversalTokenSwapperFuseSlippageFail();
+        }
+    }
+
+    /// @notice Validates all substrates in a single pass
+    /// @dev Reads substrates only once and checks tokens, targets, and slippage in one iteration
+    /// @param tokenIn_ The input token address to validate
+    /// @param tokenOut_ The output token address to validate
+    /// @param targets_ The array of target addresses to validate
+    /// @return result Struct containing validation results for all checked items
+    function _validateSubstrates(
+        address tokenIn_,
+        address tokenOut_,
+        address[] memory targets_
+    ) internal view returns (SubstrateValidationResult memory result) {
+        bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+        uint256 substratesLength = substrates.length;
+        uint256 targetsLength = targets_.length;
+
+        for (uint256 i; i < substratesLength; ++i) {
+            bytes32 substrate = substrates[i];
+
+            if (UniversalTokenSwapperSubstrateLib.isTokenSubstrate(substrate)) {
+                address token = UniversalTokenSwapperSubstrateLib.decodeToken(substrate);
+                if (token == tokenIn_) {
+                    result.tokenInGranted = true;
+                }
+                if (token == tokenOut_) {
+                    result.tokenOutGranted = true;
+                }
+            } else if (UniversalTokenSwapperSubstrateLib.isTargetSubstrate(substrate)) {
+                address target = UniversalTokenSwapperSubstrateLib.decodeTarget(substrate);
+                for (uint256 j; j < targetsLength; ++j) {
+                    if (targets_[j] == target) {
+                        result.grantedTargets |= (1 << j);
+                    }
+                }
+            } else if (UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(substrate)) {
+                result.slippageWad = UniversalTokenSwapperSubstrateLib.decodeSlippage(substrate);
+                if (result.slippageWad > _ONE) {
+                    revert UniversalTokenSwapperFuseSlippageExceeds100Percent(result.slippageWad);
+                }
+            }
+        }
+
+        if (result.slippageWad == 0) {
+            result.slippageWad = DEFAULT_SLIPPAGE_WAD;
         }
     }
 
@@ -250,6 +354,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
             tokenIn: tokenIn,
             tokenOut: tokenOut,
             amountIn: amountIn,
+            minAmountOut: 0,
             data: UniversalTokenSwapperData({targets: targets, data: data})
         });
 

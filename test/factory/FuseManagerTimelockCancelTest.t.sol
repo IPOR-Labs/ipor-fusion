@@ -3,7 +3,6 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {RewardsManagerFactory} from "../../contracts/factory/RewardsManagerFactory.sol";
 import {WithdrawManagerFactory} from "../../contracts/factory/WithdrawManagerFactory.sol";
@@ -127,7 +126,13 @@ contract FuseManagerTimelockCancelTest is Test {
         vm.stopPrank();
 
         vm.startPrank(daoFeeManager);
-        fusionFactory.updateDaoFee(daoFeeRecipient, 333, 777);
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 333,
+            performanceFee: 777,
+            feeRecipient: daoFeeRecipient
+        });
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
 
         address[] memory approvedAddresses = new address[](1);
@@ -193,7 +198,8 @@ contract FuseManagerTimelockCancelTest is Test {
             "TVAULT",
             address(underlyingToken),
             redemptionDelay,
-            owner
+            owner,
+            0 // daoFeePackageIndex
         );
 
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
@@ -318,7 +324,8 @@ contract FuseManagerTimelockCancelTest is Test {
             "TVAULT2",
             address(underlyingToken),
             redemptionDelay,
-            owner
+            owner,
+            0 // daoFeePackageIndex
         );
 
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
@@ -395,7 +402,8 @@ contract FuseManagerTimelockCancelTest is Test {
             "TVAULT3",
             address(underlyingToken),
             redemptionDelay,
-            owner
+            owner,
+            0 // daoFeePackageIndex
         );
 
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);

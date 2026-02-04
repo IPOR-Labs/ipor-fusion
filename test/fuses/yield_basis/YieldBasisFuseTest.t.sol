@@ -7,7 +7,6 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {AccessManagerFactory} from "../../../contracts/factory/AccessManagerFactory.sol";
 import {ContextManagerFactory} from "../../../contracts/factory/ContextManagerFactory.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
@@ -848,8 +847,16 @@ contract YieldBasisFuseTest is Test {
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), atomist);
         vm.stopPrank();
 
+        // Setup fee packages
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 100,
+            performanceFee: 100,
+            feeRecipient: atomist
+        });
+
         vm.startPrank(atomist);
-        fusionFactory.updateDaoFee(atomist, 100, 100);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
@@ -870,7 +877,8 @@ contract YieldBasisFuseTest is Test {
             "yieldBasisVault",
             WBTC,
             1 seconds,
-            atomist
+            atomist,
+            0
         );
 
         plasmaVault = PlasmaVault(instance.plasmaVault);

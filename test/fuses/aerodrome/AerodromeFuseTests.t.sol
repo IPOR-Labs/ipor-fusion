@@ -14,8 +14,8 @@ import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccess
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AerodromeBalanceFuse} from "../../../contracts/fuses/aerodrome/AerodromeBalanceFuse.sol";
 import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "../../../contracts/fuses/aerodrome/AreodromeLib.sol";
@@ -74,12 +74,16 @@ contract AerodromeFuseTests is Test {
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
         FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
             "Aerodrome",
             "AERO",
             _UNDERLYING_TOKEN,
             0,
-            _ATOMIST
+            _ATOMIST,
+            0
         );
 
         _plasmaVault = PlasmaVault(fusionInstance.plasmaVault);
