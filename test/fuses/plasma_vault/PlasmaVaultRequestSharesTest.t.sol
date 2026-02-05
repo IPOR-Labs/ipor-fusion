@@ -135,17 +135,11 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         uint256 vaultTotalAssetsBefore = PlasmaVault(TAU_VAULT).totalAssets();
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: FORTUNAFI_VAULT,
-            vaultAssetAmount: rUsdcVaultBalanceBefore
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market1 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market1,
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter((address,uint256))", FORTUNAFI_VAULT, rUsdcVaultBalanceBefore)
         );
 
         // when
@@ -433,17 +427,11 @@ contract PlasmaVaultRequestSharesTest is Test {
         // given
         uint256 usdcAmount = 50_000e6;
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: IPOR_OPTIMIZER_USDC_VAULT,
-            vaultAssetAmount: usdcAmount
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market2 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market2,
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter((address,uint256))", IPOR_OPTIMIZER_USDC_VAULT, usdcAmount)
         );
 
         uint256 usdcVaultBalanceBefore = ERC20(USDC).balanceOf(TAU_VAULT);
@@ -472,17 +460,11 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         testShouldTransferToIporOptimizerUsdcVault();
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseExitData memory enterData = Erc4626SupplyFuseExitData({
-            vault: IPOR_OPTIMIZER_USDC_VAULT,
-            vaultAssetAmount: usdcAmount
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market2 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market2,
-            abi.encodeWithSignature("exit((address,uint256))", enterData)
+            abi.encodeWithSignature("exit((address,uint256))", IPOR_OPTIMIZER_USDC_VAULT, usdcAmount)
         );
 
         uint256 usdcVaultBalanceBefore = ERC20(USDC).balanceOf(TAU_VAULT);
