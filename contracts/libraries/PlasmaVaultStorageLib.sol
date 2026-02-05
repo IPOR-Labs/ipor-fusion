@@ -686,12 +686,7 @@ library PlasmaVaultStorageLib {
      * @dev Storage slot for withdraw manager contract address
      * @notice Manages withdrawal controls and permissions in the Plasma Vault
      *
-     * LEGACY NOTE: This slot value does NOT match the formula below due to a historical implementation error.
-     * The value was derived from CALLBACK_HANDLER slot with a modified last byte (0x11 instead of 0x00).
-     * This CANNOT be changed as contracts are already deployed with this value.
-     * Correct value per formula would be: 0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100
-     *
-     * Documented calculation (not matching actual value):
+     * Calculation:
      * keccak256(abi.encode(uint256(keccak256("io.ipor.WithdrawManager")) - 1)) & ~bytes32(uint256(0xff))
      *
      * Purpose:
@@ -724,7 +719,7 @@ library PlasmaVaultStorageLib {
      * - Coordinates with access control system
      * - Key component of vault security
      */
-    bytes32 private constant WITHDRAW_MANAGER = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e11;
+    bytes32 private constant WITHDRAW_MANAGER = 0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100;
 
     /**
      * @dev Storage slot for plasma vault base address. Computed as:
