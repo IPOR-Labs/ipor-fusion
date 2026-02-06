@@ -74,34 +74,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         );
     }
 
-    /// @notice Creates a new Fusion Vault
-    /// @param assetName_ The name of the asset
-    /// @param assetSymbol_ The symbol of the asset
-    /// @param underlyingToken_ The address of the underlying token
-    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
-    /// @param owner_ The owner of the Fusion Vault
-    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
-    /// @return The Fusion Vault instance
-    /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
-    function create(
-        string memory assetName_,
-        string memory assetSymbol_,
-        address underlyingToken_,
-        uint256 redemptionDelayInSeconds_,
-        address owner_,
-        uint256 daoFeePackageIndex_
-    ) external returns (FusionFactoryLogicLib.FusionInstance memory) {
-        return
-            FusionFactoryLib.create(
-                assetName_,
-                assetSymbol_,
-                underlyingToken_,
-                redemptionDelayInSeconds_,
-                owner_,
-                false,
-                daoFeePackageIndex_
-            );
-    }
 
     /// @notice Creates a new Fusion Vault by cloning existing contracts
     /// @param assetName_ The name of the asset
@@ -129,35 +101,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 redemptionDelayInSeconds_,
                 owner_,
                 false,
-                daoFeePackageIndex_
-            );
-    }
-
-    /// @notice Creates a new Fusion Vault with admin role
-    /// @param assetName_ The name of the asset
-    /// @param assetSymbol_ The symbol of the asset
-    /// @param underlyingToken_ The address of the underlying token
-    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
-    /// @param owner_ The owner of the Fusion Vault
-    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
-    /// @return The Fusion Vault instance
-    /// @dev Recommended redemption delay is greater than 0 seconds to prevent immediate asset redemption after deposit, which helps protect against potential manipulation and ensures proper vault operation
-    function createSupervised(
-        string memory assetName_,
-        string memory assetSymbol_,
-        address underlyingToken_,
-        uint256 redemptionDelayInSeconds_,
-        address owner_,
-        uint256 daoFeePackageIndex_
-    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
-        return
-            FusionFactoryLib.create(
-                assetName_,
-                assetSymbol_,
-                underlyingToken_,
-                redemptionDelayInSeconds_,
-                owner_,
-                true,
                 daoFeePackageIndex_
             );
     }

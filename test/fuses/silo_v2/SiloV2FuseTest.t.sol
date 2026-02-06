@@ -964,7 +964,7 @@ contract SiloV2FuseTest is Test {
 
     function _createVaultWithFusionFactory() private {
         // Create vault using FusionFactory
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "SiloV2 Test Vault",
             "SILO2",
             WE_ETH, // underlying token

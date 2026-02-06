@@ -196,7 +196,7 @@ contract FusionFactoryTest is Test {
         //given
         uint256 redemptionDelay = 1 seconds;
         //when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -430,7 +430,7 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -495,7 +495,7 @@ contract FusionFactoryTest is Test {
 
         // when
         vm.startPrank(maintenanceManager);
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.createSupervised(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.cloneSupervised(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -556,7 +556,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 123;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -596,7 +596,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 0;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -645,7 +645,7 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -696,7 +696,7 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -740,7 +740,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -778,7 +778,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -816,7 +816,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -856,7 +856,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -929,7 +929,7 @@ contract FusionFactoryTest is Test {
 
         // then
         // Verify that the contract still works by creating a new instance
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -978,7 +978,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1018,7 +1018,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1096,7 +1096,7 @@ contract FusionFactoryTest is Test {
         address depositor = address(0x123);
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1223,7 +1223,7 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         // when - use fee package index 2 which has custom fees
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1290,7 +1290,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1460,7 +1460,7 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
 
         // Create a new vault after removing admins
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1488,7 +1488,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1909,7 +1909,7 @@ contract FusionFactoryTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
-        fusionFactory.create(
+        fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -1940,7 +1940,7 @@ contract FusionFactoryTest is Test {
         uint256 redemptionDelay = 1 seconds;
 
         // when - create vault with package 0 (333, 777)
-        FusionFactoryLogicLib.FusionInstance memory instance0 = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance0 = fusionFactory.clone(
             "Test Asset 0",
             "TEST0",
             address(underlyingToken),
@@ -1950,7 +1950,7 @@ contract FusionFactoryTest is Test {
         );
 
         // when - create vault with package 1 (100, 200)
-        FusionFactoryLogicLib.FusionInstance memory instance1 = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance1 = fusionFactory.clone(
             "Test Asset 1",
             "TEST1",
             address(underlyingToken),
@@ -2045,7 +2045,7 @@ contract FusionFactoryTest is Test {
 
         // then
         uint256 redemptionDelay = 1 seconds;
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),
@@ -2078,7 +2078,7 @@ contract FusionFactoryTest is Test {
 
         // then
         uint256 redemptionDelay = 1 seconds;
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
             "TEST",
             address(underlyingToken),

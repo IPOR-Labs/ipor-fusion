@@ -285,12 +285,15 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 substratesLength = substrates.length;
         uint256 targetsLength = targets_.length;
-
+        bytes32 substrate;
+        address token;
+        address target;
+        
         for (uint256 i; i < substratesLength; ++i) {
-            bytes32 substrate = substrates[i];
+            substrate = substrates[i];
 
             if (UniversalTokenSwapperSubstrateLib.isTokenSubstrate(substrate)) {
-                address token = UniversalTokenSwapperSubstrateLib.decodeToken(substrate);
+                token = UniversalTokenSwapperSubstrateLib.decodeToken(substrate);
                 if (token == tokenIn_) {
                     result.tokenInGranted = true;
                 }
@@ -298,7 +301,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
                     result.tokenOutGranted = true;
                 }
             } else if (UniversalTokenSwapperSubstrateLib.isTargetSubstrate(substrate)) {
-                address target = UniversalTokenSwapperSubstrateLib.decodeTarget(substrate);
+                target = UniversalTokenSwapperSubstrateLib.decodeTarget(substrate);
                 for (uint256 j; j < targetsLength; ++j) {
                     if (targets_[j] == target) {
                         result.grantedTargets |= (1 << j);

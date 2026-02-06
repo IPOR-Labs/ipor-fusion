@@ -83,7 +83,7 @@ contract VelodromeSuperchainFuseTests is Test {
         // Setup fee packages before creating vault
         FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
-        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "Velodrome",
             "VEL",
             _UNDERLYING_TOKEN,

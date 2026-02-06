@@ -70,7 +70,7 @@ contract BalancerTest is Test {
         // Setup fee packages before creating vault
         FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
-        _fusionInstance = fusionFactory.create("Balancer", "F_BAL", _FW_ETH, 0, _ATOMIST, 0);
+        _fusionInstance = fusionFactory.clone("Balancer", "F_BAL", _FW_ETH, 0, _ATOMIST, 0);
 
         vm.startPrank(_ATOMIST);
         IporFusionAccessManager(_fusionInstance.accessManager).grantRole(Roles.ATOMIST_ROLE, _ATOMIST, 0);

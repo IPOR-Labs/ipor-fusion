@@ -6,7 +6,18 @@ import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {AccessManagerFactory} from "../../contracts/factory/AccessManagerFactory.sol";
+import {PriceManagerFactory} from "../../contracts/factory/PriceManagerFactory.sol";
+import {WithdrawManagerFactory} from "../../contracts/factory/WithdrawManagerFactory.sol";
+import {RewardsManagerFactory} from "../../contracts/factory/RewardsManagerFactory.sol";
+import {ContextManagerFactory} from "../../contracts/factory/ContextManagerFactory.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 
 /// @title FusionFactoryDaoFeePackagesHelper
 /// @notice Helper library for setting up DAO fee packages on FusionFactory in fork tests
@@ -36,10 +47,22 @@ library FusionFactoryDaoFeePackagesHelper {
         // Deploy new FeeManagerFactory - the existing FeeManager on fork may have incompatible interface
         FeeManagerFactory newFeeManagerFactory = new FeeManagerFactory();
 
-        // Update factory addresses with the new factories
-        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = fusionFactory.getFactoryAddresses();
+        // Deploy all new factories - fork factories only have create(), not clone()
+        AccessManagerFactory newAccessManagerFactory = new AccessManagerFactory();
+        PriceManagerFactory newPriceManagerFactory = new PriceManagerFactory();
+        WithdrawManagerFactory newWithdrawManagerFactory = new WithdrawManagerFactory();
+        RewardsManagerFactory newRewardsManagerFactory = new RewardsManagerFactory();
+        ContextManagerFactory newContextManagerFactory = new ContextManagerFactory();
+
+        // Update all factory addresses with the new factories
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses;
         factoryAddresses.plasmaVaultFactory = address(newPlasmaVaultFactory);
         factoryAddresses.feeManagerFactory = address(newFeeManagerFactory);
+        factoryAddresses.accessManagerFactory = address(newAccessManagerFactory);
+        factoryAddresses.priceManagerFactory = address(newPriceManagerFactory);
+        factoryAddresses.withdrawManagerFactory = address(newWithdrawManagerFactory);
+        factoryAddresses.rewardsManagerFactory = address(newRewardsManagerFactory);
+        factoryAddresses.contextManagerFactory = address(newContextManagerFactory);
 
         vm.startPrank(admin);
         fusionFactory.upgradeToAndCall(address(newImplementation), "");
@@ -48,6 +71,8 @@ library FusionFactoryDaoFeePackagesHelper {
         fusionFactory.updateFactoryAddresses(fusionFactory.getFusionFactoryVersion(), factoryAddresses);
         fusionFactory.updatePlasmaVaultBase(address(newPlasmaVaultBase));
         vm.stopPrank();
+
+        _deployAndSetBaseAddresses(vm, fusionFactory, admin);
 
         // Create DAO fee packages
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
@@ -111,5 +136,30 @@ library FusionFactoryDaoFeePackagesHelper {
 
         vm.prank(daoFeeManager);
         fusionFactory.setDaoFeePackages(packages);
+    }
+
+    function _deployAndSetBaseAddresses(Vm vm, FusionFactory fusionFactory, address admin) private {
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        address accessManagerBase = address(new IporFusionAccessManager(admin, 1 seconds));
+        address priceManagerBase = address(
+            new PriceOracleMiddlewareManager(admin, fusionFactory.getPriceOracleMiddleware())
+        );
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+        address rewardsManagerBase = address(new RewardsClaimManager(admin, plasmaVaultCoreBase));
+        address[] memory approved = new address[](1);
+        approved[0] = address(1);
+        address contextManagerBase = address(new ContextManager(admin, approved));
+
+        vm.startPrank(admin);
+        fusionFactory.updateBaseAddresses(
+            fusionFactory.getFusionFactoryVersion(),
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
+        );
+        vm.stopPrank();
     }
 }

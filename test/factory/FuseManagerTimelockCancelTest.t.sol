@@ -193,7 +193,7 @@ contract FuseManagerTimelockCancelTest is Test {
         // ============================
         uint256 redemptionDelay = 1 seconds;
 
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Vault",
             "TVAULT",
             address(underlyingToken),
@@ -319,7 +319,7 @@ contract FuseManagerTimelockCancelTest is Test {
         // ============================
         uint256 redemptionDelay = 1 seconds;
 
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Vault 2",
             "TVAULT2",
             address(underlyingToken),
@@ -397,7 +397,7 @@ contract FuseManagerTimelockCancelTest is Test {
         // ============================
         uint256 redemptionDelay = 1 seconds;
 
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Vault 3",
             "TVAULT3",
             address(underlyingToken),

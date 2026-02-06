@@ -872,7 +872,7 @@ contract YieldBasisFuseTest is Test {
     }
 
     function _createVaultWithFusionFactory() private {
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Yield Basis Vault",
             "yieldBasisVault",
             WBTC,

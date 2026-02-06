@@ -167,7 +167,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         uint256 redemptionDelay = 1 days;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Fork Test Vault Standard",
             "FTVS",
             USDC,
@@ -196,7 +196,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         uint256 redemptionDelay = 1 days;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Fork Test Vault Low Fees",
             "FTVL",
             USDC,
@@ -244,7 +244,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         uint256 redemptionDelay = 0; // No delay for simplicity
         uint256 depositAmount = 10_000e6;
 
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Fork Test Deposit Vault",
             "FTDV",
             USDC,
@@ -285,7 +285,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         uint256 redemptionDelay = 1 days;
 
         // when - create vaults with each package
-        FusionFactoryLogicLib.FusionInstance memory vault0 = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory vault0 = fusionFactory.clone(
             "Vault Package 0",
             "VP0",
             USDC,
@@ -294,7 +294,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
             0
         );
 
-        FusionFactoryLogicLib.FusionInstance memory vault1 = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory vault1 = fusionFactory.clone(
             "Vault Package 1",
             "VP1",
             USDC,
@@ -303,7 +303,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
             1
         );
 
-        FusionFactoryLogicLib.FusionInstance memory vault2 = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory vault2 = fusionFactory.clone(
             "Vault Package 2",
             "VP2",
             USDC,
@@ -361,7 +361,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 10, 3));
-        fusionFactory.create("Invalid Package", "INV", USDC, redemptionDelay, atomist, 10);
+        fusionFactory.clone("Invalid Package", "INV", USDC, redemptionDelay, atomist, 10);
     }
 
     /// @notice Test updating fee packages on fork

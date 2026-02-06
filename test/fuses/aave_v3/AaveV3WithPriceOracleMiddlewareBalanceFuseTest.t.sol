@@ -59,7 +59,7 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
         // Setup fee packages before creating vault
         FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
-        _fusionInstance = fusionFactory.create("AaveV2WithPriceOracleMiddlewareBalanceFuse", "AV2", _WETH, 0, _ATOMIST, 0);
+        _fusionInstance = fusionFactory.clone("AaveV2WithPriceOracleMiddlewareBalanceFuse", "AV2", _WETH, 0, _ATOMIST, 0);
 
         vm.startPrank(_ATOMIST);
         IporFusionAccessManager(_fusionInstance.accessManager).grantRole(Roles.ATOMIST_ROLE, _ATOMIST, 0);

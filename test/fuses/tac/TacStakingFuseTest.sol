@@ -1752,7 +1752,7 @@ contract TacStakingFuseTest is Test {
     }
 
     function _createVaultWithFusionFactory() private {
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "TAC Staking Vault",
             "tacVault",
             wTAC,

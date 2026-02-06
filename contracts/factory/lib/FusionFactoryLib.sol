@@ -3,13 +3,6 @@ pragma solidity 0.8.30;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import {AccessManagerFactory} from "../AccessManagerFactory.sol";
-import {PlasmaVaultFactory} from "../PlasmaVaultFactory.sol";
-import {PriceManagerFactory} from "../PriceManagerFactory.sol";
-import {RewardsManagerFactory} from "../RewardsManagerFactory.sol";
-import {WithdrawManagerFactory} from "../WithdrawManagerFactory.sol";
-import {FeeConfig} from "../../managers/fee/FeeManagerFactory.sol";
-import {PlasmaVaultInitData} from "../../vaults/PlasmaVault.sol";
 import {FusionFactoryStorageLib} from "./FusionFactoryStorageLib.sol";
 import {FusionFactoryLogicLib} from "./FusionFactoryLogicLib.sol";
 
@@ -104,30 +97,6 @@ library FusionFactoryLib {
         FusionFactoryStorageLib.setBurnRequestFeeBalanceFuseAddress(burnRequestFeeBalanceFuse_);
     }
 
-    function create(
-        string memory assetName_,
-        string memory assetSymbol_,
-        address underlyingToken_,
-        uint256 redemptionDelayInSeconds_,
-        address owner_,
-        bool withAdmin_,
-        uint256 daoFeePackageIndex_
-    ) public returns (FusionFactoryLogicLib.FusionInstance memory fusionAddresses) {
-        _initializeCommonFields(fusionAddresses, assetName_, assetSymbol_, underlyingToken_, owner_);
-        fusionAddresses = _create(
-            fusionAddresses,
-            assetName_,
-            assetSymbol_,
-            underlyingToken_,
-            redemptionDelayInSeconds_,
-            owner_,
-            withAdmin_,
-            daoFeePackageIndex_
-        );
-        _emitEvent(fusionAddresses);
-        return fusionAddresses;
-    }
-
     function clone(
         string memory assetName_,
         string memory assetSymbol_,
@@ -171,85 +140,6 @@ library FusionFactoryLib {
         fusionAddresses.underlyingTokenDecimals = IERC20Metadata(underlyingToken_).decimals();
         fusionAddresses.initialOwner = owner_;
         fusionAddresses.plasmaVaultBase = FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
-    }
-
-    function _validateAndGetDaoFeePackage(
-        uint256 index_
-    ) internal view returns (FusionFactoryStorageLib.FeePackage memory) {
-        uint256 length = FusionFactoryStorageLib.getDaoFeePackagesLength();
-        if (length == 0) revert DaoFeePackagesArrayEmpty();
-        if (index_ >= length) revert DaoFeePackageIndexOutOfBounds(index_, length);
-        return FusionFactoryStorageLib.getDaoFeePackage(index_);
-    }
-
-    function _create(
-        FusionFactoryLogicLib.FusionInstance memory fusionAddresses,
-        string memory assetName_,
-        string memory assetSymbol_,
-        address underlyingToken_,
-        uint256 redemptionDelayInSeconds_,
-        address owner_,
-        bool withAdmin_,
-        uint256 daoFeePackageIndex_
-    ) internal returns (FusionFactoryLogicLib.FusionInstance memory) {
-        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib
-            .getFactoryAddresses();
-
-        FusionFactoryStorageLib.FeePackage memory daoFeePackage = _validateAndGetDaoFeePackage(daoFeePackageIndex_);
-
-        fusionAddresses.accessManager = AccessManagerFactory(factoryAddresses.accessManagerFactory).create(
-            fusionAddresses.index,
-            address(this),
-            redemptionDelayInSeconds_
-        );
-
-        fusionAddresses.withdrawManager = WithdrawManagerFactory(factoryAddresses.withdrawManagerFactory).create(
-            fusionAddresses.index,
-            fusionAddresses.accessManager
-        );
-
-        fusionAddresses.priceManager = PriceManagerFactory(factoryAddresses.priceManagerFactory).create(
-            fusionAddresses.index,
-            fusionAddresses.accessManager,
-            FusionFactoryStorageLib.getPriceOracleMiddleware()
-        );
-
-        fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).create(
-            fusionAddresses.index,
-            PlasmaVaultInitData({
-                assetName: assetName_,
-                assetSymbol: assetSymbol_,
-                underlyingToken: underlyingToken_,
-                priceOracleMiddleware: fusionAddresses.priceManager,
-                feeConfig: FeeConfig({
-                    feeFactory: factoryAddresses.feeManagerFactory,
-                    iporDaoManagementFee: daoFeePackage.managementFee,
-                    iporDaoPerformanceFee: daoFeePackage.performanceFee,
-                    iporDaoFeeRecipientAddress: daoFeePackage.feeRecipient
-                }),
-                accessManager: fusionAddresses.accessManager,
-                plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-                withdrawManager: fusionAddresses.withdrawManager,
-                plasmaVaultVotesPlugin: address(0)
-            })
-        );
-
-        fusionAddresses.assetDecimals = IERC20Metadata(fusionAddresses.plasmaVault).decimals();
-
-        fusionAddresses.rewardsManager = RewardsManagerFactory(factoryAddresses.rewardsManagerFactory).create(
-            fusionAddresses.index,
-            fusionAddresses.accessManager,
-            fusionAddresses.plasmaVault
-        );
-
-        return
-            FusionFactoryLogicLib.setupFinalConfiguration(
-                fusionAddresses,
-                owner_,
-                withAdmin_,
-                daoFeePackage.feeRecipient,
-                true
-            );
     }
 
     function _increaseFusionFactoryIndex() internal returns (uint256) {

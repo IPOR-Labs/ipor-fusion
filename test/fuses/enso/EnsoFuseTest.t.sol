@@ -103,7 +103,7 @@ contract EnsoFuseTest is Test {
 
     function _createVaultWithFusionFactory() private {
         // Create vault using FusionFactory with USDC as underlying
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Enso Test Vault",
             "ENSO-V",
             USDC, // underlying token
