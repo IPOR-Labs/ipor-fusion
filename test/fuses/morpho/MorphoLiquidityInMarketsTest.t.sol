@@ -7,6 +7,7 @@ import {IMorpho, Id, MarketParams} from "@morpho-org/morpho-blue/src/interfaces/
 
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -49,12 +50,16 @@ contract MorphoLiquidityInMarketsTest is Test {
 
         fusionFactory = FusionFactory(FUSION_FACTORY_PROXY);
 
-        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "Test Morpho Vault",
             "TMV",
             USDC,
             0,
-            owner
+            owner,
+            0
         );
 
         accessManager = IporFusionAccessManager(fusionInstance.accessManager);

@@ -29,6 +29,7 @@ contract PlasmaVaultFactory {
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
+   
     /// @notice Creates a new instance of PlasmaVault using Clones pattern
     /// @param baseAddress_ The address of the base PlasmaVault implementation to clone
     /// @param index_ The index of the PlasmaVault instance
