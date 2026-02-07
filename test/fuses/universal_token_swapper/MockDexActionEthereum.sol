@@ -18,12 +18,16 @@ contract MockDexActionEthereum is Test {
     }
 
     function returnExtra1000Usdt(address executor) external {
-        deal(USDT, address(this), 1_000e6);
+        vm.prank(0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503); // Binance
+        (bool s1, ) = USDT.call(abi.encodeWithSignature("transfer(address,uint256)", address(this), 1_000e6));
+        require(s1);
         ERC20(USDT).safeTransfer(executor, 1_000e6);
     }
 
     function returnExtra500Usdt(address executor) external {
-        deal(USDT, address(this), 1_000e6);
+        vm.prank(0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503); // Binance
+        (bool s1, ) = USDT.call(abi.encodeWithSignature("transfer(address,uint256)", address(this), 1_000e6));
+        require(s1);
         ERC20(USDT).safeTransfer(executor, 500e6);
     }
 }
