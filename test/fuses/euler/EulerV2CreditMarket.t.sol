@@ -278,7 +278,8 @@ contract EulerCreditMarketTest is Test {
         vm.prank(0x137000352B4ed784e8fa8815d225c713AB2e7Dc9); // AmmTreasuryUsdcProxy
         ERC20(_USDC).transfer(_USER, 10_000e6);
 
-        deal(_USDT, _USER, 10_000e6);
+        vm.prank(0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503); // Binance
+        IToken(_USDT).transfer(_USER, 10_000e6);
         deal(_WST_ETH, _USER, 100e18);
 
         vm.startPrank(_USER);

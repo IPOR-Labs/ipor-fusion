@@ -65,7 +65,14 @@ contract AaveV2BalanceFuseTest is Test {
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        deal(asset, to, amount);
+        if (asset == 0xdAC17F958D2ee523a2206206994597C13D831ec7) {
+            // USDT - non-standard ERC20, deal() doesn't work
+            vm.prank(0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503); // Binance
+            (bool success, ) = asset.call(abi.encodeWithSignature("transfer(address,uint256)", to, amount));
+            require(success, "USDT transfer failed");
+        } else {
+            deal(asset, to, amount);
+        }
     }
 
     modifier iterateSupportedTokens() {
