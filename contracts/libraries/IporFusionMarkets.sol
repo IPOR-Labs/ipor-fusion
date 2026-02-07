@@ -188,6 +188,9 @@ library IporFusionMarkets {
     /// @dev Used for executing Velora swaps via VeloraSwapExecutor contract
     uint256 public constant VELORA_SWAPPER = 43;
 
+
+    uint256 public constant SPARK_LEND = 44;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
