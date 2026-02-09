@@ -11,10 +11,8 @@ import {TacStakingRedelegateFuse, TacStakingRedelegateFuseEnterData} from "../..
 import {TacStakingEmergencyFuse} from "../../../contracts/fuses/tac/TacStakingEmergencyFuse.sol";
 import {TacStakingBalanceFuse} from "../../../contracts/fuses/tac/TacStakingBalanceFuse.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {RewardsManagerFactory} from "../../../contracts/factory/RewardsManagerFactory.sol";
@@ -1740,18 +1738,27 @@ contract TacStakingFuseTest is Test {
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), atomist);
         vm.stopPrank();
 
+        // Setup fee packages
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 100,
+            performanceFee: 100,
+            feeRecipient: atomist
+        });
+
         vm.startPrank(atomist);
-        fusionFactory.updateDaoFee(atomist, 100, 100);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
     function _createVaultWithFusionFactory() private {
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "TAC Staking Vault",
             "tacVault",
             wTAC,
             1 seconds,
-            atomist
+            atomist,
+            0
         );
 
         plasmaVault = PlasmaVault(instance.plasmaVault);
