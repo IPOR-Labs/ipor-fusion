@@ -41,7 +41,6 @@ struct NapierZapDepositFuseExitData {
 /// @dev Splits currency1, keeps YT, and adds liquidity with PT + remaining currency1
 contract NapierZapDepositFuse is NapierUniversalRouterFuse {
     using SafeERC20 for ERC20;
-
     /// @param version Address of this contract version
     /// @param pool Address of the Napier V2 toki pool
     /// @param liquidity Amount of liquidity to deposit
@@ -111,6 +110,9 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
         // The issued YTs are the same amount as the issued PTs
         uint256 liquidity = data_.pool.balanceOf(address(this)) - balanceBefore;
         uint256 principals = ERC20(yt).balanceOf(address(this)) - principalsBefore;
+        if (liquidity < data_.minLiquidity) {
+            revert NapierFuseInsufficientAmount();
+        }
 
         emit NapierZapDepositFuseEnter(VERSION, address(data_.pool), liquidity, principals);
     }
@@ -192,6 +194,9 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
 
         uint256 liquidity = balanceBefore - data_.pool.balanceOf(address(this));
         uint256 underlyings = ERC20(underlying).balanceOf(address(this)) - underlyingsBefore;
+        if (underlyings < data_.amount1OutMin) {
+            revert NapierFuseInsufficientAmount();
+        }
 
         emit NapierZapDepositFuseExit(VERSION, address(data_.pool), liquidity, underlyings);
     }

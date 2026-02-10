@@ -41,7 +41,6 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
     /// @notice Error thrown when amountIn is zero
     error NapierSwapYtFuseInvalidAmountIn();
-
     /// @param version Address of this contract version
     /// @param pool Address of the Napier V2 toki pool
     /// @param tokenIn Asset supplied into the router
@@ -99,6 +98,9 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
         LibPermit2.resetPermit2Approval(tokenIn, address(ROUTER));
 
         uint256 amountOut = ERC20(yt).balanceOf(address(this)) - balanceBefore;
+        if (amountOut < data_.minimumAmount) {
+            revert NapierFuseInsufficientAmount();
+        }
 
         emit NapierSwapYtFuseEnter(VERSION, address(data_.pool), yt, amountOut);
     }
@@ -136,6 +138,9 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
         LibPermit2.resetPermit2Approval(yt, address(ROUTER));
 
         uint256 amountOut = key.currency0.balanceOf(address(this)) - balanceBefore;
+        if (amountOut < data_.minimumAmount) {
+            revert NapierFuseInsufficientAmount();
+        }
 
         emit NapierSwapYtFuseExit(VERSION, address(data_.pool), tokenOut, amountOut);
     }

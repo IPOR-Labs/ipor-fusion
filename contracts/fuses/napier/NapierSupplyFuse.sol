@@ -36,9 +36,6 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
     /// @param tokenIn Asset supplied into the router
     /// @param principals Amount of PTs/YTs issued to the vault
     event NapierSupplyFuseEnter(address version, address principalToken, address tokenIn, uint256 principals);
-    /// @notice Error thrown when received principals are less than the minimum requested
-    error NapierSupplyFuseInsufficientPrincipals();
-
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
         if (marketId_ == 0) revert NapierFuseIInvalidMarketId();
@@ -107,7 +104,7 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
 
         uint256 principals = pt.balanceOf(address(this)) - balanceBefore;
         if (principals < data_.minPrincipalsAmount) {
-            revert NapierSupplyFuseInsufficientPrincipals();
+            revert NapierFuseInsufficientAmount();
         }
 
         emit NapierSupplyFuseEnter(VERSION, address(data_.principalToken), data_.tokenIn, principals);

@@ -41,7 +41,6 @@ struct NapierDepositFuseExitData {
 /// @dev Substrates in this fuse are the Napier V2 Principal Tokens
 contract NapierDepositFuse is NapierUniversalRouterFuse {
     using SafeERC20 for ERC20;
-
     /// @param version Address of this contract version
     /// @param pool Address of the Napier V2 toki pool
     /// @param liquidity Amount of liquidity to deposit
@@ -92,6 +91,9 @@ contract NapierDepositFuse is NapierUniversalRouterFuse {
         ROUTER.execute(commands, inputs);
 
         uint256 liquidity = data_.pool.balanceOf(address(this)) - balanceBefore;
+        if (liquidity < data_.minLiquidity) {
+            revert NapierFuseInsufficientAmount();
+        }
 
         emit NapierDepositFuseEnter(VERSION, address(data_.pool), liquidity);
     }
@@ -125,11 +127,19 @@ contract NapierDepositFuse is NapierUniversalRouterFuse {
         );
 
         uint256 balanceBefore = data_.pool.balanceOf(address(this));
+        uint256 underlyingBalanceBefore = ERC20(underlying).balanceOf(address(this));
+        uint256 ptBalanceBefore = ERC20(pt).balanceOf(address(this));
 
         ERC20(address(data_.pool)).safeTransfer(address(ROUTER), data_.liquidity);
         ROUTER.execute(commands, inputs);
 
         uint256 liquidity = balanceBefore - data_.pool.balanceOf(address(this));
+        uint256 amount0Out = ERC20(underlying).balanceOf(address(this)) - underlyingBalanceBefore;
+        uint256 amount1Out = ERC20(pt).balanceOf(address(this)) - ptBalanceBefore;
+
+        if (amount0Out < data_.amount0OutMin || amount1Out < data_.amount1OutMin) {
+            revert NapierFuseInsufficientAmount();
+        }
 
         emit NapierDepositFuseExit(VERSION, address(data_.pool), liquidity);
     }

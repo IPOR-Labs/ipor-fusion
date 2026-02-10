@@ -37,9 +37,6 @@ contract NapierRedeemFuse is NapierUniversalRouterFuse {
     /// @param principalToken Address of the Napier V2 Principal Token
     /// @param amountOut Amount of tokens received
     event NapierRedeemFuseEnter(address version, address principalToken, address tokenOut, uint256 amountOut);
-    /// @notice Error thrown when received tokenOut is less than the minimum requested
-    error NapierRedeemFuseInsufficientTokenOut();
-
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
         if (marketId_ == 0) revert NapierFuseIInvalidMarketId();
@@ -103,7 +100,7 @@ contract NapierRedeemFuse is NapierUniversalRouterFuse {
 
         uint256 amountOut = ERC20(data_.tokenOut).balanceOf(address(this)) - balanceBefore;
         if (amountOut < data_.minTokenOutAmount) {
-            revert NapierRedeemFuseInsufficientTokenOut();
+            revert NapierFuseInsufficientAmount();
         }
 
         emit NapierRedeemFuseEnter(VERSION, address(data_.principalToken), data_.tokenOut, amountOut);

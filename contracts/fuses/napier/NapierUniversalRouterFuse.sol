@@ -28,6 +28,8 @@ abstract contract NapierUniversalRouterFuse is IFuseCommon {
     error NapierFuseIInvalidRouter();
     /// @notice Error thrown when an invalid token is provided
     error NapierFuseIInvalidToken();
+    /// @notice Error thrown when received amount is less than the minimum requested
+    error NapierFuseInsufficientAmount();
 
     function _getPoolKey(ITokiPoolToken pool) internal view returns (PoolKey memory) {
         return pool.i_poolKey();

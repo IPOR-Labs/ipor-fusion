@@ -33,7 +33,6 @@ contract NapierSwapPtFuse is NapierUniversalRouterFuse {
 
     /// @notice Error thrown when amountIn is zero
     error NapierSwapPtFuseInvalidAmountIn();
-
     /// @param version Address of this contract version
     /// @param pool Address of the Napier V2 toki pool
     /// @param tokenIn Asset supplied into the router
@@ -101,6 +100,9 @@ contract NapierSwapPtFuse is NapierUniversalRouterFuse {
         ROUTER.execute(commands, inputs);
 
         uint256 amountOut = key.currency1.balanceOf(address(this)) - balanceBefore;
+        if (amountOut < data_.minimumAmount) {
+            revert NapierFuseInsufficientAmount();
+        }
 
         emit NapierSwapPtFuseEnter(VERSION, address(data_.pool), Currency.unwrap(key.currency0), amountOut);
     }
@@ -156,6 +158,9 @@ contract NapierSwapPtFuse is NapierUniversalRouterFuse {
         ROUTER.execute(commands, inputs);
 
         uint256 amountOut = key.currency0.balanceOf(address(this)) - balanceBefore;
+        if (amountOut < data_.minimumAmount) {
+            revert NapierFuseInsufficientAmount();
+        }
 
         emit NapierSwapPtFuseExit(VERSION, address(data_.pool), Currency.unwrap(key.currency0), amountOut);
     }
