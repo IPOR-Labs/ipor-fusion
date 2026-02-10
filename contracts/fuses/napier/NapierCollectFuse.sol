@@ -31,7 +31,7 @@ contract NapierCollectFuse is NapierUniversalRouterFuse {
 
     constructor(uint256 marketId_) {
         VERSION = address(this);
-        if (marketId_ == 0) revert NapierFuseIInvalidMarketId();
+        if (marketId_ == 0) revert NapierFuseInvalidMarketId();
 
         MARKET_ID = marketId_;
     }
@@ -41,7 +41,7 @@ contract NapierCollectFuse is NapierUniversalRouterFuse {
         IPrincipalToken principalToken = data_.principalToken;
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(principalToken))) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         // Collect interest (in units of the underlying token) and external rewards if any

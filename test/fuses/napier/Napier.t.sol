@@ -564,7 +564,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _supplyFuse, data: abi.encodeCall(NapierSupplyFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -586,7 +586,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _supplyFuse, data: abi.encodeCall(NapierSupplyFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -720,7 +720,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _redeemFuse, data: abi.encodeCall(NapierRedeemFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -797,7 +797,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _redeemFuse, data: abi.encodeCall(NapierRedeemFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -857,7 +857,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _collectFuse, data: abi.encodeCall(NapierCollectFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -967,7 +967,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _combineFuse, data: abi.encodeCall(NapierCombineFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1142,7 +1142,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1160,7 +1160,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1177,7 +1177,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1194,7 +1194,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1211,7 +1211,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1228,7 +1228,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapPtFuse, data: abi.encodeCall(NapierSwapPtFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1399,7 +1399,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1417,7 +1417,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1435,7 +1435,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1452,7 +1452,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1469,7 +1469,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1487,7 +1487,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _swapYtFuse, data: abi.encodeCall(NapierSwapYtFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1536,7 +1536,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1578,7 +1578,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1689,7 +1689,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1739,7 +1739,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1796,7 +1796,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1848,7 +1848,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.enter, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1929,7 +1929,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidMarketId.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidMarketId.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -1994,7 +1994,7 @@ contract NapierFuseTest is Test {
         actions[0] = FuseAction({fuse: _depositFuse, data: abi.encodeCall(NapierDepositFuse.exit, data)});
 
         vm.prank(ALPHA);
-        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseIInvalidToken.selector);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
     }
 

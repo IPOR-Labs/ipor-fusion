@@ -38,8 +38,8 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
     event NapierSupplyFuseEnter(address version, address principalToken, address tokenIn, uint256 principals);
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
-        if (marketId_ == 0) revert NapierFuseIInvalidMarketId();
-        if (router_ == address(0)) revert NapierFuseIInvalidRouter();
+        if (marketId_ == 0) revert NapierFuseInvalidMarketId();
+        if (router_ == address(0)) revert NapierFuseInvalidRouter();
 
         MARKET_ID = marketId_;
         ROUTER = IUniversalRouter(router_);
@@ -50,11 +50,11 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
         IPrincipalToken pt = data_.principalToken;
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(pt))) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenIn)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (data_.amountIn == 0) {
@@ -91,7 +91,7 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
             );
             inputs[1] = abi.encode(pt, ActionConstants.CONTRACT_BALANCE, address(this));
         } else {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         uint256 balanceBefore = pt.balanceOf(address(this));

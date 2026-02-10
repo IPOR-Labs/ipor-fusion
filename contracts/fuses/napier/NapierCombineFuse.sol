@@ -38,8 +38,8 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
     event NapierCombineFuseEnter(address version, address principalToken, address tokenOut, uint256 amountOut);
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
-        if (marketId_ == 0) revert NapierFuseIInvalidMarketId();
-        if (router_ == address(0)) revert NapierFuseIInvalidRouter();
+        if (marketId_ == 0) revert NapierFuseInvalidMarketId();
+        if (router_ == address(0)) revert NapierFuseInvalidRouter();
 
         MARKET_ID = marketId_;
         ROUTER = IUniversalRouter(router_);
@@ -50,16 +50,16 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
         IPrincipalToken pt = data_.principalToken;
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(pt))) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         address yt = pt.i_yt();
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.tokenOut)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (data_.principals == 0) {
@@ -87,7 +87,7 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
             inputs[0] = abi.encode(pt, ActionConstants.CONTRACT_BALANCE, ActionConstants.ADDRESS_THIS);
             inputs[1] = abi.encode(underlying, asset, data_.tokenOut, ActionConstants.CONTRACT_BALANCE, address(this));
         } else {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         uint256 balanceBefore = ERC20(data_.tokenOut).balanceOf(address(this));

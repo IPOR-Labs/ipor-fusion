@@ -51,8 +51,8 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
-        if (marketId_ == 0) revert NapierFuseIInvalidMarketId();
-        if (router_ == address(0)) revert NapierFuseIInvalidRouter();
+        if (marketId_ == 0) revert NapierFuseInvalidMarketId();
+        if (router_ == address(0)) revert NapierFuseInvalidRouter();
 
         MARKET_ID = marketId_;
         ROUTER = IUniversalRouter(router_);
@@ -60,7 +60,7 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
     function enter(NapierSwapYtEnterFuseData calldata data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.pool))) {
-            revert NapierFuseIInvalidMarketId();
+            revert NapierFuseInvalidMarketId();
         }
 
         PoolKey memory key = _getPoolKey(data_.pool);
@@ -68,11 +68,11 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
         address yt = IPrincipalToken(Currency.unwrap(key.currency1)).i_yt();
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenIn)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (data_.amountIn == 0) {
@@ -107,7 +107,7 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
 
     function exit(NapierSwapYtExitFuseData calldata data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.pool))) {
-            revert NapierFuseIInvalidMarketId();
+            revert NapierFuseInvalidMarketId();
         }
 
         PoolKey memory key = _getPoolKey(data_.pool);
@@ -115,11 +115,11 @@ contract NapierSwapYtFuse is NapierUniversalRouterFuse {
         address yt = IPrincipalToken(Currency.unwrap(key.currency1)).i_yt();
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, tokenOut)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (data_.amountIn == 0) {

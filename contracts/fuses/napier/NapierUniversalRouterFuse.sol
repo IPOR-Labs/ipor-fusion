@@ -23,11 +23,11 @@ abstract contract NapierUniversalRouterFuse is IFuseCommon {
     IUniversalRouter public immutable ROUTER;
 
     /// @notice Error thrown when an invalid market ID is provided
-    error NapierFuseIInvalidMarketId();
+    error NapierFuseInvalidMarketId();
     /// @notice Error thrown when an invalid router address is provided
-    error NapierFuseIInvalidRouter();
+    error NapierFuseInvalidRouter();
     /// @notice Error thrown when an invalid token is provided
-    error NapierFuseIInvalidToken();
+    error NapierFuseInvalidToken();
     /// @notice Error thrown when received amount is less than the minimum requested
     error NapierFuseInsufficientAmount();
 

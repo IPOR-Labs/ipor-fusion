@@ -55,8 +55,8 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
 
     constructor(uint256 marketId_, address router_) {
         VERSION = address(this);
-        if (marketId_ == 0) revert NapierFuseIInvalidMarketId();
-        if (router_ == address(0)) revert NapierFuseIInvalidRouter();
+        if (marketId_ == 0) revert NapierFuseInvalidMarketId();
+        if (router_ == address(0)) revert NapierFuseInvalidRouter();
 
         MARKET_ID = marketId_;
         ROUTER = IUniversalRouter(router_);
@@ -66,7 +66,7 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
     /// @notice The router spends some of the underlying tokens to mint PTs and YTs and deposits the rest of the underlying tokens and the PTs into the pool
     function enter(NapierZapDepositFuseEnterData calldata data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.pool))) {
-            revert NapierFuseIInvalidMarketId();
+            revert NapierFuseInvalidMarketId();
         }
 
         PoolKey memory key = _getPoolKey(data_.pool);
@@ -74,16 +74,16 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
         address pt = Currency.unwrap(key.currency1);
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, underlying)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, pt)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         address yt = IPrincipalToken(pt).i_yt();
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         bytes memory commands = abi.encodePacked(
@@ -122,7 +122,7 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
     /// @notice Post-maturity: removes liquidity, redeems PT for currency1
     function exit(NapierZapDepositFuseExitData calldata data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.pool))) {
-            revert NapierFuseIInvalidMarketId();
+            revert NapierFuseInvalidMarketId();
         }
 
         PoolKey memory key = _getPoolKey(data_.pool);
@@ -130,11 +130,11 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
         address pt = Currency.unwrap(key.currency1);
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, underlying)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, pt)) {
-            revert NapierFuseIInvalidToken();
+            revert NapierFuseInvalidToken();
         }
 
         bytes memory commands;
