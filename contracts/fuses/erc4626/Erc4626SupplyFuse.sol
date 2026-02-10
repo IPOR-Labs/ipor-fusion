@@ -147,7 +147,7 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         uint256 finalVaultAssetAmount = IporMath.min(
             data_.vaultAssetAmount,
-            IERC4626(data_.vault).convertToAssets(IERC4626(data_.vault).balanceOf(address(this)))
+            IERC4626(data_.vault).maxWithdraw(address(this))
         );
 
         if (finalVaultAssetAmount == 0) {
