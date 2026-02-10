@@ -151,6 +151,52 @@ contract MidasRequestSupplyFuse is IFuseCommon {
         );
     }
 
+    /// @notice Clean up completed/canceled deposit requests from pending storage
+    /// @dev Can be called independently to clean up stale requests after long periods without supply fuse interaction
+    /// @param depositVault_ The deposit vault to clean up
+    /// @param maxIterations_ Maximum number of requests to process (0 = process all)
+    function cleanupPendingDeposits(address depositVault_, uint256 maxIterations_) external {
+        uint256[] memory requestIds = MidasPendingRequestsStorageLib.getPendingDepositsForVault(depositVault_);
+        uint256 length = requestIds.length;
+        uint256 iterations;
+        IMidasDepositVault.Request memory req;
+        for (uint256 i = length; i > 0; --i) {
+            if (maxIterations_ > 0 && iterations >= maxIterations_) {
+                break;
+            }
+            req = IMidasDepositVault(depositVault_).mintRequests(requestIds[i - 1]);
+            if (req.status == MIDAS_REQUEST_STATUS_PENDING) {
+                continue;
+            }
+            MidasPendingRequestsStorageLib.removePendingDeposit(depositVault_, requestIds[i - 1]);
+            emit MidasRequestSupplyFuseCleanedDeposit(depositVault_, requestIds[i - 1]);
+            ++iterations;
+        }
+    }
+
+    /// @notice Clean up completed/canceled redemption requests from pending storage
+    /// @dev Can be called independently to clean up stale requests after long periods without supply fuse interaction
+    /// @param redemptionVault_ The redemption vault to clean up
+    /// @param maxIterations_ Maximum number of requests to process (0 = process all)
+    function cleanupPendingRedemptions(address redemptionVault_, uint256 maxIterations_) external {
+        uint256[] memory requestIds = MidasPendingRequestsStorageLib.getPendingRedemptionsForVault(redemptionVault_);
+        uint256 length = requestIds.length;
+        uint256 iterations;
+        IMidasRedemptionVault.Request memory req;
+        for (uint256 i = length; i > 0; --i) {
+            if (maxIterations_ > 0 && iterations >= maxIterations_) {
+                break;
+            }
+            req = IMidasRedemptionVault(redemptionVault_).redeemRequests(requestIds[i - 1]);
+            if (req.status == MIDAS_REQUEST_STATUS_PENDING) {
+                continue;
+            }
+            MidasPendingRequestsStorageLib.removePendingRedemption(redemptionVault_, requestIds[i - 1]);
+            emit MidasRequestSupplyFuseCleanedRedemption(redemptionVault_, requestIds[i - 1]);
+            ++iterations;
+        }
+    }
+
     /// @notice Remove completed/canceled deposit requests from pending storage
     /// @param depositVault_ The deposit vault to clean up
     function _cleanUpPendingDeposits(address depositVault_) internal {

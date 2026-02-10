@@ -7,6 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MidasSupplyFuse, MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
 import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
 
@@ -21,7 +22,7 @@ contract MidasSupplyFuseTest is Test {
     address public constant MBASIS_INSTANT_REDEMPTION_VAULT = address(0xBEEF0001);
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
-    uint256 public constant MARKET_ID = 1;
+    uint256 public constant MARKET_ID = IporFusionMarkets.MIDAS;
     uint256 public constant FORK_BLOCK = 21800000;
 
     MidasSupplyFuse public fuse;

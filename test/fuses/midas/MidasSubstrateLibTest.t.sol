@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 /// @title MidasSubstrateLibTest
@@ -11,7 +12,7 @@ contract MidasSubstrateLibTest is Test {
     address public constant MTBILL_TOKEN = 0xDD629E5241CbC5919847783e6C96B2De4754e438;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
-    uint256 public constant MARKET_ID = 1;
+    uint256 public constant MARKET_ID = IporFusionMarkets.MIDAS;
 
     // ============ Encoding / Decoding Tests ============
 

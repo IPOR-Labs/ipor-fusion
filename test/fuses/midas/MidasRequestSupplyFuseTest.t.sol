@@ -9,6 +9,7 @@ import {IMidasDepositVault} from "../../../contracts/fuses/midas/ext/IMidasDepos
 import {IMidasRedemptionVault} from "../../../contracts/fuses/midas/ext/IMidasRedemptionVault.sol";
 import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {MidasPendingRequestsStorageLib} from "../../../contracts/fuses/midas/lib/MidasPendingRequestsStorageLib.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
 
@@ -21,7 +22,7 @@ contract MidasRequestSupplyFuseTest is Test {
     address public constant MBASIS_REDEMPTION_VAULT = 0x19AB19e61A930bc5C7B75Bf06cDd954218Ca9F0b;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
-    uint256 public constant MARKET_ID = 1;
+    uint256 public constant MARKET_ID = IporFusionMarkets.MIDAS;
     uint256 public constant FORK_BLOCK = 21800000;
 
     MidasRequestSupplyFuse public fuse;
@@ -864,5 +865,656 @@ contract MidasRequestSupplyFuseTest is Test {
             })
         );
         // No revert means request 42 was cleaned and re-added successfully
+    }
+
+    // ============ External Cleanup Deposit Tests ============
+
+    function testShouldCleanupPendingDepositsProcessAll() public {
+        uint256 usdcAmount = 100_000e6;
+
+        // Mock mintRequests to return Pending status (0) so internal cleanup in enter() doesn't remove them
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("mintRequests(uint256)"),
+            abi.encode(
+                IMidasDepositVault.Request({
+                    sender: address(vault),
+                    tokenIn: USDC,
+                    status: 0, // Pending
+                    depositedUsdAmount: usdcAmount,
+                    usdAmountWithoutFees: usdcAmount,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Create pending deposit 42
+        deal(USDC, address(vault), usdcAmount);
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("depositRequest(address,uint256,bytes32)"),
+            abi.encode(uint256(42))
+        );
+        vault.enterMidasRequestSupply(
+            MidasRequestSupplyFuseEnterData({
+                mToken: MTBILL_TOKEN,
+                tokenIn: USDC,
+                amount: usdcAmount,
+                depositVault: MTBILL_DEPOSIT_VAULT
+            })
+        );
+
+        // Create pending deposit 43
+        deal(USDC, address(vault), usdcAmount);
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("depositRequest(address,uint256,bytes32)"),
+            abi.encode(uint256(43))
+        );
+        vault.enterMidasRequestSupply(
+            MidasRequestSupplyFuseEnterData({
+                mToken: MTBILL_TOKEN,
+                tokenIn: USDC,
+                amount: usdcAmount,
+                depositVault: MTBILL_DEPOSIT_VAULT
+            })
+        );
+
+        // Create pending deposit 44
+        deal(USDC, address(vault), usdcAmount);
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("depositRequest(address,uint256,bytes32)"),
+            abi.encode(uint256(44))
+        );
+        vault.enterMidasRequestSupply(
+            MidasRequestSupplyFuseEnterData({
+                mToken: MTBILL_TOKEN,
+                tokenIn: USDC,
+                amount: usdcAmount,
+                depositVault: MTBILL_DEPOSIT_VAULT
+            })
+        );
+
+        // Now mock all as Processed (status=1)
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("mintRequests(uint256)"),
+            abi.encode(
+                IMidasDepositVault.Request({
+                    sender: address(vault),
+                    tokenIn: USDC,
+                    status: 1, // Processed
+                    depositedUsdAmount: usdcAmount,
+                    usdAmountWithoutFees: usdcAmount,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Expect 3 cleanup events (reverse order: 44, 43, 42)
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedDeposit(MTBILL_DEPOSIT_VAULT, 44);
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedDeposit(MTBILL_DEPOSIT_VAULT, 43);
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedDeposit(MTBILL_DEPOSIT_VAULT, 42);
+
+        // Call external cleanup with maxIterations=0 (process all)
+        vault.cleanupMidasPendingDeposits(MTBILL_DEPOSIT_VAULT, 0);
+    }
+
+    function testShouldCleanupPendingDepositsWithMaxIterationsLimited() public {
+        uint256 usdcAmount = 100_000e6;
+
+        // Mock mintRequests to return Pending status (0) so internal cleanup in enter() doesn't remove them
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("mintRequests(uint256)"),
+            abi.encode(
+                IMidasDepositVault.Request({
+                    sender: address(vault),
+                    tokenIn: USDC,
+                    status: 0, // Pending
+                    depositedUsdAmount: usdcAmount,
+                    usdAmountWithoutFees: usdcAmount,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Create pending deposit 42
+        deal(USDC, address(vault), usdcAmount);
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("depositRequest(address,uint256,bytes32)"),
+            abi.encode(uint256(42))
+        );
+        vault.enterMidasRequestSupply(
+            MidasRequestSupplyFuseEnterData({
+                mToken: MTBILL_TOKEN,
+                tokenIn: USDC,
+                amount: usdcAmount,
+                depositVault: MTBILL_DEPOSIT_VAULT
+            })
+        );
+
+        // Create pending deposit 43
+        deal(USDC, address(vault), usdcAmount);
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("depositRequest(address,uint256,bytes32)"),
+            abi.encode(uint256(43))
+        );
+        vault.enterMidasRequestSupply(
+            MidasRequestSupplyFuseEnterData({
+                mToken: MTBILL_TOKEN,
+                tokenIn: USDC,
+                amount: usdcAmount,
+                depositVault: MTBILL_DEPOSIT_VAULT
+            })
+        );
+
+        // Create pending deposit 44
+        deal(USDC, address(vault), usdcAmount);
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("depositRequest(address,uint256,bytes32)"),
+            abi.encode(uint256(44))
+        );
+        vault.enterMidasRequestSupply(
+            MidasRequestSupplyFuseEnterData({
+                mToken: MTBILL_TOKEN,
+                tokenIn: USDC,
+                amount: usdcAmount,
+                depositVault: MTBILL_DEPOSIT_VAULT
+            })
+        );
+
+        // Now mock all as Processed (status=1)
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("mintRequests(uint256)"),
+            abi.encode(
+                IMidasDepositVault.Request({
+                    sender: address(vault),
+                    tokenIn: USDC,
+                    status: 1, // Processed
+                    depositedUsdAmount: usdcAmount,
+                    usdAmountWithoutFees: usdcAmount,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // First call with maxIterations=1 - should clean only 1 (last added = 44, since iteration is reversed)
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedDeposit(MTBILL_DEPOSIT_VAULT, 44);
+
+        vault.cleanupMidasPendingDeposits(MTBILL_DEPOSIT_VAULT, 1);
+
+        // Second call to clean remaining (43, 42)
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedDeposit(MTBILL_DEPOSIT_VAULT, 43);
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedDeposit(MTBILL_DEPOSIT_VAULT, 42);
+
+        vault.cleanupMidasPendingDeposits(MTBILL_DEPOSIT_VAULT, 0);
+    }
+
+    function testShouldCleanupPendingDepositsSkipPendingRequests() public {
+        uint256 usdcAmount = 100_000e6;
+
+        // Mock mintRequests to return Pending status (0) so internal cleanup in enter() doesn't remove them
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("mintRequests(uint256)"),
+            abi.encode(
+                IMidasDepositVault.Request({
+                    sender: address(vault),
+                    tokenIn: USDC,
+                    status: 0, // Pending
+                    depositedUsdAmount: usdcAmount,
+                    usdAmountWithoutFees: usdcAmount,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Create pending deposit 42
+        deal(USDC, address(vault), usdcAmount);
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("depositRequest(address,uint256,bytes32)"),
+            abi.encode(uint256(42))
+        );
+        vault.enterMidasRequestSupply(
+            MidasRequestSupplyFuseEnterData({
+                mToken: MTBILL_TOKEN,
+                tokenIn: USDC,
+                amount: usdcAmount,
+                depositVault: MTBILL_DEPOSIT_VAULT
+            })
+        );
+
+        // Create pending deposit 43
+        deal(USDC, address(vault), usdcAmount);
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("depositRequest(address,uint256,bytes32)"),
+            abi.encode(uint256(43))
+        );
+        vault.enterMidasRequestSupply(
+            MidasRequestSupplyFuseEnterData({
+                mToken: MTBILL_TOKEN,
+                tokenIn: USDC,
+                amount: usdcAmount,
+                depositVault: MTBILL_DEPOSIT_VAULT
+            })
+        );
+
+        // Mock specific responses: request 42 as Processed, request 43 as Pending
+        // Use specific mockCall with requestId to differentiate
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("mintRequests(uint256)", uint256(42)),
+            abi.encode(
+                IMidasDepositVault.Request({
+                    sender: address(vault),
+                    tokenIn: USDC,
+                    status: 1, // Processed
+                    depositedUsdAmount: usdcAmount,
+                    usdAmountWithoutFees: usdcAmount,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+        vm.mockCall(
+            MTBILL_DEPOSIT_VAULT,
+            abi.encodeWithSignature("mintRequests(uint256)", uint256(43)),
+            abi.encode(
+                IMidasDepositVault.Request({
+                    sender: address(vault),
+                    tokenIn: USDC,
+                    status: 0, // Pending
+                    depositedUsdAmount: usdcAmount,
+                    usdAmountWithoutFees: usdcAmount,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Only request 42 should be cleaned (43 is still Pending)
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedDeposit(MTBILL_DEPOSIT_VAULT, 42);
+
+        vault.cleanupMidasPendingDeposits(MTBILL_DEPOSIT_VAULT, 0);
+    }
+
+    function testShouldCleanupPendingDepositsWhenNoPendingRequests() public {
+        // Call cleanup with no pending deposits - should succeed without revert
+        vault.cleanupMidasPendingDeposits(MTBILL_DEPOSIT_VAULT, 0);
+    }
+
+    // ============ External Cleanup Redemption Tests ============
+
+    function testShouldCleanupPendingRedemptionsProcessAll() public {
+        uint256 mTokenAmount = 100e18;
+
+        // Create pending redemption #1 (requestId = 42)
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(42))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Mock redeemRequests to return Pending (status=0) so exit cleanup doesn't remove existing requests
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequests(uint256)"),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 0, // Pending
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Create pending redemption #2 (requestId = 43)
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(43))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Create pending redemption #3 (requestId = 44)
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(44))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Now mock all 3 requests as Processed (status=1)
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequests(uint256)"),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 1, // Processed
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Expect 3 cleanup events (processed in reverse order: 44, 43, 42)
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedRedemption(MTBILL_REDEMPTION_VAULT, 44);
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedRedemption(MTBILL_REDEMPTION_VAULT, 43);
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedRedemption(MTBILL_REDEMPTION_VAULT, 42);
+
+        // Call cleanup with maxIterations=0 (process all)
+        vault.cleanupMidasPendingRedemptions(MTBILL_REDEMPTION_VAULT, 0);
+    }
+
+    function testShouldCleanupPendingRedemptionsWithMaxIterationsLimited() public {
+        uint256 mTokenAmount = 100e18;
+
+        // Create pending redemption #1 (requestId = 42)
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(42))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Mock redeemRequests to return Pending (status=0) so exit cleanup doesn't remove existing requests
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequests(uint256)"),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 0, // Pending
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Create pending redemption #2 (requestId = 43)
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(43))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Create pending redemption #3 (requestId = 44)
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(44))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Mock all as Processed (status=1)
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequests(uint256)"),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 1, // Processed
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Expect only 1 cleanup event (maxIterations=1, processes from end: 44)
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedRedemption(MTBILL_REDEMPTION_VAULT, 44);
+
+        // Call cleanup with maxIterations=1 (only process 1)
+        vault.cleanupMidasPendingRedemptions(MTBILL_REDEMPTION_VAULT, 1);
+    }
+
+    function testShouldCleanupPendingRedemptionsSkipPendingRequests() public {
+        uint256 mTokenAmount = 100e18;
+
+        // Create pending redemption #1 (requestId = 42)
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(42))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Mock redeemRequests to return Pending (status=0) so exit cleanup doesn't remove request 42
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequests(uint256)"),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 0, // Pending
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Create pending redemption #2 (requestId = 43)
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(43))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Now set up specific mocks per requestId:
+        // Request 43 (Pending, status=0) - should be SKIPPED
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSelector(IMidasRedemptionVault.redeemRequests.selector, uint256(43)),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 0, // Pending
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Request 42 (Processed, status=1) - should be CLEANED
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSelector(IMidasRedemptionVault.redeemRequests.selector, uint256(42)),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 1, // Processed
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Only request 42 should emit cleanup event
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedRedemption(MTBILL_REDEMPTION_VAULT, 42);
+
+        // Call cleanup with maxIterations=0 (process all)
+        vault.cleanupMidasPendingRedemptions(MTBILL_REDEMPTION_VAULT, 0);
+    }
+
+    function testShouldCleanupPendingRedemptionsWhenNoPendingRequests() public {
+        // No pending redemptions created - just call cleanup directly
+        // Should succeed without revert
+        vault.cleanupMidasPendingRedemptions(MTBILL_REDEMPTION_VAULT, 0);
+    }
+
+    function testShouldCleanupPendingRedemptionsEmitEvents() public {
+        uint256 mTokenAmount = 100e18;
+
+        // Mock redeemRequests to return Pending status (0) so internal cleanup in exit() doesn't remove them
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequests(uint256)"),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 0, // Pending
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Create pending redemption 50
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(50))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Create pending redemption 51
+        deal(MTBILL_TOKEN, address(vault), mTokenAmount);
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequest(address,uint256)"),
+            abi.encode(uint256(51))
+        );
+        vault.exitMidasRequestSupply(
+            MidasRequestSupplyFuseExitData({
+                mToken: MTBILL_TOKEN,
+                amount: mTokenAmount,
+                tokenOut: USDC,
+                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+            })
+        );
+
+        // Mock both as Canceled (status=2) - should also trigger cleanup
+        vm.mockCall(
+            MTBILL_REDEMPTION_VAULT,
+            abi.encodeWithSignature("redeemRequests(uint256)"),
+            abi.encode(
+                IMidasRedemptionVault.Request({
+                    sender: address(vault),
+                    tokenOut: USDC,
+                    status: 2, // Canceled
+                    amountMToken: mTokenAmount,
+                    mTokenRate: 1e18,
+                    tokenOutRate: 1e18
+                })
+            )
+        );
+
+        // Verify correct events with correct vault and requestIds (reverse order: 51, 50)
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedRedemption(MTBILL_REDEMPTION_VAULT, 51);
+        vm.expectEmit(true, true, true, true);
+        emit MidasRequestSupplyFuse.MidasRequestSupplyFuseCleanedRedemption(MTBILL_REDEMPTION_VAULT, 50);
+
+        vault.cleanupMidasPendingRedemptions(MTBILL_REDEMPTION_VAULT, 0);
     }
 }

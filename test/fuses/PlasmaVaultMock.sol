@@ -300,6 +300,18 @@ contract PlasmaVaultMock {
         );
     }
 
+    function cleanupMidasPendingDeposits(address depositVault_, uint256 maxIterations_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("cleanupPendingDeposits(address,uint256)", depositVault_, maxIterations_)
+        );
+    }
+
+    function cleanupMidasPendingRedemptions(address redemptionVault_, uint256 maxIterations_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("cleanupPendingRedemptions(address,uint256)", redemptionVault_, maxIterations_)
+        );
+    }
+
     function execute(address fuse_, bytes calldata data_) external {
         address(fuse_).functionDelegateCall(data_);
     }

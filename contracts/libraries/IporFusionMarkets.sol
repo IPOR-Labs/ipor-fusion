@@ -195,6 +195,11 @@ library IporFusionMarkets {
     /// @dev Used for executing Velora swaps via VeloraSwapExecutor contract
     uint256 public constant VELORA_SWAPPER = 44;
 
+    /// @dev Midas RWA market (mTBILL, mBASIS)
+    /// @dev Substrate type: MidasSubstrateType (M_TOKEN, DEPOSIT_VAULT, REDEMPTION_VAULT, INSTANT_REDEMPTION_VAULT, ASSET)
+    /// @dev Substrate values: Encoded combination of type flag and address (see MidasSubstrateLib)
+    uint256 public constant MIDAS = 45;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 

@@ -56,8 +56,9 @@ contract MidasBalanceFuse is IMarketBalanceFuse {
         uint256 depositVaultsCount;
         uint256 redemptionVaultsCount;
 
+        MidasSubstrate memory substrate;
         for (uint256 i; i < substratesLength; ++i) {
-            MidasSubstrate memory substrate = MidasSubstrateLib.bytes32ToSubstrate(substrates[i]);
+            substrate = MidasSubstrateLib.bytes32ToSubstrate(substrates[i]);
 
             if (substrate.substrateType == MidasSubstrateType.DEPOSIT_VAULT) {
                 depositVaults[depositVaultsCount] = substrate.substrateAddress;
@@ -103,8 +104,9 @@ contract MidasBalanceFuse is IMarketBalanceFuse {
         }
 
         // Component A: mTokens held by PlasmaVault
+        uint256 mTokenBalance;
         for (uint256 i; i < uniqueMTokenCount; ++i) {
-            uint256 mTokenBalance = IERC20(mTokens[i]).balanceOf(address(this));
+            mTokenBalance = IERC20(mTokens[i]).balanceOf(address(this));
             if (mTokenBalance > 0 && mTokenPrices[i] > 0) {
                 // mToken has 18 decimals, mTokenPrice has 18 decimals
                 // mTokenBalance * mTokenPrice => 36 decimals, convert to 18

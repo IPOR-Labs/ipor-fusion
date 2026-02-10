@@ -10,6 +10,7 @@ import {MidasBalanceFuse} from "../../../contracts/fuses/midas/MidasBalanceFuse.
 import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {MidasSupplyFuse} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
 import {MidasPendingRequestsHelper} from "./MidasPendingRequestsHelper.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 contract MidasBalanceFuseTest is Test {
@@ -26,7 +27,7 @@ contract MidasBalanceFuseTest is Test {
     // Mock data feed price: ~$1.02 per mBASIS (18 decimals)
     uint256 public constant MOCK_MBASIS_PRICE = 1_020000000000000000;
 
-    uint256 public constant MARKET_ID = 1;
+    uint256 public constant MARKET_ID = IporFusionMarkets.MIDAS;
     uint256 public constant FORK_BLOCK = 21800000;
 
     MidasBalanceFuse public balanceFuse;
