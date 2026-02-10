@@ -29,24 +29,7 @@ contract PlasmaVaultFactory {
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
-    /// @notice Creates a new PlasmaVault instance with the specified initialization parameters
-    /// @param index_ The index of the PlasmaVault instance
-    /// @param initData_ The initialization data containing vault configuration parameters
-    /// @return plasmaVault The address of the newly created PlasmaVault contract
-    /// @dev This function deploys a new PlasmaVault contract with the provided initialization data
-    /// @dev The initialization data must contain valid parameters for the vault to function correctly
-    function create(uint256 index_, PlasmaVaultInitData memory initData_) external returns (address plasmaVault) {
-        plasmaVault = address(new PlasmaVault());
-        PlasmaVault(plasmaVault).proxyInitialize(initData_);
-        emit PlasmaVaultCreated(
-            index_,
-            plasmaVault,
-            initData_.assetName,
-            initData_.assetSymbol,
-            initData_.underlyingToken
-        );
-    }
-
+   
     /// @notice Creates a new instance of PlasmaVault using Clones pattern
     /// @param baseAddress_ The address of the base PlasmaVault implementation to clone
     /// @param index_ The index of the PlasmaVault instance

@@ -38,6 +38,7 @@ import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType}
 import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 import {TransientStorageSetterFuse} from "../../test_helpers/TransientStorageSetterFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 
 contract MockDex {
     function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut) public {
@@ -144,7 +145,8 @@ contract EbisuZapperTest is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                address(new WithdrawManager(accessManager))
+                address(new WithdrawManager(accessManager)),
+                address(0)
             )
         );
 
@@ -1010,13 +1012,14 @@ contract EbisuZapperTest is Test {
             tokenIn: USDC,
             tokenOut: tokenToObtain,
             amountIn: amountToSwap,
+            minAmountOut: 0,
             data: swapData
         });
 
         FuseAction[] memory swapCalls = new FuseAction[](1);
         swapCalls[0] = FuseAction(
             address(swapFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         // swap
@@ -1121,7 +1124,6 @@ contract EbisuZapperTest is Test {
             troveData.entireDebt - 200, // 500 - 200
             "Debt was not updated by fuse"
         );
-
     }
     // --- helpers ---
 
@@ -1161,11 +1163,18 @@ contract EbisuZapperTest is Test {
         erc20Assets[0] = PlasmaVaultConfigLib.addressToBytes32(EBUSD);
         erc20Assets[1] = PlasmaVaultConfigLib.addressToBytes32(SUSDE);
 
-        bytes32[] memory swapperAssets = new bytes32[](4);
-        swapperAssets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        swapperAssets[1] = PlasmaVaultConfigLib.addressToBytes32(SUSDE);
-        swapperAssets[2] = PlasmaVaultConfigLib.addressToBytes32(EBUSD);
-        swapperAssets[3] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
+        // Use new substrate encoding for UniversalTokenSwapper
+        // Tokens used as tokenIn/tokenOut
+        // Targets are addresses called during swap (including tokens for approve calls)
+        bytes32[] memory swapperAssets = new bytes32[](8);
+        swapperAssets[0] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(USDC);
+        swapperAssets[1] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(SUSDE);
+        swapperAssets[2] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(EBUSD);
+        swapperAssets[3] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(_mockDex);
+        swapperAssets[4] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(USDC); // called for approve
+        swapperAssets[5] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(SUSDE); // called for approve
+        swapperAssets[6] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(EBUSD); // called for approve
+        swapperAssets[7] = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(5e16); // 5% slippage
 
         marketConfigs_ = new MarketSubstratesConfig[](3);
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, erc20Assets);
@@ -1176,11 +1185,7 @@ contract EbisuZapperTest is Test {
     function _setupFuses() private returns (address[] memory fuses) {
         zapperFuse = new EbisuZapperCreateFuse(IporFusionMarkets.EBISU, WETH); // OPEN + CLOSE
         leverModifyFuse = new EbisuZapperLeverModifyFuse(IporFusionMarkets.EBISU);
-        swapFuse = new UniversalTokenSwapperFuse(
-            IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            address(new SwapExecutor()),
-            1e18
-        );
+        swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER);
         transientStorageSetterFuse = new TransientStorageSetterFuse();
 
         adjustRateFuse = new EbisuAdjustInterestRateFuse(IporFusionMarkets.EBISU);

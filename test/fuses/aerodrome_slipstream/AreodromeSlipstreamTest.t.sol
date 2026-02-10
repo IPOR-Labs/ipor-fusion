@@ -15,8 +15,8 @@ import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccess
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AreodromeSlipstreamCollectFuse, AreodromeSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
 import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEnterData, AreodromeSlipstreamNewPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
@@ -26,6 +26,8 @@ import {AreodromeSlipstreamBalanceFuse} from "../../../contracts/fuses/aerodrome
 import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate, PoolNotDeployed} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {ContextManager} from "../../../contracts/managers/context/ContextManager.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {INonfungiblePositionManager} from "../../../contracts/fuses/aerodrome_slipstream/ext/INonfungiblePositionManager.sol";
@@ -87,6 +89,12 @@ contract AreodromeSlipstreamTest is Test {
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
+        // Upgrade factory to new implementation
+        FusionFactory newImplementation = new FusionFactory();
+        address admin = fusionFactory.getRoleMember(fusionFactory.DEFAULT_ADMIN_ROLE(), 0);
+        vm.prank(admin);
+        fusionFactory.upgradeToAndCall(address(newImplementation), "");
+
         address plasmaVaultBase = address(new PlasmaVaultBase());
 
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = fusionFactory.getFactoryAddresses();
@@ -99,14 +107,38 @@ contract AreodromeSlipstreamTest is Test {
         fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), factoryAdmin);
         fusionFactory.updateFactoryAddresses(1000, factoryAddresses);
         fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
+
+        // Deploy all base addresses for cloning
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        address accessManagerBase = address(new IporFusionAccessManager(factoryAdmin, 0));
+        address priceOracleMiddleware = fusionFactory.getPriceOracleMiddleware();
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(factoryAdmin, priceOracleMiddleware));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+        address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
+        address[] memory approvedTargets = new address[](1);
+        approvedTargets[0] = plasmaVaultCoreBase;
+        address contextManagerBase = address(new ContextManager(accessManagerBase, approvedTargets));
+        fusionFactory.updateBaseAddresses(
+            1001,
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
+        );
         vm.stopPrank();
 
-        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "AreodromeSlipstream",
             "VSS",
             _UNDERLYING_TOKEN,
             0,
-            _ATOMIST
+            _ATOMIST,
+            0
         );
 
         _plasmaVault = PlasmaVault(fusionInstance.plasmaVault);
@@ -752,12 +784,7 @@ contract AreodromeSlipstreamTest is Test {
         );
 
         // Expect PoolNotDeployed error since these fake tokens don't have a deployed pool
-        bytes memory errorData = abi.encodeWithSelector(
-            PoolNotDeployed.selector,
-            token0,
-            token1,
-            tickSpacing
-        );
+        bytes memory errorData = abi.encodeWithSelector(PoolNotDeployed.selector, token0, token1, tickSpacing);
 
         // when
         vm.startPrank(_ALPHA);

@@ -203,7 +203,7 @@ contract AsyncActionFuse is IFuseCommon {
         uint256 targetsLength = TypeConversionLib.toUint256(targetsLengthBytes32);
 
         address[] memory targets = new address[](targetsLength);
-        
+
         for (uint256 i; i < targetsLength; ++i) {
             bytes32 targetBytes32 = TransientStorageLib.getInput(VERSION, 3 + i);
             targets[i] = PlasmaVaultConfigLib.bytes32ToAddress(targetBytes32);

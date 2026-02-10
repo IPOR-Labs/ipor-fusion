@@ -36,12 +36,7 @@ contract OdosSwapExecutor {
     /// @param tokenOut_ The output token address
     /// @param amountIn_ The amount of tokenIn to approve for the swap
     /// @param swapCallData_ Raw calldata from Odos API (/sor/assemble response)
-    function execute(
-        address tokenIn_,
-        address tokenOut_,
-        uint256 amountIn_,
-        bytes calldata swapCallData_
-    ) external {
+    function execute(address tokenIn_, address tokenOut_, uint256 amountIn_, bytes calldata swapCallData_) external {
         // Approve Odos Router to spend tokenIn
         IERC20(tokenIn_).forceApprove(ODOS_ROUTER, amountIn_);
 

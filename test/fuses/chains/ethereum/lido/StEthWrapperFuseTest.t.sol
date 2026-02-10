@@ -73,7 +73,8 @@ contract StEthWrapperFuseTest is Test {
                 _setupFeeConfig(),
                 accessManager,
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
         vm.stopPrank();

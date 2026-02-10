@@ -4,9 +4,9 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {EulerV2BatchFuse, EulerV2BatchItem, EulerV2BatchFuseData} from "../../../contracts/fuses/euler/EulerV2BatchFuse.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -44,12 +44,18 @@ contract EulerV2Batch is Test {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 23485836);
 
-        FusionFactoryLogicLib.FusionInstance memory fusionInstance = FusionFactory(FUSION_FACTORY).create(
+        FusionFactory fusionFactory = FusionFactory(FUSION_FACTORY);
+
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "EulerV2Batch",
             "EULERV2BATCH",
             USDC,
             0,
-            TestAddresses.OWNER
+            TestAddresses.OWNER,
+            0
         );
 
         plasmaVault = fusionInstance.plasmaVault;

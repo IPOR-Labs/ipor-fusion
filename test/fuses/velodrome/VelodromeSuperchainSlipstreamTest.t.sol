@@ -6,8 +6,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
@@ -28,6 +28,9 @@ import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {ContextManager} from "../../../contracts/managers/context/ContextManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
@@ -89,6 +92,12 @@ contract VelodromeSuperchainSlipstreamTest is Test {
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
+        // Upgrade factory to new implementation
+        FusionFactory newImplementation = new FusionFactory();
+        address admin = fusionFactory.getRoleMember(fusionFactory.DEFAULT_ADMIN_ROLE(), 0);
+        vm.prank(admin);
+        fusionFactory.upgradeToAndCall(address(newImplementation), "");
+
         address plasmaVaultBase = address(new PlasmaVaultBase());
 
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = fusionFactory.getFactoryAddresses();
@@ -101,14 +110,38 @@ contract VelodromeSuperchainSlipstreamTest is Test {
         fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), factoryAdmin);
         fusionFactory.updateFactoryAddresses(1000, factoryAddresses);
         fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
+
+        // Deploy all base addresses for cloning
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        address accessManagerBase = address(new IporFusionAccessManager(factoryAdmin, 0));
+        address priceOracleMiddleware = fusionFactory.getPriceOracleMiddleware();
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(factoryAdmin, priceOracleMiddleware));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+        address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
+        address[] memory approvedTargets = new address[](1);
+        approvedTargets[0] = plasmaVaultCoreBase;
+        address contextManagerBase = address(new ContextManager(accessManagerBase, approvedTargets));
+        fusionFactory.updateBaseAddresses(
+            1001,
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
+        );
         vm.stopPrank();
 
-        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "VelodromeSuperchainSlipstream",
             "VSS",
             _UNDERLYING_TOKEN,
             0,
-            _ATOMIST
+            _ATOMIST,
+            0
         );
 
         _plasmaVault = PlasmaVault(fusionInstance.plasmaVault);

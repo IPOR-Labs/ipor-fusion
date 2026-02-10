@@ -10,7 +10,6 @@ import {LiquityStabilityPoolFuse, LiquityStabilityPoolFuseEnterData, LiquityStab
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
-import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -25,6 +24,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
+import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 
 contract MockDex {
     address tokenIn;
@@ -99,7 +99,8 @@ contract LiquityStabilityPoolFuseTest is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                address(new WithdrawManager(accessManager))
+                address(new WithdrawManager(accessManager)),
+                address(0)
             )
         );
 
@@ -263,13 +264,14 @@ contract LiquityStabilityPoolFuseTest is Test {
             tokenIn: WETH,
             tokenOut: BOLD,
             amountIn: amountToSwap,
+            minAmountOut: 0,
             data: swapData
         });
 
         FuseAction[] memory swapCalls = new FuseAction[](1);
         swapCalls[0] = FuseAction(
             address(swapFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         uint256 initialBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));
@@ -449,10 +451,16 @@ contract LiquityStabilityPoolFuseTest is Test {
         registries[0] = PlasmaVaultConfigLib.addressToBytes32(ETH_REGISTRY);
         registries[1] = PlasmaVaultConfigLib.addressToBytes32(WSTETH_REGISTRY);
         registries[2] = PlasmaVaultConfigLib.addressToBytes32(RETH_REGISTRY);
-        bytes32[] memory swapperAssets = new bytes32[](3);
-        swapperAssets[0] = PlasmaVaultConfigLib.addressToBytes32(WETH);
-        swapperAssets[1] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
-        swapperAssets[2] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
+        // Use new substrate encoding for UniversalTokenSwapper
+        // Tokens used as tokenIn/tokenOut
+        // Targets are addresses called during swap (including tokens for approve calls)
+        bytes32[] memory swapperAssets = new bytes32[](6);
+        swapperAssets[0] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(WETH);
+        swapperAssets[1] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(BOLD);
+        swapperAssets[2] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(_mockDex);
+        swapperAssets[3] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(WETH); // called for approve
+        swapperAssets[4] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(BOLD); // called for approve
+        swapperAssets[5] = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(1e18); // 100% slippage for mock dex
         bytes32[] memory erc20Assets = new bytes32[](2);
         erc20Assets[0] = PlasmaVaultConfigLib.addressToBytes32(BOLD);
         erc20Assets[1] = PlasmaVaultConfigLib.addressToBytes32(WETH);
@@ -463,11 +471,7 @@ contract LiquityStabilityPoolFuseTest is Test {
 
     function _setupFuses() private returns (address[] memory fuses) {
         sbFuse = new LiquityStabilityPoolFuse(IporFusionMarkets.LIQUITY_V2);
-        swapFuse = new UniversalTokenSwapperFuse(
-            IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            address(new SwapExecutor()),
-            1e18
-        );
+        swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER);
         _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
 
         fuses = new address[](3);

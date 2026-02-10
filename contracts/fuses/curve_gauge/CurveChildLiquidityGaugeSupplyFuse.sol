@@ -120,11 +120,7 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
         // Check if we have sufficient staked balance before proceeding
         uint256 stakedBalance = IERC20(gauge).balanceOf(address(this));
         if (lpTokenToWithdraw > stakedBalance) {
-            revert CurveChildLiquidityGaugeSupplyFuseInsufficientStakedBalance(
-                gauge,
-                lpTokenToWithdraw,
-                stakedBalance
-            );
+            revert CurveChildLiquidityGaugeSupplyFuseInsufficientStakedBalance(gauge, lpTokenToWithdraw, stakedBalance);
         }
 
         _exit(CurveChildLiquidityGaugeSupplyFuseExitData(gauge, lpTokenToWithdraw), true);

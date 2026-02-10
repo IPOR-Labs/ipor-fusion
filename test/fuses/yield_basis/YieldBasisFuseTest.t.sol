@@ -7,7 +7,6 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {AccessManagerFactory} from "../../../contracts/factory/AccessManagerFactory.sol";
 import {ContextManagerFactory} from "../../../contracts/factory/ContextManagerFactory.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
@@ -23,6 +22,7 @@ import {YieldBasisLtSupplyFuse, YieldBasisLtSupplyFuseEnterData, YieldBasisLtSup
 import {IYieldBasisLT} from "../../../contracts/fuses/yield_basis/ext/IYieldBasisLT.sol";
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
@@ -819,12 +819,44 @@ contract YieldBasisFuseTest is Test {
         );
         fusionFactory = FusionFactory(address(new ERC1967Proxy(address(implementation), initData)));
 
+        // Deploy PlasmaVault base for cloning and set up base addresses
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        address accessManagerBase = address(new IporFusionAccessManager(atomist, 0));
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(atomist, priceOracleMiddleware));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+        address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
+        address[] memory approvedTargets = new address[](1);
+        approvedTargets[0] = plasmaVaultCoreBase;
+        address contextManagerBase = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
+            0,
+            accessManagerBase,
+            approvedTargets
+        );
+
         vm.startPrank(atomist);
+        fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), atomist);
+        fusionFactory.updateBaseAddresses(
+            1,
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
+        );
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), atomist);
         vm.stopPrank();
 
+        // Setup fee packages
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 100,
+            performanceFee: 100,
+            feeRecipient: atomist
+        });
+
         vm.startPrank(atomist);
-        fusionFactory.updateDaoFee(atomist, 100, 100);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
@@ -840,12 +872,13 @@ contract YieldBasisFuseTest is Test {
     }
 
     function _createVaultWithFusionFactory() private {
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Yield Basis Vault",
             "yieldBasisVault",
             WBTC,
             1 seconds,
-            atomist
+            atomist,
+            0
         );
 
         plasmaVault = PlasmaVault(instance.plasmaVault);

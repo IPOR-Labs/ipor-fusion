@@ -7,8 +7,8 @@ import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 
 // SiloV2 Fuses
 import {SiloV2BalanceFuse} from "../../../contracts/fuses/silo_v2/SiloV2BalanceFuse.sol";
@@ -105,6 +105,9 @@ contract SiloV2FuseTest is Test {
         );
 
         fusionFactory = FusionFactory(FUSION_FACTORY_PROXY);
+
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
         _createVaultWithFusionFactory();
 
@@ -961,12 +964,13 @@ contract SiloV2FuseTest is Test {
 
     function _createVaultWithFusionFactory() private {
         // Create vault using FusionFactory
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "SiloV2 Test Vault",
             "SILO2",
             WE_ETH, // underlying token
             1 seconds, // redemption delay
-            ATOMIST // owner
+            ATOMIST, // owner
+            0 // feePackageIndex
         );
 
         plasmaVault = PlasmaVault(instance.plasmaVault);

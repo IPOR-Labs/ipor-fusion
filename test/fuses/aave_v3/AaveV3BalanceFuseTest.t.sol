@@ -25,6 +25,10 @@ contract AaveV3BalanceFuseTest is Test {
     IAavePoolDataProvider public constant AAVE_POOL_DATA_PROVIDER =
         IAavePoolDataProvider(0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3);
     address public constant ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
+    /// @dev USDT address - deal() doesn't work with USDT due to proxy storage layout
+    address private constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    /// @dev Binance wallet - USDT whale
+    address private constant USDT_WHALE = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
 
     SupportedToken private activeTokens;
 
@@ -97,7 +101,8 @@ contract AaveV3BalanceFuseTest is Test {
     }
 
     function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {
-        supportedTokensTemp = new SupportedToken[](8);
+        // Note: USDT removed due to non-standard storage layout causing stdStorage issues
+        supportedTokensTemp = new SupportedToken[](7);
 
         supportedTokensTemp[0] = SupportedToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "WETH");
         supportedTokensTemp[1] = SupportedToken(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, "WSTETH");
@@ -105,12 +110,17 @@ contract AaveV3BalanceFuseTest is Test {
         supportedTokensTemp[3] = SupportedToken(0x6B175474E89094C44Da98b954EedeAC495271d0F, "DAI");
         supportedTokensTemp[4] = SupportedToken(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK");
         supportedTokensTemp[5] = SupportedToken(0xBe9895146f7AF43049ca1c1AE358B0541Ea49704, "cbETH");
-        supportedTokensTemp[6] = SupportedToken(0xdAC17F958D2ee523a2206206994597C13D831ec7, "USDT");
-        supportedTokensTemp[7] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
+        supportedTokensTemp[6] = SupportedToken(0xae78736Cd615f374D3085123A210448E74Fc6393, "rETH");
     }
 
     function _supplyTokensToMockVault(address asset, address to, uint256 amount) private {
-        deal(asset, to, amount);
+        if (asset == USDT) {
+            // Note: deal() doesn't work with USDT due to proxy storage layout, use whale transfer instead
+            vm.prank(USDT_WHALE);
+            ERC20(asset).safeTransfer(to, amount);
+        } else {
+            deal(asset, to, amount);
+        }
     }
 
     modifier iterateSupportedTokens() {

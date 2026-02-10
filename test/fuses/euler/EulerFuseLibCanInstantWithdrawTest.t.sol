@@ -191,12 +191,7 @@ contract EulerFuseLibCanInstantWithdrawTest is Test {
     /// @param subAccount_ The sub-account identifier
     /// @param isCollateral_ Whether vault can be used as collateral
     /// @param canBorrow_ Whether one can borrow against it
-    function _setupSubstrate(
-        address vault_,
-        bytes1 subAccount_,
-        bool isCollateral_,
-        bool canBorrow_
-    ) internal {
+    function _setupSubstrate(address vault_, bytes1 subAccount_, bool isCollateral_, bool canBorrow_) internal {
         // Create substrate
         EulerSubstrate memory substrate = EulerSubstrate({
             eulerVault: vault_,

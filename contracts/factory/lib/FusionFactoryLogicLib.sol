@@ -30,6 +30,8 @@ import {IRewardsClaimManager} from "../../interfaces/IRewardsClaimManager.sol";
 library FusionFactoryLogicLib {
     error InvalidBaseAddress();
     error InvalidDaoFeeRecipient();
+    error DaoFeePackagesArrayEmpty();
+    error DaoFeePackageIndexOutOfBounds(uint256 index, uint256 length);
 
     struct FusionInstance {
         uint256 index;
@@ -51,6 +53,18 @@ library FusionFactoryLogicLib {
         address priceManager;
     }
 
+    /// @notice Validates and retrieves a DAO fee package by index
+    /// @param index_ Index of the DAO fee package
+    /// @return DAO fee package at the specified index
+    function _validateAndGetDaoFeePackage(
+        uint256 index_
+    ) internal view returns (FusionFactoryStorageLib.FeePackage memory) {
+        uint256 length = FusionFactoryStorageLib.getDaoFeePackagesLength();
+        if (length == 0) revert DaoFeePackagesArrayEmpty();
+        if (index_ >= length) revert DaoFeePackageIndexOutOfBounds(index_, length);
+        return FusionFactoryStorageLib.getDaoFeePackage(index_);
+    }
+
     /// @notice Clones a Fusion instance
     /// @param fusionAddresses The fusion addresses struct to populate
     /// @param assetName_ The name of the asset
@@ -59,6 +73,7 @@ library FusionFactoryLogicLib {
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @param owner_ The owner of the Fusion Vault
     /// @param withAdmin_ Whether to include admin role
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
     function doClone(
         FusionInstance memory fusionAddresses,
         string memory assetName_,
@@ -66,10 +81,29 @@ library FusionFactoryLogicLib {
         address underlyingToken_,
         uint256 redemptionDelayInSeconds_,
         address owner_,
-        bool withAdmin_
+        bool withAdmin_,
+        uint256 daoFeePackageIndex_
     ) public returns (FusionInstance memory) {
-        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = FusionFactoryStorageLib.getBaseAddresses();
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage = _validateAndGetDaoFeePackage(daoFeePackageIndex_);
 
+        fusionAddresses = _cloneManagers(fusionAddresses, redemptionDelayInSeconds_);
+
+        fusionAddresses = _clonePlasmaVaultAndRewards(
+            fusionAddresses,
+            daoFeePackage,
+            assetName_,
+            assetSymbol_,
+            underlyingToken_
+        );
+
+        return setupFinalConfiguration(fusionAddresses, owner_, withAdmin_, daoFeePackage.feeRecipient, false);
+    }
+
+    function _cloneManagers(
+        FusionInstance memory fusionAddresses,
+        uint256 redemptionDelayInSeconds_
+    ) private returns (FusionInstance memory) {
+        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = FusionFactoryStorageLib.getBaseAddresses();
         _validateBaseAddresses(baseAddresses);
 
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib
@@ -95,10 +129,25 @@ library FusionFactoryLogicLib {
             fusionAddresses.accessManager
         );
 
+        return fusionAddresses;
+    }
+
+    function _clonePlasmaVaultAndRewards(
+        FusionInstance memory fusionAddresses,
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage_,
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_
+    ) private returns (FusionInstance memory) {
+        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = FusionFactoryStorageLib.getBaseAddresses();
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib
+            .getFactoryAddresses();
+
         fusionAddresses = _clonePlasmaVault(
             fusionAddresses,
             baseAddresses,
             factoryAddresses,
+            daoFeePackage_,
             assetName_,
             assetSymbol_,
             underlyingToken_
@@ -113,8 +162,7 @@ library FusionFactoryLogicLib {
             fusionAddresses.plasmaVault
         );
 
-        address daoFeeRecipientAddress = FusionFactoryStorageLib.getDaoFeeRecipientAddress();
-        return setupFinalConfiguration(fusionAddresses, owner_, withAdmin_, daoFeeRecipientAddress, false);
+        return fusionAddresses;
     }
 
     function _validateBaseAddresses(FusionFactoryStorageLib.BaseAddresses memory baseAddresses) private pure {
@@ -130,15 +178,11 @@ library FusionFactoryLogicLib {
         FusionInstance memory fusionAddresses,
         FusionFactoryStorageLib.BaseAddresses memory baseAddresses,
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses,
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage_,
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_
     ) private returns (FusionInstance memory) {
-        address daoFeeRecipientAddress = FusionFactoryStorageLib.getDaoFeeRecipientAddress();
-        if (daoFeeRecipientAddress == address(0)) {
-            revert InvalidDaoFeeRecipient();
-        }
-
         PlasmaVaultInitData memory initData = PlasmaVaultInitData({
             assetName: assetName_,
             assetSymbol: assetSymbol_,
@@ -146,13 +190,14 @@ library FusionFactoryLogicLib {
             priceOracleMiddleware: fusionAddresses.priceManager,
             feeConfig: FeeConfig({
                 feeFactory: factoryAddresses.feeManagerFactory,
-                iporDaoManagementFee: FusionFactoryStorageLib.getDaoManagementFee(),
-                iporDaoPerformanceFee: FusionFactoryStorageLib.getDaoPerformanceFee(),
-                iporDaoFeeRecipientAddress: daoFeeRecipientAddress
+                iporDaoManagementFee: daoFeePackage_.managementFee,
+                iporDaoPerformanceFee: daoFeePackage_.performanceFee,
+                iporDaoFeeRecipientAddress: daoFeePackage_.feeRecipient
             }),
             accessManager: fusionAddresses.accessManager,
             plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-            withdrawManager: fusionAddresses.withdrawManager
+            withdrawManager: fusionAddresses.withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).clone(

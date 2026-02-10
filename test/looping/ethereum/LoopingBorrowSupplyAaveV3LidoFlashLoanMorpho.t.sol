@@ -170,7 +170,8 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            withdrawManager: _withdrawManager
+            withdrawManager: _withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         vm.startPrank(_ATOMIST);
