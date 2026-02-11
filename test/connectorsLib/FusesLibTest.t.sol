@@ -89,6 +89,7 @@ contract FusesLibTest is Test {
         uint256 underlyingDecimals = 18;
         address fuse = address(new DustBalanceFuseMock(marketId, underlyingDecimals));
 
+        fusesLibMock.setUnderlyingDecimals(uint8(underlyingDecimals));
         fusesLibMock.addBalanceFuse(marketId, fuse);
 
         bytes memory error = abi.encodeWithSignature(

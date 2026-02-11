@@ -5,6 +5,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
+import {IporMath} from "./math/IporMath.sol";
 /**
  * @title Fuses Library - Core Component for Plasma Vault's Fuse Management System
  * @notice Library managing the lifecycle and configuration of fuses - specialized contracts that enable
@@ -536,8 +537,11 @@ library FusesLib {
         return PlasmaVaultStorageLib.getBalanceFuses().marketIds;
     }
 
+    /// @dev Returns dust threshold in WAD (18 decimals) to match balanceOf() which returns USD in WAD
+    /// IL-6962 fix: Balance fuses return values in WAD format, so dust threshold must also be in WAD
     function _calculateAllowedDustInBalanceFuse() private view returns (uint256) {
-        return 10 ** (PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals / 2);
+        uint8 underlyingDecimals = PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals;
+        return IporMath.convertToWad(10 ** (underlyingDecimals / 2), underlyingDecimals);
     }
 
     function _updateBalanceFuseStructWhenAdding(uint256 marketId_, address fuse_) private {
