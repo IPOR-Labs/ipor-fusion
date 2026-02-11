@@ -243,7 +243,7 @@ contract PlasmaVault is
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event DepositFeeRealized(address recipient, uint256 feeShares);
-    event ExecuteFinished();
+    event ExecuteFinished(address indexed executor, uint256 callsCount, uint256[] marketIds);
 
     /// @notice Fallback function handling delegatecall execution and callbacks
     /// @dev Routes execution between callback handling and base contract delegation
@@ -416,7 +416,12 @@ contract PlasmaVault is
 
         _addPerformanceFee(totalAssetsBefore);
 
-        emit ExecuteFinished();
+        uint256[] memory uniqueMarkets = new uint256[](marketIndex);
+        for (uint256 i; i < marketIndex; ++i) {
+            uniqueMarkets[i] = markets[i];
+        }
+
+        emit ExecuteFinished(msg.sender, callsCount, uniqueMarkets);
     }
 
     /// @notice Updates balances for specified markets and calculates performance fees
