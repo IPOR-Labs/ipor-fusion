@@ -105,7 +105,7 @@ library CallbackHandlerLib {
      * @dev Provides access to the callback handler mapping for external readers
      * @return The CallbackHandler storage struct containing the callback handler mapping
      */
-    function getCallbackHandlerStorage() internal view returns (PlasmaVaultStorageLib.CallbackHandler storage) {
+    function getCallbackHandlerStorage() internal pure returns (PlasmaVaultStorageLib.CallbackHandler storage) {
         return PlasmaVaultStorageLib.getCallbackHandler();
     }
 
