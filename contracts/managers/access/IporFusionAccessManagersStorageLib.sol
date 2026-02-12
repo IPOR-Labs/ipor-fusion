@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IIporFusionAccessManager} from "../../interfaces/IIporFusionAccessManager.sol";
 
 /**
@@ -46,7 +45,6 @@ struct InitializationFlag {
  * @custom:security-contact security@ipor.io
  */
 library IporFusionAccessManagersStorageLib {
-    using SafeCast for uint256;
 
     /// @notice Storage slot for RedemptionLocks
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.managers.access.RedemptionLocks")) - 1)) & ~bytes32(uint256(0xff))
