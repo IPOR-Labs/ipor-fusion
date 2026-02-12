@@ -527,9 +527,8 @@ library FusesLib {
      * - Protocol Operations: State checks
      *
      * Performance Notes:
-     * - Constant gas cost for array access
-     * - No array copying - returns storage reference
-     * - Efficient for bulk market operations
+     * - Returns a memory copy of the storage array (not a storage reference)
+     * - Gas cost scales linearly with the number of active markets due to the copy
      * - Suitable for view function calls
      */
     function getActiveMarketsInBalanceFuses() internal view returns (uint256[] memory) {
