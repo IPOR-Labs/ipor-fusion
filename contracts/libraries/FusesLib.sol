@@ -140,7 +140,7 @@ library FusesLib {
     /**
      * @notice Retrieves the complete array of supported fuse contracts in the Plasma Vault
      * @dev Provides direct access to the fuses array from FuseStorageLib
-     * - Array maintains order of fuse addition
+     * - Array order is NOT guaranteed to match insertion order; removeFuse uses swap-and-pop which reorders elements
      * - Used for fuse enumeration and management
      * - Critical for vault configuration and auditing
      *
@@ -165,7 +165,7 @@ library FusesLib {
      *
      * Related Functions:
      * - addFuse(): Appends to this array
-     * - removeFuse(): Maintains array ordering
+     * - removeFuse(): Uses swap-and-pop; does NOT preserve array ordering
      * - getFuseArrayIndex(): Maps addresses to indices
      */
     function getFusesArray() internal view returns (address[] memory) {
@@ -528,9 +528,8 @@ library FusesLib {
      * - Protocol Operations: State checks
      *
      * Performance Notes:
-     * - Constant gas cost for array access
-     * - No array copying - returns storage reference
-     * - Efficient for bulk market operations
+     * - Returns a memory copy of the storage array (not a storage reference)
+     * - Gas cost scales linearly with the number of active markets due to the copy
      * - Suitable for view function calls
      */
     function getActiveMarketsInBalanceFuses() internal view returns (uint256[] memory) {

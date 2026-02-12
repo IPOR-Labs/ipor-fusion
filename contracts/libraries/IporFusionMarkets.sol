@@ -93,7 +93,7 @@ library IporFusionMarkets {
     uint256 public constant VELODROME_SUPERCHAIN_SLIPSTREAM = 32;
 
     /// @dev Velodrome Superchain Slipstream market
-    /// @dev Substrate type: AreodromeSlipstreamSubstrate
+    /// @dev Substrate type: AerodromeSlipstreamSubstrate
     uint256 public constant AREODROME_SLIPSTREAM = 33;
 
     /// @dev StakeDaoV2 market

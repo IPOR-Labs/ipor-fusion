@@ -92,8 +92,14 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
     }
 
     /// @notice Returns the address of the WithdrawManager
+    /// @dev This function must be called via delegatecall (e.g., through UniversalReader) to read the vault's storage.
+    ///      Calling it directly on the fuse contract will revert, as the fuse's own storage does not contain the
+    ///      withdraw manager slot.
     /// @return The address of the WithdrawManager contract
     function getWithdrawManager() external view returns (address) {
+        if (address(this) == VERSION) {
+            revert PlasmaVaultRequestSharesFuseInvalidWithdrawManager(address(this));
+        }
         return PlasmaVaultStorageLib.getWithdrawManager().manager;
     }
 }

@@ -23,7 +23,7 @@ struct ExternalCall {
 struct ExternalCalls {
     ExternalCall[] calls;
     // This is a summary (schema) of all readers from the 'calls' array
-    uint256 responsLength;
+    uint256 responseLength;
 }
 
 contract TransientStorageChainReaderFuse is IFuseCommon {
@@ -45,7 +45,7 @@ contract TransientStorageChainReaderFuse is IFuseCommon {
     function enter(bytes calldata data_) external {
         TransientStorageLib.clearOutputs(VERSION);
         ExternalCalls memory externalCalls = abi.decode(data_, (ExternalCalls));
-        bytes32[] memory results = new bytes32[](externalCalls.responsLength);
+        bytes32[] memory results = new bytes32[](externalCalls.responseLength);
         uint256 resultsIndex = 0;
 
         uint256 callsLength = externalCalls.calls.length;
