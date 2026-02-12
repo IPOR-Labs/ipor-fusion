@@ -517,7 +517,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @param actualExchangeRate_ Current exchange rate between shares and assets (assets per 1 unit of share (10**shareDecimals))
     /// @param totalSupply_ Total supply of vault shares
     /// @param performanceFee_ Performance fee percentage with 2 decimal precision (10000 = 100%)
-    /// @param assetDecimals_ Number of decimals in the underlying asset
+    /// @param assetDecimals_ Unused. Retained for ABI backward compatibility. No normalization is performed;
+    ///        callers must ensure actualExchangeRate_ is already in share-consistent units.
     ///
     /// @return recipient Address of the performance fee recipient (PERFORMANCE_FEE_ACCOUNT or address(0))
     /// @return feeShares Number of shares to be minted as performance fee
