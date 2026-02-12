@@ -346,7 +346,7 @@ library FuseStorageLib {
         }
     }
 
-    /// @notice Gets the UniswapV3TokenIds storage pointer
+    /// @notice Gets the RamsesV2TokenIds storage pointer
     function getRamsesV2TokenIds() internal pure returns (RamsesV2TokenIds storage ramsesV2TokenIds) {
         assembly {
             ramsesV2TokenIds.slot := RAMSES_V2_TOKEN_IDS
