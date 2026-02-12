@@ -156,14 +156,15 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            minSharesOut: 0
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             fluidTokenAmount: amount_,
             stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
         data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaking);
     }
 
@@ -194,7 +195,8 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             fluidTokenAmount: depositAmount,
@@ -202,7 +204,7 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         });
 
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaking);
 
         uint256 len = data.length;
@@ -256,14 +258,15 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaked = FluidInstadappStakingSupplyFuseEnterData({
             fluidTokenAmount: depositAmount,
             stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaked);
 
         uint256 len = data.length;
@@ -330,14 +333,15 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             fluidTokenAmount: depositAmount,
             stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaking);
         uint256 len = data.length;
         FuseAction[] memory enterCalls = new FuseAction[](len);
@@ -434,8 +438,8 @@ contract FluidInstadappStakingUSDCBalanceArbitrum is TestAccountSetup, TestPrice
         FuseAction[] memory calls = new FuseAction[](2);
 
         bytes memory dataOne = abi.encodeWithSignature(
-            "enter((address,uint256))",
-            Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: depositAmount})
+            "enter((address,uint256,uint256))",
+            Erc4626SupplyFuseEnterData({vault: F_TOKEN, vaultAssetAmount: depositAmount, minSharesOut: 0})
         );
 
         calls[0] = FuseAction(address(fuses[0]), dataOne);

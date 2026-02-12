@@ -68,7 +68,7 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
     }
     function enterErc4626Supply(Erc4626SupplyFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256,uint256))", data));
     }
 
     function enterErc4626SupplyTransient() external {
@@ -131,7 +131,7 @@ contract PlasmaVaultMock {
     }
 
     function exitErc4626Supply(Erc4626SupplyFuseExitData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256,uint256))", data));
     }
 
     function exitMorphoSupply(MorphoSupplyFuseExitData memory data) external {

@@ -127,14 +127,15 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            minSharesOut: 0
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_
         });
         data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataFarm);
     }
 
@@ -150,14 +151,15 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: D_USDC,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            maxSharesBurned: 0
         });
         GearboxV3FarmdSupplyFuseExitData memory exitDataFarm = GearboxV3FarmdSupplyFuseExitData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_
         });
         data = new bytes[](2);
-        data[1] = abi.encodeWithSignature("exit((address,uint256))", exitData);
+        data[1] = abi.encodeWithSignature("exit((address,uint256,uint256))", exitData);
         data[0] = abi.encodeWithSignature("exit((uint256,address))", exitDataFarm);
 
         fusesSetup = new address[](2);
@@ -241,9 +243,10 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
 
         bytes32[][] memory inputsByFuse = new bytes32[][](2);
 
-        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0] = new bytes32[](3);
         inputsByFuse[0][0] = TypeConversionLib.toBytes32(D_USDC);
         inputsByFuse[0][1] = TypeConversionLib.toBytes32(amount_);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(0));
 
         inputsByFuse[1] = new bytes32[](2);
         inputsByFuse[1][0] = TypeConversionLib.toBytes32(amount_);
@@ -281,9 +284,10 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         inputsByFuse[0][0] = TypeConversionLib.toBytes32(amount_);
         inputsByFuse[0][1] = TypeConversionLib.toBytes32(FARM_D_USDC);
 
-        inputsByFuse[1] = new bytes32[](2);
+        inputsByFuse[1] = new bytes32[](3);
         inputsByFuse[1][0] = TypeConversionLib.toBytes32(D_USDC);
         inputsByFuse[1][1] = TypeConversionLib.toBytes32(amount_);
+        inputsByFuse[1][2] = TypeConversionLib.toBytes32(uint256(0));
 
         calls = new FuseAction[](3);
 
