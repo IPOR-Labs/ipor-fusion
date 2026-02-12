@@ -59,13 +59,13 @@ library WithdrawManagerStorageLib {
 
     /// @notice Emitted when a withdraw request is created or updated
     /// @param account Address of the account making the request
-    /// @param amount Amount requested for withdrawal
+    /// @param shares Number of shares requested for withdrawal
     /// @param endWithdrawWindow Timestamp when the withdraw window expires
-    event WithdrawRequestUpdated(address account, uint256 amount, uint32 endWithdrawWindow);
+    event WithdrawRequestUpdated(address account, uint256 shares, uint32 endWithdrawWindow);
 
-    /// @notice Emitted when funds are released
-    /// @param releaseTimestamp Timestamp when funds were released
-    /// @param sharesToRelease Amount of funds released
+    /// @notice Emitted when shares are released for withdrawal
+    /// @param releaseTimestamp Timestamp when shares were released
+    /// @param sharesToRelease Number of shares released for withdrawal
     event ReleaseFundsUpdated(uint32 releaseTimestamp, uint128 sharesToRelease);
 
     /// @notice Thrown when attempting to set withdraw window length to zero
