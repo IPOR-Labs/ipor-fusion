@@ -11,9 +11,9 @@ import {IIporFusionAccessManager} from "../../interfaces/IIporFusionAccessManage
  * @custom:storage-location erc7201:io.ipor.managers.access.RedemptionLocks
  */
 struct RedemptionLocks {
-    /// @notice Maps user addresses to their deposit timestamp
-    /// @dev Used to enforce redemption delays after deposits
-    mapping(address acount => uint256 depositTime) redemptionLock;
+    /// @notice Maps user addresses to their unlock timestamp (block.timestamp + redemptionDelay)
+    /// @dev Used to enforce redemption delays after deposits. The stored value is the earliest time a redemption is allowed.
+    mapping(address account => uint256 unlockTime) redemptionLock;
 }
 
 /**
