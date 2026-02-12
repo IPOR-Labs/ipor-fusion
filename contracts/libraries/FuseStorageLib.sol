@@ -269,8 +269,8 @@ library FuseStorageLib {
      * - Maintains efficient position tracking
      *
      * Integration Points:
-     * - AreodromeSlipstreamNewPositionFuse: Position creation and management
-     * - AreodromeSlipstreamBalanceFuse: Balance calculation systems
+     * - AerodromeSlipstreamNewPositionFuse: Position creation and management
+     * - AerodromeSlipstreamBalanceFuse: Balance calculation systems
      * - Withdrawal and rebalancing operations
      *
      * Security Considerations:
