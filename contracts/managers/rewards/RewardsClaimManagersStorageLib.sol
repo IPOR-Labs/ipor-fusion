@@ -45,7 +45,7 @@ library RewardsClaimManagersStorageLib {
     /// @notice Retrieves the vesting data storage pointer
     /// @return foundsReleaseData Storage pointer to the vesting data struct
     /// @dev Uses assembly to access the predetermined storage slot
-    function getVestingData() internal view returns (VestingData storage foundsReleaseData) {
+    function getVestingData() internal pure returns (VestingData storage foundsReleaseData) {
         assembly {
             foundsReleaseData.slot := VESTING_DATA
         }

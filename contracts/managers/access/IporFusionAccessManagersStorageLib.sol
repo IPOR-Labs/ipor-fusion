@@ -71,7 +71,7 @@ library IporFusionAccessManagersStorageLib {
      * @dev Uses assembly to access the predetermined storage slot
      * @return initializationFlag Storage pointer to the initialization flag
      */
-    function getInitializationFlag() internal view returns (InitializationFlag storage initializationFlag) {
+    function getInitializationFlag() internal pure returns (InitializationFlag storage initializationFlag) {
         assembly {
             initializationFlag.slot := INITIALIZATION_FLAG
         }
@@ -97,7 +97,7 @@ library IporFusionAccessManagersStorageLib {
      * @dev Uses assembly to access the predetermined storage slot
      * @return redemptionLocks Storage pointer to the redemption locks mapping
      */
-    function getRedemptionLocks() internal view returns (RedemptionLocks storage redemptionLocks) {
+    function getRedemptionLocks() internal pure returns (RedemptionLocks storage redemptionLocks) {
         assembly {
             redemptionLocks.slot := REDEMPTION_LOCKS
         }
