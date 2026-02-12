@@ -41,14 +41,22 @@ library CallbackHandlerLib {
      * @dev Manages the execution flow of protocol callbacks during Fuse operations
      * - Can only be called during PlasmaVault.execute()
      * - Requires PlasmaVaultLib.isExecutionStarted() to be true
-     * - Uses delegatecall for handler execution
+     * - Uses call (not delegatecall) for handler execution
+     *
+     * Handler Architecture:
+     * - Callback handlers are stateless contracts that transform callback parameters
+     * - Handlers return CallbackData struct containing actions to execute
+     * - Using call (not delegatecall) is intentional because:
+     *   1. Handlers don't need access to vault storage
+     *   2. Handlers are pure/view functions returning data
+     *   3. Separation of concerns: handler transforms data, vault executes actions
      *
      * Execution Flow:
      * 1. Retrieves handler based on msg.sender and msg.sig hash
-     * 2. Executes handler via delegatecall with original msg.data
+     * 2. Executes handler via call with original msg.data
      * 3. Processes handler return data if present:
      *    - Decodes as CallbackData struct
-     *    - Executes additional FuseActions
+     *    - Executes additional FuseActions via executeInternal
      *    - Sets token approvals
      *
      * Integration Context:
@@ -68,7 +76,8 @@ library CallbackHandlerLib {
      * Security Considerations:
      * - Only executable during Fuse operations
      * - Handler must be pre-registered
-     * - Uses safe delegatecall pattern
+     * - Uses Address.functionCall for safe external call
+     * - Handler cannot access vault storage (call, not delegatecall)
      * - Critical for protocol integration security
      *
      * Gas Considerations:
