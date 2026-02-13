@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
@@ -161,7 +161,7 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
         address caller_,
         address target_,
         bytes4 selector_
-    ) external override returns (bool immediate, uint32 delay) {
+    ) external override restricted returns (bool immediate, uint32 delay) {
         RedemptionDelayLib.lockChecks(caller_, selector_);
         return super.canCall(caller_, target_, selector_);
     }

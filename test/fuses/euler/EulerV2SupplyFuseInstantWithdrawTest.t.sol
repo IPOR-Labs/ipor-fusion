@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -29,12 +29,7 @@ contract EulerV2SupplyFuseInstantWithdrawTest is Test {
     // ============ Events ============
 
     event EulerV2SupplyExitFuse(address version, address eulerVault, uint256 withdrawnAmount, address subAccount);
-    event EulerV2SupplyFuseExitFailed(
-        address version,
-        address eulerVault,
-        uint256 amount,
-        address subAccount
-    );
+    event EulerV2SupplyFuseExitFailed(address version, address eulerVault, uint256 amount, address subAccount);
 
     // ============ Setup ============
 
@@ -247,11 +242,7 @@ contract EulerV2SupplyFuseInstantWithdrawTest is Test {
             abi.encode(amount)
         );
 
-        vm.mockCall(
-            MOCK_EULER_VAULT,
-            abi.encodeWithSignature("convertToAssets(uint256)", amount),
-            abi.encode(amount)
-        );
+        vm.mockCall(MOCK_EULER_VAULT, abi.encodeWithSignature("convertToAssets(uint256)", amount), abi.encode(amount));
 
         // Mock successful EVC.call
         vm.mockCall(
@@ -286,11 +277,7 @@ contract EulerV2SupplyFuseInstantWithdrawTest is Test {
             abi.encode(amount)
         );
 
-        vm.mockCall(
-            MOCK_EULER_VAULT,
-            abi.encodeWithSignature("convertToAssets(uint256)", amount),
-            abi.encode(amount)
-        );
+        vm.mockCall(MOCK_EULER_VAULT, abi.encodeWithSignature("convertToAssets(uint256)", amount), abi.encode(amount));
 
         // Mock EVC.call to revert
         vm.mockCallRevert(
@@ -331,7 +318,7 @@ contract EulerV2SupplyFuseInstantWithdrawTest is Test {
         vm.mockCall(
             MOCK_EVC,
             abi.encodeWithSignature("call(address,address,uint256,bytes)"),
-            abi.encode("")  // Empty return will cause decode error
+            abi.encode("") // Empty return will cause decode error
         );
 
         // when/then - Normal exit SHOULD revert

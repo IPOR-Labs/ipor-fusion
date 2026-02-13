@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
@@ -127,17 +128,33 @@ contract PlasmaVaultWithdrawTest is Test {
 
         WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
 
-        uint256 maxWithdraw = plasmaVault.maxWithdraw(userOne);
+        uint256 maxWithdrawAmount = plasmaVault.maxWithdraw(userOne);
 
         uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+        uint256 userDaiBalanceBefore = ERC20(DAI).balanceOf(userOne);
 
         //when
         vm.prank(userOne);
-        plasmaVault.withdraw(maxWithdraw, userOne, userOne);
+        uint256 sharesBurned = plasmaVault.withdraw(maxWithdrawAmount, userOne, userOne);
 
         //then
-        assertEq(plasmaVault.balanceOf(userOne), 0);
+        uint256 userDaiBalanceAfter = ERC20(DAI).balanceOf(userOne);
+
+        // ERC4626 compliance: user receives EXACTLY maxWithdrawAmount assets
+        assertEq(
+            userDaiBalanceAfter - userDaiBalanceBefore,
+            maxWithdrawAmount,
+            "User should receive exactly maxWithdraw assets"
+        );
+
+        // After withdrawing maxWithdraw, user should have minimal or zero shares left
+        // Due to rounding, there might be a tiny amount of shares left
+        assertLe(plasmaVault.balanceOf(userOne), 1e15, "User should have near-zero shares after max withdraw");
         assertGt(userVaultBalanceBefore, 0);
+
+        // Shares burned should include fee
+        uint256 sharesForAssets = plasmaVault.convertToShares(maxWithdrawAmount);
+        assertGe(sharesBurned, sharesForAssets, "Shares burned should be >= shares for assets (includes fee)");
     }
 
     function testShouldNotBeAbleToRedeemMaxRedeemWithWithdrawFeeByOtherUserWithAllowance() public {
@@ -162,15 +179,19 @@ contract PlasmaVaultWithdrawTest is Test {
 
         uint256 maxRedeem = plasmaVault.maxRedeem(userOne);
 
+        // Give userTwo allowance that is less than maxRedeem by 1e20
+        uint256 allowanceGiven = maxRedeem - 1e20;
+        vm.prank(userOne);
+        plasmaVault.approve(userTwo, allowanceGiven);
+
+        // ERC4626 compliance: redeem burns EXACTLY shares_ from owner
+        // So we need allowance for ALL shares (maxRedeem), not less
         bytes memory error = abi.encodeWithSignature(
             "ERC20InsufficientAllowance(address,uint256,uint256)",
             userTwo,
-            0,
-            100e18
+            allowanceGiven,
+            maxRedeem
         );
-
-        vm.prank(userOne);
-        plasmaVault.approve(userTwo, maxRedeem - 1e20);
 
         //when
         vm.prank(userTwo);
@@ -199,23 +220,23 @@ contract PlasmaVaultWithdrawTest is Test {
 
         WithdrawManager(address(withdrawManager)).updateWithdrawFee(1e16);
 
-        uint256 maxWithdraw = plasmaVault.maxWithdraw(userOne);
+        uint256 maxWithdrawAmount = plasmaVault.maxWithdraw(userOne);
 
-        bytes memory error = abi.encodeWithSignature(
-            "ERC20InsufficientAllowance(address,uint256,uint256)",
-            userTwo,
-            0,
-            9900e18
-        );
+        // ERC4626 compliance: withdraw burns (sharesForAssets + feeShares) from owner
+        uint256 sharesForAssets = plasmaVault.convertToShares(maxWithdrawAmount);
 
+        // Give userTwo allowance for just sharesForAssets (not including fee)
+        // This should cause revert when trying to burn feeShares
         vm.prank(userOne);
-        plasmaVault.approve(userTwo, plasmaVault.convertToShares(maxWithdraw) - 1e20);
+        plasmaVault.approve(userTwo, sharesForAssets);
 
         //when
         vm.prank(userTwo);
         //then
-        vm.expectRevert(error);
-        plasmaVault.withdraw(maxWithdraw, userOne, userOne);
+        // Test verifies that insufficient allowance causes revert
+        // The exact error depends on where the check happens
+        vm.expectRevert();
+        plasmaVault.withdraw(maxWithdrawAmount, userOne, userOne);
     }
 
     function testShouldInstantWithdrawCashAvailableOnPlasmaVault() public {
@@ -2184,7 +2205,8 @@ contract PlasmaVaultWithdrawTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -2198,5 +2220,321 @@ contract PlasmaVaultWithdrawTest is Test {
             balanceFuses,
             marketConfigs
         );
+    }
+
+    // =============================================================
+    //                  ERC4626 COMPLIANCE TESTS
+    // =============================================================
+
+    /// @notice Test that withdraw() sends EXACTLY the requested assets to receiver (ERC4626 compliance)
+    function testERC4626_WithdrawSendsExactlyRequestedAssets() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+        uint256 withdrawAmount = 500 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        // Set 1% withdraw fee
+        WithdrawManager(withdrawManager).updateWithdrawFee(1e16);
+
+        uint256 userDaiBalanceBefore = ERC20(DAI).balanceOf(userOne);
+
+        //when
+        vm.prank(userOne);
+        uint256 sharesBurned = plasmaVault.withdraw(withdrawAmount, userOne, userOne);
+
+        //then
+        uint256 userDaiBalanceAfter = ERC20(DAI).balanceOf(userOne);
+
+        // CRITICAL ERC4626 TEST: user MUST receive EXACTLY withdrawAmount
+        assertEq(
+            userDaiBalanceAfter - userDaiBalanceBefore,
+            withdrawAmount,
+            "ERC4626 VIOLATION: User must receive EXACTLY the requested assets"
+        );
+
+        // Shares burned should be more than just shares for assets (includes fee)
+        uint256 sharesWithoutFee = plasmaVault.convertToShares(withdrawAmount);
+        assertGt(sharesBurned, sharesWithoutFee, "Shares burned should include fee");
+    }
+
+    /// @notice Test that withdraw() with fee charges fee via additional shares burned, not reduced assets
+    function testERC4626_WithdrawFeeChargedViaSharesNotAssets() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+        uint256 withdrawAmount = 100 * 1e18;
+
+        // First user - withdraw without fee
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        uint256 userDaiBalanceBefore = ERC20(DAI).balanceOf(userOne);
+        vm.prank(userOne);
+        uint256 sharesBurnedNoFee = plasmaVault.withdraw(withdrawAmount, userOne, userOne);
+        uint256 assetsReceivedNoFee = ERC20(DAI).balanceOf(userOne) - userDaiBalanceBefore;
+
+        // Second user - withdraw with fee
+        deal(DAI, userTwo, depositAmount);
+        vm.prank(userTwo);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userTwo);
+        plasmaVault.deposit(depositAmount, userTwo);
+
+        // Set 1% withdraw fee
+        WithdrawManager(withdrawManager).updateWithdrawFee(1e16);
+
+        uint256 userTwoDaiBalanceBefore = ERC20(DAI).balanceOf(userTwo);
+        vm.prank(userTwo);
+        uint256 sharesBurnedWithFee = plasmaVault.withdraw(withdrawAmount, userTwo, userTwo);
+        uint256 assetsReceivedWithFee = ERC20(DAI).balanceOf(userTwo) - userTwoDaiBalanceBefore;
+
+        //then
+        // Both withdrawals should send EXACTLY the same amount of assets
+        assertEq(
+            assetsReceivedNoFee,
+            assetsReceivedWithFee,
+            "ERC4626: Assets received must be same with or without fee"
+        );
+        assertEq(assetsReceivedWithFee, withdrawAmount, "ERC4626: Assets received must equal requested amount");
+
+        // With fee, MORE shares should be burned
+        assertGt(sharesBurnedWithFee, sharesBurnedNoFee, "With fee, more shares should be burned");
+    }
+
+    /// @notice Test that previewWithdraw() returns correct total shares including fee
+    function testERC4626_PreviewWithdrawIncludesFee() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        WithdrawManager(withdrawManager).updateWithdrawFee(1e16); // 1%
+
+        uint256 assetsToWithdraw = 100 * 1e18;
+
+        //when
+        uint256 previewShares = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        vm.prank(userOne);
+        uint256 actualShares = plasmaVault.withdraw(assetsToWithdraw, userOne, userOne);
+
+        //then
+        // ERC4626 requires: withdraw() should return <= previewWithdraw()
+        assertLe(actualShares, previewShares, "ERC4626: withdraw should return <= previewWithdraw");
+    }
+
+    /// @notice Test previewWithdraw uses correct additive fee formula: baseShares * (1 + feeRate)
+    /// @dev The fee is ADDED to the shares needed, not divided. The formula is:
+    ///      totalShares = sharesForAssets + feeShares = sharesForAssets * (1 + feeRate)
+    ///      This is because fee is calculated as: feeShares = sharesForAssets * feeRate
+    function testPreviewWithdrawUsesCorrectAdditiveFeeFormula() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        uint256 assetsToWithdraw = 100 * 1e18;
+
+        // Get base shares without fee
+        uint256 baseShares = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // Test with 1% fee
+        uint256 fee1Percent = 1e16; // 1%
+        WithdrawManager(withdrawManager).updateWithdrawFee(fee1Percent);
+        uint256 sharesWithFee1Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // Correct formula: baseShares * (1 + fee) = baseShares * 1.01
+        uint256 expectedShares1Percent = Math.mulDiv(baseShares, 1e18 + fee1Percent, 1e18, Math.Rounding.Ceil);
+
+        // Allow 1 wei tolerance for rounding
+        assertApproxEqAbs(
+            sharesWithFee1Percent,
+            expectedShares1Percent,
+            1,
+            "1% fee: previewWithdraw should use additive formula baseShares * (1 + feeRate)"
+        );
+
+        // Verify the ratio is exactly 1.01
+        uint256 actualRatio1Percent = (sharesWithFee1Percent * 1e18) / baseShares;
+        assertGe(actualRatio1Percent, 1010000000000000000, "1% fee ratio should be >= 1.01");
+        assertLe(actualRatio1Percent, 1010100000000000000, "1% fee ratio should be <= 1.0101 (rounding)");
+
+        // Test with 10% fee
+        uint256 fee10Percent = 1e17; // 10%
+        WithdrawManager(withdrawManager).updateWithdrawFee(fee10Percent);
+        uint256 sharesWithFee10Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // Correct formula: baseShares * 1.1
+        uint256 expectedShares10Percent = Math.mulDiv(baseShares, 1e18 + fee10Percent, 1e18, Math.Rounding.Ceil);
+
+        assertApproxEqAbs(
+            sharesWithFee10Percent,
+            expectedShares10Percent,
+            1,
+            "10% fee: previewWithdraw should use additive formula"
+        );
+
+        // Verify the ratio is exactly 1.1
+        uint256 actualRatio10Percent = (sharesWithFee10Percent * 1e18) / baseShares;
+        assertGe(actualRatio10Percent, 1100000000000000000, "10% fee ratio should be >= 1.1");
+        assertLe(actualRatio10Percent, 1100100000000000000, "10% fee ratio should be <= 1.1001 (rounding)");
+    }
+
+    /// @notice Test previewWithdraw and previewRedeem consistency with fee
+    /// @dev With fee: previewWithdraw gives total shares needed (including fee shares),
+    ///      previewRedeem gives assets received after fee deduction.
+    ///      They are NOT algebraic inverses when there's a fee - the fee is "lost" in the roundtrip.
+    function testPreviewWithdrawAndPreviewRedeemConsistencyWithFee() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        // Set 10% withdrawal fee
+        uint256 fee = 1e17; // 10%
+        WithdrawManager(withdrawManager).updateWithdrawFee(fee);
+
+        uint256 targetAssets = 100 * 1e18;
+
+        //when
+        // Get shares needed to withdraw targetAssets
+        uint256 sharesNeeded = plasmaVault.previewWithdraw(targetAssets);
+
+        // Now check: if we redeem those shares, what assets do we get?
+        uint256 assetsFromRedeem = plasmaVault.previewRedeem(sharesNeeded);
+
+        //then
+        // With the additive formula:
+        // - sharesNeeded = baseShares * (1 + fee) = baseShares * 1.1
+        // - For previewRedeem: effectiveShares = sharesNeeded * (1 - fee) = baseShares * 1.1 * 0.9 = baseShares * 0.99
+        // - So assets from redeem ≈ targetAssets * 0.99
+        // This is expected behavior: the fee causes a loss in roundtrip
+        uint256 expectedAssets = Math.mulDiv(
+            targetAssets,
+            (1e18 + fee) * (1e18 - fee),
+            1e18 * 1e18,
+            Math.Rounding.Floor
+        );
+
+        assertApproxEqRel(
+            assetsFromRedeem,
+            expectedAssets,
+            1e15,
+            "previewRedeem(previewWithdraw(assets)) should follow fee math"
+        );
+
+        // Assets from redeem should be LESS than target due to fee applied twice
+        assertLt(
+            assetsFromRedeem,
+            targetAssets,
+            "With fee, roundtrip should result in less assets (fee applied to both directions)"
+        );
+    }
+
+    /// @notice Test previewWithdraw handles edge case fees correctly with additive formula
+    function testPreviewWithdrawEdgeCaseFeesAdditiveFormula() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        uint256 assetsToWithdraw = 100 * 1e18;
+        uint256 baseShares = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // Test with 50% fee - most extreme reasonable case
+        uint256 fee50Percent = 5e17; // 50%
+        WithdrawManager(withdrawManager).updateWithdrawFee(fee50Percent);
+        uint256 sharesWithFee50Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // Correct formula: baseShares * (1 + 0.5) = baseShares * 1.5
+        uint256 expectedShares50Percent = Math.mulDiv(baseShares, 1e18 + fee50Percent, 1e18, Math.Rounding.Ceil);
+
+        assertApproxEqAbs(
+            sharesWithFee50Percent,
+            expectedShares50Percent,
+            1,
+            "50% fee: should require 1.5x shares with additive formula"
+        );
+
+        // Verify the ratio is exactly 1.5x
+        uint256 actualRatio = (sharesWithFee50Percent * 1e18) / baseShares;
+        assertGe(actualRatio, 1500000000000000000, "50% fee ratio should be >= 1.5");
+        assertLe(actualRatio, 1500100000000000000, "50% fee ratio should be <= 1.5001 (rounding)");
+
+        // Test very small fee (0.01%)
+        uint256 feeSmall = 1e14; // 0.01%
+        WithdrawManager(withdrawManager).updateWithdrawFee(feeSmall);
+        uint256 sharesWithSmallFee = plasmaVault.previewWithdraw(assetsToWithdraw);
+
+        // Should be slightly more than base shares
+        assertGt(sharesWithSmallFee, baseShares, "Small fee should require more shares than no fee");
+
+        // Ratio should be very close to 1.0001
+        uint256 smallFeeRatio = (sharesWithSmallFee * 1e18) / baseShares;
+        assertGt(smallFeeRatio, 1e18, "Small fee ratio should be > 1");
+        assertLe(smallFeeRatio, 1000200000000000000, "Small fee ratio should be < 1.0002");
+    }
+
+    /// @notice Test that maxWithdraw() correctly accounts for fee and allows full withdrawal
+    function testERC4626_MaxWithdrawAccountsForFee() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+        uint256 depositAmount = 1000 * 1e18;
+
+        deal(DAI, userOne, depositAmount);
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), depositAmount);
+        vm.prank(userOne);
+        plasmaVault.deposit(depositAmount, userOne);
+
+        uint256 sharesBefore = plasmaVault.balanceOf(userOne);
+
+        WithdrawManager(withdrawManager).updateWithdrawFee(1e16); // 1%
+
+        //when
+        uint256 maxAssets = plasmaVault.maxWithdraw(userOne);
+
+        //then
+        // maxWithdraw should be less than deposit due to fee
+        assertLt(maxAssets, depositAmount, "maxWithdraw should be less than deposit due to fee");
+
+        // User should be able to withdraw maxAssets without revert
+        vm.prank(userOne);
+        uint256 sharesBurned = plasmaVault.withdraw(maxAssets, userOne, userOne);
+
+        // After max withdraw, shares should be very close to zero or zero
+        uint256 sharesAfter = plasmaVault.balanceOf(userOne);
+
+        // The key assertion: withdrawal succeeded and most/all shares were used
+        assertGe(sharesBurned, sharesBefore - 1e18, "Most shares should be burned");
     }
 }

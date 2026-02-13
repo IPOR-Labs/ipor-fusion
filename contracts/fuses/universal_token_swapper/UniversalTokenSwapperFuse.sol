@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
@@ -9,8 +9,10 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {SwapExecutor, SwapExecutorData} from "./SwapExecutor.sol";
-import {UniversalTokenSwapperSubstrateLib, UniversalTokenSwapperSubstrateType} from "./UniversalTokenSwapperSubstrateLib.sol";
+import {UniversalTokenSwapperSubstrateLib} from "./UniversalTokenSwapperSubstrateLib.sol";
 
 /// @notice Data structure used for executing a swap operation.
 /// @param targets The array of addresses to which the call will be made
@@ -34,11 +36,11 @@ struct UniversalTokenSwapperEnterData {
     UniversalTokenSwapperData data;
 }
 
-/// @notice Struct to track token balances before and after swap execution
-/// @param tokenInBalanceBefore Balance of input token before swap
-/// @param tokenOutBalanceBefore Balance of output token before swap
-/// @param tokenInBalanceAfter Balance of input token after swap
-/// @param tokenOutBalanceAfter Balance of output token after swap
+/// @notice Data structure used to track token balances before and after swap operations
+/// @param tokenInBalanceBefore The balance of input token before the swap operation
+/// @param tokenOutBalanceBefore The balance of output token before the swap operation
+/// @param tokenInBalanceAfter The balance of input token after the swap operation
+/// @param tokenOutBalanceAfter The balance of output token after the swap operation
 struct Balances {
     uint256 tokenInBalanceBefore;
     uint256 tokenOutBalanceBefore;
@@ -108,8 +110,11 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
     uint256 private constant _ONE = 1e18;
 
-    /// @notice Creates a new UniversalTokenSwapperFuse instance
-    /// @param marketId_ Market identifier for this fuse
+    /**
+     * @notice Initializes the UniversalTokenSwapperFuse with market ID and executor address
+     * @param marketId_ The market ID used to identify the market and validate asset permissions
+     * @dev Reverts if marketId_ is zero
+     */
     constructor(uint256 marketId_) {
         if (marketId_ == 0) {
             revert UniversalTokenSwapperFuseInvalidMarketId();
@@ -119,31 +124,32 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         EXECUTOR = address(new SwapExecutor());
     }
 
-    /// @notice Execute a swap operation
-    /// @dev Called via delegatecall from PlasmaVault.execute()
-    /// @param data_ Encoded UniversalTokenSwapperEnterData struct
-    /// @custom:security Validates all tokens and targets against substrate configuration.
-    ///                  Enforces minAmountOut and USD-based slippage protection.
-    function enter(UniversalTokenSwapperEnterData calldata data_) external {
+    /// @notice Enters the swap operation
+    /// @param data_ The input data for the swap
+    /// @return tokenIn The input token address
+    /// @return tokenOut The output token address
+    /// @return tokenInDelta The amount of input token consumed
+    /// @return tokenOutDelta The amount of output token received
+    function enter(
+        UniversalTokenSwapperEnterData memory data_
+    ) public returns (address tokenIn, address tokenOut, uint256 tokenInDelta, uint256 tokenOutDelta) {
         if (data_.amountIn == 0) {
             revert UniversalTokenSwapperFuseZeroAmount();
         }
 
-        uint256 dexsLength = data_.data.targets.length;
-        if (dexsLength == 0) {
+        uint256 targetsLength = data_.data.targets.length;
+        if (targetsLength == 0) {
             revert UniversalTokenSwapperFuseEmptyTargets();
         }
-        if (dexsLength != data_.data.data.length) {
+        if (targetsLength != data_.data.data.length) {
             revert UniversalTokenSwapperFuseArrayLengthMismatch();
         }
 
-        // Single pass substrate validation - reads substrates only once
         SubstrateValidationResult memory validation = _validateSubstrates(
             data_.tokenIn,
             data_.tokenOut,
             data_.data.targets
         );
-
         if (!validation.tokenInGranted) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
         }
@@ -152,15 +158,18 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         }
 
         // Check all targets are granted using bitmask
-        uint256 expectedMask = (1 << dexsLength) - 1;
+        uint256 expectedMask = (1 << targetsLength) - 1;
         if (validation.grantedTargets != expectedMask) {
             // Find first non-granted target for error message
-            for (uint256 i; i < dexsLength; ++i) {
+            for (uint256 i; i < targetsLength; ++i) {
                 if ((validation.grantedTargets & (1 << i)) == 0) {
                     revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.targets[i]);
                 }
             }
         }
+
+        tokenIn = data_.tokenIn;
+        tokenOut = data_.tokenOut;
 
         address plasmaVault = address(this);
 
@@ -186,16 +195,19 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         balances.tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
 
         if (balances.tokenInBalanceAfter >= balances.tokenInBalanceBefore) {
-            return;
+            tokenInDelta = 0;
+            tokenOutDelta = 0;
+            _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
+            return (tokenIn, tokenOut, tokenInDelta, tokenOutDelta);
         }
 
-        uint256 tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
+        tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
 
         if (balances.tokenOutBalanceAfter <= balances.tokenOutBalanceBefore) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
 
-        uint256 tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
+        tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
 
         // Check minAmountOut protection (if specified)
         if (data_.minAmountOut > 0 && tokenOutDelta < data_.minAmountOut) {
@@ -204,7 +216,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
         _validateUsdSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta, validation.slippageWad);
 
-        emit UniversalTokenSwapperFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+        _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
     }
 
     /// @notice Validates USD-based slippage protection
@@ -268,17 +280,20 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     function _validateSubstrates(
         address tokenIn_,
         address tokenOut_,
-        address[] calldata targets_
+        address[] memory targets_
     ) internal view returns (SubstrateValidationResult memory result) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 substratesLength = substrates.length;
         uint256 targetsLength = targets_.length;
-
+        bytes32 substrate;
+        address token;
+        address target;
+        
         for (uint256 i; i < substratesLength; ++i) {
-            bytes32 substrate = substrates[i];
+            substrate = substrates[i];
 
             if (UniversalTokenSwapperSubstrateLib.isTokenSubstrate(substrate)) {
-                address token = UniversalTokenSwapperSubstrateLib.decodeToken(substrate);
+                token = UniversalTokenSwapperSubstrateLib.decodeToken(substrate);
                 if (token == tokenIn_) {
                     result.tokenInGranted = true;
                 }
@@ -286,7 +301,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
                     result.tokenOutGranted = true;
                 }
             } else if (UniversalTokenSwapperSubstrateLib.isTargetSubstrate(substrate)) {
-                address target = UniversalTokenSwapperSubstrateLib.decodeTarget(substrate);
+                target = UniversalTokenSwapperSubstrateLib.decodeTarget(substrate);
                 for (uint256 j; j < targetsLength; ++j) {
                     if (targets_[j] == target) {
                         result.grantedTargets |= (1 << j);
@@ -302,6 +317,109 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
 
         if (result.slippageWad == 0) {
             result.slippageWad = DEFAULT_SLIPPAGE_WAD;
+        }
+    }
+
+    function _emitUniversalTokenSwapperFuseEnter(
+        UniversalTokenSwapperEnterData memory data_,
+        uint256 tokenInDelta,
+        uint256 tokenOutDelta
+    ) private {
+        emit UniversalTokenSwapperFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    /// @dev Reads tokenIn, tokenOut, amountIn, targets array, and data arrays from transient storage.
+    ///      Input 0: tokenIn (address)
+    ///      Input 1: tokenOut (address)
+    ///      Input 2: amountIn (uint256)
+    ///      Input 3: targetsLength (uint256)
+    ///      Inputs 4 to 3+targetsLength: targets (address[])
+    ///      Input 3+targetsLength+1: dataLength (uint256)
+    ///      For each data (i from 0 to dataLength-1):
+    ///        Input 3+targetsLength+1+i*2+1: dataLength (uint256)
+    ///        Inputs 3+targetsLength+1+i*2+2 to 3+targetsLength+1+i*2+1+ceil(dataLength/32): data chunks (bytes32[])
+    ///      Writes returned tokenIn, tokenOut, tokenInDelta, and tokenOutDelta to transient storage outputs.
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        address tokenIn = TypeConversionLib.toAddress(inputs[0]);
+        address tokenOut = TypeConversionLib.toAddress(inputs[1]);
+        uint256 amountIn = TypeConversionLib.toUint256(inputs[2]);
+
+        uint256 currentIndex = 3;
+        address[] memory targets;
+        (targets, currentIndex) = _readTargets(currentIndex);
+        bytes[] memory data;
+        (data, currentIndex) = _readData(currentIndex);
+
+        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amountIn: amountIn,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperData({targets: targets, data: data})
+        });
+
+        (address returnedTokenIn, address returnedTokenOut, uint256 tokenInDelta, uint256 tokenOutDelta) = enter(
+            enterData
+        );
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenIn);
+        outputs[1] = TypeConversionLib.toBytes32(returnedTokenOut);
+        outputs[2] = TypeConversionLib.toBytes32(tokenInDelta);
+        outputs[3] = TypeConversionLib.toBytes32(tokenOutDelta);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /**
+     * @notice Reads target addresses from transient storage inputs
+     * @dev Reads the length of targets array from transient storage at currentIndex,
+     *      then reads each target address sequentially. Used by enterTransient() to
+     *      decode swap target addresses from transient storage.
+     * @param currentIndex The current index in transient storage where targets length is stored
+     * @return targets The array of target addresses read from transient storage
+     * @return nextIndex The next index in transient storage after reading all targets
+     */
+    function _readTargets(uint256 currentIndex) private view returns (address[] memory targets, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        targets = new address[](len);
+        for (uint256 i; i < len; ++i) {
+            targets[i] = TypeConversionLib.toAddress(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+        }
+    }
+
+    /**
+     * @notice Reads bytes arrays (call data) from transient storage inputs
+     * @dev Reads the length of data array from transient storage at currentIndex,
+     *      then reads each bytes array sequentially. Each bytes array is stored as
+     *      chunks of 32 bytes (bytes32) in transient storage. Used by enterTransient()
+     *      to decode swap call data from transient storage.
+     * @param currentIndex The current index in transient storage where data length is stored
+     * @return data The array of bytes data (call data) read from transient storage
+     * @return nextIndex The next index in transient storage after reading all data arrays
+     */
+    function _readData(uint256 currentIndex) private view returns (bytes[] memory data, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        data = new bytes[](len);
+        for (uint256 i; i < len; ++i) {
+            uint256 dataLen = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+            bytes memory callData = new bytes(dataLen);
+            uint256 chunksCount = (dataLen + 31) / 32;
+            for (uint256 j; j < chunksCount; ++j) {
+                bytes32 chunk = TransientStorageLib.getInput(VERSION, nextIndex);
+                uint256 chunkStart = j * 32;
+                assembly {
+                    mstore(add(add(callData, 0x20), chunkStart), chunk)
+                }
+                ++nextIndex;
+            }
+            data[i] = callData;
         }
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -103,7 +103,8 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(_accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: _withdrawManager
+                withdrawManager: _withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
         vm.stopPrank();

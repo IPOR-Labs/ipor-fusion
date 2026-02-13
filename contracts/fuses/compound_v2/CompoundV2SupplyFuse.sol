@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -8,6 +8,8 @@ import {IFuseCommon} from "../IFuse.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {CErc20} from "./ext/CErc20.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 
 struct CompoundV2SupplyFuseEnterData {
     /// @notice asset address to supply
@@ -23,45 +25,125 @@ struct CompoundV2SupplyFuseExitData {
     uint256 amount;
 }
 
-/// @dev Fuse for Compound V2 protocol responsible for supplying and withdrawing assets from the Compound V2 protocol based on preconfigured market substrates
+/// @title CompoundV2SupplyFuse
+/// @notice Fuse for Compound V2 protocol responsible for supplying and withdrawing assets
 /// @dev Substrates in this fuse are the cTokens that are used in the Compound V2 protocol for a given MARKET_ID
+/// @author IPOR Labs
 contract CompoundV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
+    /// @notice The address of the version of the fuse
     address public immutable VERSION;
+
+    /// @notice The market ID for the fuse
     uint256 public immutable MARKET_ID;
 
+    /// @notice Emitted when entering the Compound V2 supply fuse
+    /// @param version The version of the fuse
+    /// @param asset The asset address
+    /// @param market The market address
+    /// @param amount The amount of assets supplied
     event CompoundV2SupplyEnterFuse(address version, address asset, address market, uint256 amount);
+
+    /// @notice Emitted when exiting the Compound V2 supply fuse
+    /// @param version The version of the fuse
+    /// @param asset The asset address
+    /// @param market The market address
+    /// @param amount The amount of assets withdrawn
     event CompoundV2SupplyExitFuse(address version, address asset, address market, uint256 amount);
+
+    /// @notice Emitted when exiting the Compound V2 supply fuse fails
+    /// @param version The version of the fuse
+    /// @param asset The asset address
+    /// @param market The market address
+    /// @param amount The amount of assets attempted to withdraw
     event CompoundV2SupplyExitFailed(address version, address asset, address market, uint256 amount);
 
+    /// @notice Error thrown when the asset is not supported
+    /// @param asset The asset address
     error CompoundV2SupplyFuseUnsupportedAsset(address asset);
 
+    /// @notice Constructor
+    /// @param marketId_ The market ID
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
     }
 
-    function enter(CompoundV2SupplyFuseEnterData memory data_) external {
+    /// @notice Enters the Compound V2 supply fuse
+    /// @param data_ The input data for entering the fuse
+    /// @return asset The asset address
+    /// @return cToken The cToken address
+    /// @return amount The amount of assets supplied
+    function enter(
+        CompoundV2SupplyFuseEnterData memory data_
+    ) public returns (address asset, address cToken, uint256 amount) {
         if (data_.amount == 0) {
-            return;
+            return (data_.asset, address(0), 0);
         }
 
-        CErc20 cToken = CErc20(_getCToken(MARKET_ID, data_.asset));
+        cToken = _getCToken(MARKET_ID, data_.asset);
 
         ERC20(data_.asset).forceApprove(address(cToken), data_.amount);
 
-        cToken.mint(data_.amount);
+        CErc20(cToken).mint(data_.amount);
 
-        emit CompoundV2SupplyEnterFuse(VERSION, data_.asset, address(cToken), data_.amount);
+        asset = data_.asset;
+        amount = data_.amount;
+
+        emit CompoundV2SupplyEnterFuse(VERSION, asset, cToken, amount);
     }
 
-    function exit(CompoundV2SupplyFuseExitData calldata data_) external {
-        _exit(data_, false);
+    /// @notice Enters the Compound V2 supply fuse using transient storage for input/output
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address asset = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address assetUsed, address cToken, uint256 amountUsed) = enter(
+            CompoundV2SupplyFuseEnterData({asset: asset, amount: amount})
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(assetUsed);
+        outputs[1] = TypeConversionLib.toBytes32(cToken);
+        outputs[2] = TypeConversionLib.toBytes32(amountUsed);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
+    /// @notice Exits the Compound V2 supply fuse
+    /// @param data_ The input data for exiting the fuse
+    /// @return asset The asset address
+    /// @return cToken The cToken address
+    /// @return amount The amount of assets withdrawn
+    function exit(
+        CompoundV2SupplyFuseExitData calldata data_
+    ) external returns (address asset, address cToken, uint256 amount) {
+        return _exit(data_, false);
+    }
+
+    /// @notice Exits the Compound V2 supply fuse using transient storage for input/output
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address asset = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+
+        (address assetUsed, address cToken, uint256 amountUsed) = _exit(
+            CompoundV2SupplyFuseExitData({asset: asset, amount: amount}),
+            false
+        );
+
+        bytes32[] memory outputs = new bytes32[](3);
+        outputs[0] = TypeConversionLib.toBytes32(assetUsed);
+        outputs[1] = TypeConversionLib.toBytes32(cToken);
+        outputs[2] = TypeConversionLib.toBytes32(amountUsed);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Instant withdraw
     /// @dev params[0] - amount in underlying asset, params[1] - asset address
+    /// @param params_ The parameters for instant withdraw
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
 
@@ -70,23 +152,38 @@ contract CompoundV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         _exit(CompoundV2SupplyFuseExitData(asset, amount), true);
     }
 
-    function _exit(CompoundV2SupplyFuseExitData memory data_, bool catchExceptions_) internal {
+    /// @notice Internal exit logic
+    /// @param data_ The input data for exiting the fuse
+    /// @param catchExceptions_ Whether to catch exceptions during withdrawal
+    /// @return asset The asset address
+    /// @return cToken The cToken address
+    /// @return amount The amount of assets withdrawn
+    function _exit(
+        CompoundV2SupplyFuseExitData memory data_,
+        bool catchExceptions_
+    ) internal returns (address asset, address cToken, uint256 amount) {
         if (data_.amount == 0) {
-            return;
+            return (data_.asset, address(0), 0);
         }
 
-        CErc20 cToken = CErc20(_getCToken(MARKET_ID, data_.asset));
+        cToken = _getCToken(MARKET_ID, data_.asset);
 
-        uint256 balance = cToken.balanceOfUnderlying(address(this));
+        uint256 balance = CErc20(cToken).balanceOfUnderlying(address(this));
         uint256 amountToWithdraw = data_.amount > balance ? balance : data_.amount;
 
         if (amountToWithdraw == 0) {
-            return;
+            return (data_.asset, cToken, 0);
         }
 
-        _performWithdraw(data_.asset, address(cToken), amountToWithdraw, catchExceptions_);
+        _performWithdraw(data_.asset, cToken, amountToWithdraw, catchExceptions_);
+
+        return (data_.asset, cToken, amountToWithdraw);
     }
 
+    /// @notice Internal helper to get the cToken address for a given asset
+    /// @param marketId_ The market ID
+    /// @param asset_ The asset address
+    /// @return The cToken address
     function _getCToken(uint256 marketId_, address asset_) internal view returns (address) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(marketId_);
         uint256 len = assetsRaw.length;
@@ -102,6 +199,11 @@ contract CompoundV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         revert CompoundV2SupplyFuseUnsupportedAsset(asset_);
     }
 
+    /// @notice Internal helper to perform the withdrawal
+    /// @param asset_ The asset address
+    /// @param cToken_ The cToken address
+    /// @param amountToWithdraw_ The amount to withdraw
+    /// @param catchExceptions_ Whether to catch exceptions during withdrawal
     function _performWithdraw(
         address asset_,
         address cToken_,

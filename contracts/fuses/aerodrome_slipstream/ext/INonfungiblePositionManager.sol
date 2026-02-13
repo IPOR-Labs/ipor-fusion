@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title Non-fungible token for positions
 /// @notice Wraps CL positions in a non-fungible token interface which allows for them to be transferred
@@ -165,4 +165,9 @@ interface INonfungiblePositionManager {
     function balanceOf(address owner) external view returns (uint256);
 
     function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256);
+
+    /// @notice Returns the owner of the NFT of the given tokenId
+    /// @param tokenId The NFT to check the owner of
+    /// @return owner The address of the owner of the NFT
+    function ownerOf(uint256 tokenId) external view returns (address owner);
 }

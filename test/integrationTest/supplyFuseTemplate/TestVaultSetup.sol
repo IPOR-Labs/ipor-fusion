@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {TestStorage} from "./TestStorage.sol";
 import {PlasmaVault, MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -34,7 +34,8 @@ abstract contract TestVaultSetup is TestStorage {
                 feeConfig,
                 accessManager,
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
         vm.stopPrank();
@@ -75,7 +76,8 @@ abstract contract TestVaultSetup is TestStorage {
                 feeConfig,
                 accessManager,
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 

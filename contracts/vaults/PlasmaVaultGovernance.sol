@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {FusesLib} from "../libraries/FusesLib.sol";
 import {PlasmaVaultConfigLib} from "../libraries/PlasmaVaultConfigLib.sol";
@@ -663,7 +663,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     ///
     /// Storage Pattern:
     /// - Uses PlasmaVaultStorageLib.ERC20CappedStorage
-    /// - Stores cap in underlying asset decimals
+    /// - Stores cap in shares (not in underlying asset decimals)
     /// - Can be temporarily bypassed for fees
     /// - Critical for deposit control
     ///
@@ -685,7 +685,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Deposit Controls
     /// - Risk Parameters
     ///
-    /// @return uint256 The maximum total supply in underlying asset decimals
+    /// @return uint256 The maximum total supply denominated in shares (not in underlying asset decimals)
     /// @custom:access External view
     /// @custom:security Non-privileged view function
     function getTotalSupplyCap() external view override returns (uint256) {
@@ -1454,12 +1454,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// Validation Requirements:
     /// - Must be non-zero value
     /// - Must be sufficient for operations
-    /// - Should consider asset decimals
-    /// - Must accommodate fee minting
     ///
     /// Storage Updates:
     /// - Updates PlasmaVaultStorageLib.ERC20CappedStorage
-    /// - Stores cap in underlying asset decimals
+    /// - Stores cap in shares (not in underlying asset decimals)
     /// - Affects deposit availability
     /// - Impacts share minting limits
     ///
@@ -1481,7 +1479,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Fee Minting Logic
     /// - Risk Management Framework
     ///
-    /// @param cap_ The new total supply cap in underlying asset decimals
+    /// @param cap_ The new total supply cap denominated in shares (not in underlying asset decimals)
     /// @custom:access ATOMIST_ROLE restricted
     /// @custom:security Critical for vault capacity management
     function setTotalSupplyCap(uint256 cap_) external override restricted {

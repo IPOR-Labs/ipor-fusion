@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -36,6 +36,20 @@ contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClie
     );
     error WithdrawManagerZeroShares();
     error WithdrawManagerInvalidFee(uint256 fee);
+
+    /// @notice Emitted when an unallocated withdrawal is validated
+    /// @param caller Address initiating the withdrawal (PlasmaVault)
+    /// @param shares Amount of shares being withdrawn
+    /// @param sharesToRelease Current sharesToRelease (reserved for scheduled withdrawals)
+    /// @param availableUnallocatedShares Available unallocated shares before this withdrawal
+    /// @param feeSharesToBurn Fee shares to be burned (0 if no fee)
+    event UnallocatedWithdrawalValidated(
+        address indexed caller,
+        uint256 shares,
+        uint256 sharesToRelease,
+        uint256 availableUnallocatedShares,
+        uint256 feeSharesToBurn
+    );
 
     /// @notice Constructor that initializes the WithdrawManager with access control
     /// @dev Used when deploying directly without proxy
@@ -105,8 +119,9 @@ contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClie
      * @dev Only callable by PlasmaVault contract (TECH_PLASMA_VAULT_ROLE)
      *
      * Unallocated Balance:
-     * - Represents the portion of vault's assets not committed to pending withdrawal requests
-     * - Calculated as: vault's total balance - sum of all pending withdrawal requests
+     * - Represents the portion of vault's assets available for immediate withdrawal
+     * - Calculated as: vault's total balance - sharesToRelease (shares explicitly released by governance)
+     * - Does NOT subtract the sum of all pending withdrawal requests (only sharesToRelease is reserved)
      * - Available for immediate withdrawals without scheduling
      * - Subject to different fee structure than scheduled withdrawals
      * - Can be accessed through standard withdraw/redeem operations
@@ -114,9 +129,9 @@ contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClie
      * Validation Flow:
      * 1. Balance Verification
      *    - Checks PlasmaVault's total underlying token balance
-     *    - Subtracts total shares pending for scheduled withdrawals
-     *    - Ensures withdrawal amount + pending releases <= total unallocated balance
-     *    - Prevents double-allocation of shares
+     *    - Subtracts only sharesToRelease (shares explicitly released via releaseFunds)
+     *    - Ensures withdrawal amount + sharesToRelease <= total balance
+     *    - Prevents double-allocation of released shares
      *
      * 2. Fee Calculation
      *    - Retrieves current withdraw fee rate for unallocated withdrawals
@@ -134,13 +149,15 @@ contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClie
      * Integration Points:
      * - PlasmaVault: Main caller and balance source
      * - ERC4626: Share/asset conversion
-     * - Storage: Fee rate and pending withdrawals
+     * - Storage: Fee rate and sharesToRelease
      * - BurnRequestFeeFuse: Fee burning mechanism
      *
      * Important Notes:
      * - Different from scheduled withdrawal system
      * - Immediate withdrawal pathway
      * - Separate fee structure
+     * - Only reserves sharesToRelease, NOT all pending withdrawal requests
+     * - Pending requests that have not been released by governance do NOT reduce unallocated balance
      * - Must maintain withdrawal request safety
      * - Critical for vault liquidity management
      *
@@ -170,11 +187,22 @@ contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClie
                 plasmaVaultBalanceOfUnallocatedShares
             );
         }
+
+        uint256 feeSharesToBurn;
         if (feeRate > 0) {
             //@dev 1e18 is the precision of the fee rate
-            return Math.mulDiv(shares_, feeRate, 1e18);
+            feeSharesToBurn = Math.mulDiv(shares_, feeRate, 1e18);
         }
-        return 0;
+
+        emit UnallocatedWithdrawalValidated(
+            plasmaVaultAddress,
+            shares_,
+            sharesToRelease,
+            plasmaVaultBalanceOfUnallocatedShares,
+            feeSharesToBurn
+        );
+
+        return feeSharesToBurn;
     }
 
     /**

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -75,7 +75,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: _withdrawManager
+                withdrawManager: _withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
 

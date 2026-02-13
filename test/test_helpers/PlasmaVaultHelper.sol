@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
@@ -46,7 +46,8 @@ library PlasmaVaultHelper {
             feeConfig: feeConfig,
             accessManager: accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            withdrawManager: withdrawManager
+            withdrawManager: withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         plasmaVault = new PlasmaVault();
@@ -73,7 +74,8 @@ library PlasmaVaultHelper {
             feeConfig: feeConfig,
             accessManager: accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            withdrawManager: withdrawManager
+            withdrawManager: withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         plasmaVault = new PlasmaVault();

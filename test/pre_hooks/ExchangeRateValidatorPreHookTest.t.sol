@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ExchangeRateValidatorPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorPreHook.sol";
@@ -659,6 +659,91 @@ contract ExchangeRateValidatorPreHookTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit SimpleExecutePreHook.Execute(444, PlasmaVault.deposit.selector);
+
+        plasmaVault.deposit(depositAmount, USER);
+        vm.stopPrank();
+
+        // then - verify deposit succeeded
+        assertGt(plasmaVault.totalAssets(), vaultTotalAssetsBefore, "Vault total assets should increase");
+    }
+
+    /// @notice Test that all hooks are executed even when there are gaps in hook indices
+    /// @dev This is a regression test for the bug where break was used instead of continue,
+    ///      causing hooks after gaps to be skipped
+    function testShouldExecuteAllHooksWhenGapExistsInHookIndices() public {
+        // given - calculate current exchange rate
+        PlasmaVault plasmaVault = PlasmaVault(PLASMA_VAULT);
+        uint256 currentExchangeRate = plasmaVault.convertToAssets(10 ** plasmaVault.decimals());
+        uint120 threshold = 1e16;
+
+        // Deploy hooks with different identifiers
+        SimpleExecutePreHook preHook1 = new SimpleExecutePreHook(111); // Will be at index 0
+        SimpleExecutePreHook preHook2 = new SimpleExecutePreHook(333); // Will be at index 2 (gap at 1)
+        SimpleExecutePreHook preHook3 = new SimpleExecutePreHook(555); // Will be at index 5 (gaps at 3,4)
+
+        // Create substrates array with non-contiguous pre-hook indices
+        bytes32[] memory substrates = new bytes32[](4);
+
+        // Pre-hook at index 0
+        substrates[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
+                typ: HookType.PREHOOKS,
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(preHook1), index: 0}))
+            })
+        );
+
+        // Pre-hook at index 2 (gap at index 1)
+        substrates[1] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
+                typ: HookType.PREHOOKS,
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(preHook2), index: 2}))
+            })
+        );
+
+        // Pre-hook at index 5 (gaps at indices 3, 4)
+        substrates[2] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
+                typ: HookType.PREHOOKS,
+                data: ExchangeRateValidatorConfigLib.hookToBytes31(Hook({hookAddress: address(preHook3), index: 5}))
+            })
+        );
+
+        // Validator with current exchange rate (will pass validation)
+        substrates[3] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
+            ExchangeRateValidatorConfig({
+                typ: HookType.VALIDATOR,
+                data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
+                    ValidatorData({exchangeRate: uint128(currentExchangeRate), threshold: threshold})
+                )
+            })
+        );
+
+        vm.startPrank(ATOMIST);
+        PlasmaVaultGovernance(PLASMA_VAULT).grantMarketSubstrates(
+            IporFusionMarkets.EXCHANGE_RATE_VALIDATOR,
+            substrates
+        );
+        vm.stopPrank();
+
+        // Ensure user has USDC
+        uint256 depositAmount = 10_000e6;
+        deal(USDC, USER, depositAmount);
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+
+        // when - user approves and deposits
+        vm.startPrank(USER);
+        IERC20(USDC).approve(PLASMA_VAULT, depositAmount);
+
+        // Expect Execute events from ALL three pre-hooks (not just the first one)
+        // This verifies that gaps don't cause early termination
+        vm.expectEmit(true, true, true, true);
+        emit SimpleExecutePreHook.Execute(111, PlasmaVault.deposit.selector);
+
+        vm.expectEmit(true, true, true, true);
+        emit SimpleExecutePreHook.Execute(333, PlasmaVault.deposit.selector);
+
+        vm.expectEmit(true, true, true, true);
+        emit SimpleExecutePreHook.Execute(555, PlasmaVault.deposit.selector);
 
         plasmaVault.deposit(depositAmount, USER);
         vm.stopPrank();

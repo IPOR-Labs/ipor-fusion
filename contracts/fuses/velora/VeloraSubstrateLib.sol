@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @notice Enum to identify substrate type in Velora market
 /// @dev Encoded as first byte (uint8) of bytes32 substrate

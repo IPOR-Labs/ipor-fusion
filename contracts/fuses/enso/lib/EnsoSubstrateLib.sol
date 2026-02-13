@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @notice Structure representing a substrate with target address and function selector
 /// @param target_ The target contract address

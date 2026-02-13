@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -11,10 +11,8 @@ import {TacStakingRedelegateFuse, TacStakingRedelegateFuseEnterData} from "../..
 import {TacStakingEmergencyFuse} from "../../../contracts/fuses/tac/TacStakingEmergencyFuse.sol";
 import {TacStakingBalanceFuse} from "../../../contracts/fuses/tac/TacStakingBalanceFuse.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {RewardsManagerFactory} from "../../../contracts/factory/RewardsManagerFactory.sol";
@@ -1754,7 +1752,7 @@ contract TacStakingFuseTest is Test {
     }
 
     function _createVaultWithFusionFactory() private {
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "TAC Staking Vault",
             "tacVault",
             wTAC,

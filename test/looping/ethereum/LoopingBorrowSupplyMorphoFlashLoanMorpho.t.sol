@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {DualCrossReferencePriceFeed} from "../../../contracts/price_oracle/price_feed/DualCrossReferencePriceFeed.sol";
@@ -136,7 +136,8 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            withdrawManager: _withdrawManager
+            withdrawManager: _withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         vm.startPrank(_ATOMIST);
@@ -634,7 +635,7 @@ contract LoopingBorrowSupplyMorphoFlashLoanMorphoTest is Test {
 
         MorphoCollateralFuseExitData memory withdrawData = MorphoCollateralFuseExitData({
             morphoMarketId: _MORPHO_WETH_WBTC_MARKET_ID,
-            maxCollateralAmount: 20 * 1e8
+            collateralAmount: 20 * 1e8
         });
 
         // Swap WBTC back to WETH to repay loan

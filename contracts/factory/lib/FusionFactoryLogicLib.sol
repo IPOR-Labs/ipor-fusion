@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -196,7 +196,8 @@ library FusionFactoryLogicLib {
             }),
             accessManager: fusionAddresses.accessManager,
             plasmaVaultBase: fusionAddresses.plasmaVaultBase,
-            withdrawManager: fusionAddresses.withdrawManager
+            withdrawManager: fusionAddresses.withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         fusionAddresses.plasmaVault = PlasmaVaultFactory(factoryAddresses.plasmaVaultFactory).clone(

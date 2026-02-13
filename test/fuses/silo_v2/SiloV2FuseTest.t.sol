@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
 
@@ -7,7 +7,6 @@ import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 
@@ -29,6 +28,13 @@ import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+
+// Transient Storage
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+
+// ERC20 Balance Fuse
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 import {DualCrossReferencePriceFeedFactory} from "../../../contracts/factory/price_feed/DualCrossReferencePriceFeedFactory.sol";
 
@@ -65,6 +71,9 @@ contract SiloV2FuseTest is Test {
     SiloV2SupplyBorrowableCollateralFuse public siloV2SupplyBorrowableCollateralFuse;
     SiloV2SupplyNonBorrowableCollateralFuse public siloV2SupplyNonBorrowableCollateralFuse;
     SiloV2BorrowFuse public siloV2BorrowFuse;
+
+    // Transient Storage
+    address private _transientStorageSetInputsFuse;
 
     // Balance tracking variables
     uint256 public silo0ProtectedBefore;
@@ -955,7 +964,7 @@ contract SiloV2FuseTest is Test {
 
     function _createVaultWithFusionFactory() private {
         // Create vault using FusionFactory
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "SiloV2 Test Vault",
             "SILO2",
             WE_ETH, // underlying token
@@ -991,10 +1000,23 @@ contract SiloV2FuseTest is Test {
 
         PlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
 
-        // Add balance fuse
+        // Initialize and add TransientStorageSetInputsFuse separately
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
+        address[] memory transientFuses = new address[](1);
+        transientFuses[0] = _transientStorageSetInputsFuse;
+        PlasmaVaultGovernance(address(plasmaVault)).addFuses(transientFuses);
+
+        // Add balance fuse for SILO_V2
         PlasmaVaultGovernance(address(plasmaVault)).addBalanceFuse(
             IporFusionMarkets.SILO_V2,
             address(siloV2BalanceFuse)
+        );
+
+        // Add balance fuse for ERC20_VAULT_BALANCE (required for TransientStorageSetInputsFuse)
+        ERC20BalanceFuse erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
+        PlasmaVaultGovernance(address(plasmaVault)).addBalanceFuse(
+            IporFusionMarkets.ERC20_VAULT_BALANCE,
+            address(erc20BalanceFuse)
         );
 
         // Grant market substrates (SiloConfig addresses)
@@ -1341,5 +1363,541 @@ contract SiloV2FuseTest is Test {
         assertGt(silo0CollateralAfter, 0, "Silo0 should have borrowable collateral");
         assertEq(silo0DebtAfter, 0, "Silo0 should have no debt");
         assertEq(silo1DebtAfter, 0, "Silo1 should have no debt");
+    }
+
+    function testShouldEnterNonBorrowableCollateralUsingTransient() public {
+        // given
+        uint256 vaultBalanceBefore = plasmaVault.totalAssets();
+
+        (silo0ProtectedBefore, silo0CollateralBefore, silo0DebtBefore) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+
+        // Prepare transient inputs
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(siloV2SupplyNonBorrowableCollateralFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](4);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(SILO_CONFIG_WEETH_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(SiloIndex.SILO0));
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(SUPPLY_WE_ETH_AMOUNT);
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(SUPPLY_WE_ETH_AMOUNT - 1);
+
+        // Create fuse actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs in transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Execute enterTransient
+        calls[1] = FuseAction({
+            fuse: address(siloV2SupplyNonBorrowableCollateralFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when
+        vm.prank(ALPHA);
+        plasmaVault.execute(calls);
+
+        // then
+        uint256 vaultBalanceAfter = plasmaVault.totalAssets();
+
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+
+        assertEq(
+            vaultBalanceAfter,
+            vaultBalanceBefore,
+            "Vault total assets should remain the same after supplying non-borrowable collateral via transient"
+        );
+
+        assertGt(
+            silo0ProtectedAfter,
+            silo0ProtectedBefore,
+            "Silo0 protectedShareToken should increase after enter via transient"
+        );
+        assertEq(silo0CollateralAfter, silo0CollateralBefore, "Silo0 collateralShareToken should not change");
+        assertEq(silo0DebtAfter, silo0DebtBefore, "Silo0 debtShareToken should not change");
+    }
+
+    function testShouldExitNonBorrowableCollateralUsingTransient() public {
+        // given
+        // First supply non-borrowable collateral using regular enter
+        SiloV2SupplyCollateralFuseEnterData memory supplyData = SiloV2SupplyCollateralFuseEnterData({
+            siloConfig: SILO_CONFIG_WEETH_WETH,
+            siloIndex: SiloIndex.SILO0,
+            siloAssetAmount: SUPPLY_WE_ETH_AMOUNT,
+            minSiloAssetAmount: SUPPLY_WE_ETH_AMOUNT - 1
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(
+            address(siloV2SupplyNonBorrowableCollateralFuse),
+            abi.encodeWithSignature("enter((address,uint8,uint256,uint256))", supplyData)
+        );
+
+        vm.prank(ALPHA);
+        plasmaVault.execute(supplyActions);
+
+        // Get balances after supply
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+
+        uint256 vaultBalanceBeforeExit = plasmaVault.totalAssets();
+
+        // Prepare transient inputs for exit
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(siloV2SupplyNonBorrowableCollateralFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](4);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(SILO_CONFIG_WEETH_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(SiloIndex.SILO0));
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(silo0ProtectedAfter);
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(silo0ProtectedAfter - 100);
+
+        // Create fuse actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs in transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Execute exitTransient
+        calls[1] = FuseAction({
+            fuse: address(siloV2SupplyNonBorrowableCollateralFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        // when
+        vm.prank(ALPHA);
+        plasmaVault.execute(calls);
+
+        // then
+        uint256 vaultBalanceAfterExit = plasmaVault.totalAssets();
+
+        uint256 silo0ProtectedBeforeExit = silo0ProtectedAfter;
+
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+
+        assertApproxEqAbsDecimal(
+            vaultBalanceAfterExit,
+            vaultBalanceBeforeExit,
+            1e15,
+            18,
+            "Vault total assets should remain approximately the same after exiting via transient"
+        );
+
+        assertLt(
+            silo0ProtectedAfter,
+            silo0ProtectedBeforeExit,
+            "Silo0 protectedShareToken should decrease after exit via transient"
+        );
+        assertEq(silo0CollateralAfter, 0, "Silo0 collateralShareToken should remain unchanged");
+        assertEq(silo0DebtAfter, 0, "Silo0 debtShareToken should not change");
+    }
+
+    function testShouldEnterBorrowableCollateralUsingTransient() public {
+        // given
+        uint256 vaultBalanceBefore = plasmaVault.totalAssets();
+
+        (silo0ProtectedBefore, silo0CollateralBefore, silo0DebtBefore) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+
+        // Prepare transient inputs
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(siloV2SupplyBorrowableCollateralFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](4);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(SILO_CONFIG_WEETH_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(SiloIndex.SILO0));
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(SUPPLY_WE_ETH_AMOUNT);
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(SUPPLY_WE_ETH_AMOUNT - 1);
+
+        // Create fuse actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs in transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Execute enterTransient
+        calls[1] = FuseAction({
+            fuse: address(siloV2SupplyBorrowableCollateralFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when
+        vm.prank(ALPHA);
+        plasmaVault.execute(calls);
+
+        // then
+        uint256 vaultBalanceAfter = plasmaVault.totalAssets();
+
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+
+        assertEq(
+            vaultBalanceAfter,
+            vaultBalanceBefore,
+            "Vault total assets should remain the same after supplying borrowable collateral via transient"
+        );
+
+        assertEq(silo0ProtectedAfter, silo0ProtectedBefore, "Silo0 protectedShareToken should not change");
+        assertGt(
+            silo0CollateralAfter,
+            silo0CollateralBefore,
+            "Silo0 collateralShareToken should increase after enter via transient"
+        );
+        assertEq(silo0DebtAfter, silo0DebtBefore, "Silo0 debtShareToken should not change");
+    }
+
+    function testShouldExitBorrowableCollateralUsingTransient() public {
+        // given
+        // First supply borrowable collateral using regular enter
+        SiloV2SupplyCollateralFuseEnterData memory supplyData = SiloV2SupplyCollateralFuseEnterData({
+            siloConfig: SILO_CONFIG_WEETH_WETH,
+            siloIndex: SiloIndex.SILO0,
+            siloAssetAmount: SUPPLY_WE_ETH_AMOUNT,
+            minSiloAssetAmount: SUPPLY_WE_ETH_AMOUNT - 1
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(
+            address(siloV2SupplyBorrowableCollateralFuse),
+            abi.encodeWithSignature("enter((address,uint8,uint256,uint256))", supplyData)
+        );
+
+        vm.prank(ALPHA);
+        plasmaVault.execute(supplyActions);
+
+        // Get balances after supply
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+
+        uint256 vaultBalanceBeforeExit = plasmaVault.totalAssets();
+
+        // Prepare transient inputs for exit
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(siloV2SupplyBorrowableCollateralFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](4);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(SILO_CONFIG_WEETH_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(SiloIndex.SILO0));
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(silo0CollateralAfter);
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(silo0CollateralAfter - 100);
+
+        // Create fuse actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs in transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Execute exitTransient
+        calls[1] = FuseAction({
+            fuse: address(siloV2SupplyBorrowableCollateralFuse),
+            data: abi.encodeWithSignature("exitTransient()")
+        });
+
+        // when
+        vm.prank(ALPHA);
+        plasmaVault.execute(calls);
+
+        // then
+        uint256 vaultBalanceAfterExit = plasmaVault.totalAssets();
+
+        uint256 silo0CollateralBeforeExit = silo0CollateralAfter;
+
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+
+        assertApproxEqAbsDecimal(
+            vaultBalanceAfterExit,
+            vaultBalanceBeforeExit,
+            1e15,
+            18,
+            "Vault total assets should remain approximately the same after exiting via transient"
+        );
+
+        assertEq(silo0ProtectedAfter, 0, "Silo0 protectedShareToken should remain unchanged");
+        assertLt(
+            silo0CollateralAfter,
+            silo0CollateralBeforeExit,
+            "Silo0 collateralShareToken should decrease after exit via transient"
+        );
+        assertEq(silo0DebtAfter, 0, "Silo0 debtShareToken should not change");
+    }
+
+    function testShouldBorrowUsingTransient() public {
+        // given
+        _setupDependencyGraphWithERC20Balance();
+
+        // Get initial balances for silo0 and silo1
+        (silo0ProtectedBefore, silo0CollateralBefore, silo0DebtBefore) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+        (silo1ProtectedBefore, silo1CollateralBefore, silo1DebtBefore) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO1
+        );
+
+        // First supply collateral to silo0 (75 weETH)
+        SiloV2SupplyCollateralFuseEnterData memory supplyData = SiloV2SupplyCollateralFuseEnterData({
+            siloConfig: SILO_CONFIG_WEETH_WETH,
+            siloIndex: SiloIndex.SILO0,
+            siloAssetAmount: SUPPLY_WE_ETH_AMOUNT,
+            minSiloAssetAmount: SUPPLY_WE_ETH_AMOUNT - 1
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(
+            address(siloV2SupplyBorrowableCollateralFuse),
+            abi.encodeWithSignature("enter((address,uint8,uint256,uint256))", supplyData)
+        );
+
+        vm.prank(ALPHA);
+        plasmaVault.execute(supplyActions);
+
+        uint256 vaultBalanceBeforeBorrow = plasmaVault.totalAssets();
+
+        // Prepare transient inputs for borrow
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(siloV2BorrowFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(SILO_CONFIG_WEETH_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(SiloIndex.SILO1));
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(BORROW_WETH_AMOUNT);
+
+        // Create fuse actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs in transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Execute enterTransient
+        calls[1] = FuseAction({fuse: address(siloV2BorrowFuse), data: abi.encodeWithSignature("enterTransient()")});
+
+        // when
+        vm.prank(ALPHA);
+        plasmaVault.execute(calls);
+
+        // then
+        uint256 vaultBalanceAfterBorrow = plasmaVault.totalAssets();
+
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+        (silo1ProtectedAfter, silo1CollateralAfter, silo1DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO1
+        );
+
+        assertApproxEqAbsDecimal(
+            vaultBalanceAfterBorrow,
+            vaultBalanceBeforeBorrow,
+            5,
+            18,
+            "Vault total assets should be approximately equal after borrowing via transient"
+        );
+
+        // Verify silo0 balances (where we supplied collateral)
+        assertEq(silo0ProtectedAfter, silo0ProtectedBefore, "Silo0 protectedShareToken should not change");
+        assertGt(
+            silo0CollateralAfter,
+            silo0CollateralBefore,
+            "Silo0 collateralShareToken should increase after supply"
+        );
+        assertEq(silo0DebtAfter, silo0DebtBefore, "Silo0 debtShareToken should not change");
+
+        // Verify silo1 balances (where we borrowed)
+        assertEq(silo1ProtectedAfter, silo1ProtectedBefore, "Silo1 protectedShareToken should not change");
+        assertEq(silo1CollateralAfter, silo1CollateralBefore, "Silo1 collateralShareToken should not change");
+        assertGt(silo1DebtAfter, silo1DebtBefore, "Silo1 debtShareToken should increase after borrow via transient");
+    }
+
+    function testShouldRepayUsingTransient() public {
+        // given
+        _setupDependencyGraphWithERC20Balance();
+
+        // Get initial balances for silo0 and silo1
+        (silo0ProtectedBefore, silo0CollateralBefore, silo0DebtBefore) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+        (silo1ProtectedBefore, silo1CollateralBefore, silo1DebtBefore) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO1
+        );
+
+        // First supply collateral to silo0 (75 weETH)
+        SiloV2SupplyCollateralFuseEnterData memory supplyData = SiloV2SupplyCollateralFuseEnterData({
+            siloConfig: SILO_CONFIG_WEETH_WETH,
+            siloIndex: SiloIndex.SILO0,
+            siloAssetAmount: SUPPLY_WE_ETH_AMOUNT,
+            minSiloAssetAmount: SUPPLY_WE_ETH_AMOUNT - 1
+        });
+
+        FuseAction[] memory supplyActions = new FuseAction[](1);
+        supplyActions[0] = FuseAction(
+            address(siloV2SupplyBorrowableCollateralFuse),
+            abi.encodeWithSignature("enter((address,uint8,uint256,uint256))", supplyData)
+        );
+
+        vm.prank(ALPHA);
+        plasmaVault.execute(supplyActions);
+
+        // Borrow first using regular enter
+        SiloV2BorrowFuseEnterData memory borrowData = SiloV2BorrowFuseEnterData({
+            siloConfig: SILO_CONFIG_WEETH_WETH,
+            siloIndex: SiloIndex.SILO1,
+            siloAssetAmount: BORROW_WETH_AMOUNT
+        });
+
+        FuseAction[] memory borrowActions = new FuseAction[](1);
+        borrowActions[0] = FuseAction(
+            address(siloV2BorrowFuse),
+            abi.encodeWithSignature("enter((address,uint8,uint256))", borrowData)
+        );
+
+        vm.prank(ALPHA);
+        plasmaVault.execute(borrowActions);
+
+        // Get balances after borrow (before repay)
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+        (silo1ProtectedAfter, silo1CollateralAfter, silo1DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO1
+        );
+
+        // Store balances before repay for comparison
+        uint256 silo0ProtectedBeforeRepay = silo0ProtectedAfter;
+        uint256 silo0CollateralBeforeRepay = silo0CollateralAfter;
+        uint256 silo0DebtBeforeRepay = silo0DebtAfter;
+        uint256 silo1ProtectedBeforeRepay = silo1ProtectedAfter;
+        uint256 silo1CollateralBeforeRepay = silo1CollateralAfter;
+        uint256 silo1DebtBeforeRepay = silo1DebtAfter;
+
+        uint256 vaultBalanceBeforeRepay = plasmaVault.totalAssets();
+
+        // Prepare transient inputs for repay
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(siloV2BorrowFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(SILO_CONFIG_WEETH_WETH);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(uint256(SiloIndex.SILO1));
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(BORROW_WETH_AMOUNT);
+
+        // Create fuse actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs in transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Execute exitTransient
+        calls[1] = FuseAction({fuse: address(siloV2BorrowFuse), data: abi.encodeWithSignature("exitTransient()")});
+
+        // when
+        vm.prank(ALPHA);
+        plasmaVault.execute(calls);
+
+        // then
+        uint256 vaultBalanceAfterRepay = plasmaVault.totalAssets();
+
+        (silo0ProtectedAfter, silo0CollateralAfter, silo0DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO0
+        );
+        (silo1ProtectedAfter, silo1CollateralAfter, silo1DebtAfter) = _getSiloBalances(
+            SILO_CONFIG_WEETH_WETH,
+            SiloIndex.SILO1
+        );
+
+        // Verify vault balance remains approximately the same (borrowed assets are returned)
+        assertApproxEqAbsDecimal(
+            vaultBalanceAfterRepay,
+            vaultBalanceBeforeRepay,
+            1e15,
+            18,
+            "Vault total assets should remain approximately the same after repaying via transient"
+        );
+
+        // Verify silo0 balances remain unchanged (collateral should stay the same)
+        assertEq(silo0ProtectedAfter, silo0ProtectedBeforeRepay, "Silo0 protectedShareToken should not change");
+        assertEq(silo0CollateralAfter, silo0CollateralBeforeRepay, "Silo0 collateralShareToken should not change");
+        assertEq(silo0DebtAfter, silo0DebtBeforeRepay, "Silo0 debtShareToken should not change");
+
+        // Verify silo1 balances (debt should decrease after repay)
+        assertEq(silo1ProtectedAfter, silo1ProtectedBeforeRepay, "Silo1 protectedShareToken should not change");
+        assertEq(silo1CollateralAfter, silo1CollateralBeforeRepay, "Silo1 collateralShareToken should not change");
+        assertLt(
+            silo1DebtAfter,
+            silo1DebtBeforeRepay,
+            "Silo1 debtShareToken should decrease after repay via transient"
+        );
+
+        // Verify that debt is almost completely repaid (should be very small, like 1 wei)
+        assertLt(silo1DebtAfter, 10, "Silo1 debtShareToken should be almost zero after repay (less than 10 wei)");
     }
 }

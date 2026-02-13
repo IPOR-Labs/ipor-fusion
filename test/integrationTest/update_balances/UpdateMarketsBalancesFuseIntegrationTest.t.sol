@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -92,7 +92,8 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: withdrawManager
+                withdrawManager: withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
         vm.stopPrank();
@@ -144,10 +145,7 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: _updateMarketsBalancesFuse,
-            data: abi.encodeWithSignature(
-                "enter((uint256[]))",
-                UpdateMarketsBalancesEnterData({marketIds: marketIds})
-            )
+            data: abi.encodeWithSignature("enter((uint256[]))", UpdateMarketsBalancesEnterData({marketIds: marketIds}))
         });
 
         // when/then - should not revert
@@ -165,10 +163,7 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: _updateMarketsBalancesFuse,
-            data: abi.encodeWithSignature(
-                "enter((uint256[]))",
-                UpdateMarketsBalancesEnterData({marketIds: marketIds})
-            )
+            data: abi.encodeWithSignature("enter((uint256[]))", UpdateMarketsBalancesEnterData({marketIds: marketIds}))
         });
 
         // Record logs to verify event emission
@@ -202,10 +197,7 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: _updateMarketsBalancesFuse,
-            data: abi.encodeWithSignature(
-                "enter((uint256[]))",
-                UpdateMarketsBalancesEnterData({marketIds: marketIds})
-            )
+            data: abi.encodeWithSignature("enter((uint256[]))", UpdateMarketsBalancesEnterData({marketIds: marketIds}))
         });
 
         // when/then - should execute without issues (zeros filtered in library)
@@ -222,10 +214,7 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: _updateMarketsBalancesFuse,
-            data: abi.encodeWithSignature(
-                "enter((uint256[]))",
-                UpdateMarketsBalancesEnterData({marketIds: marketIds})
-            )
+            data: abi.encodeWithSignature("enter((uint256[]))", UpdateMarketsBalancesEnterData({marketIds: marketIds}))
         });
 
         // when/then - expect event emission
@@ -246,10 +235,7 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: newFuse,
-            data: abi.encodeWithSignature(
-                "enter((uint256[]))",
-                UpdateMarketsBalancesEnterData({marketIds: marketIds})
-            )
+            data: abi.encodeWithSignature("enter((uint256[]))", UpdateMarketsBalancesEnterData({marketIds: marketIds}))
         });
 
         // when/then - should revert with UnsupportedFuse
@@ -281,10 +267,7 @@ contract UpdateMarketsBalancesFuseIntegrationTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: _updateMarketsBalancesFuse,
-            data: abi.encodeWithSignature(
-                "enter((uint256[]))",
-                UpdateMarketsBalancesEnterData({marketIds: marketIds})
-            )
+            data: abi.encodeWithSignature("enter((uint256[]))", UpdateMarketsBalancesEnterData({marketIds: marketIds}))
         });
 
         // when/then - should revert with UpdateMarketsBalancesFuseEmptyMarkets

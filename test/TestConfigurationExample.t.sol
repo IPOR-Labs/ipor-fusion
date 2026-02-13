@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {FusionFactory} from "../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../contracts/factory/lib/FusionFactoryStorageLib.sol";
+import {PlasmaVaultFactory} from "../contracts/factory/PlasmaVaultFactory.sol";
+import {FeeManagerFactory} from "../contracts/managers/fee/FeeManagerFactory.sol";
+import {AccessManagerFactory} from "../contracts/factory/AccessManagerFactory.sol";
+import {PriceManagerFactory} from "../contracts/factory/PriceManagerFactory.sol";
+import {WithdrawManagerFactory} from "../contracts/factory/WithdrawManagerFactory.sol";
+import {RewardsManagerFactory} from "../contracts/factory/RewardsManagerFactory.sol";
+import {ContextManagerFactory} from "../contracts/factory/ContextManagerFactory.sol";
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../contracts/managers/access/IporFusionAccessManager.sol";
@@ -51,7 +57,7 @@ contract TestConfigurationExample is Test {
         // Deploy fresh FusionFactory with fee packages support
         fusionFactory = _deployFreshFusionFactory();
 
-        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "Test Configuration Vault",
             "TCV",
             USDC,
@@ -244,8 +250,16 @@ contract TestConfigurationExample is Test {
         // Get existing factory to copy configuration
         FusionFactory existingFactory = FusionFactory(EXISTING_FUSION_FACTORY_PROXY);
 
-        // Get configuration from existing factory
-        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = existingFactory.getFactoryAddresses();
+        // Deploy all new factories - fork factories only have create(), not clone()
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses;
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
+        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory());
+        factoryAddresses.priceManagerFactory = address(new PriceManagerFactory());
+        factoryAddresses.withdrawManagerFactory = address(new WithdrawManagerFactory());
+        factoryAddresses.rewardsManagerFactory = address(new RewardsManagerFactory());
+        factoryAddresses.contextManagerFactory = address(new ContextManagerFactory());
+
         address plasmaVaultBase = existingFactory.getPlasmaVaultBaseAddress();
         address priceOracleMiddleware = existingFactory.getPriceOracleMiddleware();
         address burnRequestFeeFuse = existingFactory.getBurnRequestFeeFuseAddress();
@@ -273,8 +287,10 @@ contract TestConfigurationExample is Test {
         newFactory.grantRole(newFactory.MAINTENANCE_MANAGER_ROLE(), owner);
         vm.stopPrank();
 
-        // Copy base addresses from existing factory
+        // Copy base addresses from existing factory, but deploy fresh PlasmaVault core base
+        // The existing plasmaVaultCoreBase on fork is an initialized proxy that cannot be used with Clones.clone()
         FusionFactoryStorageLib.BaseAddresses memory existingBases = existingFactory.getBaseAddresses();
+        existingBases.plasmaVaultCoreBase = address(new PlasmaVault());
         uint256 version = existingFactory.getFusionFactoryVersion();
 
         vm.prank(owner);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -19,7 +19,13 @@ contract EbisuAdjustTroveFuse is IFuseCommon {
     error UnsupportedSubstrate();
     error TroveNotOpen();
 
-    event EbisuAdjustTroveFuseEnter(uint256 troveId, uint256 collChange, uint256 debtChange, bool isCollIncrease, bool isDebtIncrease);
+    event EbisuAdjustTroveFuseEnter(
+        uint256 troveId,
+        uint256 collChange,
+        uint256 debtChange,
+        bool isCollIncrease,
+        bool isDebtIncrease
+    );
 
     /// @notice Data to close an open Trove through Zapper
     /// @param zapper the zapper address
@@ -54,12 +60,10 @@ contract EbisuAdjustTroveFuse is IFuseCommon {
         IBorrowerOperations registryBorrowerOperations = IBorrowerOperations(address(registry.borrowerOperations()));
 
         // bold is burnt when debt is reduced, so approve only in that case
-        if(!data_.isDebtIncrease)
-            ebusdToken.forceApprove(address(registryBorrowerOperations), data_.debtChange);
+        if (!data_.isDebtIncrease) ebusdToken.forceApprove(address(registryBorrowerOperations), data_.debtChange);
 
         // collateral is taken from vault when increased, so approve only in that case
-        if(data_.isCollIncrease)
-            collToken.forceApprove(address(registryBorrowerOperations), data_.collChange);
+        if (data_.isCollIncrease) collToken.forceApprove(address(registryBorrowerOperations), data_.collChange);
         registryBorrowerOperations.adjustTrove(
             troveId,
             data_.collChange,
@@ -68,13 +72,17 @@ contract EbisuAdjustTroveFuse is IFuseCommon {
             data_.isDebtIncrease,
             data_.maxUpfrontFee
         );
-        
-        if(!data_.isDebtIncrease)
-            ebusdToken.forceApprove(address(registryBorrowerOperations), 0);
-        if(data_.isCollIncrease)
-            collToken.forceApprove(address(registryBorrowerOperations), 0);
 
-        emit EbisuAdjustTroveFuseEnter(troveId, data_.collChange, data_.debtChange, data_.isCollIncrease, data_.isDebtIncrease);
+        if (!data_.isDebtIncrease) ebusdToken.forceApprove(address(registryBorrowerOperations), 0);
+        if (data_.isCollIncrease) collToken.forceApprove(address(registryBorrowerOperations), 0);
+
+        emit EbisuAdjustTroveFuseEnter(
+            troveId,
+            data_.collChange,
+            data_.debtChange,
+            data_.isCollIncrease,
+            data_.isDebtIncrease
+        );
     }
 
     function _requireSupportedSubstrates(address zapper_, address registry_) internal view {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test, console2} from "forge-std/Test.sol";
 
@@ -170,7 +170,8 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            withdrawManager: _withdrawManager
+            withdrawManager: _withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         vm.startPrank(_ATOMIST);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -9,7 +9,7 @@ import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
 import {RecipientFee} from "./FeeManagerFactory.sol";
 import {FeeManagerStorageLib, FeeRecipientDataStorage} from "./FeeManagerStorageLib.sol";
 import {ContextClient} from "../context/ContextClient.sol";
-import {HighWaterMarkPerformanceFeeStorage, HighWaterMarkPerformanceFeeStorage} from "./FeeManagerStorageLib.sol";
+import {HighWaterMarkPerformanceFeeStorage} from "./FeeManagerStorageLib.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -510,7 +510,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     ///      where fees are only charged on gains above the previous highest value.
     ///      The function can only be called by the plasma vault contract.
     ///
-    /// @param actualExchangeRate_ Current exchange rate between shares and assets
+    /// @param actualExchangeRate_ Current exchange rate between shares and assets (assets per 1 unit of share (10**shareDecimals))
     /// @param totalSupply_ Total supply of vault shares
     /// @param performanceFee_ Performance fee percentage with 2 decimal precision (10000 = 100%)
     /// @param assetDecimals_ Number of decimals in the underlying asset
@@ -559,7 +559,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
 
         uint256 delta = actualExchangeRate_ - uint256(highWaterMarkStorage.highWaterMark);
-        uint256 sharesToHarvest = Math.mulDiv(totalSupply_, delta, 10 ** assetDecimals_);
+        uint256 sharesToHarvest = Math.mulDiv(totalSupply_, delta, uint256(actualExchangeRate_));
         feeShares = Math.mulDiv(sharesToHarvest, performanceFee_, 10000);
 
         FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);

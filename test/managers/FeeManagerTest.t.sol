@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -106,7 +106,8 @@ contract FeeManagerTest is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: address(_accessManager),
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: _withdrawManager
+                withdrawManager: _withdrawManager,
+                plasmaVaultVotesPlugin: address(0)
             })
         );
 
@@ -307,7 +308,7 @@ contract FeeManagerTest is Test {
         uint256 balanceAfter = PlasmaVault(_plasmaVault).balanceOf(performanceAccount);
 
         assertEq(balanceBefore, 0, "balanceBefore should be 0");
-        assertEq(balanceAfter, 88687800000, "balanceAfter should be 88687800000");
+        assertEq(balanceAfter, 68199072121, "balanceAfter should be 68199072121");
     }
 
     function testShouldHarvestPerformance() external {
@@ -338,14 +339,14 @@ contract FeeManagerTest is Test {
         uint256 balanceFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 balanceDaoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        assertEq(balancePerformanceAccountBefore, 88687800000, "balancePerformanceAccountBefore should be 88687800000");
+        assertEq(balancePerformanceAccountBefore, 68199072121, "balancePerformanceAccountBefore should be 68199072121");
         assertApproxEqAbs(balancePerformanceAccountAfter, 0, 100, "balancePerformanceAccountAfter should be 0");
 
         assertEq(balanceFeeRecipientBefore, 0, "balanceFeeRecipientBefore should be 0");
-        assertEq(balanceFeeRecipientAfter, 44343900000, "balanceFeeRecipientAfter should be 44343900000");
+        assertEq(balanceFeeRecipientAfter, 34099536060, "balanceFeeRecipientAfter should be 34099536060");
 
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
-        assertEq(balanceDaoFeeRecipientAfter, 44343900000, "balanceDaoFeeRecipientAfter should be 44343900000");
+        assertEq(balanceDaoFeeRecipientAfter, 34099536060, "balanceDaoFeeRecipientAfter should be 34099536060");
     }
 
     function testShouldHarvestPerformanceWhenAtomistSetZero() external {
@@ -384,9 +385,9 @@ contract FeeManagerTest is Test {
 
         assertApproxEqAbs(
             balancePerformanceAccountBefore,
-            44343899997,
+            34099536060,
             100,
-            "balancePerformanceAccountBefore should be 44343899997"
+            "balancePerformanceAccountBefore should be 34099536060"
         );
         assertEq(balancePerformanceAccountAfter, 0, "balancePerformanceAccountAfter should be 0");
 
@@ -396,9 +397,9 @@ contract FeeManagerTest is Test {
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
         assertApproxEqAbs(
             balanceDaoFeeRecipientAfter,
-            44343899997,
+            34099536060,
             100,
-            "balanceDaoFeeRecipientAfter should be 34099552392"
+            "balanceDaoFeeRecipientAfter should be 34099536060"
         );
     }
 
@@ -676,19 +677,19 @@ contract FeeManagerTest is Test {
         // Updated expected values based on actual implementation
         assertApproxEqAbs(
             balanceRecipient1After,
-            49999900001, // ~9% performance + 0.85% management (after DAO fee)
+            33333288888, // ~9% performance + 0.85% management (after DAO fee)
             100,
             "recipient1 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceRecipient2After,
-            24999950000, // ~4.5% performance + 0.425% management (after DAO fee)
+            16666644444, // ~4.5% performance + 0.425% management (after DAO fee)
             100,
             "recipient2 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceDaoRecipientAfter,
-            49999900001, // Equal to recipient1 (matches actual implementation)
+            33333288888, // Equal to recipient1 (matches actual implementation)
             100,
             "dao should receive correct fee share"
         );
@@ -756,19 +757,19 @@ contract FeeManagerTest is Test {
         // Updated expected values based on actual implementation
         assertApproxEqAbs(
             balanceRecipient1After,
-            49999900001, // ~9% performance + 0.85% management (after DAO fee)
+            33333288888, // ~9% performance + 0.85% management (after DAO fee)
             100,
             "recipient1 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceRecipient2After,
-            24999950000, // ~4.5% performance + 0.425% management (after DAO fee)
+            16666644444, // ~4.5% performance + 0.425% management (after DAO fee)
             100,
             "recipient2 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceDaoRecipientAfter,
-            49999900001, // Equal to recipient1 (matches actual implementation)
+            33333288888, // Equal to recipient1 (matches actual implementation)
             100,
             "dao should receive correct fee share"
         );
@@ -881,7 +882,7 @@ contract FeeManagerTest is Test {
         assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
         assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
 
-        assertApproxEqAbs(balanceRecipient1After, 49999900001, 100, "recipient1 should receive only performance fee");
+        assertApproxEqAbs(balanceRecipient1After, 33333288888, 100, "recipient1 should receive only performance fee");
 
         assertEq(
             balanceRecipient2After,
@@ -890,7 +891,7 @@ contract FeeManagerTest is Test {
         );
 
         // DAO gets both fees
-        assertApproxEqAbs(balanceDaoRecipientAfter, 49999900001, 100, "dao should receive correct fee share");
+        assertApproxEqAbs(balanceDaoRecipientAfter, 33333288888, 100, "dao should receive correct fee share");
     }
 
     function testShouldNotUpdateHighWaterMarkPerformanceFeeWhenNotOwner() external {

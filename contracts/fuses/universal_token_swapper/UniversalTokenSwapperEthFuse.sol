@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
@@ -9,8 +9,10 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {SwapExecutorEth, SwapExecutorEthData} from "./SwapExecutorEth.sol";
-import {UniversalTokenSwapperSubstrateLib, UniversalTokenSwapperSubstrateType} from "./UniversalTokenSwapperSubstrateLib.sol";
+import {UniversalTokenSwapperSubstrateLib} from "./UniversalTokenSwapperSubstrateLib.sol";
 
 /// @notice Data structure used for executing a swap operation.
 /// @param targets The array of addresses to which the call will be made
@@ -136,13 +138,19 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     /// @param data_ Encoded UniversalTokenSwapperEthEnterData struct
     /// @custom:security Validates all tokens, targets and dust tokens against substrate configuration.
     ///                  Enforces minAmountOut and USD-based slippage protection.
-    function enter(UniversalTokenSwapperEthEnterData calldata data_) external {
+    function enter(UniversalTokenSwapperEthEnterData memory data_) public {
+        _enterInternal(data_);
+    }
+
+    /// @notice Internal implementation of enter logic
+    /// @dev Shared by enter() and enterTransient() to avoid external call issues
+    function _enterInternal(UniversalTokenSwapperEthEnterData memory data_) internal {
         if (data_.amountIn == 0) {
             revert UniversalTokenSwapperEthFuseZeroAmount();
         }
 
         // Single pass substrate validation - returns slippage for later use
-        uint256 slippageWad = _checkSubstrates(data_);
+        uint256 slippageWad = _checkSubstratesInternal(data_);
 
         address plasmaVault = address(this);
 
@@ -243,6 +251,133 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         }
     }
 
+    /// @notice Enters the Fuse using transient storage for parameters
+    /// @dev Reads tokenIn, tokenOut, amountIn, minAmountOut, and swap data arrays from transient storage.
+    ///      Input 0: tokenIn (address)
+    ///      Input 1: tokenOut (address)
+    ///      Input 2: amountIn (uint256)
+    ///      Input 3: minAmountOut (uint256)
+    ///      Input 4: targetsLength (uint256)
+    ///      Inputs 5 to 5+targetsLength-1: targets (address[])
+    ///      Input 5+targetsLength: callDatasLength (uint256)
+    ///      For each callData (i from 0 to callDatasLength-1):
+    ///        Input X: callDataLength (uint256)
+    ///        Inputs X+1 to X+1+ceil(callDataLength/32)-1: callData chunks (bytes32[])
+    ///      Input after callDatas: ethAmountsLength (uint256)
+    ///      Inputs after ethAmountsLength: ethAmounts (uint256[])
+    ///      Input after ethAmounts: tokensDustToCheckLength (uint256)
+    ///      Inputs after tokensDustToCheckLength: tokensDustToCheck (address[])
+    function enterTransient() external {
+        address tokenIn = TypeConversionLib.toAddress(TransientStorageLib.getInput(VERSION, 0));
+        address tokenOut = TypeConversionLib.toAddress(TransientStorageLib.getInput(VERSION, 1));
+        uint256 amountIn = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 2));
+        uint256 minAmountOut = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, 3));
+
+        uint256 currentIndex = 4;
+        address[] memory targets;
+        bytes[] memory callDatas;
+        uint256[] memory ethAmounts;
+        address[] memory tokensDustToCheck;
+
+        (targets, currentIndex) = _readTargets(currentIndex);
+        (callDatas, currentIndex) = _readCallDatas(currentIndex);
+        (ethAmounts, currentIndex) = _readEthAmounts(currentIndex);
+        (tokensDustToCheck, ) = _readTokensDustToCheck(currentIndex);
+
+        UniversalTokenSwapperEthEnterData memory data = UniversalTokenSwapperEthEnterData({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amountIn: amountIn,
+            minAmountOut: minAmountOut,
+            data: UniversalTokenSwapperEthData({
+                targets: targets,
+                callDatas: callDatas,
+                ethAmounts: ethAmounts,
+                tokensDustToCheck: tokensDustToCheck
+            })
+        });
+
+        _enterInternal(data);
+
+        bytes32[] memory outputs = new bytes32[](4);
+        outputs[0] = TypeConversionLib.toBytes32(tokenIn);
+        outputs[1] = TypeConversionLib.toBytes32(tokenOut);
+        outputs[2] = TypeConversionLib.toBytes32(amountIn);
+        outputs[3] = TypeConversionLib.toBytes32(minAmountOut);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Reads target addresses from transient storage inputs
+    /// @param currentIndex The current index in transient storage where targets length is stored
+    /// @return targets The array of target addresses read from transient storage
+    /// @return nextIndex The next index in transient storage after reading all targets
+    function _readTargets(uint256 currentIndex) private view returns (address[] memory targets, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        targets = new address[](len);
+        for (uint256 i; i < len; ++i) {
+            targets[i] = TypeConversionLib.toAddress(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+        }
+    }
+
+    /// @notice Reads bytes arrays (call data) from transient storage inputs
+    /// @param currentIndex The current index in transient storage where callDatas length is stored
+    /// @return callDatas The array of bytes data (call data) read from transient storage
+    /// @return nextIndex The next index in transient storage after reading all call data arrays
+    function _readCallDatas(uint256 currentIndex) private view returns (bytes[] memory callDatas, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        callDatas = new bytes[](len);
+        for (uint256 i; i < len; ++i) {
+            uint256 dataLen = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+            bytes memory callData = new bytes(dataLen);
+            uint256 chunksCount = (dataLen + 31) / 32;
+            for (uint256 j; j < chunksCount; ++j) {
+                bytes32 chunk = TransientStorageLib.getInput(VERSION, nextIndex);
+                uint256 chunkStart = j * 32;
+                assembly {
+                    mstore(add(add(callData, 0x20), chunkStart), chunk)
+                }
+                ++nextIndex;
+            }
+            callDatas[i] = callData;
+        }
+    }
+
+    /// @notice Reads ETH amounts from transient storage inputs
+    /// @param currentIndex The current index in transient storage where ethAmounts length is stored
+    /// @return ethAmounts The array of ETH amounts (in wei) read from transient storage
+    /// @return nextIndex The next index in transient storage after reading all ETH amounts
+    function _readEthAmounts(
+        uint256 currentIndex
+    ) private view returns (uint256[] memory ethAmounts, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        ethAmounts = new uint256[](len);
+        for (uint256 i; i < len; ++i) {
+            ethAmounts[i] = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+        }
+    }
+
+    /// @notice Reads token addresses for dust checking from transient storage inputs
+    /// @param currentIndex The current index in transient storage where tokensDustToCheck length is stored
+    /// @return tokensDustToCheck The array of token addresses to check for dust balances
+    /// @return nextIndex The next index in transient storage after reading all token addresses
+    function _readTokensDustToCheck(
+        uint256 currentIndex
+    ) private view returns (address[] memory tokensDustToCheck, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        tokensDustToCheck = new address[](len);
+        for (uint256 i; i < len; ++i) {
+            tokensDustToCheck[i] = TypeConversionLib.toAddress(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+        }
+    }
+
     /// @notice Validates all substrates in a single pass
     /// @dev Reads substrates only once and checks tokens, targets, dust tokens and slippage in one iteration
     /// @param tokenIn_ The input token address to validate
@@ -253,8 +388,8 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     function _validateSubstrates(
         address tokenIn_,
         address tokenOut_,
-        address[] calldata targets_,
-        address[] calldata dustTokens_
+        address[] memory targets_,
+        address[] memory dustTokens_
     ) internal view returns (SubstrateValidationResultEth memory result) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 substratesLength = substrates.length;
@@ -298,11 +433,11 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         }
     }
 
-    /// @notice Validates all substrate requirements for the swap operation
+    /// @notice Validates all substrate requirements for the swap operation (internal version for memory data)
     /// @dev Checks tokenIn, tokenOut, all targets, and dust tokens against configured substrates in single pass
     /// @param data_ The swap data containing tokens and targets to validate
     /// @return slippageWad The slippage limit in WAD for use in USD slippage validation
-    function _checkSubstrates(UniversalTokenSwapperEthEnterData calldata data_) private view returns (uint256 slippageWad) {
+    function _checkSubstratesInternal(UniversalTokenSwapperEthEnterData memory data_) private view returns (uint256 slippageWad) {
         uint256 targetsLength = data_.data.targets.length;
         if (targetsLength == 0) {
             revert UniversalTokenSwapperEthFuseEmptyTargets();

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title Predefined markets used in the IPOR Fusion protocol
 /// @notice For documentation purposes: When new markets are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.
@@ -180,6 +180,7 @@ library IporFusionMarkets {
     /// @dev Used for executing Odos swaps via OdosSwapExecutor contract
     uint256 public constant ODOS_SWAPPER = 42;
 
+
     /// @dev Velora Swapper market for optimized token swapping via Velora/ParaSwap Augustus v6.2
     /// @dev Substrate type: VeloraSubstrateType (Token or Slippage)
     /// @dev Substrate values:
@@ -188,8 +189,13 @@ library IporFusionMarkets {
     /// @dev Used for executing Velora swaps via VeloraSwapExecutor contract
     uint256 public constant VELORA_SWAPPER = 43;
 
+        /// @dev Aave V4 Hub & Spoke market
+    /// @dev Substrate type: AaveV4SubstrateType (Asset or Spoke)
+    /// @dev Substrate values: Encoded combination of type flag and address
+    ///      - Asset: AaveV4SubstrateLib.encodeAsset(tokenAddress) - ERC20 token address with flag 0x01
+    ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
+    uint256 public constant AAVE_V4 = 45;
 
-    uint256 public constant SPARK_LEND = 44;
 
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;

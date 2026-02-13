@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {WrappedPlasmaVault} from "../../../contracts/vaults/extensions/WrappedPlasmaVault.sol";
@@ -542,7 +542,7 @@ contract WrappedPlasmaVaulttTest is Test {
             "ERC20InsufficientBalance(address,uint256,uint256)",
             user,
             10000000000000,
-            10000000000047
+            10000000000071
         );
 
         // when

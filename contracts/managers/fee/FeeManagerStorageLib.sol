@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -40,8 +40,8 @@ struct FeeRecipientDataStorage {
 /// @notice Storage structure for high water mark performance fee logic in plasma vaults
 /// @dev Used to track the high water mark (HWM) for performance fee calculation,
 ///      ensuring fees are only charged on new profits above the previous HWM.
-///      - `highWaterMark`: The highest value (e.g., share price or NAV) reached by the vault,
-///         used as a reference for performance fee accrual. Expressed in the same units as the tracked metric.
+///      - `highWaterMark`: The highest value (assets per share) reached by the vault,
+///         used as a reference for performance fee accrual. Expressed in asset units per 1 unit of share (10**shareDecimals).
 ///      - `lastUpdate`: The timestamp (in seconds) of the last HWM update. Used to enforce update intervals and prevent fee gaming.
 ///      - `updateInterval`: The minimum interval (in seconds) required between HWM updates.
 ///         Prevents frequent updates that could allow manipulation of performance fee calculations.

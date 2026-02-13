@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -9,8 +9,11 @@ import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {FusionFactoryLogicLib} from "../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
+import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -48,7 +51,14 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
 
         // Get configuration from existing factory
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = existingFactory.getFactoryAddresses();
-        address plasmaVaultBase = existingFactory.getPlasmaVaultBaseAddress();
+
+        // Deploy new PlasmaVaultFactory and FeeManagerFactory - the existing ones on fork
+        // don't support the new PlasmaVaultInitData structure with plasmaVaultVotesPlugin
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
+
+        // Deploy new PlasmaVaultBase - the existing one on fork is already initialized
+        address plasmaVaultBase = address(new PlasmaVaultBase());
         address priceOracleMiddleware = existingFactory.getPriceOracleMiddleware();
         address burnRequestFeeFuse = existingFactory.getBurnRequestFeeFuseAddress();
         address burnRequestFeeBalanceFuse = existingFactory.getBurnRequestFeeBalanceFuseAddress();
@@ -93,21 +103,21 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         FusionFactoryStorageLib.BaseAddresses memory existingBases = existingFactory.getBaseAddresses();
         uint256 version = existingFactory.getFusionFactoryVersion();
 
+        // Deploy new PlasmaVault as plasmaVaultCoreBase for cloning
+        // The existing one on fork may be incompatible with new PlasmaVaultInitData structure
+        address newPlasmaVaultCoreBase = address(new PlasmaVault());
+
         vm.prank(owner);
         fusionFactory.updateBaseAddresses(
             version,
-            existingBases.plasmaVaultCoreBase,
+            newPlasmaVaultCoreBase,
             existingBases.accessManagerBase,
             existingBases.priceManagerBase,
             existingBases.withdrawManagerBase,
             existingBases.rewardsManagerBase,
             existingBases.contextManagerBase
         );
-
-        // Also copy plasma vault base
-        address plasmaVaultBase = existingFactory.getPlasmaVaultBaseAddress();
-        vm.prank(owner);
-        fusionFactory.updatePlasmaVaultBase(plasmaVaultBase);
+        // Note: plasmaVaultBase is already set in setUp() with a new instance
     }
 
     function _copyOtherConfiguration() internal {
@@ -157,7 +167,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         uint256 redemptionDelay = 1 days;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Fork Test Vault Standard",
             "FTVS",
             USDC,
@@ -186,7 +196,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         uint256 redemptionDelay = 1 days;
 
         // when
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Fork Test Vault Low Fees",
             "FTVL",
             USDC,
@@ -234,7 +244,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         uint256 redemptionDelay = 0; // No delay for simplicity
         uint256 depositAmount = 10_000e6;
 
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Fork Test Deposit Vault",
             "FTDV",
             USDC,
@@ -275,7 +285,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         uint256 redemptionDelay = 1 days;
 
         // when - create vaults with each package
-        FusionFactoryLogicLib.FusionInstance memory vault0 = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory vault0 = fusionFactory.clone(
             "Vault Package 0",
             "VP0",
             USDC,
@@ -284,7 +294,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
             0
         );
 
-        FusionFactoryLogicLib.FusionInstance memory vault1 = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory vault1 = fusionFactory.clone(
             "Vault Package 1",
             "VP1",
             USDC,
@@ -293,7 +303,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
             1
         );
 
-        FusionFactoryLogicLib.FusionInstance memory vault2 = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory vault2 = fusionFactory.clone(
             "Vault Package 2",
             "VP2",
             USDC,
@@ -351,7 +361,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 10, 3));
-        fusionFactory.create("Invalid Package", "INV", USDC, redemptionDelay, atomist, 10);
+        fusionFactory.clone("Invalid Package", "INV", USDC, redemptionDelay, atomist, 10);
     }
 
     /// @notice Test updating fee packages on fork

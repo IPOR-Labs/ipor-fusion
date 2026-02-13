@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -36,12 +36,7 @@ contract OdosSwapExecutor {
     /// @param tokenOut_ The output token address
     /// @param amountIn_ The amount of tokenIn to approve for the swap
     /// @param swapCallData_ Raw calldata from Odos API (/sor/assemble response)
-    function execute(
-        address tokenIn_,
-        address tokenOut_,
-        uint256 amountIn_,
-        bytes calldata swapCallData_
-    ) external {
+    function execute(address tokenIn_, address tokenOut_, uint256 amountIn_, bytes calldata swapCallData_) external {
         // Approve Odos Router to spend tokenIn
         IERC20(tokenIn_).forceApprove(ODOS_ROUTER, amountIn_);
 

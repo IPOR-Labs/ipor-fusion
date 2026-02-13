@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../libraries/PlasmaVaultLib.sol";
@@ -80,7 +80,7 @@ interface IPlasmaVaultGovernance {
     function getDependencyBalanceGraph(uint256 marketId_) external view returns (uint256[] memory);
 
     /// @notice Returns the total supply cap
-    /// @return The total supply cap, the values is represented in underlying decimals
+    /// @return The total supply cap denominated in shares (not in underlying asset decimals)
     function getTotalSupplyCap() external view returns (uint256);
 
     /// @notice Adds the balance fuse to the market
@@ -154,7 +154,7 @@ interface IPlasmaVaultGovernance {
     function updateCallbackHandler(address handler_, address sender_, bytes4 sig_) external;
 
     /// @notice Sets the total supply cap
-    /// @param cap_ The total supply cap, the values is represented in underlying decimals
+    /// @param cap_ The total supply cap, cap is denominated in shares
     function setTotalSupplyCap(uint256 cap_) external;
 
     /// @notice Converts the specified vault to a public vault - mint and deposit functions are allowed for everyone.

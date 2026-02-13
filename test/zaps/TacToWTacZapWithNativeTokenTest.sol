@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC4626ZapInWithNativeToken, ZapInData, Call} from "../../contracts/zaps/ERC4626ZapInWithNativeToken.sol";
@@ -33,6 +33,7 @@ contract TacToWTacZapWithNativeTokenTest is Test {
             vault: address(erc4626WTac),
             receiver: user,
             minAmountToDeposit: tacAmount,
+            minSharesOut: 0,
             assetsToRefundToSender: new address[](0),
             calls: new Call[](0)
         });

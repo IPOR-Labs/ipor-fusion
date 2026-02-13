@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
+import {IPlasmaVaultVotesPlugin} from "../interfaces/IPlasmaVaultVotesPlugin.sol";
 import {Errors} from "../libraries/errors/Errors.sol";
 import {PlasmaVaultGovernance} from "./PlasmaVaultGovernance.sol";
-import {ERC20VotesUpgradeable} from "./ERC20VotesUpgradeable.sol";
 import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultStorageLib} from "../libraries/PlasmaVaultStorageLib.sol";
 import {ContextClient} from "../managers/context/ContextClient.sol";
@@ -47,9 +48,13 @@ import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
  * Inheritance Structure:
  * - IPlasmaVaultBase: Interface Definition
  * - ERC20PermitUpgradeable: Permit Functionality
- * - ERC20VotesUpgradeable: Voting Capabilities
  * - PlasmaVaultGovernance: Governance Features
  * - ContextClient: Context Management
+ *
+ * Voting Support:
+ * - Voting functionality is now provided by optional PlasmaVaultVotesPlugin
+ * - When votes extension is enabled, voting units are updated during transfers
+ * - Vaults without voting save gas on every transfer (~2800-9800 gas)
  *
  * Error Handling:
  * - ERC20ExceededCap: Supply Cap Violations
@@ -60,11 +65,11 @@ import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
 contract PlasmaVaultBase is
     IPlasmaVaultBase,
     ERC20PermitUpgradeable,
-    ERC20VotesUpgradeable,
     PlasmaVaultGovernance,
     ContextClient,
     PreHooksHandler
 {
+    using Address for address;
     /**
      * @dev Total supply cap has been exceeded.
      */
@@ -78,7 +83,7 @@ contract PlasmaVaultBase is
     /// @notice Initializes the PlasmaVaultBase contract
     /// @param assetName_ The name of the asset
     /// @param accessManager_ The address of the access manager contract
-    /// @param totalSupplyCap_ The maximum total supply cap for the vault
+    /// @param totalSupplyCap_ The maximum total supply cap denominated in shares (not in underlying asset decimals)
     /// @dev Validates access manager address and total supply cap
     /// @custom:access Only during initialization
     function init(
@@ -90,7 +95,6 @@ contract PlasmaVaultBase is
             revert Errors.WrongAddress();
         }
 
-        super.__ERC20Votes_init();
         super.__ERC20Permit_init(assetName_);
         super.__AccessManaged_init(accessManager_);
         __init(totalSupplyCap_);
@@ -110,7 +114,7 @@ contract PlasmaVaultBase is
     ///
     /// Supply Cap System:
     /// - Enforces maximum vault size limit
-    /// - Stored in underlying asset decimals
+    /// - Stored in shares (not in underlying asset decimals)
     /// - Critical for deposit control
     /// - Part of risk management
     ///
@@ -138,7 +142,7 @@ contract PlasmaVaultBase is
     /// - Deposit Validation
     /// - Risk Management
     ///
-    /// @return uint256 The maximum total supply cap in underlying asset decimals
+    /// @return uint256 The maximum total supply cap denominated in shares (not in underlying asset decimals)
     /// @custom:access Public view
     /// @custom:security Non-privileged view function
     function cap() public view virtual returns (uint256) {
@@ -228,12 +232,12 @@ contract PlasmaVaultBase is
     /// @return uint256 The current nonce for the address
     /// @custom:access Public view
     /// @custom:security Critical for permit operations
-    function nonces(address owner_) public view override(ERC20PermitUpgradeable, NoncesUpgradeable) returns (uint256) {
+    function nonces(address owner_) public view override returns (uint256) {
         return super.nonces(owner_);
     }
 
     /// @dev Notice! Can be executed only by Plasma Vault in delegatecall.
-    /// Combines the logic required for ERC20VotesUpgradeable and ERC20VotesUpgradeable
+    /// Handles ERC20 balance updates, supply cap validation, and optional voting units updates.
     function _update(address from_, address to_, uint256 value_) internal virtual override {
         super._update(from_, to_, value_);
 
@@ -249,7 +253,13 @@ contract PlasmaVaultBase is
             }
         }
 
-        _transferVotingUnits(from_, to_, value_);
+        /// @dev Conditionally update voting units if votes plugin is enabled
+        address votesPlugin = PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
+        if (votesPlugin != address(0)) {
+            votesPlugin.functionDelegateCall(
+                abi.encodeWithSelector(IPlasmaVaultVotesPlugin.transferVotingUnits.selector, from_, to_, value_)
+            );
+        }
     }
 
     /// @notice Internal function to get the message sender from context

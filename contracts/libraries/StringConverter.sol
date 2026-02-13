@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 library StringConverter {
     // Optimized function - packs multiple characters into each bytes32
@@ -50,9 +50,8 @@ library StringConverter {
 
         for (uint256 i = 0; i < b.length; i++) {
             bytes32 currentBytes32 = b[i];
-            uint256 maxChars = (i == b.length - 1) ? 32 : 32; // Last one might be partially filled
 
-            for (uint256 j = 0; j < maxChars && resultIndex < totalLength; j++) {
+            for (uint256 j = 0; j < 32 && resultIndex < totalLength; j++) {
                 uint8 byteValue = uint8(uint256(currentBytes32 >> (j * 8)));
                 if (byteValue != 0) {
                     result[resultIndex] = bytes1(byteValue);

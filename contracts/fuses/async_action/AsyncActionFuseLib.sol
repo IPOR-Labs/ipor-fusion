@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {AsyncExecutor} from "./AsyncExecutor.sol";
 
@@ -83,11 +83,21 @@ library AsyncActionFuseLib {
     /// @notice Encodes AllowedTargets struct into bytes31
     /// @param data_ The AllowedTargets struct to encode
     /// @return encoded The encoded bytes31 data
-    /// @dev Encodes address (20 bytes, left-aligned) and bytes4 selector (4 bytes, right-aligned) into 31 bytes.
-    ///      Layout: [address (20 bytes) | selector (4 bytes) | unused (7 bytes)]
-    ///      The remaining 7 bytes are unused but preserved for consistency with bytes31 format.
+    /// @dev Encodes target address and selector into 31 bytes (248 bits) as uint248.
+    ///
+    ///      Bit layout (most-significant to least-significant):
+    ///      - Bits [192..247]: 7 unused bytes (always zero)
+    ///      - Bits [32..191]:  20-byte target address
+    ///      - Bits [0..31]:    4-byte function selector
+    ///
+    ///      Encoding formula: packed = (uint248(uint160(target)) << 32) | uint248(uint32(selector))
+    ///
+    ///      Example: For target = 0x1234...5678 (20 bytes) and selector = 0xabcdef01 (4 bytes):
+    ///      - The 7 most significant bytes of the uint248 are 0x00000000000000
+    ///      - The next 20 bytes contain the address
+    ///      - The 4 least significant bytes contain the selector
     function encodeAllowedTargets(AllowedTargets memory data_) internal pure returns (bytes31 encoded) {
-        // Pack: address shifted left by 32 bits, selector in lower 32 bits
+        // Pack: address shifted left by 32 bits (4 bytes), selector in lower 32 bits
         uint248 packed = (uint248(uint160(data_.target)) << 32) | uint248(uint32(data_.selector));
         encoded = bytes31(packed);
     }
@@ -95,13 +105,21 @@ library AsyncActionFuseLib {
     /// @notice Decodes bytes31 into AllowedTargets struct
     /// @param encoded_ The encoded bytes31 data
     /// @return data_ The decoded AllowedTargets struct
-    /// @dev Decodes address (20 bytes, left-aligned) and bytes4 selector (4 bytes, right-aligned) from 31 bytes.
-    ///      Layout: [address (20 bytes) | selector (4 bytes) | unused (7 bytes)]
+    /// @dev Decodes target address and selector from 31 bytes (248 bits) uint248.
+    ///
+    ///      Bit layout (most-significant to least-significant):
+    ///      - Bits [192..247]: 7 unused bytes (ignored during decode)
+    ///      - Bits [32..191]:  20-byte target address
+    ///      - Bits [0..31]:    4-byte function selector
+    ///
+    ///      Decoding formulas:
+    ///      - target = address(uint160(packed >> 32))  // Extract bits [32..191]
+    ///      - selector = bytes4(uint32(packed & 0xFFFFFFFF))  // Extract bits [0..31]
     function decodeAllowedTargets(bytes31 encoded_) internal pure returns (AllowedTargets memory data_) {
         uint248 packed = uint248(encoded_);
-        // Extract address from upper 160 bits (shifted right by 32 bits)
+        // Extract address from bits [32..191] by shifting right 32 bits
         data_.target = address(uint160(packed >> 32));
-        // Extract selector from lower 32 bits
+        // Extract selector from bits [0..31] using mask
         data_.selector = bytes4(uint32(packed & _UINT32_MASK));
     }
 

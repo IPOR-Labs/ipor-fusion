@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
@@ -10,7 +10,7 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {VeloraSwapExecutor} from "./VeloraSwapExecutor.sol";
-import {VeloraSubstrateLib, VeloraSubstrateType} from "./VeloraSubstrateLib.sol";
+import {VeloraSubstrateLib} from "./VeloraSubstrateLib.sol";
 
 /// @notice Input data for Velora swap operation
 /// @param tokenIn Token to swap from

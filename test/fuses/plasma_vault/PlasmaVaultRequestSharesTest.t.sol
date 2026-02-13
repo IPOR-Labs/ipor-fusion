@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {PlasmaVaultRequestSharesFuse, PlasmaVaultRequestSharesFuseEnterData} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol";
@@ -12,11 +12,12 @@ import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {PlasmaVaultRedeemFromRequestFuse, PlasmaVaultRedeemFromRequestFuseEnterData} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol";
-import {PlasmaVaultRequestSharesFuse, PlasmaVaultRequestSharesFuseEnterData} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol";
 
 interface CreditEnforcer {
     function mintStablecoin(uint256 amount) external returns (uint256);
@@ -53,6 +54,7 @@ contract PlasmaVaultRequestSharesTest is Test {
 
     address private plasmaVaultRequestSharesFuse;
     address private plasmaVaultRedeemFromRequestFuse;
+    address private _transientStorageSetInputsFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22075985);
@@ -210,6 +212,51 @@ contract PlasmaVaultRequestSharesTest is Test {
         );
     }
 
+    function testShouldEnterUsingTransient() public {
+        // given
+        testShouldBeAbleToDepositToFortunaFiVault();
+        uint256 sharesAmountBefore = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = plasmaVaultRequestSharesFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(sharesAmountBefore);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(FORTUNAFI_VAULT);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        calls[1] = FuseAction({fuse: plasmaVaultRequestSharesFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        // when
+        vm.startPrank(TAU_ALPHA);
+        PlasmaVault(TAU_VAULT).execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 sharesAmountAfter = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+
+        assertEq(
+            sharesAmountBefore,
+            4933203068300153978987452,
+            "sharesAmountBefore is not equal to 4933203068300153978987452"
+        );
+        assertEq(
+            sharesAmountAfter,
+            4895730457793346009363064,
+            "sharesAmountAfter is not equal to 4895730457793346009363064"
+        );
+    }
+
     function testShouldBeAbleToRedeemFromRequest() public {
         // given
         testShouldBeAbleToRequestShares();
@@ -242,6 +289,71 @@ contract PlasmaVaultRequestSharesTest is Test {
         PlasmaVault(TAU_VAULT).execute(enterCalls);
         vm.stopPrank();
 
+        uint256 sharesAmountAfter = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        uint256 totalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
+        uint256 rUsdVaultBalanceAfter = ERC20(R_USD).balanceOf(TAU_VAULT);
+
+        assertEq(
+            sharesAmountBefore,
+            4895730457793346009363064,
+            "sharesAmountBefore is not equal to 4895730457793346009363064"
+        );
+        assertEq(sharesAmountAfter, 0, "sharesAmountAfter is not equal to 0");
+
+        assertEq(totalAssetsBefore, 99622213669, "totalAssetsBefore is not equal to 99622213669");
+        assertEq(totalAssetsAfter, 99622082952, "totalAssetsAfter is not equal to 99622082952");
+
+        assertEq(rUsdVaultBalanceBefore, 0, "rUsdVaultBalanceBefore is not equal to 0");
+        assertEq(
+            rUsdVaultBalanceAfter,
+            49620183006786641511424,
+            "rUsdVaultBalanceAfter is not equal to 49620183006786641511424"
+        );
+    }
+
+    function testShouldRedeemFromRequestUsingTransient() public {
+        // given
+        testShouldBeAbleToRequestShares();
+
+        uint256 sharesAmountBefore = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        uint256 totalAssetsBefore = PlasmaVault(TAU_VAULT).totalAssets();
+        uint256 rUsdVaultBalanceBefore = ERC20(R_USD).balanceOf(TAU_VAULT);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        vm.startPrank(FORTUNAFI_ALPHA);
+        WithdrawManager(FORTUNAFI_WithdrawManager).releaseFunds(block.timestamp - 100, sharesAmountBefore * 10);
+        vm.stopPrank();
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = plasmaVaultRedeemFromRequestFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(sharesAmountBefore);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(FORTUNAFI_VAULT);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        calls[1] = FuseAction({
+            fuse: plasmaVaultRedeemFromRequestFuse,
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when
+        vm.startPrank(TAU_ALPHA);
+        PlasmaVault(TAU_VAULT).execute(calls);
+        vm.stopPrank();
+
+        // then
         uint256 sharesAmountAfter = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
         uint256 totalAssetsAfter = PlasmaVault(TAU_VAULT).totalAssets();
         uint256 rUsdVaultBalanceAfter = ERC20(R_USD).balanceOf(TAU_VAULT);
@@ -498,10 +610,12 @@ contract PlasmaVaultRequestSharesTest is Test {
         plasmaVaultRedeemFromRequestFuse = address(
             new PlasmaVaultRedeemFromRequestFuse(IporFusionMarkets.ERC4626_0001)
         );
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
 
-        address[] memory fuses = new address[](2);
+        address[] memory fuses = new address[](3);
         fuses[0] = plasmaVaultRequestSharesFuse;
         fuses[1] = plasmaVaultRedeemFromRequestFuse;
+        fuses[2] = _transientStorageSetInputsFuse;
 
         vm.startPrank(TAU_ATOMIST);
         PlasmaVaultGovernance(TAU_VAULT).addFuses(fuses);

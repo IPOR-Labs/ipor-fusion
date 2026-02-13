@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -108,7 +108,8 @@ contract VeloraSwapperFuseTest is Test {
                 _setupFeeConfig(),
                 _accessManager,
                 address(new PlasmaVaultBase()),
-                _withdrawManager
+                _withdrawManager,
+                address(0) // plasmaVaultVotesPlugin
             )
         );
 

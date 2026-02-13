@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /**
  * @title Plasma Vault Storage Library
@@ -65,7 +65,7 @@ library PlasmaVaultStorageLib {
      *
      * Storage Layout:
      * - Points to ERC20CappedStorage struct containing:
-     *   - cap: maximum total supply allowed for the vault tokens
+     *   - cap: maximum total supply denominated in shares (not in underlying asset decimals)
      *
      * Usage:
      * - Enforces maximum supply limits during minting operations
@@ -686,7 +686,12 @@ library PlasmaVaultStorageLib {
      * @dev Storage slot for withdraw manager contract address
      * @notice Manages withdrawal controls and permissions in the Plasma Vault
      *
-     * Calculation:
+     * LEGACY NOTE: This slot value does NOT match the formula below due to a historical implementation error.
+     * The value was derived from CALLBACK_HANDLER slot with a modified last byte (0x11 instead of 0x00).
+     * This CANNOT be changed as contracts are already deployed with this value.
+     * Correct value per formula would be: 0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100
+     *
+     * Documented calculation (not matching actual value):
      * keccak256(abi.encode(uint256(keccak256("io.ipor.WithdrawManager")) - 1)) & ~bytes32(uint256(0xff))
      *
      * Purpose:
@@ -736,6 +741,14 @@ library PlasmaVaultStorageLib {
         0x5bb34fc23414cfe7e422518e1d8590877bcc5dcacad5f8689bfd98e9a05ac600;
 
     /**
+     * @dev Storage slot for PlasmaVaultVotesPlugin address. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultVotesPlugin")) - 1)) & ~bytes32(uint256(0xff))
+     * @notice Stores address of PlasmaVaultVotesPlugin contract which provides optional ERC20Votes functionality
+     */
+    bytes32 private constant PLASMA_VAULT_VOTES_PLUGIN_SLOT =
+        0x9a54c2c1797818ee85d1850742208f80368867ad13d3e45052e701201fa4af00;
+
+    /**
      * @notice Maps callback signatures to their handler contracts
      * @dev Stores routing information for protocol-specific callbacks
      * @custom:storage-location erc7201:io.ipor.callbackHandler
@@ -768,6 +781,7 @@ library PlasmaVaultStorageLib {
     /// @dev Value taken from ERC20VotesUpgradeable contract, don't change it!
     /// @custom:storage-location erc7201:openzeppelin.storage.ERC20Capped
     struct ERC20CappedStorage {
+        /// @dev Maximum total supply cap denominated in shares (not in underlying asset decimals)
         uint256 cap;
     }
 
@@ -1151,6 +1165,24 @@ library PlasmaVaultStorageLib {
     function setShareScaleMultiplier(uint256 multiplier_) internal {
         assembly {
             sstore(SHARE_SCALE_MULTIPLIER_SLOT, multiplier_)
+        }
+    }
+
+    /// @notice Gets the PlasmaVaultVotesPlugin address from storage
+    /// @return The address of the PlasmaVaultVotesPlugin contract (optional ERC20Votes functionality)
+    function getPlasmaVaultVotesPlugin() internal view returns (address) {
+        address votesPlugin;
+        assembly {
+            votesPlugin := sload(PLASMA_VAULT_VOTES_PLUGIN_SLOT)
+        }
+        return votesPlugin;
+    }
+
+    /// @notice Sets the PlasmaVaultVotesPlugin address in storage
+    /// @param votesPlugin_ The address of the PlasmaVaultVotesPlugin contract
+    function setPlasmaVaultVotesPlugin(address votesPlugin_) internal {
+        assembly {
+            sstore(PLASMA_VAULT_VOTES_PLUGIN_SLOT, votesPlugin_)
         }
     }
 }

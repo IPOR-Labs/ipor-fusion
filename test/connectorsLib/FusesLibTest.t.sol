@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {FusesLibMock} from "./FusesLibMock.sol";
@@ -89,6 +89,7 @@ contract FusesLibTest is Test {
         uint256 underlyingDecimals = 18;
         address fuse = address(new DustBalanceFuseMock(marketId, underlyingDecimals));
 
+        fusesLibMock.setUnderlyingDecimals(uint8(underlyingDecimals));
         fusesLibMock.addBalanceFuse(marketId, fuse);
 
         bytes memory error = abi.encodeWithSignature(
