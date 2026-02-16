@@ -152,8 +152,8 @@ contract BurnRequestFeeVotingRegressionTest is Test {
     DelegateCaller private caller;
 
     // Storage slot for withdraw manager (from PlasmaVaultStorageLib)
-    // LEGACY NOTE: This slot does not match the documented formula - see PlasmaVaultStorageLib
-    bytes32 private constant WITHDRAW_MANAGER_SLOT = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e11;
+    // Updated in IL-6952 (audit R4H7) — old slot 0xb37e...3e11 collided with CALLBACK_HANDLER+0x11
+    bytes32 private constant WITHDRAW_MANAGER_SLOT = 0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100;
 
     // Storage slot for plasma vault base (from PlasmaVaultStorageLib)
     bytes32 private constant PLASMA_VAULT_BASE_SLOT =
