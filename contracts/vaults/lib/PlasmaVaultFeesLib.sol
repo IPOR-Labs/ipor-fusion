@@ -42,9 +42,16 @@ library PlasmaVaultFeesLib {
         recipient = PlasmaVaultStorageLib.getWithdrawManager().manager;
     }
 
+    /// @notice Prepares data for management fee realization
+    /// @dev IMPORTANT: Caller is responsible for calling PlasmaVaultLib.updateManagementFeeData()
+    ///      ONLY after successfully minting fee shares. This prevents timestamp reset when
+    ///      fees round to zero, which would suppress fee accrual on small/frequent operations.
+    /// @param totalAssetsBefore_ The total assets value before the operation
+    /// @return recipient The address to receive management fees
+    /// @return unrealizedFeeInUnderlying The unrealized fee amount in underlying tokens
     function prepareForRealizeManagementFee(
         uint256 totalAssetsBefore_
-    ) internal returns (address recipient, uint256 unrealizedFeeInUnderlying) {
+    ) internal view returns (address recipient, uint256 unrealizedFeeInUnderlying) {
         PlasmaVaultStorageLib.ManagementFeeData memory feeData = PlasmaVaultLib.getManagementFeeData();
 
         if (feeData.feeAccount == address(0)) {
@@ -54,8 +61,8 @@ library PlasmaVaultFeesLib {
         recipient = feeData.feeAccount;
 
         unrealizedFeeInUnderlying = getUnrealizedManagementFee(totalAssetsBefore_);
-
-        PlasmaVaultLib.updateManagementFeeData();
+        // Note: Timestamp update moved to caller (PlasmaVault._realizeManagementFee)
+        // to ensure it only happens when fees are actually minted (IL-6959 fix)
     }
 
     function getUnrealizedManagementFee(uint256 totalAssets_) internal view returns (uint256) {

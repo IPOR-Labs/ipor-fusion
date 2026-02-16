@@ -14,7 +14,8 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 
 import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
-import {UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {PlasmaVaultRedeemFromRequestFuse, PlasmaVaultRedeemFromRequestFuseEnterData} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol";
 
@@ -40,7 +41,7 @@ contract PlasmaVaultRequestSharesTest is Test {
 
     address private constant USER = TestAddresses.USER;
 
-    address private constant UNIVERSAL_TOKEN_SWAPPER = 0x08dFdBB6Ecf19f1fc974E0675783E1150B2B650F;
+    address private _universalTokenSwapper;
     address private constant BalanceFuseUniversalTokenSwapper = 0xe9562d7bd06b43E6391C5bE4B3c5F5C2BC1E06Bf;
     address private constant pegStabilityModule = 0x4809010926aec940b550D34a46A52739f996D75D;
     address private constant creditEnforcer = 0x04716DB62C085D9e08050fcF6F7D775A03d07720;
@@ -70,6 +71,15 @@ contract PlasmaVaultRequestSharesTest is Test {
         addUniversalTokenSwapper();
         setupDependenciesGraph();
         addPlasmaVaultRequestFuses();
+
+        // IL-6952: The WITHDRAW_MANAGER storage slot was moved from the old location (which collided
+        // with CALLBACK_HANDLER) to the new slot 0x465d2ff...00. The forked FORTUNAFI_VAULT still has
+        // the withdraw manager at the old slot, so we write it to the new slot for the fuse to find it.
+        vm.store(
+            FORTUNAFI_VAULT,
+            0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100,
+            bytes32(uint256(uint160(FORTUNAFI_WithdrawManager)))
+        );
     }
 
     function testShouldSwapUsdcToRUsdc() public {
@@ -88,13 +98,14 @@ contract PlasmaVaultRequestSharesTest is Test {
             tokenIn: USDC,
             tokenOut: R_USD,
             amountIn: usdcAmount,
+            minAmountOut: 0,
             data: UniversalTokenSwapperData({targets: targets, data: data})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(UNIVERSAL_TOKEN_SWAPPER),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            _universalTokenSwapper,
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         uint256 usdcVaultBalanceBefore = ERC20(USDC).balanceOf(TAU_VAULT);
@@ -135,17 +146,11 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         uint256 vaultTotalAssetsBefore = PlasmaVault(TAU_VAULT).totalAssets();
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: FORTUNAFI_VAULT,
-            vaultAssetAmount: rUsdcVaultBalanceBefore
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market1 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market1,
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter((address,uint256))", FORTUNAFI_VAULT, rUsdcVaultBalanceBefore)
         );
 
         // when
@@ -395,13 +400,14 @@ contract PlasmaVaultRequestSharesTest is Test {
             tokenIn: R_USD,
             tokenOut: USDC,
             amountIn: rUsdcVaultBalanceBefore,
+            minAmountOut: 0,
             data: UniversalTokenSwapperData({targets: targets, data: data})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
-            address(UNIVERSAL_TOKEN_SWAPPER),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            _universalTokenSwapper,
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         //when
@@ -433,17 +439,11 @@ contract PlasmaVaultRequestSharesTest is Test {
         // given
         uint256 usdcAmount = 50_000e6;
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: IPOR_OPTIMIZER_USDC_VAULT,
-            vaultAssetAmount: usdcAmount
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market2 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market2,
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter((address,uint256))", IPOR_OPTIMIZER_USDC_VAULT, usdcAmount)
         );
 
         uint256 usdcVaultBalanceBefore = ERC20(USDC).balanceOf(TAU_VAULT);
@@ -472,17 +472,11 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         testShouldTransferToIporOptimizerUsdcVault();
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseExitData memory enterData = Erc4626SupplyFuseExitData({
-            vault: IPOR_OPTIMIZER_USDC_VAULT,
-            vaultAssetAmount: usdcAmount
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market2 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market2,
-            abi.encodeWithSignature("exit((address,uint256))", enterData)
+            abi.encodeWithSignature("exit((address,uint256))", IPOR_OPTIMIZER_USDC_VAULT, usdcAmount)
         );
 
         uint256 usdcVaultBalanceBefore = ERC20(USDC).balanceOf(TAU_VAULT);
@@ -551,8 +545,11 @@ contract PlasmaVaultRequestSharesTest is Test {
     }
 
     function addUniversalTokenSwapper() private {
+        // Create new fuse instance with updated constructor
+        _universalTokenSwapper = address(new UniversalTokenSwapperFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER));
+
         address[] memory fuses = new address[](1);
-        fuses[0] = UNIVERSAL_TOKEN_SWAPPER;
+        fuses[0] = _universalTokenSwapper;
 
         address[] memory balanceFuses = new address[](1);
         balanceFuses[0] = BalanceFuseUniversalTokenSwapper;
@@ -565,16 +562,21 @@ contract PlasmaVaultRequestSharesTest is Test {
         );
         vm.stopPrank();
 
-        bytes32[] memory universalSwapTokens = new bytes32[](4);
-        universalSwapTokens[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        universalSwapTokens[1] = PlasmaVaultConfigLib.addressToBytes32(pegStabilityModule);
-        universalSwapTokens[2] = PlasmaVaultConfigLib.addressToBytes32(creditEnforcer);
-        universalSwapTokens[3] = PlasmaVaultConfigLib.addressToBytes32(R_USD);
+        // Using new substrate encoding format
+        bytes32[] memory universalSwapSubstrates = new bytes32[](6);
+        // Token substrates
+        universalSwapSubstrates[0] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(USDC);
+        universalSwapSubstrates[1] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(R_USD);
+        // Target substrates
+        universalSwapSubstrates[2] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(USDC);
+        universalSwapSubstrates[3] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(R_USD);
+        universalSwapSubstrates[4] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(pegStabilityModule);
+        universalSwapSubstrates[5] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(creditEnforcer);
 
         vm.startPrank(TAU_ATOMIST);
         PlasmaVaultGovernance(TAU_VAULT).grantMarketSubstrates(
             IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            universalSwapTokens
+            universalSwapSubstrates
         );
         vm.stopPrank();
     }

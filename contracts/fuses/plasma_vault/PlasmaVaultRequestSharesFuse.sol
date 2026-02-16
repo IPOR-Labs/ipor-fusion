@@ -37,6 +37,9 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
     /// @param data_ The data structure containing plasma vault address and shares amount
     /// @return plasmaVault The address of the Plasma Vault
     /// @return sharesAmount The amount of shares requested
+    /// @dev IMPORTANT: This function reads the WITHDRAW_MANAGER storage slot via getWithdrawManager() on the target vault.
+    /// The WITHDRAW_MANAGER slot was corrected in IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER.
+    /// Ensure that both this fuse and the target PlasmaVault use the same corrected slot value.
     function enter(
         PlasmaVaultRequestSharesFuseEnterData memory data_
     ) public returns (address plasmaVault, uint256 sharesAmount) {
@@ -92,8 +95,18 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
     }
 
     /// @notice Returns the address of the WithdrawManager
+    /// @dev This function must be called via delegatecall (e.g., through UniversalReader) to read the vault's storage.
+    ///      Calling it directly on the fuse contract will revert, as the fuse's own storage does not contain the
+    ///      withdraw manager slot.
     /// @return The address of the WithdrawManager contract
+    /// @dev IMPORTANT: Reads the WITHDRAW_MANAGER storage slot via PlasmaVaultStorageLib.getWithdrawManager().
+    /// This slot was corrected in IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER.
+    /// Any changes to the WITHDRAW_MANAGER slot must be carefully coordinated with all fuses that access it,
+    /// as fuses execute via delegatecall in the PlasmaVault storage context.
     function getWithdrawManager() external view returns (address) {
+        if (address(this) == VERSION) {
+            revert PlasmaVaultRequestSharesFuseInvalidWithdrawManager(address(this));
+        }
         return PlasmaVaultStorageLib.getWithdrawManager().manager;
     }
 }
