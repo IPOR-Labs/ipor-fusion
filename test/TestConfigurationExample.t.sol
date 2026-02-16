@@ -215,17 +215,12 @@ contract TestConfigurationExample is Test {
         // Step 4: Calculate half amount
         uint256 halfAmount = depositAmount / 2;
 
-        // Step 5: Create Erc4626SupplyFuseEnterData with IPOR_USDC_PRIME vault and half amount
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: IPOR_USDC_PRIME,
-            vaultAssetAmount: halfAmount
-        });
-
-        // Step 6: Create FuseAction array with supplyFuseErc4626Market1 address and encoded enter data
+        // Step 5-6: Create FuseAction with supplyFuseErc4626Market1 address and encoded enter data
+        // Note: supplyFuseErc4626Market1 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: supplyFuseErc4626Market1,
-            data: abi.encodeWithSignature("enter((address,uint256))", enterData)
+            data: abi.encodeWithSignature("enter((address,uint256))", IPOR_USDC_PRIME, halfAmount)
         });
 
         // Step 7: Execute as alpha

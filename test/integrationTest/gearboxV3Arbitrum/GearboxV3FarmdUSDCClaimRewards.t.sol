@@ -225,7 +225,8 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
     function _getEnterFuseData(uint256 amount_) private view returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            minSharesOut: 0
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
@@ -245,14 +246,15 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             dTokenAmount: depositAmount,
             farmdToken: FARM_D_USDC
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataFarm);
 
         uint256 len = data.length;
