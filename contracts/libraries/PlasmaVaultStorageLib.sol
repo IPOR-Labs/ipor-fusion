@@ -1121,6 +1121,10 @@ library PlasmaVaultStorageLib {
         }
     }
 
+    /// @dev IMPORTANT: The WITHDRAW_MANAGER slot was corrected in IL-6952 (audit R4H7).
+    /// The previous slot value collided with CALLBACK_HANDLER at offset +0x11.
+    /// All fuses that read/write this slot via delegatecall must use the corrected PlasmaVaultStorageLib.
+    /// Affected fuses: BurnRequestFeeFuse, PlasmaVaultRequestSharesFuse, UpdateWithdrawManagerMaintenanceFuse.
     function getWithdrawManager() internal pure returns (WithdrawManager storage withdrawManager) {
         assembly {
             withdrawManager.slot := WITHDRAW_MANAGER
