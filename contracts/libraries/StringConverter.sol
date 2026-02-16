@@ -48,11 +48,21 @@ library StringConverter {
 
         // Pack string data starting at byte index 2
         uint256 byteIndex;
-        for (uint256 i; i < arrayLength; ++i) {
-            bytes32 packed = result[i]; // Start with existing data (length in first bytes32)
-            uint256 startByte = (i == 0) ? 2 : 0; // Skip first 2 bytes in first element
 
-            for (uint256 j = startByte; j < 32 && byteIndex < length; ++j) {
+        // First element: skip first 2 bytes (length prefix)
+        {
+            bytes32 packed = result[0];
+            for (uint256 j = 2; j < 32 && byteIndex < length; ++j) {
+                packed |= bytes32(uint256(uint8(b[byteIndex])) << (j * 8));
+                ++byteIndex;
+            }
+            result[0] = packed;
+        }
+
+        // Remaining elements: pack full 32 bytes
+        for (uint256 i = 1; i < arrayLength; ++i) {
+            bytes32 packed;
+            for (uint256 j; j < 32 && byteIndex < length; ++j) {
                 packed |= bytes32(uint256(uint8(b[byteIndex])) << (j * 8));
                 ++byteIndex;
             }
@@ -89,12 +99,19 @@ library StringConverter {
         bytes memory result = new bytes(length);
         uint256 resultIndex;
 
-        // Extract data starting at byte index 2 in first bytes32
-        for (uint256 i; i < b.length && resultIndex < length; ++i) {
-            bytes32 currentBytes32 = b[i];
-            uint256 startByte = (i == 0) ? 2 : 0; // Skip length bytes in first element
+        // First element: extract data starting at byte index 2 (skip length prefix)
+        {
+            bytes32 currentBytes32 = b[0];
+            for (uint256 j = 2; j < 32 && resultIndex < length; ++j) {
+                result[resultIndex] = bytes1(uint8(uint256(currentBytes32 >> (j * 8))));
+                ++resultIndex;
+            }
+        }
 
-            for (uint256 j = startByte; j < 32 && resultIndex < length; ++j) {
+        // Remaining elements: extract full 32 bytes
+        for (uint256 i = 1; i < b.length && resultIndex < length; ++i) {
+            bytes32 currentBytes32 = b[i];
+            for (uint256 j; j < 32 && resultIndex < length; ++j) {
                 result[resultIndex] = bytes1(uint8(uint256(currentBytes32 >> (j * 8))));
                 ++resultIndex;
             }
