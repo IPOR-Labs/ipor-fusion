@@ -18,7 +18,6 @@ struct PlasmaVaultRedeemFromRequestFuseEnterData {
 }
 
 error PlasmaVaultRedeemFromRequestFuseUnsupportedVault(string action, address vault);
-error PlasmaVaultRedeemFromRequestFuseInvalidWithdrawManager(address vault);
 
 /// @title Fuse for Plasma Vault responsible for redeeming shares from request
 /// @dev This fuse is used to redeem shares from a previously submitted withdrawal request
