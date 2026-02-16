@@ -47,6 +47,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
     address public constant BASE_CURRENCY = 0x0000000000000000000000000000000000000348;
     uint256 public constant BASE_CURRENCY_DECIMALS = 8;
+    address public constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address public constant USDM = 0x59D9356E565Ab3A36dD77763Fc0d87fEaf85508C;
     address public constant DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
@@ -93,10 +94,12 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
-        address[] memory assets = new address[](1);
-        address[] memory sources = new address[](1);
+        address[] memory assets = new address[](2);
+        address[] memory sources = new address[](2);
         assets[0] = USDM;
         sources[0] = address(priceFeed);
+        assets[1] = USDC;
+        sources[1] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3; // Chainlink USDC/USD on Arbitrum
         vm.prank(OWNER);
         priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }

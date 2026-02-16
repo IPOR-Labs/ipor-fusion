@@ -226,7 +226,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
     function _getEnterFuseData(uint256 amount_) private view returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            minSharesOut: 0
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             stakingPool: FLUID_LENDING_STAKING_REWARDS,
@@ -246,7 +247,8 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
 
         Erc4626SupplyFuseEnterData memory erc4626SupplyFuseEnterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         FluidInstadappStakingSupplyFuseEnterData
             memory fluidInstadappStakingSupplyFuseEnterData = FluidInstadappStakingSupplyFuseEnterData({
@@ -257,7 +259,7 @@ contract FluidInstadappStakingUSDCClaimRewards is Test {
         FuseAction[] memory enterCalls = new FuseAction[](2);
         enterCalls[0] = FuseAction(
             address(erc4626SupplyFuse),
-            abi.encodeWithSignature("enter((address,uint256))", erc4626SupplyFuseEnterData)
+            abi.encodeWithSignature("enter((address,uint256,uint256))", erc4626SupplyFuseEnterData)
         );
         enterCalls[1] = FuseAction(
             address(fluidInstadappStakingSupplyFuse),

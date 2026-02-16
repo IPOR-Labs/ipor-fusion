@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -15,6 +16,8 @@ import {IporFusionAccessManager} from "./../../../contracts/managers/access/Ipor
 import {RoleLib, UsersToRoles} from "./../../RoleLib.sol";
 import {USDMPriceFeedArbitrum} from "../../../contracts/price_oracle/price_feed/chains/arbitrum/USDMPriceFeedArbitrum.sol";
 import {IChronicle, IToll} from "../../../contracts/price_oracle/ext/IChronicle.sol";
+import {IporMath} from "./../../../contracts/libraries/math/IporMath.sol";
+import {IPriceOracleMiddleware} from "./../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -78,10 +81,12 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         priceOracleMiddlewareProxy = PriceOracleMiddleware(
             address(new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", OWNER)))
         );
-        address[] memory assets = new address[](1);
-        address[] memory sources = new address[](1);
+        address[] memory assets = new address[](2);
+        address[] memory sources = new address[](2);
         assets[0] = USDM;
         sources[0] = address(priceFeed);
+        assets[1] = USDC;
+        sources[1] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3; // Chainlink USDC/USD on Arbitrum
         vm.prank(OWNER);
         priceOracleMiddlewareProxy.setAssetsPricesSources(assets, sources);
     }
@@ -196,10 +201,25 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
             afterState.vaultLpTokensBalance > beforeState.vaultLpTokensBalance,
             "vaultLpTokensBalance should increase after supply"
         );
+        // Validate pro-rata valuation: vaultTotalAssetsInMarket (in underlying) should match
+        // the pro-rata USD value converted back to underlying
+        uint256 expectedProRataBalanceUsd = _calculateExpectedProRataBalance(
+            afterState.vaultLpTokensBalance,
+            address(priceOracleMiddlewareProxy)
+        );
+        (uint256 usdmPrice, uint256 usdmPriceDecimals) = priceOracleMiddlewareProxy.getAssetPrice(USDM);
+        uint256 expectedInUnderlying = IporMath.convertWadToAssetDecimals(
+            IporMath.division(
+                expectedProRataBalanceUsd * IporMath.BASIS_OF_POWER ** usdmPriceDecimals,
+                usdmPrice
+            ),
+            ERC20(USDM).decimals()
+        );
         assertApproxEqAbs(
-            CURVE_STABLESWAP_NG.calc_withdraw_one_coin(afterState.vaultLpTokensBalance, 1),
+            expectedInUnderlying,
             afterState.vaultTotalAssetsInMarket,
-            100
+            100,
+            "vaultTotalAssetsInMarket should match pro-rata valuation converted to underlying"
         );
     }
 
@@ -388,5 +408,29 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         usersToRoles.superAdmin = atomist;
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
+    }
+
+    function _calculateExpectedProRataBalance(
+        uint256 lpTokenBalance,
+        address priceOracleMiddleware
+    ) private view returns (uint256) {
+        uint256 totalSupply = CURVE_STABLESWAP_NG.totalSupply();
+        uint256 nCoins = CURVE_STABLESWAP_NG.N_COINS();
+        uint256 balance;
+        for (uint256 i; i < nCoins; ++i) {
+            address coin = CURVE_STABLESWAP_NG.coins(i);
+            uint256 coinAmount = Math.mulDiv(
+                CURVE_STABLESWAP_NG.balances(i),
+                lpTokenBalance,
+                totalSupply
+            );
+            (uint256 coinPrice, uint256 coinPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
+                .getAssetPrice(coin);
+            balance += IporMath.convertToWad(
+                coinAmount * coinPrice,
+                ERC20(coin).decimals() + coinPriceDecimals
+            );
+        }
+        return balance;
     }
 }

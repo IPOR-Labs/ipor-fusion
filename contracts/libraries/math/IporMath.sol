@@ -9,6 +9,9 @@ library IporMath {
     /// @dev The index of the most significant bit in a 256-bit signed integer
     uint256 private constant MSB = 255;
 
+    /// @notice Error when math operation would overflow
+    error MathOverflow();
+
     function min(uint256 a_, uint256 b_) internal pure returns (uint256) {
         return a_ < b_ ? a_ : b_;
     }
@@ -49,6 +52,7 @@ library IporMath {
     /// @param value_ The int value to convert
     /// @param assetDecimals_ The decimals of the asset
     /// @return The value in WAD decimals, int
+    /// @dev Reverts with MathOverflow if the result would overflow int256
     function convertToWadInt(int256 value_, uint256 assetDecimals_) internal pure returns (int256) {
         if (value_ == 0) {
             return 0;
@@ -58,7 +62,18 @@ library IporMath {
         } else if (assetDecimals_ > WAD_DECIMALS) {
             return divisionInt(value_, int256(BASIS_OF_POWER ** (assetDecimals_ - WAD_DECIMALS)));
         } else {
-            return value_ * int256(BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals_));
+            int256 scaleFactor = int256(BASIS_OF_POWER ** (WAD_DECIMALS - assetDecimals_));
+            // Check for overflow before multiplication
+            // |value_| * scaleFactor must not exceed type(int256).max
+            // Handle type(int256).min special case - cannot safely negate
+            if (value_ == type(int256).min) {
+                revert MathOverflow();
+            }
+            int256 absValue = value_ < 0 ? -value_ : value_;
+            if (absValue > type(int256).max / scaleFactor) {
+                revert MathOverflow();
+            }
+            return value_ * scaleFactor;
         }
     }
 
@@ -66,7 +81,13 @@ library IporMath {
     /// @param x_ The numerator
     /// @param y_ The denominator
     /// @return z The result of the division
+    /// @dev Reverts with MathOverflow if x_ or y_ is type(int256).min (cannot negate)
     function divisionInt(int256 x_, int256 y_) internal pure returns (int256 z) {
+        // Handle type(int256).min special case - cannot safely negate
+        if (x_ == type(int256).min || y_ == type(int256).min) {
+            revert MathOverflow();
+        }
+
         uint256 absX_ = uint256(x_ < 0 ? -x_ : x_);
         uint256 absY_ = uint256(y_ < 0 ? -y_ : y_);
 

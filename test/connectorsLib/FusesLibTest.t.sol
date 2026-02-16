@@ -89,6 +89,7 @@ contract FusesLibTest is Test {
         uint256 underlyingDecimals = 18;
         address fuse = address(new DustBalanceFuseMock(marketId, underlyingDecimals));
 
+        fusesLibMock.setUnderlyingDecimals(uint8(underlyingDecimals));
         fusesLibMock.addBalanceFuse(marketId, fuse);
 
         bytes memory error = abi.encodeWithSignature(
@@ -358,6 +359,102 @@ contract FusesLibTest is Test {
         fusesLibMock.addBalanceFuse(marketId, fuseTwo);
 
         //then
-        assertTrue(fusesLibMock.isBalanceFuseSupported(marketId, fuseOne) == false, "Fuse four should be removed");
+        assertTrue(fusesLibMock.isBalanceFuseSupported(marketId, fuseOne) == false, "Fuse one should be removed");
+        assertTrue(fusesLibMock.isBalanceFuseSupported(marketId, fuseTwo) == true, "Fuse two should be supported");
+
+        // IL-6953: Verify marketId is NOT duplicated in the array
+        uint256[] memory marketIds = fusesLibMock.getBalanceFusesMarketIds();
+        assertEq(marketIds.length, 1, "Array length should still be 1 after override");
+        assertEq(marketIds[0], marketId, "Market ID should be correct");
+        assertEq(fusesLibMock.getBalanceFusesIndexes(marketId), 1, "Index should remain 1");
+    }
+
+    function testShouldOverrideBalanceFuseWithoutDuplicatingMarketIdInArray() public {
+        //given
+        uint256 marketIdOne = 11;
+        uint256 marketIdTwo = 22;
+        uint256 marketIdThree = 33;
+        address fuse1 = address(new ZeroBalanceFuse(marketIdOne));
+        address fuse2 = address(new ZeroBalanceFuse(marketIdTwo));
+        address fuse3 = address(new ZeroBalanceFuse(marketIdThree));
+        address fuse2New = address(new ZeroBalanceFuse(marketIdTwo));
+
+        fusesLibMock.addBalanceFuse(marketIdOne, fuse1);
+        fusesLibMock.addBalanceFuse(marketIdTwo, fuse2);
+        fusesLibMock.addBalanceFuse(marketIdThree, fuse3);
+
+        //when - override fuse for marketIdTwo
+        fusesLibMock.addBalanceFuse(marketIdTwo, fuse2New);
+
+        //then - marketIds array should not have duplicates
+        uint256[] memory marketIds = fusesLibMock.getBalanceFusesMarketIds();
+        assertEq(marketIds.length, 3, "Array length should still be 3 after override");
+        assertEq(marketIds[0], marketIdOne, "First element should be marketIdOne");
+        assertEq(marketIds[1], marketIdTwo, "Second element should be marketIdTwo");
+        assertEq(marketIds[2], marketIdThree, "Third element should be marketIdThree");
+
+        // Verify indexes are unchanged
+        assertEq(fusesLibMock.getBalanceFusesIndexes(marketIdOne), 1, "Index for marketIdOne should be 1");
+        assertEq(fusesLibMock.getBalanceFusesIndexes(marketIdTwo), 2, "Index for marketIdTwo should be 2");
+        assertEq(fusesLibMock.getBalanceFusesIndexes(marketIdThree), 3, "Index for marketIdThree should be 3");
+
+        // Verify new fuse is active, old one is not
+        assertTrue(fusesLibMock.isBalanceFuseSupported(marketIdTwo, fuse2New), "New fuse should be supported");
+        assertFalse(fusesLibMock.isBalanceFuseSupported(marketIdTwo, fuse2), "Old fuse should not be supported");
+
+        // Verify other fuses are unaffected
+        assertTrue(fusesLibMock.isBalanceFuseSupported(marketIdOne, fuse1), "Fuse1 should still be supported");
+        assertTrue(fusesLibMock.isBalanceFuseSupported(marketIdThree, fuse3), "Fuse3 should still be supported");
+    }
+
+    function testShouldOverrideBalanceFuseTwiceWithoutDuplicatingMarketId() public {
+        //given
+        uint256 marketId = 1;
+        address fuseOne = address(new ZeroBalanceFuse(marketId));
+        address fuseTwo = address(new ZeroBalanceFuse(marketId));
+        address fuseThree = address(new ZeroBalanceFuse(marketId));
+
+        fusesLibMock.addBalanceFuse(marketId, fuseOne);
+
+        //when - override twice
+        fusesLibMock.addBalanceFuse(marketId, fuseTwo);
+        fusesLibMock.addBalanceFuse(marketId, fuseThree);
+
+        //then
+        uint256[] memory marketIds = fusesLibMock.getBalanceFusesMarketIds();
+        assertEq(marketIds.length, 1, "Array length should still be 1 after two overrides");
+        assertEq(fusesLibMock.getBalanceFusesIndexes(marketId), 1, "Index should remain 1");
+        assertTrue(fusesLibMock.isBalanceFuseSupported(marketId, fuseThree), "Third fuse should be supported");
+        assertFalse(fusesLibMock.isBalanceFuseSupported(marketId, fuseTwo), "Second fuse should not be supported");
+        assertFalse(fusesLibMock.isBalanceFuseSupported(marketId, fuseOne), "First fuse should not be supported");
+    }
+
+    function testShouldOverrideBalanceFuseAndThenRemoveCorrectly() public {
+        //given
+        uint256 marketIdOne = 11;
+        uint256 marketIdTwo = 22;
+        address fuse1 = address(new ZeroBalanceFuse(marketIdOne));
+        address fuse2 = address(new ZeroBalanceFuse(marketIdTwo));
+        address fuse2New = address(new ZeroBalanceFuse(marketIdTwo));
+
+        fusesLibMock.addBalanceFuse(marketIdOne, fuse1);
+        fusesLibMock.addBalanceFuse(marketIdTwo, fuse2);
+
+        // override fuse for marketIdTwo
+        fusesLibMock.addBalanceFuse(marketIdTwo, fuse2New);
+
+        //when - remove the overridden fuse
+        fusesLibMock.removeBalanceFuse(marketIdTwo, fuse2New);
+
+        //then
+        uint256[] memory marketIds = fusesLibMock.getBalanceFusesMarketIds();
+        assertEq(marketIds.length, 1, "Array length should be 1 after removal");
+        assertEq(marketIds[0], marketIdOne, "Only marketIdOne should remain");
+
+        assertEq(fusesLibMock.getBalanceFusesIndexes(marketIdOne), 1, "Index for marketIdOne should be 1");
+        assertEq(fusesLibMock.getBalanceFusesIndexes(marketIdTwo), 0, "Index for marketIdTwo should be 0");
+
+        assertFalse(fusesLibMock.isBalanceFuseSupported(marketIdTwo, fuse2New), "New fuse should be removed");
+        assertTrue(fusesLibMock.isBalanceFuseSupported(marketIdOne, fuse1), "Fuse1 should still be supported");
     }
 }
