@@ -569,14 +569,14 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
     function _depositToFeeVault(uint256 amount) private {
         underlyingToken.mint(address(vaultMock), amount);
         vaultMock.enterErc4626Supply(
-            Erc4626SupplyFuseEnterData({vault: address(feeVault), vaultAssetAmount: amount})
+            Erc4626SupplyFuseEnterData({vault: address(feeVault), vaultAssetAmount: amount, minSharesOut: 0})
         );
     }
 
     function _depositToStandardVault(uint256 amount) private {
         underlyingToken.mint(address(vaultMock), amount);
         vaultMock.enterErc4626Supply(
-            Erc4626SupplyFuseEnterData({vault: address(standardVault), vaultAssetAmount: amount})
+            Erc4626SupplyFuseEnterData({vault: address(standardVault), vaultAssetAmount: amount, minSharesOut: 0})
         );
     }
 
@@ -599,7 +599,7 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
 
         // when - request full exit (type(uint256).max to trigger cap)
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: type(uint256).max})
+            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: type(uint256).max, maxSharesBurned: 0})
         );
 
         // then
@@ -622,7 +622,7 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
 
         // when
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: requestedAmount})
+            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: requestedAmount, maxSharesBurned: 0})
         );
 
         // then
@@ -647,7 +647,7 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
 
         // when
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: partialAmount})
+            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: partialAmount, maxSharesBurned: 0})
         );
 
         // then
@@ -677,7 +677,7 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
 
         // when - full exit
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: address(standardVault), vaultAssetAmount: type(uint256).max})
+            Erc4626SupplyFuseExitData({vault: address(standardVault), vaultAssetAmount: type(uint256).max, maxSharesBurned: 0})
         );
 
         // then

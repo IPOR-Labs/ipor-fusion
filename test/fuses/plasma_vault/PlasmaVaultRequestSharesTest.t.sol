@@ -71,6 +71,15 @@ contract PlasmaVaultRequestSharesTest is Test {
         addUniversalTokenSwapper();
         setupDependenciesGraph();
         addPlasmaVaultRequestFuses();
+
+        // IL-6952: The WITHDRAW_MANAGER storage slot was moved from the old location (which collided
+        // with CALLBACK_HANDLER) to the new slot 0x465d2ff...00. The forked FORTUNAFI_VAULT still has
+        // the withdraw manager at the old slot, so we write it to the new slot for the fuse to find it.
+        vm.store(
+            FORTUNAFI_VAULT,
+            0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100,
+            bytes32(uint256(uint160(FORTUNAFI_WithdrawManager)))
+        );
     }
 
     function testShouldSwapUsdcToRUsdc() public {
