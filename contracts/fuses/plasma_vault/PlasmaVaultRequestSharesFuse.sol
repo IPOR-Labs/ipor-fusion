@@ -36,7 +36,7 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
     /// @notice Requests shares from the Plasma Vault
     /// @param data_ The data structure containing plasma vault address and shares amount
     /// @return plasmaVault The address of the Plasma Vault
-    /// @return sharesAmount The amount of shares requested
+    /// @return sharesAmount The actual amount of shares requested (clamped to available balance)
     /// @dev IMPORTANT: This function reads the WITHDRAW_MANAGER storage slot via getWithdrawManager() on the target vault.
     /// The WITHDRAW_MANAGER slot was corrected in IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER.
     /// Ensure that both this fuse and the target PlasmaVault use the same corrected slot value.
@@ -72,7 +72,7 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
         WithdrawManager(withdrawManager).requestShares(finalSharesAmount);
 
         plasmaVault = data_.plasmaVault;
-        sharesAmount = data_.sharesAmount;
+        sharesAmount = finalSharesAmount;
 
         emit PlasmaVaultRequestSharesFuseEnter(VERSION, plasmaVault, sharesAmount);
     }

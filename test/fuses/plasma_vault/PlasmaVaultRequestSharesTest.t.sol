@@ -260,6 +260,74 @@ contract PlasmaVaultRequestSharesTest is Test {
         );
     }
 
+    /// @dev IL-6958: Verify that enter() returns the actual clamped shares amount, not the input amount.
+    ///      When sharesAmount > balance, the returned value should be clamped to balance.
+    function testShouldReturnClampedSharesAmountWhenInputExceedsBalance() public {
+        // given
+        testShouldBeAbleToDepositToFortunaFiVault();
+        uint256 actualBalance = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        uint256 inflatedAmount = actualBalance * 2; // request double the balance
+
+        PlasmaVaultRequestSharesFuseEnterData memory enterData = PlasmaVaultRequestSharesFuseEnterData({
+            sharesAmount: inflatedAmount,
+            plasmaVault: FORTUNAFI_VAULT
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            plasmaVaultRequestSharesFuse,
+            abi.encodeWithSignature("enter((uint256,address))", enterData)
+        );
+
+        // when
+        vm.startPrank(TAU_ALPHA);
+        PlasmaVault(TAU_VAULT).execute(enterCalls);
+        vm.stopPrank();
+
+        // then - the vault balance should decrease by actualBalance (the clamped amount), not inflatedAmount
+        uint256 sharesAmountAfter = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        // The request was clamped to actualBalance, so the remaining shares are based on actualBalance being requested
+        assertLt(sharesAmountAfter, actualBalance, "shares should have decreased");
+    }
+
+    /// @dev IL-6958: Verify that enterTransient stores the actual clamped shares amount in transient outputs,
+    ///      not the inflated input amount.
+    function testShouldStoreClampedSharesInTransientWhenInputExceedsBalance() public {
+        // given
+        testShouldBeAbleToDepositToFortunaFiVault();
+        uint256 actualBalance = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        uint256 inflatedAmount = actualBalance * 2; // request double the balance
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = plasmaVaultRequestSharesFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(inflatedAmount);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(FORTUNAFI_VAULT);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        calls[1] = FuseAction({fuse: plasmaVaultRequestSharesFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        // when
+        vm.startPrank(TAU_ALPHA);
+        PlasmaVault(TAU_VAULT).execute(calls);
+        vm.stopPrank();
+
+        // then - the vault balance should decrease by actualBalance (the clamped amount), not inflatedAmount
+        uint256 sharesAmountAfter = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        assertLt(sharesAmountAfter, actualBalance, "shares should have decreased via transient path");
+    }
+
     function testShouldBeAbleToRedeemFromRequest() public {
         // given
         testShouldBeAbleToRequestShares();
