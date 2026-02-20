@@ -180,7 +180,6 @@ library IporFusionMarkets {
     /// @dev Used for executing Odos swaps via OdosSwapExecutor contract
     uint256 public constant ODOS_SWAPPER = 42;
 
-
     /// @dev Velora Swapper market for optimized token swapping via Velora/ParaSwap Augustus v6.2
     /// @dev Substrate type: VeloraSubstrateType (Token or Slippage)
     /// @dev Substrate values:
@@ -189,18 +188,22 @@ library IporFusionMarkets {
     /// @dev Used for executing Velora swaps via VeloraSwapExecutor contract
     uint256 public constant VELORA_SWAPPER = 43;
 
-        /// @dev Aave V4 Hub & Spoke market
+    /// @dev Aave V4 Hub & Spoke market
     /// @dev Substrate type: AaveV4SubstrateType (Asset or Spoke)
     /// @dev Substrate values: Encoded combination of type flag and address
     ///      - Asset: AaveV4SubstrateLib.encodeAsset(tokenAddress) - ERC20 token address with flag 0x01
     ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
-    uint256 public constant AAVE_V4 = 45;
-
+    uint256 public constant AAVE_V4 = 44;
 
     /// @dev Midas RWA market (mTBILL, mBASIS)
     /// @dev Substrate type: MidasSubstrateType (M_TOKEN, DEPOSIT_VAULT, REDEMPTION_VAULT, INSTANT_REDEMPTION_VAULT, ASSET)
     /// @dev Substrate values: Encoded combination of type flag and address (see MidasSubstrateLib)
     uint256 public constant MIDAS = 45;
+
+    /// @dev Dolomite market
+    /// @dev Substrate type: DolomiteSubstrate (asset, subAccountId, canBorrow)
+    /// @dev Substrate values: Encoded combination of asset address, sub-account ID, and borrow permission
+    uint256 public constant DOLOMITE = 46;
 
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
@@ -208,7 +211,7 @@ library IporFusionMarkets {
     /// @dev Market 2 for ERC4626 Vault
     uint256 public constant ERC4626_0002 = 100_002;
 
-    /// @dev Market 3 for ERC4626 Vault
+    /// @dev Market 3 for ERC4626 Vaultś
     uint256 public constant ERC4626_0003 = 100_003;
 
     /// @dev Market 4 for ERC4626 Vault
