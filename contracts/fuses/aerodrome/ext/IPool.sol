@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.0;
 
-/// @title IPool - Aerodrome Pool interface
 interface IPool {
     // Struct to capture time period obervations every 30 minutes, used for local oracles
     struct Observation {
