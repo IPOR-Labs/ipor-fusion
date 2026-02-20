@@ -34,7 +34,7 @@ contract DolomiteFuseCoverageTest is Test {
     address public constant CHAINLINK_USDC_USD = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
     address public constant BASE_CURRENCY_PRICE_SOURCE = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
 
-    uint256 public constant DOLOMITE_MARKET_ID = 50;
+    uint256 public constant DOLOMITE_MARKET_ID = 46;
 
     // ============ Contract Instances ============
     address public plasmaVault;

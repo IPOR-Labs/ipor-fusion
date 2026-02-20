@@ -11,9 +11,7 @@ Dolomite is a decentralized margin trading and lending protocol that uses a uniq
 
 The integration uses a single market for all operations:
 
--   **Market ID 50** (`DOLOMITE`) - Supply/withdraw/borrow/repay/collateral operations
-
-For E-mode operations, a separate market ID is recommended to avoid substrate conflicts with balance calculations.
+-   **Market ID 46** (`DOLOMITE`) - Supply/withdraw/borrow/repay/collateral/E-mode operations
 
 ## Architecture
 
@@ -117,18 +115,6 @@ bytes32 usdcIsolated = DolomiteFuseLib.substrateToBytes32(
         canBorrow: true
     })
 );
-```
-
-### E-mode Substrate Configuration
-
-For E-mode, substrates are simple category IDs:
-
-```solidity
-// Grant E-mode category 1 (Stablecoins)
-bytes32 emodeStable = bytes32(uint256(1));
-
-// Grant E-mode category 2 (ETH Correlated)
-bytes32 emodeEth = bytes32(uint256(2));
 ```
 
 ## Operations
@@ -245,7 +231,7 @@ priceOracle.setAssetsPricesSources(assets, sources);
 
 -   Immutable `MARKET_ID`, `DOLOMITE_MARGIN`, and router addresses prevent configuration changes
 -   Substrate validation ensures only authorized (asset, subAccountId, canBorrow) combinations are used
--   E-mode category validation through substrate system
+-   E-mode category validation through DolomiteAccountRegistry
 
 ### Token Safety
 

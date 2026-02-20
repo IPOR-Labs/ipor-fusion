@@ -44,7 +44,7 @@ contract DolomiteExtendedTest is Test {
     /// @dev PriceOracleMiddleware base currency source (Arbitrum specific)
     address public constant BASE_CURRENCY_PRICE_SOURCE = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
 
-    uint256 public constant DOLOMITE_MARKET_ID = 50;
+    uint256 public constant DOLOMITE_MARKET_ID = 46;
 
     // ============ Contract Instances ============
     address public plasmaVault;
@@ -233,7 +233,7 @@ contract DolomiteExtendedTest is Test {
         supplyFuse = new DolomiteSupplyFuse(DOLOMITE_MARKET_ID, DOLOMITE_MARGIN, DEPOSIT_WITHDRAWAL_ROUTER);
         borrowFuse = new DolomiteBorrowFuse(DOLOMITE_MARKET_ID, DOLOMITE_MARGIN);
         collateralFuse = new DolomiteCollateralFuse(DOLOMITE_MARKET_ID, DOLOMITE_MARGIN);
-        emodeFuse = new DolomiteEModeFuse(DOLOMITE_MARKET_ID, DOLOMITE_MARGIN, DOLOMITE_ACCOUNT_REGISTRY);
+        emodeFuse = new DolomiteEModeFuse(DOLOMITE_MARKET_ID, DOLOMITE_ACCOUNT_REGISTRY);
         balanceFuse = new DolomiteBalanceFuse(DOLOMITE_MARKET_ID, DOLOMITE_MARGIN);
 
         fuses = new address[](4);

@@ -116,7 +116,7 @@ contract DolomiteVaultBalanceTest is Test {
     /// @dev Fusion market ID for Dolomite
     /// This is an arbitrary identifier used within PlasmaVault configuration
     /// It groups substrates and associates them with the balance fuse
-    uint256 public constant DOLOMITE_MARKET_ID = 50;
+    uint256 public constant DOLOMITE_MARKET_ID = 46;
 
     // ============ Test Contract Instances ============
 

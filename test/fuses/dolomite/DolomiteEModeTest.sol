@@ -20,20 +20,6 @@ import {DolomiteBalanceFuse} from "../../../contracts/fuses/dolomite/DolomiteBal
 import {DolomiteFuseLib, DolomiteSubstrate} from "../../../contracts/fuses/dolomite/DolomiteFuseLib.sol";
 import {IDolomiteAccountRegistry} from "../../../contracts/fuses/dolomite/ext/IDolomiteAccountRegistry.sol";
 
-/// @title MockEModeBalanceFuse
-/// @notice Dummy balance fuse for E-mode market that always returns 0
-contract MockEModeBalanceFuse {
-    uint256 public immutable MARKET_ID;
-
-    constructor(uint256 marketId_) {
-        MARKET_ID = marketId_;
-    }
-
-    function balanceOf() external pure returns (uint256) {
-        return 0;
-    }
-}
-
 /// @title MockDolomiteAccountRegistry
 /// @notice Mock implementation of DolomiteAccountRegistry for E-mode testing
 contract MockDolomiteAccountRegistry is IDolomiteAccountRegistry {
@@ -102,8 +88,7 @@ contract DolomiteEModeTest is Test {
     address public constant CHAINLINK_USDC_USD = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
     address public constant BASE_CURRENCY_PRICE_SOURCE = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
 
-    uint256 public constant DOLOMITE_MARKET_ID = 50;
-    uint256 public constant DOLOMITE_EMODE_MARKET_ID = 51; // Separate market for E-mode categories
+    uint256 public constant DOLOMITE_MARKET_ID = 46;
 
     // ============ Contract Instances ============
     address public plasmaVault;
@@ -111,7 +96,6 @@ contract DolomiteEModeTest is Test {
     address public accessManager;
 
     MockDolomiteAccountRegistry public mockRegistry;
-    MockEModeBalanceFuse public emodeBalanceFuse;
     DolomiteEModeFuse public emodeFuse;
     DolomiteSupplyFuse public supplyFuse;
     DolomiteBalanceFuse public balanceFuse;
@@ -143,17 +127,12 @@ contract DolomiteEModeTest is Test {
 
     function test_EModeFuse_Constructor_InvalidMarketId() public {
         vm.expectRevert(abi.encodeWithSignature("DolomiteEModeFuseInvalidMarketId()"));
-        new DolomiteEModeFuse(0, DOLOMITE_MARGIN, address(mockRegistry));
-    }
-
-    function test_EModeFuse_Constructor_InvalidDolomiteMargin() public {
-        vm.expectRevert(abi.encodeWithSignature("DolomiteEModeFuseInvalidDolomiteMargin()"));
-        new DolomiteEModeFuse(DOLOMITE_MARKET_ID, address(0), address(mockRegistry));
+        new DolomiteEModeFuse(0, address(mockRegistry));
     }
 
     function test_EModeFuse_Constructor_InvalidAccountRegistry() public {
         vm.expectRevert(abi.encodeWithSignature("DolomiteEModeFuseInvalidAccountRegistry()"));
-        new DolomiteEModeFuse(DOLOMITE_MARKET_ID, DOLOMITE_MARGIN, address(0));
+        new DolomiteEModeFuse(DOLOMITE_MARKET_ID, address(0));
     }
 
     // ============================================================================
@@ -161,9 +140,6 @@ contract DolomiteEModeTest is Test {
     // ============================================================================
 
     function test_EModeFuse_Enter_EnableStablecoinEMode() public {
-        // Grant E-mode category 1 as substrate
-        _grantEModeCategory(1);
-
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(emodeFuse),
@@ -179,9 +155,6 @@ contract DolomiteEModeTest is Test {
     }
 
     function test_EModeFuse_Enter_EnableETHEMode() public {
-        // Grant E-mode category 2 as substrate
-        _grantEModeCategory(2);
-
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(emodeFuse),
@@ -208,11 +181,11 @@ contract DolomiteEModeTest is Test {
     }
 
     function test_EModeFuse_Enter_UnsupportedCategory() public {
-        // Don't grant category 1 as substrate
+        // Category 99 does not exist in mock registry — should revert
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(emodeFuse),
-            data: abi.encodeCall(emodeFuse.enter, (DolomiteEModeFuseEnterData({subAccountId: 0, categoryId: 1})))
+            data: abi.encodeCall(emodeFuse.enter, (DolomiteEModeFuseEnterData({subAccountId: 0, categoryId: 99})))
         });
 
         vm.prank(alpha);
@@ -221,8 +194,6 @@ contract DolomiteEModeTest is Test {
     }
 
     function test_EModeFuse_Enter_AlreadyInSameMode() public {
-        _grantEModeCategory(1);
-
         // Enable E-mode first
         FuseAction[] memory actions1 = new FuseAction[](1);
         actions1[0] = FuseAction({
@@ -246,9 +217,6 @@ contract DolomiteEModeTest is Test {
     }
 
     function test_EModeFuse_Enter_SwitchEModeCategory() public {
-        _grantEModeCategory(1);
-        _grantEModeCategory(2);
-
         // Enable stablecoin E-mode
         FuseAction[] memory actions1 = new FuseAction[](1);
         actions1[0] = FuseAction({
@@ -275,9 +243,6 @@ contract DolomiteEModeTest is Test {
     }
 
     function test_EModeFuse_Enter_DifferentSubAccounts() public {
-        _grantEModeCategory(1);
-        _grantEModeCategory(2);
-
         // Enable stablecoin E-mode on sub-account 0
         FuseAction[] memory actions1 = new FuseAction[](1);
         actions1[0] = FuseAction({
@@ -307,8 +272,6 @@ contract DolomiteEModeTest is Test {
     // ============================================================================
 
     function test_EModeFuse_Exit_DisableEMode() public {
-        _grantEModeCategory(1);
-
         // Enable E-mode first
         FuseAction[] memory actions1 = new FuseAction[](1);
         actions1[0] = FuseAction({
@@ -379,10 +342,7 @@ contract DolomiteEModeTest is Test {
     function _deployFuses() internal {
         supplyFuse = new DolomiteSupplyFuse(DOLOMITE_MARKET_ID, DOLOMITE_MARGIN, DEPOSIT_WITHDRAWAL_ROUTER);
         balanceFuse = new DolomiteBalanceFuse(DOLOMITE_MARKET_ID, DOLOMITE_MARGIN);
-        // E-mode fuse uses separate market ID to avoid substrate conflicts with BalanceFuse
-        emodeFuse = new DolomiteEModeFuse(DOLOMITE_EMODE_MARKET_ID, DOLOMITE_MARGIN, address(mockRegistry));
-        // Dummy balance fuse for E-mode market (always returns 0)
-        emodeBalanceFuse = new MockEModeBalanceFuse(DOLOMITE_EMODE_MARKET_ID);
+        emodeFuse = new DolomiteEModeFuse(DOLOMITE_MARKET_ID, address(mockRegistry));
     }
 
     function _setupPriceOracle() internal {
@@ -461,10 +421,7 @@ contract DolomiteEModeTest is Test {
         fusesToAdd[1] = address(emodeFuse);
         PlasmaVaultGovernance(plasmaVault).addFuses(fusesToAdd);
 
-        // Add BalanceFuse for the asset market (DOLOMITE_MARKET_ID)
         PlasmaVaultGovernance(plasmaVault).addBalanceFuse(DOLOMITE_MARKET_ID, address(balanceFuse));
-        // Add dummy BalanceFuse for the E-mode market (DOLOMITE_EMODE_MARKET_ID)
-        PlasmaVaultGovernance(plasmaVault).addBalanceFuse(DOLOMITE_EMODE_MARKET_ID, address(emodeBalanceFuse));
 
         // Initial substrates for asset market: USDC only
         bytes32[] memory substrates = new bytes32[](1);
@@ -476,32 +433,6 @@ contract DolomiteEModeTest is Test {
         _currentSubstrates = substrates;
 
         vm.stopPrank();
-    }
-
-    bytes32[] internal _emodeSubstrates;
-
-    function _grantEModeCategory(uint8 categoryId_) internal {
-        bytes32 newSubstrate = bytes32(uint256(categoryId_));
-
-        bool found = false;
-        for (uint256 i = 0; i < _emodeSubstrates.length; i++) {
-            if (_emodeSubstrates[i] == newSubstrate) {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            bytes32[] memory newArray = new bytes32[](_emodeSubstrates.length + 1);
-            for (uint256 i = 0; i < _emodeSubstrates.length; i++) {
-                newArray[i] = _emodeSubstrates[i];
-            }
-            newArray[_emodeSubstrates.length] = newSubstrate;
-            _emodeSubstrates = newArray;
-        }
-
-        vm.prank(admin);
-        PlasmaVaultGovernance(plasmaVault).grantMarketSubstrates(DOLOMITE_EMODE_MARKET_ID, _emodeSubstrates);
     }
 
     receive() external payable {}

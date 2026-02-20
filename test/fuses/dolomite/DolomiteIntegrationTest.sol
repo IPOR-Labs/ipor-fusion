@@ -48,7 +48,7 @@ contract DolomiteIntegrationTest is Test {
     address public constant BASE_CURRENCY_PRICE_SOURCE = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
 
     // ============ Market ID for tests ============
-    uint256 public constant DOLOMITE_MARKET_ID = 50;
+    uint256 public constant DOLOMITE_MARKET_ID = 46;
 
     // ============ Contract Instances ============
     address public plasmaVault;

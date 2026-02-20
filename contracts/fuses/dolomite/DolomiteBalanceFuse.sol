@@ -26,7 +26,6 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
     error DolomiteBalanceFuseInvalidMarketId();
     error DolomiteBalanceFuseInvalidDolomiteMargin();
     error DolomiteBalanceFuseInvalidSubstrateAsset();
-    error DolomiteBalanceFuseNegativeBalance();
 
     constructor(uint256 marketId_, address dolomiteMargin_) {
         if (marketId_ == 0) {
@@ -42,7 +41,10 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
     }
 
     /// @notice Calculates total value of PlasmaVault's Dolomite positions in USD (18 decimals)
-    /// @return The total balance in USD normalized to WAD
+    /// @dev IMPORTANT: Substrates must not contain duplicates for the same (asset, subAccountId) pair
+    ///      with different canBorrow values, e.g. (USDC, subAccount=0, canBorrow=false) and
+    ///      (USDC, subAccount=0, canBorrow=true). This would cause double-counting of the balance.
+    /// @return The total balance in USD normalized to WAD (returns 0 if net balance is negative)
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 len = substrates.length;
@@ -54,10 +56,12 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
         int256 balanceTemp;
         address plasmaVault = address(this);
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+        IDolomiteMargin dolomiteMargin = IDolomiteMargin(DOLOMITE_MARGIN);
 
         DolomiteSubstrate memory substrate;
         uint256 dolomiteMarketId;
         IDolomiteMargin.Wei memory balance;
+        IDolomiteMargin.AccountInfo memory accountInfo;
 
         for (uint256 i; i < len; ++i) {
             substrate = DolomiteFuseLib.bytes32ToSubstrate(substrates[i]);
@@ -66,14 +70,14 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
                 revert DolomiteBalanceFuseInvalidSubstrateAsset();
             }
 
-            dolomiteMarketId = IDolomiteMargin(DOLOMITE_MARGIN).getMarketIdByTokenAddress(substrate.asset);
+            dolomiteMarketId = dolomiteMargin.getMarketIdByTokenAddress(substrate.asset);
 
-            IDolomiteMargin.AccountInfo memory accountInfo = IDolomiteMargin.AccountInfo({
+            accountInfo = IDolomiteMargin.AccountInfo({
                 owner: plasmaVault,
                 number: uint256(substrate.subAccountId)
             });
 
-            balance = IDolomiteMargin(DOLOMITE_MARGIN).getAccountWei(accountInfo, dolomiteMarketId);
+            balance = dolomiteMargin.getAccountWei(accountInfo, dolomiteMarketId);
 
             if (balance.sign) {
                 balanceTemp += _convertToUsd(priceOracleMiddleware, substrate.asset, balance.value).toInt256();
@@ -82,11 +86,7 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
             }
         }
 
-        if (balanceTemp < 0) {
-            revert DolomiteBalanceFuseNegativeBalance();
-        }
-
-        return uint256(balanceTemp);
+        return balanceTemp > 0 ? uint256(balanceTemp) : 0;
     }
 
     function _convertToUsd(

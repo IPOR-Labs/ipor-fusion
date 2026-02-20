@@ -119,6 +119,8 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return (data_.asset, 0);
         }
 
+        // @dev getMarketIdByTokenAddress reverts if token is not registered in Dolomite.
+        // dolomiteMarketId == 0 is valid (it's WETH on Dolomite).
         uint256 dolomiteMarketId = IDolomiteMargin(DOLOMITE_MARGIN).getMarketIdByTokenAddress(data_.asset);
         int256 balanceBeforeSigned;
         IDolomiteMargin.AccountInfo memory accountInfo;
@@ -142,6 +144,8 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             finalAmount,
             IDepositWithdrawalRouter.EventFlag.None
         );
+
+        ERC20(data_.asset).forceApprove(DEPOSIT_WITHDRAWAL_ROUTER, 0);
 
         if (data_.minBalanceIncrease > 0) {
             IDolomiteMargin.Wei memory balanceAfter = IDolomiteMargin(DOLOMITE_MARGIN).getAccountWei(

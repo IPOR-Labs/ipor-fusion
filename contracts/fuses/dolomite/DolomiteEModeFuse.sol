@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {IDolomiteMargin} from "./ext/IDolomiteMargin.sol";
 import {IDolomiteAccountRegistry} from "./ext/IDolomiteAccountRegistry.sol";
 
 /// @dev Struct for enabling E-mode on a Dolomite sub-account
@@ -26,7 +24,6 @@ struct DolomiteEModeFuseExitData {
 contract DolomiteEModeFuse is IFuseCommon {
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
-    address public immutable DOLOMITE_MARGIN;
     address public immutable DOLOMITE_ACCOUNT_REGISTRY;
 
     event DolomiteEModeFuseEnter(address version, uint8 subAccountId, uint8 categoryId, string categoryLabel);
@@ -34,19 +31,14 @@ contract DolomiteEModeFuse is IFuseCommon {
     event DolomiteEModeFuseExit(address version, uint8 subAccountId, uint8 previousCategoryId);
 
     error DolomiteEModeFuseInvalidMarketId();
-    error DolomiteEModeFuseInvalidDolomiteMargin();
     error DolomiteEModeFuseInvalidAccountRegistry();
     error DolomiteEModeFuseInvalidCategory(uint8 categoryId);
-    error DolomiteEModeFuseUnsupportedCategory(uint8 categoryId);
     error DolomiteEModeFuseAlreadyInMode(uint8 subAccountId, uint8 currentCategoryId);
     error DolomiteEModeFuseNotInEMode(uint8 subAccountId);
 
-    constructor(uint256 marketId_, address dolomiteMargin_, address dolomiteAccountRegistry_) {
+    constructor(uint256 marketId_, address dolomiteAccountRegistry_) {
         if (marketId_ == 0) {
             revert DolomiteEModeFuseInvalidMarketId();
-        }
-        if (dolomiteMargin_ == address(0)) {
-            revert DolomiteEModeFuseInvalidDolomiteMargin();
         }
         if (dolomiteAccountRegistry_ == address(0)) {
             revert DolomiteEModeFuseInvalidAccountRegistry();
@@ -54,7 +46,6 @@ contract DolomiteEModeFuse is IFuseCommon {
 
         VERSION = address(this);
         MARKET_ID = marketId_;
-        DOLOMITE_MARGIN = dolomiteMargin_;
         DOLOMITE_ACCOUNT_REGISTRY = dolomiteAccountRegistry_;
     }
 
@@ -65,10 +56,6 @@ contract DolomiteEModeFuse is IFuseCommon {
     function enter(DolomiteEModeFuseEnterData memory data_) public returns (uint8 subAccountId, uint8 categoryId) {
         if (data_.categoryId == 0) {
             revert DolomiteEModeFuseInvalidCategory(data_.categoryId);
-        }
-
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, bytes32(uint256(data_.categoryId)))) {
-            revert DolomiteEModeFuseUnsupportedCategory(data_.categoryId);
         }
 
         IDolomiteAccountRegistry.EModeCategory memory category = IDolomiteAccountRegistry(DOLOMITE_ACCOUNT_REGISTRY)

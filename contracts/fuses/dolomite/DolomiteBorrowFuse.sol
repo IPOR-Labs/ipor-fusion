@@ -166,6 +166,8 @@ contract DolomiteBorrowFuse is IFuseCommon {
 
         _executeDeposit(uint256(data_.subAccountId), dolomiteMarketId, repayAmount, address(this));
 
+        ERC20(data_.asset).forceApprove(DOLOMITE_MARGIN, 0);
+
         uint256 actualRepaid = balanceBefore - ERC20(data_.asset).balanceOf(address(this));
 
         if (actualRepaid < data_.minDebtReduction) {
