@@ -193,7 +193,7 @@ library IporFusionMarkets {
     /// @dev Substrate values: Encoded combination of type flag and address
     ///      - Asset: AaveV4SubstrateLib.encodeAsset(tokenAddress) - ERC20 token address with flag 0x01
     ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
-    uint256 public constant AAVE_V4 = 45;
+    uint256 public constant AAVE_V4 = 44;
 
     /// @dev Midas RWA market (mTBILL, mBASIS)
     /// @dev Substrate type: MidasSubstrateType (M_TOKEN, DEPOSIT_VAULT, REDEMPTION_VAULT, INSTANT_REDEMPTION_VAULT, ASSET)
@@ -211,7 +211,7 @@ library IporFusionMarkets {
     /// @dev Market 2 for ERC4626 Vault
     uint256 public constant ERC4626_0002 = 100_002;
 
-    /// @dev Market 3 for ERC4626 Vault
+    /// @dev Market 3 for ERC4626 Vaultś
     uint256 public constant ERC4626_0003 = 100_003;
 
     /// @dev Market 4 for ERC4626 Vault
