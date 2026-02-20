@@ -63,6 +63,9 @@ struct EbisuZapperCreateFuseExitData {
     bool exitFromCollateral;
 }
 
+/// @title EbisuZapperCreateFuse - Fuse for creating and closing Ebisu leveraged Troves
+/// @author IPOR Labs
+/// @notice Fuse contract that enables PlasmaVault to open and close leveraged Troves through Ebisu Zapper
 contract EbisuZapperCreateFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
