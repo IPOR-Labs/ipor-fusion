@@ -382,7 +382,7 @@ contract EbisuZapperTest is Test {
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(zapperFuse),
-            abi.encodeWithSignature("exit((address,uint256,uint256,bool))", exitData)
+            abi.encodeWithSignature("exit((address,bool,uint256,uint256))", exitData)
         );
 
         address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
@@ -436,7 +436,7 @@ contract EbisuZapperTest is Test {
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(zapperFuse),
-            abi.encodeWithSignature("exit((address,uint256,uint256,bool))", exitData)
+            abi.encodeWithSignature("exit((address,bool,uint256,uint256))", exitData)
         );
 
         uint256 totalAssetsBefore = plasmaVault.totalAssets();
@@ -694,7 +694,7 @@ contract EbisuZapperTest is Test {
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(zapperFuse),
-            abi.encodeWithSignature("exit((address,uint256,uint256,bool))", exitData)
+            abi.encodeWithSignature("exit((address,bool,uint256,uint256))", exitData)
         );
 
         vm.expectRevert(abi.encodeWithSignature("UnsupportedSubstrate()"));
@@ -713,7 +713,7 @@ contract EbisuZapperTest is Test {
         FuseAction[] memory exitCalls = new FuseAction[](1);
         exitCalls[0] = FuseAction(
             address(zapperFuse),
-            abi.encodeWithSignature("exit((address,uint256,uint256,bool))", exitData)
+            abi.encodeWithSignature("exit((address,bool,uint256,uint256))", exitData)
         );
 
         vm.expectRevert(abi.encodeWithSignature("TroveNotOpen()"));
