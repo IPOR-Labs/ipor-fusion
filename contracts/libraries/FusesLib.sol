@@ -5,6 +5,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
+import {IporMath} from "./math/IporMath.sol";
 /**
  * @title Fuses Library - Core Component for Plasma Vault's Fuse Management System
  * @notice Library managing the lifecycle and configuration of fuses - specialized contracts that enable
@@ -139,7 +140,7 @@ library FusesLib {
     /**
      * @notice Retrieves the complete array of supported fuse contracts in the Plasma Vault
      * @dev Provides direct access to the fuses array from FuseStorageLib
-     * - Array maintains order of fuse addition
+     * - Array order is NOT guaranteed to match insertion order; removeFuse uses swap-and-pop which reorders elements
      * - Used for fuse enumeration and management
      * - Critical for vault configuration and auditing
      *
@@ -164,7 +165,7 @@ library FusesLib {
      *
      * Related Functions:
      * - addFuse(): Appends to this array
-     * - removeFuse(): Maintains array ordering
+     * - removeFuse(): Uses swap-and-pop; does NOT preserve array ordering
      * - getFuseArrayIndex(): Maps addresses to indices
      */
     function getFusesArray() internal view returns (address[] memory) {
@@ -527,28 +528,35 @@ library FusesLib {
      * - Protocol Operations: State checks
      *
      * Performance Notes:
-     * - Constant gas cost for array access
-     * - No array copying - returns storage reference
-     * - Efficient for bulk market operations
+     * - Returns a memory copy of the storage array (not a storage reference)
+     * - Gas cost scales linearly with the number of active markets due to the copy
      * - Suitable for view function calls
      */
     function getActiveMarketsInBalanceFuses() internal view returns (uint256[] memory) {
         return PlasmaVaultStorageLib.getBalanceFuses().marketIds;
     }
 
+    /// @dev Returns dust threshold in WAD (18 decimals) to match balanceOf() which returns USD in WAD
+    /// IL-6962 fix: Balance fuses return values in WAD format, so dust threshold must also be in WAD
     function _calculateAllowedDustInBalanceFuse() private view returns (uint256) {
-        return 10 ** (PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals / 2);
+        uint8 underlyingDecimals = PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals;
+        return IporMath.convertToWad(10 ** (underlyingDecimals / 2), underlyingDecimals);
     }
 
     function _updateBalanceFuseStructWhenAdding(uint256 marketId_, address fuse_) private {
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
 
-        uint256 newMarketIdIndexValue = balanceFuses.marketIds.length + 1;
-
         balanceFuses.fuseAddresses[marketId_] = fuse_;
-        balanceFuses.marketIds.push(marketId_);
-        balanceFuses.indexes[marketId_] = newMarketIdIndexValue;
+
+        // @dev If marketId already has a fuse assigned, it's already in marketIds array,
+        // @dev so skip adding it again to prevent duplicates. Only update the fuse address
+        if (balanceFuses.indexes[marketId_] == 0) {
+            uint256 newMarketIdIndexValue = balanceFuses.marketIds.length + 1;
+            balanceFuses.marketIds.push(marketId_);
+            balanceFuses.indexes[marketId_] = newMarketIdIndexValue;
+        }
     }
+    
     function _updateBalanceFuseStructWhenRemoving(uint256 marketId_) private {
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
 

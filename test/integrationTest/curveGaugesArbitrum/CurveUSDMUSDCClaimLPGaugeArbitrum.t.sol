@@ -151,13 +151,13 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         assertEq(vaultStateAfterClaiming.vaultBalance, 0, "Vault balance should be 0 after claiming rewards");
         assertEq(
             vaultStateAfterEnterCurveGauge.vaultTotalAssets,
-            1999767029320268709038,
-            "Vault total assets after entering curve gauge should equal 1999767029320268709038"
+            1953268810055587553767,
+            "Vault total assets after entering curve gauge should equal 1953268810055587553767"
         );
         assertEq(
             vaultStateAfterClaiming.vaultTotalAssets,
-            1999767029320268709038,
-            "Vault total assets after claiming should equal 1999767029320268709038"
+            1953268810055587553767,
+            "Vault total assets after claiming should equal 1953268810055587553767"
         );
         assertEq(
             vaultStateAfterEnterCurveGauge.vaultTotalAssets,
@@ -314,13 +314,13 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         assertEq(vaultStateAfterClaiming.vaultBalance, 0, "Vault balance should be 0 after claiming rewards");
         assertEq(
             vaultStateAfterEnterCurveGauge.vaultTotalAssets,
-            1999767029320268709038,
-            "Vault total assets after entering curve gauge should equal 1999767029320268709038"
+            1953268810055587553767,
+            "Vault total assets after entering curve gauge should equal 1953268810055587553767"
         );
         assertEq(
             vaultStateAfterClaiming.vaultTotalAssets,
-            1999767029320268709038,
-            "Vault total assets after claiming should equal 1999767029320268709038"
+            1953268810055587553767,
+            "Vault total assets after claiming should equal 1953268810055587553767"
         );
         assertEq(
             vaultStateAfterEnterCurveGauge.vaultTotalAssets,
@@ -584,12 +584,14 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
         instances.usdmPriceFeed = new USDMPriceFeedArbitrum();
         vm.prank(addresses.chronicleAdmin);
         IToll(address(chronicleOracle)).kiss(address(instances.usdmPriceFeed));
-        assets = new address[](2);
-        sources = new address[](2);
+        assets = new address[](3);
+        sources = new address[](3);
         assets[0] = addresses.usdm;
         assets[1] = addresses.arb;
+        assets[2] = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831; // USDC on Arbitrum
         sources[0] = address(instances.usdmPriceFeed);
         sources[1] = addresses.chainlinkArb;
+        sources[2] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3; // Chainlink USDC/USD on Arbitrum
     }
 
     function _setupPriceOracle() private {

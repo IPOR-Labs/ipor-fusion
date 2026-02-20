@@ -47,7 +47,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UINT256, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -66,7 +66,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UINT128, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -85,7 +85,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UINT64, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -104,7 +104,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UINT32, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -123,7 +123,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UINT16, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -142,7 +142,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UINT8, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -161,7 +161,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.INT256, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -180,7 +180,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.INT128, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -199,7 +199,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.INT64, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -218,7 +218,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.INT32, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -237,7 +237,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.INT16, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -256,7 +256,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.INT8, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -275,7 +275,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.ADDRESS, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -294,7 +294,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.BOOL, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -313,7 +313,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.BOOL, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -332,7 +332,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.BYTES32, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -351,7 +351,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UNKNOWN, bytesStart: 0, bytesEnd: 32});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -374,7 +374,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[2] = ReadDataFromResponse({dataType: DataType.UINT256, bytesStart: 64, bytesEnd: 96});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 3});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 3});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -400,7 +400,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers2[0] = ReadDataFromResponse({dataType: DataType.UINT256, bytesStart: 0, bytesEnd: 32});
         calls[1] = ExternalCall({target: address(mockTarget), targetCalldata: callData2, readers: readers2});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 2});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 2});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -418,7 +418,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UINT256, bytesStart: 0, bytesEnd: 33});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
 
@@ -435,7 +435,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers[0] = ReadDataFromResponse({dataType: DataType.UINT256, bytesStart: 0, bytesEnd: 33});
         calls[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData, readers: readers});
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 1});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 1});
 
         bytes memory data = abi.encode(externalCalls);
 
@@ -447,7 +447,7 @@ contract TransientStorageChainReaderFuseTest is Test {
     function testEnterWithEmptyCalls() public {
         ExternalCall[] memory calls = new ExternalCall[](0);
 
-        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responsLength: 0});
+        ExternalCalls memory externalCalls = ExternalCalls({calls: calls, responseLength: 0});
 
         bytes memory data = abi.encode(externalCalls);
         mock.enter(data);
@@ -466,7 +466,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers1[0] = ReadDataFromResponse({dataType: DataType.UINT256, bytesStart: 0, bytesEnd: 32});
         calls1[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData1, readers: readers1});
 
-        ExternalCalls memory externalCalls1 = ExternalCalls({calls: calls1, responsLength: 1});
+        ExternalCalls memory externalCalls1 = ExternalCalls({calls: calls1, responseLength: 1});
 
         bytes memory data1 = abi.encode(externalCalls1);
         mock.enter(data1);
@@ -481,7 +481,7 @@ contract TransientStorageChainReaderFuseTest is Test {
         readers2[0] = ReadDataFromResponse({dataType: DataType.UINT256, bytesStart: 0, bytesEnd: 32});
         calls2[0] = ExternalCall({target: address(mockTarget), targetCalldata: callData2, readers: readers2});
 
-        ExternalCalls memory externalCalls2 = ExternalCalls({calls: calls2, responsLength: 1});
+        ExternalCalls memory externalCalls2 = ExternalCalls({calls: calls2, responseLength: 1});
 
         bytes memory data2 = abi.encode(externalCalls2);
         mock.enter(data2);

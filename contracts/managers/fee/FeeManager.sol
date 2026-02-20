@@ -474,8 +474,12 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @dev This function sets the minimum time (in seconds) that must elapse before the HWM can be updated again.
     ///      The interval helps prevent frequent HWM updates, which could be exploited to reduce or avoid performance fees.
     ///      Only callable by addresses with the `restricted` modifier (e.g., governance or automation).
-    ///      Setting the interval to zero disables the time restriction, allowing HWM to be updated at any time.
-    /// @param updateInterval_ The new minimum update interval in seconds
+    ///      Setting the interval to zero disables automatic HWM lowering during downtrends in
+    ///      `calculateAndUpdatePerformanceFee`. When disabled, the HWM remains at the historical peak
+    ///      until manually updated via `updateHighWaterMarkPerformanceFee`.
+    ///      Setting a non-zero interval enables automatic HWM lowering: if the exchange rate is below the HWM
+    ///      and the interval has elapsed since the last update, the HWM is automatically lowered to the current rate.
+    /// @param updateInterval_ The new minimum update interval in seconds. Zero disables automatic HWM lowering.
     /// @custom:security Only callable by authorized roles to prevent manipulation.
     /// @custom:security Setting a reasonable interval is important to mitigate fee gaming and ensure fair accrual.
     /// @custom:see EIP-4626 for vault fee patterns and best practices.
@@ -513,7 +517,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @param actualExchangeRate_ Current exchange rate between shares and assets (assets per 1 unit of share (10**shareDecimals))
     /// @param totalSupply_ Total supply of vault shares
     /// @param performanceFee_ Performance fee percentage with 2 decimal precision (10000 = 100%)
-    /// @param assetDecimals_ Number of decimals in the underlying asset
+    /// @param assetDecimals_ Unused. Retained for ABI backward compatibility. No normalization is performed;
+    ///        callers must ensure actualExchangeRate_ is already in share-consistent units.
     ///
     /// @return recipient Address of the performance fee recipient (PERFORMANCE_FEE_ACCOUNT or address(0))
     /// @return feeShares Number of shares to be minted as performance fee
@@ -521,8 +526,9 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @dev Flow:
     /// 1. If HWM is 0 (first time), sets HWM to current rate and returns 0 fee
     /// 2. If current rate is below HWM:
-    ///    - If update interval not passed: returns 0 fee
-    ///    - If update interval passed: updates HWM to current rate and returns 0 fee
+    ///    - If updateInterval is 0 (disabled): no automatic HWM update, returns 0 fee
+    ///    - If updateInterval > 0 and interval not yet passed: returns 0 fee
+    ///    - If updateInterval > 0 and interval has passed: updates HWM to current rate and returns 0 fee
     /// 3. If current rate is above HWM:
     ///    - Calculates fee based on the gain above HWM
     ///    - Returns fee recipient and calculated shares

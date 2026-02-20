@@ -63,4 +63,23 @@ interface ICurveStableswapNG {
         uint256 _min_received,
         address _receiver
     ) external returns (uint256);
+
+    /**
+     * @dev Return the total supply of LP tokens
+     * @return Total supply of LP tokens
+     */
+    function totalSupply() external view returns (uint256);
+
+    /**
+     * @dev Return the balance of coin at index i held by the pool
+     * @param i Index of the coin
+     * @return Balance of the coin
+     */
+    function balances(uint256 i) external view returns (uint256);
+
+    /**
+     * @dev Return the number of decimals of the LP token
+     * @return Number of decimals
+     */
+    function decimals() external view returns (uint256);
 }

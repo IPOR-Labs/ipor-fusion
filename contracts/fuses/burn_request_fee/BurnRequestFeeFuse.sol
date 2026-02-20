@@ -107,6 +107,10 @@ contract BurnRequestFeeFuse is IFuseCommon {
     /// - Uses nested delegatecall to PlasmaVaultBase for proper hook execution
     ///
     /// @param data_ Struct containing the amount of shares to burn
+    /// @dev IMPORTANT: This fuse reads the WITHDRAW_MANAGER storage slot via PlasmaVaultStorageLib.getWithdrawManager().
+    /// This slot was corrected in IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER.
+    /// Any changes to the WITHDRAW_MANAGER slot in PlasmaVaultStorageLib must be carefully coordinated
+    /// with all fuses that access it, as fuses execute via delegatecall in the PlasmaVault storage context.
     function enter(BurnRequestFeeDataEnter memory data_) public {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 

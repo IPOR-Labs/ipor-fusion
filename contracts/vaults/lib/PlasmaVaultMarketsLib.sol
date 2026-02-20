@@ -161,15 +161,14 @@ library PlasmaVaultMarketsLib {
                     marketsChecked[index] = marketsToCheck[i];
                     ++index;
 
-                    uint256 dependentMarketsLength = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i]).length;
+                    uint256[] memory dependentMarkets = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i]);
+                    uint256 dependentMarketsLength = dependentMarkets.length;
                     if (dependentMarketsLength > 0) {
                         for (uint256 j; j < dependentMarketsLength; ++j) {
                             if (tempMarketsToCheck.length == tempIndex) {
                                 tempMarketsToCheck = _increaseArray(tempMarketsToCheck, tempMarketsToCheck.length * 2);
                             }
-                            tempMarketsToCheck[tempIndex] = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i])[
-                                j
-                            ];
+                            tempMarketsToCheck[tempIndex] = dependentMarkets[j];
                             ++tempIndex;
                         }
                     }

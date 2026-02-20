@@ -92,7 +92,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
-    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 7;
+    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 9;
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -1001,6 +1001,18 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         if (plasmaVaultAddress_.priceOracleMiddlewareManager != address(0)) {
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.setupContext.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.clearContext.selector,
+                minimalExecutionDelay: 0
+            });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.priceOracleMiddlewareManager,
                 roleId: Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
