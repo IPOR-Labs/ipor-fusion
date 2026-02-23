@@ -141,6 +141,8 @@ library FeeManagerStorageLib {
         return _highWaterMarkPerformanceFeeStorage();
     }
 
+    /// @notice Updates the high water mark (HWM) value and records the current timestamp as the last update time
+    /// @param highWaterMark_ The new high water mark value (exchange rate with asset decimals precision)
     function updateHighWaterMarkPerformanceFee(uint128 highWaterMark_) internal {
         HighWaterMarkPerformanceFeeStorage storage $ = _highWaterMarkPerformanceFeeStorage();
         $.highWaterMark = highWaterMark_;
@@ -148,6 +150,10 @@ library FeeManagerStorageLib {
         emit HighWaterMarkPerformanceFeeUpdated(highWaterMark_);
     }
 
+    /// @notice Updates the minimum interval between automatic HWM updates during downtrends
+    /// @dev Setting updateInterval_ to 0 disables automatic HWM lowering in `calculateAndUpdatePerformanceFee`;
+    ///      only manual updates via `updateHighWaterMarkPerformanceFee` are possible when disabled.
+    /// @param updateInterval_ The new minimum update interval in seconds. Zero disables automatic HWM lowering.
     function updateIntervalHighWaterMarkPerformanceFee(uint32 updateInterval_) internal {
         HighWaterMarkPerformanceFeeStorage storage $ = _highWaterMarkPerformanceFeeStorage();
         $.updateInterval = updateInterval_;

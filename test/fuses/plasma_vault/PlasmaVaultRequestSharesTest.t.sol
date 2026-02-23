@@ -71,6 +71,15 @@ contract PlasmaVaultRequestSharesTest is Test {
         addUniversalTokenSwapper();
         setupDependenciesGraph();
         addPlasmaVaultRequestFuses();
+
+        // IL-6952: The WITHDRAW_MANAGER storage slot was moved from the old location (which collided
+        // with CALLBACK_HANDLER) to the new slot 0x465d2ff...00. The forked FORTUNAFI_VAULT still has
+        // the withdraw manager at the old slot, so we write it to the new slot for the fuse to find it.
+        vm.store(
+            FORTUNAFI_VAULT,
+            0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100,
+            bytes32(uint256(uint160(FORTUNAFI_WithdrawManager)))
+        );
     }
 
     function testShouldSwapUsdcToRUsdc() public {
@@ -137,17 +146,11 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         uint256 vaultTotalAssetsBefore = PlasmaVault(TAU_VAULT).totalAssets();
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: FORTUNAFI_VAULT,
-            vaultAssetAmount: rUsdcVaultBalanceBefore
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market1 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market1,
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter((address,uint256))", FORTUNAFI_VAULT, rUsdcVaultBalanceBefore)
         );
 
         // when
@@ -255,6 +258,74 @@ contract PlasmaVaultRequestSharesTest is Test {
             4895730457793346009363064,
             "sharesAmountAfter is not equal to 4895730457793346009363064"
         );
+    }
+
+    /// @dev IL-6958: Verify that enter() returns the actual clamped shares amount, not the input amount.
+    ///      When sharesAmount > balance, the returned value should be clamped to balance.
+    function testShouldReturnClampedSharesAmountWhenInputExceedsBalance() public {
+        // given
+        testShouldBeAbleToDepositToFortunaFiVault();
+        uint256 actualBalance = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        uint256 inflatedAmount = actualBalance * 2; // request double the balance
+
+        PlasmaVaultRequestSharesFuseEnterData memory enterData = PlasmaVaultRequestSharesFuseEnterData({
+            sharesAmount: inflatedAmount,
+            plasmaVault: FORTUNAFI_VAULT
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            plasmaVaultRequestSharesFuse,
+            abi.encodeWithSignature("enter((uint256,address))", enterData)
+        );
+
+        // when
+        vm.startPrank(TAU_ALPHA);
+        PlasmaVault(TAU_VAULT).execute(enterCalls);
+        vm.stopPrank();
+
+        // then - the vault balance should decrease by actualBalance (the clamped amount), not inflatedAmount
+        uint256 sharesAmountAfter = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        // The request was clamped to actualBalance, so the remaining shares are based on actualBalance being requested
+        assertLt(sharesAmountAfter, actualBalance, "shares should have decreased");
+    }
+
+    /// @dev IL-6958: Verify that enterTransient stores the actual clamped shares amount in transient outputs,
+    ///      not the inflated input amount.
+    function testShouldStoreClampedSharesInTransientWhenInputExceedsBalance() public {
+        // given
+        testShouldBeAbleToDepositToFortunaFiVault();
+        uint256 actualBalance = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        uint256 inflatedAmount = actualBalance * 2; // request double the balance
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = plasmaVaultRequestSharesFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(inflatedAmount);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(FORTUNAFI_VAULT);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        calls[1] = FuseAction({fuse: plasmaVaultRequestSharesFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        // when
+        vm.startPrank(TAU_ALPHA);
+        PlasmaVault(TAU_VAULT).execute(calls);
+        vm.stopPrank();
+
+        // then - the vault balance should decrease by actualBalance (the clamped amount), not inflatedAmount
+        uint256 sharesAmountAfter = ERC20(FORTUNAFI_VAULT).balanceOf(TAU_VAULT);
+        assertLt(sharesAmountAfter, actualBalance, "shares should have decreased via transient path");
     }
 
     function testShouldBeAbleToRedeemFromRequest() public {
@@ -436,17 +507,11 @@ contract PlasmaVaultRequestSharesTest is Test {
         // given
         uint256 usdcAmount = 50_000e6;
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: IPOR_OPTIMIZER_USDC_VAULT,
-            vaultAssetAmount: usdcAmount
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market2 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market2,
-            abi.encodeWithSignature("enter((address,uint256))", enterData)
+            abi.encodeWithSignature("enter((address,uint256))", IPOR_OPTIMIZER_USDC_VAULT, usdcAmount)
         );
 
         uint256 usdcVaultBalanceBefore = ERC20(USDC).balanceOf(TAU_VAULT);
@@ -475,17 +540,11 @@ contract PlasmaVaultRequestSharesTest is Test {
 
         testShouldTransferToIporOptimizerUsdcVault();
 
-        bytes[] memory data = new bytes[](1);
-        Erc4626SupplyFuseExitData memory enterData = Erc4626SupplyFuseExitData({
-            vault: IPOR_OPTIMIZER_USDC_VAULT,
-            vaultAssetAmount: usdcAmount
-        });
-        data[0] = abi.encode(enterData);
-
+        // Note: SupplyFuseErc4626Market2 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             SupplyFuseErc4626Market2,
-            abi.encodeWithSignature("exit((address,uint256))", enterData)
+            abi.encodeWithSignature("exit((address,uint256))", IPOR_OPTIMIZER_USDC_VAULT, usdcAmount)
         );
 
         uint256 usdcVaultBalanceBefore = ERC20(USDC).balanceOf(TAU_VAULT);
