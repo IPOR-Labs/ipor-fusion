@@ -47,8 +47,8 @@ contract USDMPriceFeedArbitrum is IPriceFeed {
         override
         returns (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound)
     {
-        // Get wUSDM price in USD from Chronicle
-        uint256 wUsdMPriceUSD = CHRONICLE.read();
+        // Get wUSDM price in USD from Chronicle with timestamp
+        (uint256 wUsdMPriceUSD, uint256 chronicleAge) = CHRONICLE.readWithAge();
         if (wUsdMPriceUSD == 0) {
             revert Errors.WrongValue();
         }
@@ -71,7 +71,7 @@ contract USDMPriceFeedArbitrum is IPriceFeed {
             revert Errors.WrongValue();
         }
 
-        return (uint80(0), usdmPriceUSD.toInt256(), 0, 0, 0);
+        return (uint80(0), usdmPriceUSD.toInt256(), 0, chronicleAge, 0);
     }
 
     function _decimals() internal pure returns (uint8) {
