@@ -97,8 +97,10 @@ contract MidasRequestSupplyFuse is IFuseCommon {
 
         ERC20(data_.tokenIn).forceApprove(data_.depositVault, finalAmount);
 
+        uint256 amountInWad = IporMath.convertToWad(finalAmount, ERC20(data_.tokenIn).decimals());
+
         uint256 requestId =
-            IMidasDepositVault(data_.depositVault).depositRequest(data_.tokenIn, finalAmount, bytes32(0));
+            IMidasDepositVault(data_.depositVault).depositRequest(data_.tokenIn, amountInWad, bytes32(0));
 
         if (requestId == 0) {
             revert MidasRequestSupplyFuseInvalidRequestId();
