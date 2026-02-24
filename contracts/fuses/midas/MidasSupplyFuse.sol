@@ -89,8 +89,10 @@ contract MidasSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         uint256 mTokenBefore = ERC20(data_.mToken).balanceOf(address(this));
 
+        uint256 amountInWad = IporMath.convertToWad(finalAmount, ERC20(data_.tokenIn).decimals());
+
         IMidasDepositVault(data_.depositVault).depositInstant(
-            data_.tokenIn, finalAmount, data_.minMTokenAmountOut, bytes32(0)
+            data_.tokenIn, amountInWad, data_.minMTokenAmountOut, bytes32(0)
         );
 
         uint256 mTokenReceived = ERC20(data_.mToken).balanceOf(address(this)) - mTokenBefore;
