@@ -92,7 +92,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
-    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 9;
+    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 16;
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -1053,6 +1053,49 @@ library IporFusionAccessManagerInitializerLibV1 {
                 target: plasmaVaultAddress_.priceOracleMiddlewareManager,
                 roleId: Roles.TECH_PLASMA_VAULT_ROLE,
                 functionSelector: PriceOracleMiddlewareManager.validateAssetsPrices.selector,
+                minimalExecutionDelay: 0
+            });
+            // Oracle Security configuration (ATOMIST_ROLE)
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.configureSequencerCheck.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.setSequencerCheckEnabled.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.setAssetsStalenessThresholds.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.removeAssetsStalenessThresholds.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.setDefaultStalenessThreshold.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.setAssetsPriceBounds.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: PriceOracleMiddlewareManager.removeAssetsPriceBounds.selector,
                 minimalExecutionDelay: 0
             });
         }

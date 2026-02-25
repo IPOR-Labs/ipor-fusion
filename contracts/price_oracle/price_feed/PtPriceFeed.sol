@@ -132,14 +132,17 @@ contract PtPriceFeed is IPriceFeed {
         }
 
         // Populate Chainlink-compatible metadata
-        // Synthetic round ID derived from block number for monotonic ordering
         roundId = uint80(block.number);
-        // Start of TWAP observation window
         startedAt = block.timestamp - twapWindow;
-        // When price was computed
-        time = block.timestamp;
-        // Answer corresponds to this round
         answeredInRound = roundId;
+
+        // Propagate real updatedAt from underlying asset's price source
+        address assetSource = IPriceOracleMiddleware(PRICE_MIDDLEWARE).getSourceOfAssetPrice(ASSET_ADDRESS);
+        if (assetSource != address(0)) {
+            (, , , time, ) = IPriceFeed(assetSource).latestRoundData();
+        } else {
+            time = block.timestamp;
+        }
     }
 
     /// @notice Returns the raw PT to asset rate without price adjustment
