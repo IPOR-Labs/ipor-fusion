@@ -1699,16 +1699,6 @@ contract TacStakingFuseTest is Test {
     }
 
     function _setupFusionFactory() private {
-        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
-            accessManagerFactory: address(new AccessManagerFactory()),
-            plasmaVaultFactory: address(new PlasmaVaultFactory()),
-            feeManagerFactory: address(new FeeManagerFactory()),
-            withdrawManagerFactory: address(new WithdrawManagerFactory()),
-            rewardsManagerFactory: address(new RewardsManagerFactory()),
-            contextManagerFactory: address(new ContextManagerFactory()),
-            priceManagerFactory: address(new PriceManagerFactory())
-        });
-
         address plasmaVaultBase = address(new PlasmaVaultBase());
         address burnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
         address burnRequestFeeBalanceFuse = address(new ZeroBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
@@ -1721,9 +1711,23 @@ contract TacStakingFuseTest is Test {
             )
         );
 
+        // Deploy proxy first (uninitialized) so sub-factories know the FusionFactory address
         FusionFactory implementation = new FusionFactory();
-        bytes memory initData = abi.encodeWithSignature(
-            "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
+        fusionFactory = FusionFactory(
+            address(new ERC1967Proxy(address(implementation), ""))
+        );
+
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
+            accessManagerFactory: address(new AccessManagerFactory(address(fusionFactory))),
+            plasmaVaultFactory: address(new PlasmaVaultFactory(address(fusionFactory))),
+            feeManagerFactory: address(new FeeManagerFactory()),
+            withdrawManagerFactory: address(new WithdrawManagerFactory(address(fusionFactory))),
+            rewardsManagerFactory: address(new RewardsManagerFactory(address(fusionFactory))),
+            contextManagerFactory: address(new ContextManagerFactory(address(fusionFactory))),
+            priceManagerFactory: address(new PriceManagerFactory(address(fusionFactory)))
+        });
+
+        fusionFactory.initialize(
             atomist,
             new address[](0), // No plasma vault admins
             factoryAddresses,
@@ -1732,7 +1736,6 @@ contract TacStakingFuseTest is Test {
             burnRequestFeeFuse,
             burnRequestFeeBalanceFuse
         );
-        fusionFactory = FusionFactory(address(new ERC1967Proxy(address(implementation), initData)));
 
         vm.startPrank(atomist);
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), atomist);

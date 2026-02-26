@@ -245,26 +245,30 @@ contract TestConfigurationExample is Test {
         // Get existing factory to copy configuration
         FusionFactory existingFactory = FusionFactory(EXISTING_FUSION_FACTORY_PROXY);
 
-        // Deploy all new factories - fork factories only have create(), not clone()
-        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses;
-        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
-        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
-        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory());
-        factoryAddresses.priceManagerFactory = address(new PriceManagerFactory());
-        factoryAddresses.withdrawManagerFactory = address(new WithdrawManagerFactory());
-        factoryAddresses.rewardsManagerFactory = address(new RewardsManagerFactory());
-        factoryAddresses.contextManagerFactory = address(new ContextManagerFactory());
-
         address plasmaVaultBase = existingFactory.getPlasmaVaultBaseAddress();
         address priceOracleMiddleware = existingFactory.getPriceOracleMiddleware();
         address burnRequestFeeFuse = existingFactory.getBurnRequestFeeFuseAddress();
         address burnRequestFeeBalanceFuse = existingFactory.getBurnRequestFeeBalanceFuseAddress();
         address[] memory plasmaVaultAdminArray = existingFactory.getPlasmaVaultAdminArray();
 
-        // Deploy fresh FusionFactory with fee packages support
+        // Deploy proxy first (uninitialized) so sub-factories know the FusionFactory address
         FusionFactory implementation = new FusionFactory();
-        bytes memory initData = abi.encodeWithSelector(
-            FusionFactory.initialize.selector,
+        FusionFactory newFactory = FusionFactory(
+            address(new ERC1967Proxy(address(implementation), ""))
+        );
+
+        // Deploy all new factories - fork factories only have create(), not clone()
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses;
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory(address(newFactory)));
+        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
+        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory(address(newFactory)));
+        factoryAddresses.priceManagerFactory = address(new PriceManagerFactory(address(newFactory)));
+        factoryAddresses.withdrawManagerFactory = address(new WithdrawManagerFactory(address(newFactory)));
+        factoryAddresses.rewardsManagerFactory = address(new RewardsManagerFactory(address(newFactory)));
+        factoryAddresses.contextManagerFactory = address(new ContextManagerFactory(address(newFactory)));
+
+        // Initialize FusionFactory with fee packages support
+        newFactory.initialize(
             owner,
             plasmaVaultAdminArray,
             factoryAddresses,
@@ -273,8 +277,6 @@ contract TestConfigurationExample is Test {
             burnRequestFeeFuse,
             burnRequestFeeBalanceFuse
         );
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
-        FusionFactory newFactory = FusionFactory(address(proxy));
 
         // Grant roles
         vm.startPrank(owner);

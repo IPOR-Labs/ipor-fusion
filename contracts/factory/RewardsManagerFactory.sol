@@ -2,54 +2,53 @@
 pragma solidity 0.8.30;
 
 import {RewardsClaimManager} from "../managers/rewards/RewardsClaimManager.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {FusionFactoryCreate3Lib} from "./lib/FusionFactoryCreate3Lib.sol";
 
 /// @title RewardsManagerFactory
 /// @notice Factory contract for deploying new instances of RewardsClaimManager
 /// @dev This factory pattern allows for standardized creation of RewardsClaimManager contracts
 /// with proper initialization of access control and plasma vault dependencies
 contract RewardsManagerFactory {
-    /// @notice Emitted when a new RewardsClaimManager instance is created
-    /// @param index The index of the RewardsClaimManager instance
-    /// @param rewardsManager The address of the newly created RewardsClaimManager
-    /// @param accessManager The address of the access control manager
-    /// @param plasmaVault The address of the plasma vault contract
-    event RewardsManagerCreated(uint256 index, address rewardsManager, address accessManager, address plasmaVault);
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
-    /// @notice Creates a new instance of RewardsClaimManager
-    /// @param accessManager_ The address of the access control manager that will have initial authority
-    /// @param plasmaVault_ The address of the plasma vault contract that will handle reward distributions
-    /// @return rewardsManager The address of the newly deployed RewardsClaimManager instance
-    function create(
-        uint256 index_,
-        address accessManager_,
-        address plasmaVault_
-    ) external returns (address rewardsManager) {
-        rewardsManager = address(new RewardsClaimManager(accessManager_, plasmaVault_));
-        emit RewardsManagerCreated(index_, rewardsManager, accessManager_, plasmaVault_);
+    /// @notice Error thrown when caller is not the FusionFactory
+    error CallerNotFusionFactory();
+
+    /// @notice The address of the FusionFactory that is authorized to call deployDeterministic
+    address public immutable FUSION_FACTORY;
+
+    constructor(address fusionFactory_) {
+        FUSION_FACTORY = fusionFactory_;
     }
 
-    /// @notice Creates a new instance of RewardsClaimManager using Clones pattern
-    /// @dev Clones the base RewardsClaimManager and initializes it with the provided parameters
-    /// @param baseAddress_ The address of the base RewardsClaimManager implementation to clone
-    /// @param index_ The index of the RewardsClaimManager instance
+    modifier onlyFusionFactory() {
+        if (msg.sender != FUSION_FACTORY) revert CallerNotFusionFactory();
+        _;
+    }
+
+    /// @notice Creates a new instance of RewardsClaimManager using CREATE3 deterministic deployment
+    /// @param baseAddress_ The address of the base RewardsClaimManager implementation
+    /// @param salt_ The CREATE3 salt for deterministic address
     /// @param accessManager_ The address of the access control manager that will have initial authority
     /// @param plasmaVault_ The address of the plasma vault contract that will handle reward distributions
-    /// @return rewardsManager The address of the newly cloned RewardsClaimManager contract
-    function clone(
+    /// @return rewardsManager The address of the deterministically deployed RewardsClaimManager
+    function deployDeterministic(
         address baseAddress_,
-        uint256 index_,
+        bytes32 salt_,
         address accessManager_,
         address plasmaVault_
-    ) external returns (address rewardsManager) {
+    ) external onlyFusionFactory returns (address rewardsManager) {
         if (baseAddress_ == address(0)) revert InvalidBaseAddress();
 
-        rewardsManager = Clones.clone(baseAddress_);
+        rewardsManager = FusionFactoryCreate3Lib.deployMinimalProxyDeterministic(baseAddress_, salt_);
         RewardsClaimManager(rewardsManager).proxyInitialize(accessManager_, plasmaVault_);
+    }
 
-        emit RewardsManagerCreated(index_, rewardsManager, accessManager_, plasmaVault_);
+    /// @notice Predicts the address of a deterministic RewardsClaimManager deployment
+    /// @param salt_ The CREATE3 salt to predict the address for
+    /// @return The predicted deployment address
+    function predictDeterministicAddress(bytes32 salt_) external view returns (address) {
+        return FusionFactoryCreate3Lib.predictAddress(salt_);
     }
 }

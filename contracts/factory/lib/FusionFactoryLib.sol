@@ -5,6 +5,9 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 
 import {FusionFactoryStorageLib} from "./FusionFactoryStorageLib.sol";
 import {FusionFactoryLogicLib} from "./FusionFactoryLogicLib.sol";
+import {FusionFactoryLazyDeployLib} from "./FusionFactoryLazyDeployLib.sol";
+import {FusionFactoryCreate3Lib} from "./FusionFactoryCreate3Lib.sol";
+import {VaultInstanceAddresses, Component} from "./FusionFactoryStorageLib.sol";
 
 /**
  * @title Fusion Factory Library
@@ -48,6 +51,15 @@ library FusionFactoryLib {
 
     /// @notice Thrown when fee recipient is zero address
     error FeeRecipientZeroAddress();
+
+    /// @notice Thrown when the vault was not created by the factory
+    error VaultNotCreatedByFactory();
+
+    /// @notice Thrown when the component has already been deployed
+    error ComponentAlreadyDeployed();
+
+    /// @notice Thrown when the caller is not authorized to deploy the component
+    error UnauthorizedComponentDeployer();
 
     function initialize(
         address[] memory initialPlasmaVaultAdminArray_,
@@ -107,7 +119,10 @@ library FusionFactoryLib {
         uint256 daoFeePackageIndex_
     ) public returns (FusionFactoryLogicLib.FusionInstance memory fusionAddresses) {
         _initializeCommonFields(fusionAddresses, assetName_, assetSymbol_, underlyingToken_, owner_);
-        fusionAddresses = FusionFactoryLogicLib.doClone(
+
+        bytes32 derivedMasterSalt = FusionFactoryCreate3Lib.deriveAutoMasterSalt(fusionAddresses.index);
+
+        fusionAddresses = FusionFactoryLogicLib.doCloneDeterministicFullStack(
             fusionAddresses,
             assetName_,
             assetSymbol_,
@@ -115,8 +130,10 @@ library FusionFactoryLib {
             redemptionDelayInSeconds_,
             owner_,
             withAdmin_,
-            daoFeePackageIndex_
+            daoFeePackageIndex_,
+            derivedMasterSalt
         );
+
         _emitEvent(fusionAddresses);
         return fusionAddresses;
     }
@@ -164,5 +181,120 @@ library FusionFactoryLib {
             fusionAddresses.plasmaVaultBase,
             fusionAddresses.feeManager
         );
+    }
+
+    /// @notice Creates a new Fusion Vault with explicit salt for cross-chain deterministic deployment
+    /// @dev Phase 1 components are deployed atomically, Phase 2 components are pre-computed for lazy deployment
+    /// @param assetName_ The name of the asset
+    /// @param assetSymbol_ The symbol of the asset
+    /// @param underlyingToken_ The address of the underlying token
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param owner_ The owner of the Fusion Vault
+    /// @param withAdmin_ Whether to include admin role
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
+    /// @param masterSalt_ User-provided master salt for cross-chain deterministic deployment
+    /// @return fusionAddresses The Fusion Vault instance with Phase 1 deployed and Phase 2 pre-computed
+    function cloneWithSalt(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_,
+        bool withAdmin_,
+        uint256 daoFeePackageIndex_,
+        bytes32 masterSalt_
+    ) public returns (FusionFactoryLogicLib.FusionInstance memory fusionAddresses) {
+        if (underlyingToken_ == address(0)) revert InvalidUnderlyingToken();
+        if (owner_ == address(0)) revert InvalidOwner();
+
+        bytes32 derivedMasterSalt = FusionFactoryCreate3Lib.deriveExplicitMasterSalt(masterSalt_);
+
+        fusionAddresses.version = FusionFactoryStorageLib.getFusionFactoryVersion();
+        fusionAddresses.index = _increaseFusionFactoryIndex();
+        fusionAddresses.assetName = assetName_;
+        fusionAddresses.assetSymbol = assetSymbol_;
+        fusionAddresses.underlyingToken = underlyingToken_;
+        fusionAddresses.underlyingTokenSymbol = IERC20Metadata(underlyingToken_).symbol();
+        fusionAddresses.underlyingTokenDecimals = IERC20Metadata(underlyingToken_).decimals();
+        fusionAddresses.initialOwner = owner_;
+        fusionAddresses.plasmaVaultBase = FusionFactoryStorageLib.getPlasmaVaultBaseAddress();
+
+        fusionAddresses = FusionFactoryLogicLib.doCloneDeterministic(
+            fusionAddresses,
+            assetName_,
+            assetSymbol_,
+            underlyingToken_,
+            redemptionDelayInSeconds_,
+            owner_,
+            withAdmin_,
+            daoFeePackageIndex_,
+            derivedMasterSalt
+        );
+
+        _emitEvent(fusionAddresses);
+        return fusionAddresses;
+    }
+
+    /// @notice Deploys a Phase 2 component (RewardsManager or ContextManager) at its pre-computed address
+    /// @param plasmaVault_ The address of the plasma vault
+    /// @param component_ The component to deploy
+    /// @return deployedAddress The address of the deployed component
+    function deployComponent(
+        address plasmaVault_,
+        Component component_
+    ) public returns (address deployedAddress) {
+        return FusionFactoryLazyDeployLib.deployLazyComponent(plasmaVault_, component_);
+    }
+
+    /// @notice Predicts all component addresses for a given master salt
+    /// @param masterSalt_ The master salt to predict addresses for
+    /// @return vault Predicted PlasmaVault address
+    /// @return accessManager Predicted AccessManager address
+    /// @return priceManager Predicted PriceManager address
+    /// @return withdrawManager Predicted WithdrawManager address
+    /// @return rewardsManager Predicted RewardsManager address
+    /// @return contextManager Predicted ContextManager address
+    function predictAddresses(
+        bytes32 masterSalt_
+    )
+        public
+        view
+        returns (
+            address vault,
+            address accessManager,
+            address priceManager,
+            address withdrawManager,
+            address rewardsManager,
+            address contextManager
+        )
+    {
+        bytes32 derivedMasterSalt = FusionFactoryCreate3Lib.deriveExplicitMasterSalt(masterSalt_);
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.getFactoryAddresses();
+        return FusionFactoryCreate3Lib.predictAllAddresses(derivedMasterSalt, factoryAddresses);
+    }
+
+    /// @notice Predicts all component addresses for the next auto-deployment
+    /// @return vault Predicted PlasmaVault address
+    /// @return accessManager Predicted AccessManager address
+    /// @return priceManager Predicted PriceManager address
+    /// @return withdrawManager Predicted WithdrawManager address
+    /// @return rewardsManager Predicted RewardsManager address
+    /// @return contextManager Predicted ContextManager address
+    function predictNextAddresses()
+        public
+        view
+        returns (
+            address vault,
+            address accessManager,
+            address priceManager,
+            address withdrawManager,
+            address rewardsManager,
+            address contextManager
+        )
+    {
+        uint256 nextIndex = FusionFactoryStorageLib.getFusionFactoryIndex() + 1;
+        bytes32 masterSalt = FusionFactoryCreate3Lib.deriveAutoMasterSalt(nextIndex);
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.getFactoryAddresses();
+        return FusionFactoryCreate3Lib.predictAllAddresses(masterSalt, factoryAddresses);
     }
 }

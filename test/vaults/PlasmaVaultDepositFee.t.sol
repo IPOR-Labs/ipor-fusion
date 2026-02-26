@@ -61,9 +61,9 @@ contract PlasmaVaultDepositFeeTest is Test {
         address plasmaVaultBase = address(new PlasmaVaultBase());
 
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = fusionFactory.getFactoryAddresses();
-        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory(address(fusionFactory)));
         factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
-        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory());
+        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory(address(fusionFactory)));
 
         address factoryAdmin = fusionFactory.getRoleMember(fusionFactory.DEFAULT_ADMIN_ROLE(), 0);
 

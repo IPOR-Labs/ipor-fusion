@@ -50,9 +50,9 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
 
         // Update factory addresses with new PlasmaVaultFactory
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = factory.getFactoryAddresses();
-        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory(address(factory)));
         factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
-        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory());
+        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory(address(factory)));
         factory.updateFactoryAddresses(5, factoryAddresses);
 
         // Deploy all base addresses for cloning

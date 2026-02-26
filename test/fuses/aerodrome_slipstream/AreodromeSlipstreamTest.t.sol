@@ -98,7 +98,7 @@ contract AreodromeSlipstreamTest is Test {
         address plasmaVaultBase = address(new PlasmaVaultBase());
 
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = fusionFactory.getFactoryAddresses();
-        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory(address(fusionFactory)));
         factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
 
         address factoryAdmin = fusionFactory.getRoleMember(fusionFactory.DEFAULT_ADMIN_ROLE(), 0);

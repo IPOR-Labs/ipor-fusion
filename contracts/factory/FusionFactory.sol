@@ -3,11 +3,15 @@ pragma solidity 0.8.30;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {FusionFactoryStorageLib} from "./lib/FusionFactoryStorageLib.sol";
+import {VaultInstanceAddresses, Component} from "./lib/FusionFactoryStorageLib.sol";
 
 import {FusionFactoryLogicLib} from "./lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryLib} from "./lib/FusionFactoryLib.sol";
 
 import {FusionFactoryAccessControl} from "./FusionFactoryAccessControl.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
+import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
+import {Roles} from "../libraries/Roles.sol";
 
 /// @title FusionFactory
 /// @notice Factory contract for creating and managing Fusion Managers
@@ -42,6 +46,32 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
     event PlasmaVaultAdminArrayUpdated(address[] newPlasmaVaultAdminArray);
     event DaoFeePackagesUpdated(FusionFactoryStorageLib.FeePackage[] packages, address updatedBy);
+
+    /// @notice Emitted when a vault instance is created with deterministic addresses
+    /// @param masterSalt The master salt used for address derivation
+    /// @param plasmaVault The address of the deployed PlasmaVault
+    /// @param accessManager The address of the deployed AccessManager
+    /// @param priceManager The address of the deployed PriceManager
+    /// @param withdrawManager The address of the deployed WithdrawManager
+    /// @param feeManager The address of the FeeManager (created by PlasmaVault.init)
+    /// @param rewardsManager The pre-computed address of the RewardsManager
+    /// @param contextManager The pre-computed address of the ContextManager
+    event VaultInstanceCreatedDeterministic(
+        bytes32 indexed masterSalt,
+        address indexed plasmaVault,
+        address accessManager,
+        address priceManager,
+        address withdrawManager,
+        address feeManager,
+        address rewardsManager,
+        address contextManager
+    );
+
+    /// @notice Emitted when a Phase 2 component is deployed
+    /// @param plasmaVault The address of the plasma vault
+    /// @param component The component that was deployed
+    /// @param deployedAddress The address of the deployed component
+    event ComponentDeployed(address indexed plasmaVault, Component component, address deployedAddress);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -134,6 +164,170 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 true,
                 daoFeePackageIndex_
             );
+    }
+
+    /// @notice Creates a new Fusion Vault with explicit salt for cross-chain deterministic deployment
+    /// @param assetName_ The name of the asset
+    /// @param assetSymbol_ The symbol of the asset
+    /// @param underlyingToken_ The address of the underlying token
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param owner_ The owner of the Fusion Vault
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
+    /// @param masterSalt_ User-provided master salt for cross-chain deterministic deployment
+    /// @return The Fusion Vault instance with Phase 1 deployed and Phase 2 pre-computed
+    /// @dev Only callable by MAINTENANCE_MANAGER_ROLE
+    function cloneWithSalt(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_,
+        uint256 daoFeePackageIndex_,
+        bytes32 masterSalt_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
+        FusionFactoryLogicLib.FusionInstance memory result = FusionFactoryLib.cloneWithSalt(
+            assetName_,
+            assetSymbol_,
+            underlyingToken_,
+            redemptionDelayInSeconds_,
+            owner_,
+            false,
+            daoFeePackageIndex_,
+            masterSalt_
+        );
+
+        emit VaultInstanceCreatedDeterministic(
+            masterSalt_,
+            result.plasmaVault,
+            result.accessManager,
+            result.priceManager,
+            result.withdrawManager,
+            result.feeManager,
+            result.rewardsManager,
+            result.contextManager
+        );
+
+        return result;
+    }
+
+    /// @notice Creates a new supervised Fusion Vault with explicit salt for cross-chain deterministic deployment
+    /// @param assetName_ The name of the asset
+    /// @param assetSymbol_ The symbol of the asset
+    /// @param underlyingToken_ The address of the underlying token
+    /// @param redemptionDelayInSeconds_ The redemption delay in seconds
+    /// @param owner_ The owner of the Fusion Vault
+    /// @param daoFeePackageIndex_ Index of the DAO fee package to use
+    /// @param masterSalt_ User-provided master salt for cross-chain deterministic deployment
+    /// @return The Fusion Vault instance with Phase 1 deployed and Phase 2 pre-computed
+    /// @dev Only callable by MAINTENANCE_MANAGER_ROLE. Includes admin role assignment.
+    function cloneSupervisedWithSalt(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_,
+        uint256 daoFeePackageIndex_,
+        bytes32 masterSalt_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
+        FusionFactoryLogicLib.FusionInstance memory result = FusionFactoryLib.cloneWithSalt(
+            assetName_,
+            assetSymbol_,
+            underlyingToken_,
+            redemptionDelayInSeconds_,
+            owner_,
+            true,
+            daoFeePackageIndex_,
+            masterSalt_
+        );
+
+        emit VaultInstanceCreatedDeterministic(
+            masterSalt_,
+            result.plasmaVault,
+            result.accessManager,
+            result.priceManager,
+            result.withdrawManager,
+            result.feeManager,
+            result.rewardsManager,
+            result.contextManager
+        );
+
+        return result;
+    }
+
+    error UnauthorizedCaller();
+
+    /// @notice Deploys a Phase 2 component (RewardsManager or ContextManager) at its pre-computed address
+    /// @param plasmaVault_ The address of the plasma vault
+    /// @param component_ The component to deploy
+    /// @return deployedAddress The address of the deployed component
+    /// @dev Callable by MAINTENANCE_MANAGER_ROLE on this factory OR by an account with ATOMIST_ROLE on the vault's AccessManager
+    function deployComponent(
+        address plasmaVault_,
+        Component component_
+    ) external returns (address deployedAddress) {
+        if (!hasRole(MAINTENANCE_MANAGER_ROLE, msg.sender)) {
+            address accessManager = IAccessManaged(plasmaVault_).authority();
+            (bool isAtomist, ) = IporFusionAccessManager(accessManager).hasRole(Roles.ATOMIST_ROLE, msg.sender);
+            if (!isAtomist) revert UnauthorizedCaller();
+        }
+
+        deployedAddress = FusionFactoryLib.deployComponent(plasmaVault_, component_);
+
+        emit ComponentDeployed(plasmaVault_, component_, deployedAddress);
+    }
+
+    /// @notice Predicts all component addresses for a given master salt
+    /// @param masterSalt_ The master salt to predict addresses for
+    /// @return vault Predicted PlasmaVault address
+    /// @return accessManager Predicted AccessManager address
+    /// @return priceManager Predicted PriceManager address
+    /// @return withdrawManager Predicted WithdrawManager address
+    /// @return rewardsManager Predicted RewardsManager address
+    /// @return contextManager Predicted ContextManager address
+    function predictAddresses(
+        bytes32 masterSalt_
+    )
+        external
+        view
+        returns (
+            address vault,
+            address accessManager,
+            address priceManager,
+            address withdrawManager,
+            address rewardsManager,
+            address contextManager
+        )
+    {
+        return FusionFactoryLib.predictAddresses(masterSalt_);
+    }
+
+    /// @notice Predicts all component addresses for the next auto-deployment (via clone())
+    /// @return vault Predicted PlasmaVault address
+    /// @return accessManager Predicted AccessManager address
+    /// @return priceManager Predicted PriceManager address
+    /// @return withdrawManager Predicted WithdrawManager address
+    /// @return rewardsManager Predicted RewardsManager address
+    /// @return contextManager Predicted ContextManager address
+    function predictNextAddresses()
+        external
+        view
+        returns (
+            address vault,
+            address accessManager,
+            address priceManager,
+            address withdrawManager,
+            address rewardsManager,
+            address contextManager
+        )
+    {
+        return FusionFactoryLib.predictNextAddresses();
+    }
+
+    /// @notice Returns the stored vault instance addresses for a given plasma vault
+    /// @param plasmaVault_ Address of the plasma vault
+    /// @return The vault instance addresses struct
+    function getVaultInstanceAddresses(address plasmaVault_) external view returns (VaultInstanceAddresses memory) {
+        return FusionFactoryStorageLib.getVaultInstanceAddresses(plasmaVault_);
     }
 
     function updatePlasmaVaultAdminArray(
