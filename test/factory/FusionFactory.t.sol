@@ -53,25 +53,11 @@ contract FusionFactoryTest is Test {
         // Deploy mock token
         underlyingToken = new MockERC20("Test Token", "TEST", 18);
 
-        // Deploy factory contracts
-        factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
-            accessManagerFactory: address(new AccessManagerFactory()),
-            plasmaVaultFactory: address(new PlasmaVaultFactory()),
-            feeManagerFactory: address(new FeeManagerFactory()),
-            withdrawManagerFactory: address(new WithdrawManagerFactory()),
-            rewardsManagerFactory: address(new RewardsManagerFactory()),
-            contextManagerFactory: address(new ContextManagerFactory()),
-            priceManagerFactory: address(new PriceManagerFactory())
-        });
-
         owner = address(0x777);
         daoFeeRecipient = address(0x888);
         adminOne = address(0x999);
         adminTwo = address(0x1000);
         daoFeeManager = address(0x111);
-        address[] memory plasmaVaultAdminArray = new address[](2);
-        plasmaVaultAdminArray[0] = adminOne;
-        plasmaVaultAdminArray[1] = adminTwo;
 
         plasmaVaultBase = address(new PlasmaVaultBase());
         burnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
@@ -82,10 +68,28 @@ contract FusionFactoryTest is Test {
             new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize(address)", owner))
         );
 
-        // Deploy implementation and proxy for FusionFactory
+        // Deploy proxy first (uninitialized) so sub-factories know the FusionFactory address
         fusionFactoryImplementation = new FusionFactory();
-        bytes memory initData = abi.encodeWithSignature(
-            "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
+        fusionFactory = FusionFactory(
+            address(new ERC1967Proxy(address(fusionFactoryImplementation), ""))
+        );
+
+        // Deploy factory contracts with fusionFactory address
+        factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
+            accessManagerFactory: address(new AccessManagerFactory(address(fusionFactory))),
+            plasmaVaultFactory: address(new PlasmaVaultFactory(address(fusionFactory))),
+            feeManagerFactory: address(new FeeManagerFactory()),
+            withdrawManagerFactory: address(new WithdrawManagerFactory(address(fusionFactory))),
+            rewardsManagerFactory: address(new RewardsManagerFactory(address(fusionFactory))),
+            contextManagerFactory: address(new ContextManagerFactory(address(fusionFactory))),
+            priceManagerFactory: address(new PriceManagerFactory(address(fusionFactory)))
+        });
+
+        address[] memory plasmaVaultAdminArray = new address[](2);
+        plasmaVaultAdminArray[0] = adminOne;
+        plasmaVaultAdminArray[1] = adminTwo;
+
+        fusionFactory.initialize(
             owner,
             plasmaVaultAdminArray,
             factoryAddresses,
@@ -94,7 +98,6 @@ contract FusionFactoryTest is Test {
             burnRequestFeeFuse,
             burnRequestFeeBalanceFuse
         );
-        fusionFactory = FusionFactory(address(new ERC1967Proxy(address(fusionFactoryImplementation), initData)));
 
         vm.startPrank(owner);
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
@@ -224,13 +227,13 @@ contract FusionFactoryTest is Test {
     function testShouldUpdateFactoryAddresses() public {
         // given
         FusionFactoryStorageLib.FactoryAddresses memory newFactoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
-            accessManagerFactory: address(new AccessManagerFactory()),
-            plasmaVaultFactory: address(new PlasmaVaultFactory()),
+            accessManagerFactory: address(new AccessManagerFactory(address(fusionFactory))),
+            plasmaVaultFactory: address(new PlasmaVaultFactory(address(fusionFactory))),
             feeManagerFactory: address(new FeeManagerFactory()),
-            withdrawManagerFactory: address(new WithdrawManagerFactory()),
-            rewardsManagerFactory: address(new RewardsManagerFactory()),
-            contextManagerFactory: address(new ContextManagerFactory()),
-            priceManagerFactory: address(new PriceManagerFactory())
+            withdrawManagerFactory: address(new WithdrawManagerFactory(address(fusionFactory))),
+            rewardsManagerFactory: address(new RewardsManagerFactory(address(fusionFactory))),
+            contextManagerFactory: address(new ContextManagerFactory(address(fusionFactory))),
+            priceManagerFactory: address(new PriceManagerFactory(address(fusionFactory)))
         });
 
         // when
@@ -335,12 +338,12 @@ contract FusionFactoryTest is Test {
         // given
         FusionFactoryStorageLib.FactoryAddresses memory newFactoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
             accessManagerFactory: address(0),
-            plasmaVaultFactory: address(new PlasmaVaultFactory()),
+            plasmaVaultFactory: address(new PlasmaVaultFactory(address(fusionFactory))),
             feeManagerFactory: address(new FeeManagerFactory()),
-            withdrawManagerFactory: address(new WithdrawManagerFactory()),
-            rewardsManagerFactory: address(new RewardsManagerFactory()),
-            contextManagerFactory: address(new ContextManagerFactory()),
-            priceManagerFactory: address(new PriceManagerFactory())
+            withdrawManagerFactory: address(new WithdrawManagerFactory(address(fusionFactory))),
+            rewardsManagerFactory: address(new RewardsManagerFactory(address(fusionFactory))),
+            contextManagerFactory: address(new ContextManagerFactory(address(fusionFactory))),
+            priceManagerFactory: address(new PriceManagerFactory(address(fusionFactory)))
         });
 
         // when/then

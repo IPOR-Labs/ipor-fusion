@@ -6,6 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {AccessManagerFactory} from "../../../contracts/factory/AccessManagerFactory.sol";
 import {ContextManagerFactory} from "../../../contracts/factory/ContextManagerFactory.sol";
+import {ContextManager} from "../../../contracts/managers/context/ContextManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
@@ -784,16 +785,6 @@ contract YieldBasisFuseTest is Test {
     }
 
     function _setupFusionFactory() private {
-        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
-            accessManagerFactory: address(new AccessManagerFactory()),
-            plasmaVaultFactory: address(new PlasmaVaultFactory()),
-            feeManagerFactory: address(new FeeManagerFactory()),
-            withdrawManagerFactory: address(new WithdrawManagerFactory()),
-            rewardsManagerFactory: address(new RewardsManagerFactory()),
-            contextManagerFactory: address(new ContextManagerFactory()),
-            priceManagerFactory: address(new PriceManagerFactory())
-        });
-
         address plasmaVaultBase = address(new PlasmaVaultBase());
         address burnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
         address burnRequestFeeBalanceFuse = address(new ZeroBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
@@ -806,9 +797,23 @@ contract YieldBasisFuseTest is Test {
             )
         );
 
+        // Deploy proxy first (uninitialized) so sub-factories know the FusionFactory address
         FusionFactory implementation = new FusionFactory();
-        bytes memory initData = abi.encodeWithSignature(
-            "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
+        fusionFactory = FusionFactory(
+            address(new ERC1967Proxy(address(implementation), ""))
+        );
+
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
+            accessManagerFactory: address(new AccessManagerFactory(address(fusionFactory))),
+            plasmaVaultFactory: address(new PlasmaVaultFactory(address(fusionFactory))),
+            feeManagerFactory: address(new FeeManagerFactory()),
+            withdrawManagerFactory: address(new WithdrawManagerFactory(address(fusionFactory))),
+            rewardsManagerFactory: address(new RewardsManagerFactory(address(fusionFactory))),
+            contextManagerFactory: address(new ContextManagerFactory(address(fusionFactory))),
+            priceManagerFactory: address(new PriceManagerFactory(address(fusionFactory)))
+        });
+
+        fusionFactory.initialize(
             atomist,
             new address[](0), // No plasma vault admins
             factoryAddresses,
@@ -817,7 +822,6 @@ contract YieldBasisFuseTest is Test {
             burnRequestFeeFuse,
             burnRequestFeeBalanceFuse
         );
-        fusionFactory = FusionFactory(address(new ERC1967Proxy(address(implementation), initData)));
 
         // Deploy PlasmaVault base for cloning and set up base addresses
         address plasmaVaultCoreBase = address(new PlasmaVault());
@@ -827,11 +831,7 @@ contract YieldBasisFuseTest is Test {
         address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
         address[] memory approvedTargets = new address[](1);
         approvedTargets[0] = plasmaVaultCoreBase;
-        address contextManagerBase = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
-            0,
-            accessManagerBase,
-            approvedTargets
-        );
+        address contextManagerBase = address(new ContextManager(accessManagerBase, approvedTargets));
 
         vm.startPrank(atomist);
         fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), atomist);

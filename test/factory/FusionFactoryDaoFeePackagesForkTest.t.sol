@@ -10,6 +10,11 @@ import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactory
 import {FusionFactoryLogicLib} from "../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
 import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
+import {AccessManagerFactory} from "../../contracts/factory/AccessManagerFactory.sol";
+import {WithdrawManagerFactory} from "../../contracts/factory/WithdrawManagerFactory.sol";
+import {RewardsManagerFactory} from "../../contracts/factory/RewardsManagerFactory.sol";
+import {ContextManagerFactory} from "../../contracts/factory/ContextManagerFactory.sol";
+import {PriceManagerFactory} from "../../contracts/factory/PriceManagerFactory.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
@@ -49,14 +54,6 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         // Get existing factory to copy configuration
         existingFactory = FusionFactory(EXISTING_FUSION_FACTORY_PROXY);
 
-        // Get configuration from existing factory
-        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = existingFactory.getFactoryAddresses();
-
-        // Deploy new PlasmaVaultFactory and FeeManagerFactory - the existing ones on fork
-        // don't support the new PlasmaVaultInitData structure with plasmaVaultVotesPlugin
-        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
-        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
-
         // Deploy new PlasmaVaultBase - the existing one on fork is already initialized
         address plasmaVaultBase = address(new PlasmaVaultBase());
         address priceOracleMiddleware = existingFactory.getPriceOracleMiddleware();
@@ -64,10 +61,25 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         address burnRequestFeeBalanceFuse = existingFactory.getBurnRequestFeeBalanceFuseAddress();
         address[] memory plasmaVaultAdminArray = existingFactory.getPlasmaVaultAdminArray();
 
-        // Deploy fresh FusionFactory with fee packages support
+        // Deploy proxy first (uninitialized) so sub-factories know the FusionFactory address
         FusionFactory implementation = new FusionFactory();
-        bytes memory initData = abi.encodeWithSelector(
-            FusionFactory.initialize.selector,
+        fusionFactory = FusionFactory(
+            address(new ERC1967Proxy(address(implementation), ""))
+        );
+
+        // Deploy all fresh sub-factories — fork sub-factories don't have deployDeterministic()
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = FusionFactoryStorageLib.FactoryAddresses({
+            accessManagerFactory: address(new AccessManagerFactory(address(fusionFactory))),
+            plasmaVaultFactory: address(new PlasmaVaultFactory(address(fusionFactory))),
+            feeManagerFactory: address(new FeeManagerFactory()),
+            withdrawManagerFactory: address(new WithdrawManagerFactory(address(fusionFactory))),
+            rewardsManagerFactory: address(new RewardsManagerFactory(address(fusionFactory))),
+            contextManagerFactory: address(new ContextManagerFactory(address(fusionFactory))),
+            priceManagerFactory: address(new PriceManagerFactory(address(fusionFactory)))
+        });
+
+        // Initialize FusionFactory with fee packages support
+        fusionFactory.initialize(
             owner,
             plasmaVaultAdminArray,
             factoryAddresses,
@@ -76,8 +88,6 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
             burnRequestFeeFuse,
             burnRequestFeeBalanceFuse
         );
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
-        fusionFactory = FusionFactory(address(proxy));
 
         // Grant roles first
         vm.startPrank(owner);

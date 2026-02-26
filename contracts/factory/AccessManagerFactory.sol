@@ -2,54 +2,53 @@
 pragma solidity 0.8.30;
 
 import {IporFusionAccessManager} from "../managers/access/IporFusionAccessManager.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {FusionFactoryCreate3Lib} from "./lib/FusionFactoryCreate3Lib.sol";
 
 /// @title AccessManagerFactory
 /// @notice Factory contract for creating and deploying new instances of IporFusionAccessManager
 /// @dev This factory pattern allows for standardized creation of access management contracts
 /// with configurable parameters for initial authority and redemption delay
 contract AccessManagerFactory {
-    /// @notice Emitted when a new AccessManager is created
-    /// @param index The index of the AccessManager instance
-    /// @param accessManager The address of the newly deployed IporFusionAccessManager contract
-    /// @param redemptionDelayInSeconds The configured redemption delay in seconds for the new instance
-    event AccessManagerCreated(uint256 index, address accessManager, uint256 redemptionDelayInSeconds);
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
-    /// @notice Creates and deploys a new instance of IporFusionAccessManager
-    /// @param index_ The index of the AccessManager instance
-    /// @param initialAuthority_ The address that will have initial authority over the access manager
-    /// @param redemptionDelayInSeconds_ The time delay in seconds required before redemption operations
-    /// @return accessManager The address of the newly deployed IporFusionAccessManager contract
-    function create(
-        uint256 index_,
-        address initialAuthority_,
-        uint256 redemptionDelayInSeconds_
-    ) external returns (address accessManager) {
-        accessManager = address(new IporFusionAccessManager(initialAuthority_, redemptionDelayInSeconds_));
-        emit AccessManagerCreated(index_, accessManager, redemptionDelayInSeconds_);
+    /// @notice Error thrown when caller is not the FusionFactory
+    error CallerNotFusionFactory();
+
+    /// @notice The address of the FusionFactory that is authorized to call deployDeterministic
+    address public immutable FUSION_FACTORY;
+
+    constructor(address fusionFactory_) {
+        FUSION_FACTORY = fusionFactory_;
     }
 
-    // / @notice Creates a new instance of IporFusionAccessManager using Clones pattern
-    // / @dev Clones the base IporFusionAccessManager and initializes it with the provided parameters
-    // / @param baseAddress_ The address of the base IporFusionAccessManager implementation to clone
-    // / @param index_ The index of the AccessManager instance
-    // / @param initialAuthority_ The address that will have initial authority over the access manager
-    // / @param redemptionDelayInSeconds_ The time delay in seconds required before redemption operations
-    // / @return accessManager The address of the newly cloned IporFusionAccessManager contract
-    function clone(
+    modifier onlyFusionFactory() {
+        if (msg.sender != FUSION_FACTORY) revert CallerNotFusionFactory();
+        _;
+    }
+
+    /// @notice Creates a new instance of IporFusionAccessManager using CREATE3 deterministic deployment
+    /// @param baseAddress_ The address of the base IporFusionAccessManager implementation
+    /// @param salt_ The CREATE3 salt for deterministic address
+    /// @param initialAuthority_ The address that will have initial authority over the access manager
+    /// @param redemptionDelayInSeconds_ The time delay in seconds required before redemption operations
+    /// @return accessManager The address of the deterministically deployed IporFusionAccessManager
+    function deployDeterministic(
         address baseAddress_,
-        uint256 index_,
+        bytes32 salt_,
         address initialAuthority_,
         uint256 redemptionDelayInSeconds_
-    ) external returns (address accessManager) {
+    ) external onlyFusionFactory returns (address accessManager) {
         if (baseAddress_ == address(0)) revert InvalidBaseAddress();
 
-        accessManager = Clones.clone(baseAddress_);
+        accessManager = FusionFactoryCreate3Lib.deployMinimalProxyDeterministic(baseAddress_, salt_);
         IporFusionAccessManager(accessManager).proxyInitialize(initialAuthority_, redemptionDelayInSeconds_);
+    }
 
-        emit AccessManagerCreated(index_, accessManager, redemptionDelayInSeconds_);
+    /// @notice Predicts the address of a deterministic AccessManager deployment
+    /// @param salt_ The CREATE3 salt to predict the address for
+    /// @return The predicted deployment address
+    function predictDeterministicAddress(bytes32 salt_) external view returns (address) {
+        return FusionFactoryCreate3Lib.predictAddress(salt_);
     }
 }

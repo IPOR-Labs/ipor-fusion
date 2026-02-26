@@ -2,47 +2,50 @@
 pragma solidity 0.8.30;
 
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {FusionFactoryCreate3Lib} from "./lib/FusionFactoryCreate3Lib.sol";
 
 /// @title WithdrawManagerFactory
 /// @notice Factory contract for creating WithdrawManager instances
 /// @dev This factory is responsible for deploying new WithdrawManager contracts with proper initialization
 contract WithdrawManagerFactory {
-    /// @notice Emitted when a new WithdrawManager instance is created
-    /// @param index The index of the WithdrawManager instance
-    /// @param withdrawManager The address of the newly created WithdrawManager contract
-    /// @param accessManager The address of the AccessManager contract that will control permissions
-    event WithdrawManagerCreated(uint256 index, address withdrawManager, address accessManager);
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
-    /// @notice Creates a new instance of WithdrawManager using traditional deployment
-    /// @dev Deploys a new WithdrawManager contract and initializes it with the provided access manager
-    /// @param index_ The index of the WithdrawManager instance
-    /// @param accessManager_ The address of the AccessManager contract that will control permissions for the new WithdrawManager
-    /// @return withdrawManager The address of the newly deployed WithdrawManager contract
-    function create(uint256 index_, address accessManager_) external returns (address withdrawManager) {
-        withdrawManager = address(new WithdrawManager(accessManager_));
-        emit WithdrawManagerCreated(index_, withdrawManager, accessManager_);
+    /// @notice Error thrown when caller is not the FusionFactory
+    error CallerNotFusionFactory();
+
+    /// @notice The address of the FusionFactory that is authorized to call deployDeterministic
+    address public immutable FUSION_FACTORY;
+
+    constructor(address fusionFactory_) {
+        FUSION_FACTORY = fusionFactory_;
     }
 
-    /// @notice Creates a new instance of WithdrawManager using Clones pattern
-    /// @dev Clones the base WithdrawManager and initializes it with the provided access manager
-    /// @param baseAddress_ The address of the base WithdrawManager implementation to clone
-    /// @param index_ The index of the WithdrawManager instance
-    /// @param accessManager_ The address of the AccessManager contract that will control permissions for the new WithdrawManager
-    /// @return withdrawManager The address of the newly cloned WithdrawManager contract
-    function clone(
+    modifier onlyFusionFactory() {
+        if (msg.sender != FUSION_FACTORY) revert CallerNotFusionFactory();
+        _;
+    }
+
+    /// @notice Creates a new instance of WithdrawManager using CREATE3 deterministic deployment
+    /// @param baseAddress_ The address of the base WithdrawManager implementation
+    /// @param salt_ The CREATE3 salt for deterministic address
+    /// @param accessManager_ The address of the AccessManager contract that will control permissions
+    /// @return withdrawManager The address of the deterministically deployed WithdrawManager
+    function deployDeterministic(
         address baseAddress_,
-        uint256 index_,
+        bytes32 salt_,
         address accessManager_
-    ) external returns (address withdrawManager) {
+    ) external onlyFusionFactory returns (address withdrawManager) {
         if (baseAddress_ == address(0)) revert InvalidBaseAddress();
 
-        withdrawManager = Clones.clone(baseAddress_);
+        withdrawManager = FusionFactoryCreate3Lib.deployMinimalProxyDeterministic(baseAddress_, salt_);
         WithdrawManager(withdrawManager).proxyInitialize(accessManager_);
+    }
 
-        emit WithdrawManagerCreated(index_, withdrawManager, accessManager_);
+    /// @notice Predicts the address of a deterministic WithdrawManager deployment
+    /// @param salt_ The CREATE3 salt to predict the address for
+    /// @return The predicted deployment address
+    function predictDeterministicAddress(bytes32 salt_) external view returns (address) {
+        return FusionFactoryCreate3Lib.predictAddress(salt_);
     }
 }

@@ -2,51 +2,51 @@
 pragma solidity 0.8.30;
 
 import {ContextManager} from "../managers/context/ContextManager.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {FusionFactoryCreate3Lib} from "./lib/FusionFactoryCreate3Lib.sol";
 
 /// @title ContextManagerFactory
 /// @notice Factory contract for creating ContextManager instances that manage execution context and permissions for vault operations
 contract ContextManagerFactory {
-    /// @notice Emitted when a new ContextManager instance is created
-    /// @param index The index of the ContextManager instance
-    /// @param contextManager The address of the newly created ContextManager
-    /// @param approvedTargets The addresses of the approved targets
-    event ContextManagerCreated(uint256 index, address contextManager, address[] approvedTargets);
-
     /// @notice Error thrown when trying to use zero address as base
     error InvalidBaseAddress();
 
-    /// @notice Creates a new ContextManager
-    /// @param index_ The index of the ContextManager instance
-    /// @param accessManager_ The initial authority address for access control
-    /// @param approvedTargets_ The addresses of the approved targets
-    /// @return contextManager Address of the newly created ContextManager
-    function create(
-        uint256 index_,
-        address accessManager_,
-        address[] memory approvedTargets_
-    ) external returns (address contextManager) {
-        contextManager = address(new ContextManager(accessManager_, approvedTargets_));
-        emit ContextManagerCreated(index_, contextManager, approvedTargets_);
+    /// @notice Error thrown when caller is not the FusionFactory
+    error CallerNotFusionFactory();
+
+    /// @notice The address of the FusionFactory that is authorized to call deployDeterministic
+    address public immutable FUSION_FACTORY;
+
+    constructor(address fusionFactory_) {
+        FUSION_FACTORY = fusionFactory_;
     }
 
-    /// @notice Creates a new instance of ContextManager using Clones pattern
-    /// @param baseAddress_ The address of the base ContextManager implementation to clone
-    /// @param index_ The index of the ContextManager instance
+    modifier onlyFusionFactory() {
+        if (msg.sender != FUSION_FACTORY) revert CallerNotFusionFactory();
+        _;
+    }
+
+    /// @notice Creates a new instance of ContextManager using CREATE3 deterministic deployment
+    /// @param baseAddress_ The address of the base ContextManager implementation
+    /// @param salt_ The CREATE3 salt for deterministic address
     /// @param accessManager_ The initial authority address for access control
     /// @param approvedTargets_ The addresses of the approved targets
-    /// @return contextManager Address of the newly cloned ContextManager
-    function clone(
+    /// @return contextManager Address of the deterministically deployed ContextManager
+    function deployDeterministic(
         address baseAddress_,
-        uint256 index_,
+        bytes32 salt_,
         address accessManager_,
         address[] memory approvedTargets_
-    ) external returns (address contextManager) {
+    ) external onlyFusionFactory returns (address contextManager) {
         if (baseAddress_ == address(0)) revert InvalidBaseAddress();
 
-        contextManager = Clones.clone(baseAddress_);
+        contextManager = FusionFactoryCreate3Lib.deployMinimalProxyDeterministic(baseAddress_, salt_);
         ContextManager(contextManager).proxyInitialize(accessManager_, approvedTargets_);
+    }
 
-        emit ContextManagerCreated(index_, contextManager, approvedTargets_);
+    /// @notice Predicts the address of a deterministic ContextManager deployment
+    /// @param salt_ The CREATE3 salt to predict the address for
+    /// @return The predicted deployment address
+    function predictDeterministicAddress(bytes32 salt_) external view returns (address) {
+        return FusionFactoryCreate3Lib.predictAddress(salt_);
     }
 }

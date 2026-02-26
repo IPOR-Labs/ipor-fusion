@@ -38,7 +38,7 @@ library FusionFactoryDaoFeePackagesHelper {
 
         // Deploy new PlasmaVaultFactory with updated PlasmaVaultInitData structure (includes plasmaVaultVotesPlugin)
         // The existing factory on the fork has an old PlasmaVaultFactory that doesn't support the new struct
-        PlasmaVaultFactory newPlasmaVaultFactory = new PlasmaVaultFactory();
+        PlasmaVaultFactory newPlasmaVaultFactory = new PlasmaVaultFactory(address(fusionFactory));
 
         // Deploy new PlasmaVaultBase - the existing one on the fork is already initialized
         // and cannot be used with new PlasmaVault instances (would fail with InvalidInitialization)
@@ -48,11 +48,11 @@ library FusionFactoryDaoFeePackagesHelper {
         FeeManagerFactory newFeeManagerFactory = new FeeManagerFactory();
 
         // Deploy all new factories - fork factories only have create(), not clone()
-        AccessManagerFactory newAccessManagerFactory = new AccessManagerFactory();
-        PriceManagerFactory newPriceManagerFactory = new PriceManagerFactory();
-        WithdrawManagerFactory newWithdrawManagerFactory = new WithdrawManagerFactory();
-        RewardsManagerFactory newRewardsManagerFactory = new RewardsManagerFactory();
-        ContextManagerFactory newContextManagerFactory = new ContextManagerFactory();
+        AccessManagerFactory newAccessManagerFactory = new AccessManagerFactory(address(fusionFactory));
+        PriceManagerFactory newPriceManagerFactory = new PriceManagerFactory(address(fusionFactory));
+        WithdrawManagerFactory newWithdrawManagerFactory = new WithdrawManagerFactory(address(fusionFactory));
+        RewardsManagerFactory newRewardsManagerFactory = new RewardsManagerFactory(address(fusionFactory));
+        ContextManagerFactory newContextManagerFactory = new ContextManagerFactory(address(fusionFactory));
 
         // Update all factory addresses with the new factories
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses;
