@@ -23,6 +23,10 @@ contract UpdateWithdrawManagerMaintenanceFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
+    /// @dev IMPORTANT: This fuse writes to the WITHDRAW_MANAGER storage slot via PlasmaVaultStorageLib.getWithdrawManager().
+    /// This slot was corrected in IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER.
+    /// Any changes to the WITHDRAW_MANAGER slot in PlasmaVaultStorageLib must be carefully coordinated
+    /// with all fuses that access it, as fuses execute via delegatecall in the PlasmaVault storage context.
     function enter(UpdateWithdrawManagerMaintenanceFuseEnterData memory data_) external {
         if (data_.newManager == address(0)) {
             return;
@@ -39,6 +43,7 @@ contract UpdateWithdrawManagerMaintenanceFuse is IFuseCommon {
         return;
     }
 
+    /// @dev IMPORTANT: Reads the WITHDRAW_MANAGER storage slot — see enter() for slot history details.
     function getWithdrawManager() external view returns (address) {
         return PlasmaVaultStorageLib.getWithdrawManager().manager;
     }

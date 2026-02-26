@@ -102,14 +102,15 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: F_TOKEN,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            minSharesOut: 0
         });
         FluidInstadappStakingSupplyFuseEnterData memory enterDataStaking = FluidInstadappStakingSupplyFuseEnterData({
             fluidTokenAmount: amount_,
             stakingPool: FLUID_LENDING_STAKING_REWARDS
         });
         data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataStaking);
     }
 
@@ -120,7 +121,8 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: F_TOKEN,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            maxSharesBurned: 0
         });
         FluidInstadappStakingSupplyFuseExitData memory exitDataStaking = FluidInstadappStakingSupplyFuseExitData({
             fluidTokenAmount: amount_,
@@ -128,7 +130,7 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
         });
 
         data = new bytes[](2);
-        data[1] = abi.encodeWithSignature("exit((address,uint256))", exitData);
+        data[1] = abi.encodeWithSignature("exit((address,uint256,uint256))", exitData);
         data[0] = abi.encodeWithSignature("exit((uint256,address))", exitDataStaking);
 
         fusesSetup = new address[](2);

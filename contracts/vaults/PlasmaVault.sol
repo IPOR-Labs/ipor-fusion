@@ -243,7 +243,7 @@ contract PlasmaVault is
 
     event ManagementFeeRealized(uint256 unrealizedFeeInUnderlying, uint256 unrealizedFeeInShares);
     event DepositFeeRealized(address recipient, uint256 feeShares);
-    event ExecuteFinished();
+    event ExecuteFinished(address executor, uint256 callsCount, uint256[] marketIds);
 
     /// @notice Fallback function handling delegatecall execution and callbacks
     /// @dev Routes execution between callback handling and base contract delegation
@@ -416,7 +416,7 @@ contract PlasmaVault is
 
         _addPerformanceFee(totalAssetsBefore);
 
-        emit ExecuteFinished();
+        emit ExecuteFinished(_msgSender(), callsCount, markets);
     }
 
     /// @notice Updates balances for specified markets and calculates performance fees
@@ -1405,9 +1405,23 @@ contract PlasmaVault is
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
     }
 
+    /// @notice Realizes management fees by minting shares to fee recipient
+    /// @dev Only updates timestamp when fees are actually minted to prevent fee suppression
+    ///      from small/frequent operations where fees round to zero (IL-6959 fix).
+    ///      When vault is empty (totalAssets == 0), timestamp is updated to prevent
+    ///      retroactive fee accrual after the first deposit.
     function _realizeManagementFee() internal {
+        uint256 grossTotalAssets = _getGrossTotalAssets();
+
+        /// @dev If vault is empty, update timestamp but don't try to mint.
+        /// This prevents fee accumulation from before first deposit.
+        if (grossTotalAssets == 0) {
+            PlasmaVaultLib.updateManagementFeeData();
+            return;
+        }
+
         (address recipient, uint256 unrealizedFeeInUnderlying) = PlasmaVaultFeesLib.prepareForRealizeManagementFee(
-            _getGrossTotalAssets()
+            grossTotalAssets
         );
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
@@ -1424,6 +1438,10 @@ contract PlasmaVault is
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
+
+        /// @dev Update timestamp ONLY after successful fee minting
+        /// This prevents fee suppression through many small transactions
+        PlasmaVaultLib.updateManagementFeeData();
 
         emit ManagementFeeRealized(unrealizedFeeInUnderlying, unrealizedFeeInShares);
     }

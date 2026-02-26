@@ -60,8 +60,11 @@ struct ExecuteData {
  * @param nonce Sequential number for replay attack prevention
  * @param target The approved contract address to be called
  * @param data The calldata to be executed on the target
- * @param signature EIP-712 compatible signature of (expirationTime, nonce, chainId, target, data)
- * @dev Signature is verified using ECDSA recovery to match the sender
+ * @param signature ECDSA signature over keccak256(abi.encodePacked(contextManagerAddress, expirationTime, nonce, chainId, target, data)).
+ *        This is a custom (non-EIP-712) scheme — no domain separator or typed struct hash is used.
+ * @dev Signature is verified using ECDSA.recover to match the sender.
+ *      Replay protection is provided by including the contract address (address(this)) and CHAIN_ID in the signed preimage,
+ *      along with a strictly increasing nonce per sender.
  */
 struct ContextDataWithSender {
     address sender;
@@ -69,7 +72,7 @@ struct ContextDataWithSender {
     uint256 nonce;
     address target;
     bytes data;
-    /// @notice signature of data (uint256:expirationTime, uint256:nonce, uint256:chainId, address:target, bytes:data)
+    /// @notice ECDSA signature over keccak256(abi.encodePacked(contextManagerAddress, expirationTime, nonce, chainId, target, data))
     bytes signature;
 }
 
@@ -350,8 +353,12 @@ contract ContextManager is AccessManagedUpgradeable {
      * @notice Verifies the signature of context data using ECDSA recovery
      * @param contextData_ The context data containing the signature to verify
      * @return bool True if the recovered signer matches the claimed sender
-     * @dev Creates a hash of (contextManagerAddress, expirationTime, nonce, chainId, target, data)
-     * and verifies that the signature's recovered address matches the sender
+     * @dev Uses a custom (non-EIP-712) signature scheme.
+     * The signed digest is: keccak256(abi.encodePacked(address(this), expirationTime, nonce, CHAIN_ID, target, data)).
+     * Replay protection across contracts and chains is achieved by binding address(this) and CHAIN_ID into the preimage.
+     * Note: this does NOT use an EIP-712 domain separator or typed struct hash, so wallets will not display
+     * human-readable signing context. Variable-length `data` is included directly via abi.encodePacked,
+     * which is unambiguous here because it is the last element in the encoding.
      * @custom:security Uses ECDSA.recover for signature verification
      */
     function _verifySignature(ContextDataWithSender memory contextData_) internal view returns (bool) {

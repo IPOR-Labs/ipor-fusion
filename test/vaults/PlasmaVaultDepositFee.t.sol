@@ -10,8 +10,8 @@ import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/Price
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
 import {FusionFactoryLogicLib} from "../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
@@ -93,12 +93,16 @@ contract PlasmaVaultDepositFeeTest is Test {
         );
         vm.stopPrank();
 
-        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "AreodromeSlipstream",
             "VSS",
             _UNDERLYING_TOKEN,
             0,
-            _ATOMIST
+            _ATOMIST,
+            0
         );
 
         _plasmaVault = PlasmaVault(fusionInstance.plasmaVault);

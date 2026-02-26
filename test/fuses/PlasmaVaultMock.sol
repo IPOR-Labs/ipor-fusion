@@ -16,6 +16,8 @@ import {CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../..
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../contracts/fuses/midas/MidasSupplyFuse.sol";
+import {MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
 import {AaveV4SupplyFuseEnterData, AaveV4SupplyFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
 import {AaveV4BorrowFuseEnterData, AaveV4BorrowFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4BorrowFuse.sol";
 import {AaveV4EModeFuseEnterData} from "../../contracts/fuses/aave_v4/AaveV4EModeFuse.sol";
@@ -68,7 +70,7 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
     }
     function enterErc4626Supply(Erc4626SupplyFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256,uint256))", data));
     }
 
     function enterErc4626SupplyTransient() external {
@@ -131,7 +133,7 @@ contract PlasmaVaultMock {
     }
 
     function exitErc4626Supply(Erc4626SupplyFuseExitData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256,uint256))", data));
     }
 
     function exitMorphoSupply(MorphoSupplyFuseExitData memory data) external {
@@ -272,6 +274,42 @@ contract PlasmaVaultMock {
     /// @return outputs Array of output values
     function getOutputs(address account_) external view returns (bytes32[] memory) {
         return TransientStorageLib.getOutputs(account_);
+    }
+
+    function enterMidasSupply(MidasSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,address))", data)
+        );
+    }
+
+    function enterMidasRequestSupply(MidasRequestSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,address))", data)
+        );
+    }
+
+    function exitMidasSupply(MidasSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,uint256,uint256,address,address))", data)
+        );
+    }
+
+    function exitMidasRequestSupply(MidasRequestSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,uint256,address,address))", data)
+        );
+    }
+
+    function cleanupMidasPendingDeposits(address depositVault_, uint256 maxIterations_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("cleanupPendingDeposits(address,uint256)", depositVault_, maxIterations_)
+        );
+    }
+
+    function cleanupMidasPendingRedemptions(address redemptionVault_, uint256 maxIterations_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("cleanupPendingRedemptions(address,uint256)", redemptionVault_, maxIterations_)
+        );
     }
 
     function execute(address fuse_, bytes calldata data_) external {

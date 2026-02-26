@@ -46,4 +46,8 @@ contract FusesLibMock {
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
         return balanceFuses.indexes[marketId];
     }
+
+    function setUnderlyingDecimals(uint8 decimals_) external {
+        PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals = decimals_;
+    }
 }
