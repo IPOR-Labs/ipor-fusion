@@ -80,8 +80,8 @@ PlasmaVault
 
 Substrate checks revert with:
 
--   `NapierFuseIInvalidToken` for missing PT/YT or input/output tokens.
--   `NapierFuseIInvalidMarketId` for missing pool substrates in swap fuses.
+-   `NapierFuseInvalidToken` for missing PT/YT or input/output tokens.
+-   `NapierFuseInvalidMarketId` for missing pool substrates in swap fuses.
 
 ## Router & Pool Lifecycle
 
@@ -136,8 +136,7 @@ Vault automation should track `principalToken.maturity()` and settlement status 
 
 1. Validate PT.
 2. Call `principalToken.collect(address(this), address(this))`.
-3. Post-validate each returned reward token is an approved substrate; revert otherwise.
-4. Emit `NapierCollectFuseEnter` with collected yield and reward list.
+3. Emit `NapierCollectFuseEnter` with collected yield and reward list.
 
 ### NapierDepositFuse – Proportional liquidity deposit/withdrawal
 
@@ -146,25 +145,28 @@ Vault automation should track `principalToken.maturity()` and settlement status 
 1. Validate pool, currency0 (underlying), and currency1 (PT).
 2. Encode `TP_ADD_LIQUIDITY` command.
 3. Transfer both currency0 and currency1 to router in proportional amounts, execute, measure liquidity delta.
-4. Emit `NapierDepositFuseEnter` with liquidity minted.
+4. Revert with `NapierFuseInsufficientAmount` when `liquidity < minLiquidity`.
+5. Emit `NapierDepositFuseEnter` with liquidity minted.
 
 **Exit (Remove Liquidity):**
 
 1. Validate pool, currency0 (underlying), and currency1 (PT).
 2. Encode `TP_REMOVE_LIQUIDITY` command.
 3. Transfer pool tokens to router, execute, receive proportional currency0 and currency1 back.
-4. Emit `NapierDepositFuseExit` with liquidity burned.
+4. Revert with `NapierFuseInsufficientAmount` when `amount0Out < amount0OutMin` or `amount1Out < amount1OutMin`.
+5. Emit `NapierDepositFuseExit` with liquidity burned.
 
 ### NapierZapDepositFuse – Single-sided liquidity operations
 
 **Enter (Zap In):**
 
-1. Validate pool, yield token (YT), and currency0 (underlying). The pool grant check is performed before calling into the pool, so passing a non-contract/unknown pool address reverts with `NapierFuseIInvalidMarketId`.
+1. Validate pool, yield token (YT), and currency0 (underlying). The pool grant check is performed before calling into the pool, so passing a non-contract/unknown pool address reverts with `NapierFuseInvalidMarketId`.
 2. Encode 2-command sequence:
     - `TP_SPLIT_UNDERLYING_TOKEN_LIQUIDITY_KEEP_YT`: Split currency0 into PT, keep YT in vault.
     - `TP_ADD_LIQUIDITY`: Add minted PT + remaining currency0 as liquidity.
 3. Transfer currency0 to router, execute, measure liquidity and YT deltas (YT stay with the vault).
-4. Emit `NapierZapDepositFuseEnter` with liquidity and YT minted.
+4. Revert with `NapierFuseInsufficientAmount` when `liquidity < minLiquidity`.
+5. Emit `NapierZapDepositFuseEnter` with liquidity and YT minted.
 
 **Exit (Zap Out):**
 
@@ -184,7 +186,8 @@ Vault automation should track `principalToken.maturity()` and settlement status 
     - `SWEEP`: Sweep all currency0 to vault with min-out check.
 
 3. Transfer pool tokens to router, execute, measure liquidity and currency0 deltas.
-4. Emit `NapierZapDepositFuseExit` with liquidity burned and underlyings received.
+4. Revert with `NapierFuseInsufficientAmount` when `underlyings < amount1OutMin`.
+5. Emit `NapierZapDepositFuseExit` with liquidity burned and underlyings received.
 
 **Note:** Zap operations are gas-efficient single-transaction alternatives to multi-step supply+deposit flows, and automatically handle PT/YT minting while keeping YT in the vault.
 
@@ -193,11 +196,12 @@ Vault automation should track `principalToken.maturity()` and settlement status 
 1. Validate pool + currencies.
 2. Revert if `amountIn` is zero.
 3. Build V4 action bundle (`SWAP_EXACT_IN_SINGLE`, `SETTLE`, `TAKE_ALL`), passing `minimumAmount` to TAKE_ALL.
-4. Transfer tokenIn to router, execute, verify output, emit swap event.
+4. Transfer tokenIn to router, execute, then revert with `NapierFuseInsufficientAmount` when `amountOut < minimumAmount`; otherwise emit swap event.
 
 ### NapierSwapYtFuse – YT swaps via universal router
 
 1. Validate pool, underlying, and YT.
 2. Revert if `amountIn` is zero.
 3. Encode `YT_SWAP_UNDERLYING_FOR_YT` or `YT_SWAP_YT_FOR_UNDERLYING` with approximation + min-out params (default binary search config applies when `eps` is zero).
-4. Force-approve Permit2 for the token before execution, run the router call, then reset the Permit2 approval; emit swap event.
+4. Force-approve Permit2 for the token before execution, run the router call, then reset the Permit2 approval.
+5. Revert with `NapierFuseInsufficientAmount` when `amountOut < minimumAmount`; otherwise emit swap event.
