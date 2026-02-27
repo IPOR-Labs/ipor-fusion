@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -37,10 +37,10 @@ contract ERC4626ZapInAllowance {
     }
 
     /// @notice Fetches approved tokens from a user to the ERC4626ZapIn contract
+    /// @dev Reverts if transfer fails; successful completion indicates success (no explicit return value needed)
     /// @param asset_ Address of the token to fetch
     /// @param amount_ Amount of tokens to fetch
-    /// @return success True if the transfer was successful
-    function transferApprovedAssets(address asset_, uint256 amount_) external onlyERC4626ZapIn returns (bool success) {
+    function transferApprovedAssets(address asset_, uint256 amount_) external onlyERC4626ZapIn {
         if (amount_ == 0) {
             revert AmountIsZero();
         }
@@ -58,7 +58,6 @@ contract ERC4626ZapInAllowance {
         IERC20(asset_).safeTransferFrom(currentZapSender, ERC4626_ZAP_IN, amount_);
 
         emit AssetsTransferred(currentZapSender, asset_, amount_);
-        return true;
     }
 
     receive() external payable {

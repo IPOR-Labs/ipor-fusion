@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IFuseCommon} from "../IFuseCommon.sol";
 
@@ -68,6 +68,8 @@ struct FuseInfoByMarketId {
 library FuseWhitelistLib {
     /// @notice Thrown when attempting to add an empty fuse type
     error EmptyFuseType();
+    /// @notice Thrown when attempting to add a fuse type with ID 0 (reserved)
+    error ZeroFuseTypeIdNotAllowed();
     /// @notice Thrown when attempting to add a fuse type that already exists
     error FuseTypeAlreadyExists(uint256 fuseId);
     /// @notice Thrown when attempting to add an empty fuse state
@@ -92,10 +94,10 @@ library FuseWhitelistLib {
     error InvalidMetadataType(uint256 metadataId);
     /// @notice Thrown when attempting to add metadata to a non-existent fuse
     error FuseNotFound(address fuseAddress);
+    /// @notice Thrown when attempting to remove metadata that doesn't exist for the fuse
+    error MetadataNotFoundForFuse(address fuseAddress, uint256 metadataId);
     /// @notice Thrown when attempting to add a fuse info with a zero deployment timestamp
     error ZeroDeploymentTimestamp();
-    /// @notice Thrown when attempting to update a fuse type that does not have a MARKET_ID() method
-    error FuseDoesNotHaveMarketId(address fuseAddress);
 
     /// @notice Emitted when a new fuse type is added
     /// @param fuseId The ID of the added fuse type
@@ -132,6 +134,11 @@ library FuseWhitelistLib {
     /// @param fuseType The type of the fuse
     /// @param timestamp When the fuse was added
     event FuseInfoAdded(address fuseAddress, uint16 fuseType, uint32 timestamp);
+    /// @notice Emitted when fuse deployment timestamp is updated
+    /// @param fuseAddress The address of the updated fuse
+    /// @param oldTimestamp The old deployment timestamp
+    /// @param newTimestamp The new deployment timestamp
+    event FuseDeploymentTimestampUpdated(address fuseAddress, uint32 oldTimestamp, uint32 newTimestamp);
     /// @notice Emitted when a fuse type is updated
     /// @param fuseAddress The address of the updated fuse
     /// @param oldFuseType The old type of the fuse
@@ -140,36 +147,45 @@ library FuseWhitelistLib {
     /// @notice Storage slot for FusesTypes struct
     /// @dev Storage slot calculation:
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseTypes")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant FUSES_TYPES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd00;
+    bytes32 private constant FUSES_TYPES = 0xbc7b173cf41b66df25801705abbfb53e317f15848d6d19b9b70f825d127da300;
+
     /// @notice Storage slot for FusesStates struct
     /// @dev Storage slot calculation:
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseStates")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant FUSES_STATES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd01;
+    bytes32 private constant FUSES_STATES = 0x8a7a92d7f7523146dcfa9b543406154f48e50398e8883a073fd0a39963c71900;
     /// @notice Storage slot for FuseInfo struct
     /// @dev Storage slot calculation:
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseInfo")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant FUSE_INFO = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd02;
-    /// @notice Storage slot for FuseListsByType struct
-    /// @dev Storage slot calculation:
-    /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseListsByType")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant FUSE_LISTS_BY_TYPE = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd04;
+    bytes32 private constant FUSE_INFO = 0x93b8097fb5ba463adee1d8dad3980690b97d6dea8f8eb0d7293b60cd46d61a00;
+
     /// @notice Storage slot for FuseInfoByMarketId struct
     /// @dev Storage slot calculation:
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseInfoByMarketId")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSE_INFO_BY_MARKET_ID =
-        0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd03;
+        0x5929950f10dd6683dc0005b6aa81089608667bf99e4080e5b9e70bafff5b0600;
+
+    /// @notice Storage slot for FuseListsByType struct
+    /// @dev Storage slot calculation:
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.fuseListsByType")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant FUSE_LISTS_BY_TYPE = 0x4b7eac41c4b30d22693d7d20e06159ebe25bcdb7eb0cfab5b3cabad340bb2100;
+
     /// @notice Storage slot for MetadataTypes struct
     /// @dev Storage slot calculation:
     /// keccak256(abi.encode(uint256(keccak256("io.ipor.whitelists.metadataTypes")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant METADATA_TYPES = 0xefe839ce0caa5648581e30daa19dcc84419e945902cc17f7f481f056193edd05;
+    bytes32 private constant METADATA_TYPES = 0xa14e9895cbf4e657ff6c1d0724d9101dc914af7c674ca4b6067bda53f0172b00;
 
     /// @notice Adds a new fuse type to the system
     /// @param fuseId_ The unique identifier for the fuse type
     /// @param fuseTypeId_ The descriptive name of the fuse type
     /// @dev Reverts if:
+    /// - fuseId_ is 0 (reserved, not allowed)
     /// - fuseTypeId_ is empty
     /// - fuseId_ already exists
     function addFuseType(uint16 fuseId_, string calldata fuseTypeId_) internal {
+        if (fuseId_ == 0) {
+            revert ZeroFuseTypeIdNotAllowed();
+        }
+
         if (bytes(fuseTypeId_).length == 0) {
             revert EmptyFuseType();
         }
@@ -408,12 +424,34 @@ library FuseWhitelistLib {
 
         FuseInfo storage fuseInfo = _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
 
-        if (fuseInfo.fuseType == 0) {
+        if (fuseInfo.fuseAddress == address(0)) {
             revert FuseNotFound(fuseAddress_);
         }
 
         fuseInfo.fuseState = fuseState_;
         emit FuseStateUpdated(fuseAddress_, fuseState_, fuseInfo.fuseType);
+    }
+
+    /// @notice Updates the deployment timestamp of a fuse
+    /// @param fuseAddress_ The address of the fuse to update
+    /// @param deploymentTimestamp_ The new deployment timestamp
+    /// @dev Reverts if:
+    /// - deploymentTimestamp_ is zero
+    /// - fuseAddress_ is not found
+    function updateFuseDeploymentTimestamp(address fuseAddress_, uint32 deploymentTimestamp_) internal {
+        if (deploymentTimestamp_ == 0) {
+            revert ZeroDeploymentTimestamp();
+        }
+
+        FuseInfo storage fuseInfo = _getFuseListByAddressSlot().fusesByAddress[fuseAddress_];
+
+        if (fuseInfo.fuseAddress == address(0)) {
+            revert FuseNotFound(fuseAddress_);
+        }
+
+        uint32 oldTimestamp = fuseInfo.timestamp;
+        fuseInfo.timestamp = deploymentTimestamp_;
+        emit FuseDeploymentTimestampUpdated(fuseAddress_, oldTimestamp, deploymentTimestamp_);
     }
 
     /// @notice Updates metadata for a fuse
@@ -467,15 +505,22 @@ library FuseWhitelistLib {
 
         FuseInfo storage fuseInfo = fuseInfoByAddress.fusesByAddress[fuseAddress_];
 
-        fuseInfo.metadata[metadataId_] = new bytes32[](0);
-
-        for (uint256 i; i < fuseInfo.metadataIds.length; ++i) {
+        bool metadataFound = false;
+        uint256 metadataIdsLength = fuseInfo.metadataIds.length;
+        for (uint256 i; i < metadataIdsLength; ++i) {
             if (fuseInfo.metadataIds[i] == metadataId_) {
-                fuseInfo.metadataIds[i] = fuseInfo.metadataIds[fuseInfo.metadataIds.length - 1];
+                fuseInfo.metadataIds[i] = fuseInfo.metadataIds[metadataIdsLength - 1];
                 fuseInfo.metadataIds.pop();
+                metadataFound = true;
                 break;
             }
         }
+
+        if (!metadataFound) {
+            revert MetadataNotFoundForFuse(fuseAddress_, metadataId_);
+        }
+
+        delete fuseInfo.metadata[metadataId_];
 
         emit FuseMetadataUpdated(fuseAddress_, metadataId_, new bytes32[](0));
     }

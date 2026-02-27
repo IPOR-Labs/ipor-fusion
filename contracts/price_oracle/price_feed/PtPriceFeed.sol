@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IPriceFeed} from "./IPriceFeed.sol";
 import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
@@ -100,6 +100,12 @@ contract PtPriceFeed is IPriceFeed {
     }
 
     /// @inheritdoc IPriceFeed
+    /// @notice Returns the latest price data with Chainlink-compatible metadata
+    /// @dev Metadata fields are populated as follows:
+    /// - roundId: Synthetic round ID derived from block.number
+    /// - startedAt: Start of TWAP observation window (block.timestamp - TWAP_WINDOW)
+    /// - time: When price was computed (block.timestamp)
+    /// - answeredInRound: Same as roundId (single-observation pattern)
     function latestRoundData()
         external
         view
@@ -118,18 +124,22 @@ contract PtPriceFeed is IPriceFeed {
             ASSET_ADDRESS
         );
 
-        uint256 scalingFactor = FEED_DECIMALS + priceDecimals - _decimals();
+        uint256 scalingFactor = FEED_DECIMALS + priceDecimals - decimals;
         price = SafeCast.toInt256((unitPrice * assetPrice) / 10 ** scalingFactor);
 
         if (price <= 0) {
             revert PriceOracleInvalidPrice();
         }
 
+        // Populate Chainlink-compatible metadata
+        // Synthetic round ID derived from block number for monotonic ordering
+        roundId = uint80(block.number);
+        // Start of TWAP observation window
+        startedAt = block.timestamp - twapWindow;
+        // When price was computed
         time = block.timestamp;
-    }
-
-    function _decimals() internal pure returns (uint8) {
-        return 8;
+        // Answer corresponds to this round
+        answeredInRound = roundId;
     }
 
     /// @notice Returns the raw PT to asset rate without price adjustment

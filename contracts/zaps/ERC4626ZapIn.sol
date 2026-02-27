@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {ERC4626ZapInAllowance} from "./ERC4626ZapInAllowance.sol";
@@ -25,6 +25,8 @@ struct ZapInData {
     address receiver;
     /// @notice Minimum amount of tokens that must be deposited
     uint256 minAmountToDeposit;
+    /// @notice Minimum number of shares that must be minted (slippage protection)
+    uint256 minSharesOut;
     /// @notice List of token addresses that should be refunded to the sender if any remain after the operation
     address[] assetsToRefundToSender;
     /// @notice Array of calls to be executed as part of the zap-in process
@@ -48,6 +50,8 @@ contract ERC4626ZapIn is ReentrancyGuard {
     error InsufficientDepositAssetBalance();
     /// @notice Thrown when receiver address is zero
     error ReceiverIsZero();
+    /// @notice Thrown when the number of shares minted is less than minSharesOut
+    error InsufficientSharesOut(uint256 received, uint256 minimum);
 
     /// @notice Address of the ZapInAllowance contract that handles token transfers
     /// @dev Immutable contract address created in constructor
@@ -98,7 +102,11 @@ contract ERC4626ZapIn is ReentrancyGuard {
             revert InsufficientDepositAssetBalance();
         }
 
-        vault.deposit(depositAssetBalance, zapInData_.receiver);
+        uint256 sharesReceived = vault.deposit(depositAssetBalance, zapInData_.receiver);
+
+        if (sharesReceived < zapInData_.minSharesOut) {
+            revert InsufficientSharesOut(sharesReceived, zapInData_.minSharesOut);
+        }
 
         uint256 assetsToRefundToSenderLength = zapInData_.assetsToRefundToSender.length;
         address asset;

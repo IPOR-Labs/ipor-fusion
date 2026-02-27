@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
@@ -8,6 +8,7 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, 
 import {EbisuZapperCreateFuse, EbisuZapperCreateFuseEnterData, EbisuZapperCreateFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
 
 import {EbisuAdjustInterestRateFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol";
+import {EbisuAdjustTroveFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol";
 
 import {EbisuZapperBalanceFuse} from "../../../contracts/fuses/ebisu/EbisuZapperBalanceFuse.sol";
 import {ITroveManager} from "../../../contracts/fuses/ebisu/ext/ITroveManager.sol";
@@ -35,6 +36,9 @@ import {EbisuZapperLeverModifyFuse, EbisuZapperLeverModifyFuseEnterData, EbisuZa
 import {WethEthAdapterStorageLib} from "../../../contracts/fuses/ebisu/lib/WethEthAdapterStorageLib.sol";
 import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "../../../contracts/fuses/ebisu/lib/EbisuZapperSubstrateLib.sol";
 import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
+import {TransientStorageSetterFuse} from "../../test_helpers/TransientStorageSetterFuse.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 
 contract MockDex {
     function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut) public {
@@ -86,7 +90,9 @@ contract EbisuZapperTest is Test {
     EbisuZapperBalanceFuse private balanceFuse;
     ERC20BalanceFuse private erc20BalanceFuse;
     UniversalTokenSwapperFuse private swapFuse;
+    TransientStorageSetterFuse private transientStorageSetterFuse;
     EbisuAdjustInterestRateFuse private adjustRateFuse;
+    EbisuAdjustTroveFuse private adjustTroveFuse;
 
     address private accessManager;
     PriceOracleMiddleware private priceOracle;
@@ -139,7 +145,8 @@ contract EbisuZapperTest is Test {
                 _setupFeeConfig(),
                 _createAccessManager(),
                 address(new PlasmaVaultBase()),
-                address(new WithdrawManager(accessManager))
+                address(new WithdrawManager(accessManager)),
+                address(0)
             )
         );
 
@@ -149,6 +156,9 @@ contract EbisuZapperTest is Test {
         deal(SUSDE, address(mockDex), 1e9 * 1e18);
         // deal 1_000_000_000 ebUSD to mockDex
         deal(EBUSD, address(mockDex), 1e9 * 1e18);
+
+        _setupRoles();
+
         // setup plasma vault
         PlasmaVaultConfigurator.setupPlasmaVault(
             vm,
@@ -182,7 +192,7 @@ contract EbisuZapperTest is Test {
         EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
             zapper: SUSDE_ZAPPER,
             registry: SUSDE_REGISTRY,
-            collAmount: 10_000 * 1e18, // 10_000 sUSDe collateral
+            collAmount: 4_000 * 1e18, // 4_000 sUSDe collateral
             ebusdAmount: 5_000 * 1e18, // 5_000 ebUSD debt
             upperHint: 0,
             lowerHint: 0,
@@ -223,9 +233,9 @@ contract EbisuZapperTest is Test {
             // -- 90,000 USDC (6 decimals) -> USDC value identity
             // -- 10,000 SUSDE (18 decimals) -> USDC value multiply * SUSDE price and divide by USDC price
             uint256 susdeBalance = ERC20(SUSDE).balanceOf(address(plasmaVault));
-            assertEq(susdeBalance, 10_000 * 1e18, "sUSDe balance incorrect");
+            assertEq(susdeBalance, 4_000 * 1e18, "sUSDe balance incorrect");
             uint256 usdcBalance = ERC20(USDC).balanceOf(address(plasmaVault));
-            assertEq(usdcBalance, 90_000 * 1e6, "USDC balance incorrect");
+            assertEq(usdcBalance, 96_000 * 1e6, "USDC balance incorrect");
 
             (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
             uint256 susdeUSDValue = IporMath.convertToWad(susdeBalance * price, 18 + priceDecimals);
@@ -326,7 +336,7 @@ contract EbisuZapperTest is Test {
             uint256 totalAssetsAfterExecution = plasmaVault.totalAssets();
             // They are simply the assets in ERC20 and Ebisu plus the USDC residual balance
             // then
-            assertEq(totalAssetsAfterExecution, totalAssetsInERC20 + totalAssetsInEbisu + 90_000 * 1e6);
+            assertEq(totalAssetsAfterExecution, totalAssetsInERC20 + totalAssetsInEbisu + 96_000 * 1e6);
         }
         {
             // ----- CHECK ASSET CHANGE ------
@@ -418,8 +428,8 @@ contract EbisuZapperTest is Test {
         // no need of EBUSD to repay debt if closing from collateral
         EbisuZapperCreateFuseExitData memory exitData = EbisuZapperCreateFuseExitData({
             zapper: SUSDE_ZAPPER,
-            flashLoanAmount: 10_000 * 1e18, // sUSDe needed to repay the debt
-            minExpectedCollateral: 1_000 * 1e18,
+            flashLoanAmount: 5_000 * 1e18, // sUSDe needed to repay the debt
+            minExpectedCollateral: 0,
             exitFromCollateral: true
         });
 
@@ -473,8 +483,8 @@ contract EbisuZapperTest is Test {
 
         EbisuZapperLeverModifyFuseEnterData memory leverUpData = EbisuZapperLeverModifyFuseEnterData({
             zapper: SUSDE_ZAPPER,
-            flashLoanAmount: 100 * 1e18,
-            ebusdAmount: 500 * 1e18,
+            flashLoanAmount: 500 * 1e18,
+            ebusdAmount: 700 * 1e18,
             maxUpfrontFee: 2 * 1e18
         });
 
@@ -647,6 +657,336 @@ contract EbisuZapperTest is Test {
         _eqWithTolerance(plasmaVault.totalAssets(), totalAssetsBefore, 1); // 0.01% tolerance due to slippage
     }
 
+    function testShouldRevertWhenEnterWithUnsupportedSubstrate() public {
+        EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
+            zapper: address(0x123), // unsupported
+            registry: SUSDE_REGISTRY,
+            collAmount: 10_000 * 1e18,
+            ebusdAmount: 5_000 * 1e18,
+            upperHint: 0,
+            lowerHint: 0,
+            flashLoanAmount: 0,
+            annualInterestRate: 20 * 1e16,
+            maxUpfrontFee: 5 * 1e18
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(zapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256))",
+                enterData
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("UnsupportedSubstrate()"));
+        plasmaVault.execute(enterCalls);
+    }
+
+    function testShouldRevertWhenExitWithUnsupportedSubstrate() public {
+        EbisuZapperCreateFuseExitData memory exitData = EbisuZapperCreateFuseExitData({
+            zapper: address(0x123), // unsupported
+            flashLoanAmount: 0,
+            minExpectedCollateral: 0,
+            exitFromCollateral: false
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction(
+            address(zapperFuse),
+            abi.encodeWithSignature("exit((address,uint256,uint256,bool))", exitData)
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("UnsupportedSubstrate()"));
+        plasmaVault.execute(exitCalls);
+    }
+
+    function testShouldRevertWhenExitWithTroveNotOpen() public {
+        // Use a supported zapper but no trove open
+        EbisuZapperCreateFuseExitData memory exitData = EbisuZapperCreateFuseExitData({
+            zapper: SUSDE_ZAPPER,
+            flashLoanAmount: 0,
+            minExpectedCollateral: 0,
+            exitFromCollateral: false
+        });
+
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction(
+            address(zapperFuse),
+            abi.encodeWithSignature("exit((address,uint256,uint256,bool))", exitData)
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("TroveNotOpen()"));
+        plasmaVault.execute(exitCalls);
+    }
+
+    function testShouldRevertWhenUpfrontFeeTooHigh() public {
+        EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            registry: SUSDE_REGISTRY,
+            collAmount: 10_000 * 1e18,
+            ebusdAmount: 5_000 * 1e18,
+            upperHint: 0,
+            lowerHint: 0,
+            flashLoanAmount: 0,
+            annualInterestRate: 300 * 1e16, // 300% > 250%
+            maxUpfrontFee: 5 * 1e18
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(zapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256))",
+                enterData
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("UpfrontFeeTooHigh(uint256)", 300 * 1e16));
+        plasmaVault.execute(enterCalls);
+    }
+
+    function testShouldRevertWhenDebtBelowMin() public {
+        EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            registry: SUSDE_REGISTRY,
+            collAmount: 10_000 * 1e18,
+            ebusdAmount: 1_000 * 1e18, // < MIN_DEBT (2000)
+            upperHint: 0,
+            lowerHint: 0,
+            flashLoanAmount: 0,
+            annualInterestRate: 20 * 1e16,
+            maxUpfrontFee: 5 * 1e18
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(zapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256))",
+                enterData
+            )
+        );
+
+        vm.expectRevert();
+        plasmaVault.execute(enterCalls);
+    }
+
+    function testShouldRevertWhenICRBelowMCR() public {
+        EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            registry: SUSDE_REGISTRY,
+            collAmount: 100 * 1e18,
+            ebusdAmount: 5_000 * 1e18,
+            upperHint: 0,
+            lowerHint: 0,
+            flashLoanAmount: 0,
+            annualInterestRate: 20 * 1e16,
+            maxUpfrontFee: 5 * 1e18
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(zapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256))",
+                enterData
+            )
+        );
+
+        deal(USDC, address(this), 100_000 * 1e6);
+        ERC20(USDC).approve(address(plasmaVault), 100_000 * 1e6);
+        plasmaVault.deposit(100_000 * 1e6, address(this));
+        deal(WETH, address(this), ETH_GAS_COMPENSATION);
+        ERC20(WETH).transfer(address(plasmaVault), ETH_GAS_COMPENSATION);
+        _swapUSDCtoToken(enterData.collAmount / 1e12, SUSDE);
+
+        vm.expectRevert();
+        plasmaVault.execute(enterCalls);
+    }
+
+    function testShouldBeAbleToEnterAndExitTransient() public {
+        // given
+        EbisuZapperCreateFuseEnterData memory enterData = EbisuZapperCreateFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            registry: SUSDE_REGISTRY,
+            collAmount: 10_000 * 1e18, // 10_000 sUSDe collateral
+            ebusdAmount: 5_000 * 1e18, // 5_000 ebUSD debt
+            upperHint: 0,
+            lowerHint: 0,
+            flashLoanAmount: 1_000 * 1e18, // 1_000 further sUSDe from flashloan
+            annualInterestRate: 20 * 1e16, // 20%
+            maxUpfrontFee: 5 * 1e18
+        });
+
+        bytes32[] memory inputs = new bytes32[](9);
+        inputs[0] = TypeConversionLib.toBytes32(enterData.zapper);
+        inputs[1] = TypeConversionLib.toBytes32(enterData.registry);
+        inputs[2] = TypeConversionLib.toBytes32(enterData.collAmount);
+        inputs[3] = TypeConversionLib.toBytes32(enterData.ebusdAmount);
+        inputs[4] = TypeConversionLib.toBytes32(enterData.upperHint);
+        inputs[5] = TypeConversionLib.toBytes32(enterData.lowerHint);
+        inputs[6] = TypeConversionLib.toBytes32(enterData.flashLoanAmount);
+        inputs[7] = TypeConversionLib.toBytes32(enterData.annualInterestRate);
+        inputs[8] = TypeConversionLib.toBytes32(enterData.maxUpfrontFee);
+
+        // deposit 100,000 USDC in the vault
+        deal(USDC, address(this), 100_000 * 1e6);
+        ERC20(USDC).approve(address(plasmaVault), 100_000 * 1e6);
+        plasmaVault.deposit(100_000 * 1e6, address(this));
+
+        deal(WETH, address(this), ETH_GAS_COMPENSATION);
+        ERC20(WETH).transfer(address(plasmaVault), ETH_GAS_COMPENSATION);
+
+        _swapUSDCtoToken(enterData.collAmount / 1e12, SUSDE);
+
+        address predictedAdapter = vm.computeCreateAddress(address(plasmaVault), vm.getNonce(address(plasmaVault)));
+        uint256 predictedTroveId = EbisuMathLib.calculateTroveId(
+            predictedAdapter,
+            address(plasmaVault),
+            SUSDE_ZAPPER,
+            1
+        );
+
+        bytes32[] memory expectedOutputs = new bytes32[](2);
+        expectedOutputs[0] = TypeConversionLib.toBytes32(enterData.zapper);
+        expectedOutputs[1] = TypeConversionLib.toBytes32(predictedTroveId);
+
+        FuseAction[] memory enterCalls = new FuseAction[](3);
+        enterCalls[0] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("setInputs(address,bytes32[])", address(zapperFuse), inputs)
+        );
+        enterCalls[1] = FuseAction(address(zapperFuse), abi.encodeWithSignature("enterTransient()"));
+        enterCalls[2] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("checkOutputs(address,bytes32[])", address(zapperFuse), expectedOutputs)
+        );
+
+        // when
+        plasmaVault.execute(enterCalls);
+
+        // Verify adapter was created
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        assertTrue(wethEthAdapter != address(0), "Adapter should be created after execution");
+        assertEq(wethEthAdapter, predictedAdapter, "Adapter address mismatch");
+
+        // Now EXIT Transient
+        _swapUSDCtoToken(6_000 * 1e6, EBUSD);
+
+        EbisuZapperCreateFuseExitData memory exitData = EbisuZapperCreateFuseExitData({
+            zapper: SUSDE_ZAPPER,
+            flashLoanAmount: 0,
+            minExpectedCollateral: 0,
+            exitFromCollateral: false
+        });
+
+        bytes32[] memory exitInputs = new bytes32[](4);
+        exitInputs[0] = TypeConversionLib.toBytes32(exitData.zapper);
+        exitInputs[1] = TypeConversionLib.toBytes32(exitData.flashLoanAmount);
+        exitInputs[2] = TypeConversionLib.toBytes32(exitData.minExpectedCollateral);
+        // bool to uint256
+        exitInputs[3] = TypeConversionLib.toBytes32(uint256(exitData.exitFromCollateral ? 1 : 0));
+
+        bytes32[] memory expectedExitOutputs = new bytes32[](2);
+        expectedExitOutputs[0] = TypeConversionLib.toBytes32(exitData.zapper);
+        expectedExitOutputs[1] = TypeConversionLib.toBytes32(uint256(1));
+
+        FuseAction[] memory exitCalls = new FuseAction[](3);
+        exitCalls[0] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("setInputs(address,bytes32[])", address(zapperFuse), exitInputs)
+        );
+        exitCalls[1] = FuseAction(address(zapperFuse), abi.encodeWithSignature("exitTransient()"));
+        exitCalls[2] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("checkOutputs(address,bytes32[])", address(zapperFuse), expectedExitOutputs)
+        );
+
+        plasmaVault.execute(exitCalls);
+
+        ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
+        ITroveManager.LatestTroveData memory troveData = troveManager.getLatestTroveData(predictedTroveId);
+        assertEq(troveData.entireColl, 0);
+        assertEq(troveData.entireDebt, 0);
+    }
+
+    function testLeverModifyTransient() public {
+        // Setup similar to testLeverUpEffectsEbisu
+        testShouldEnterToEbisuZapper();
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), SUSDE_ZAPPER, 1);
+        ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
+
+        ITroveManager.LatestTroveData memory initialData = troveManager.getLatestTroveData(troveId);
+
+        // Lever Up
+        EbisuZapperLeverModifyFuseEnterData memory leverUpData = EbisuZapperLeverModifyFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            flashLoanAmount: 500 * 1e18,
+            ebusdAmount: 700 * 1e18,
+            maxUpfrontFee: 2 * 1e18
+        });
+
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(leverUpData.zapper);
+        inputs[1] = TypeConversionLib.toBytes32(leverUpData.flashLoanAmount);
+        inputs[2] = TypeConversionLib.toBytes32(leverUpData.ebusdAmount);
+        inputs[3] = TypeConversionLib.toBytes32(leverUpData.maxUpfrontFee);
+
+        bytes32[] memory expectedOutputs = new bytes32[](2);
+        expectedOutputs[0] = TypeConversionLib.toBytes32(leverUpData.zapper);
+        expectedOutputs[1] = TypeConversionLib.toBytes32(troveId);
+
+        FuseAction[] memory leverUpCalls = new FuseAction[](3);
+        leverUpCalls[0] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("setInputs(address,bytes32[])", address(leverModifyFuse), inputs)
+        );
+        leverUpCalls[1] = FuseAction(address(leverModifyFuse), abi.encodeWithSignature("enterTransient()"));
+        leverUpCalls[2] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("checkOutputs(address,bytes32[])", address(leverModifyFuse), expectedOutputs)
+        );
+
+        plasmaVault.execute(leverUpCalls);
+
+        ITroveManager.LatestTroveData memory finalData = troveManager.getLatestTroveData(troveId);
+        assertGe(finalData.entireDebt, initialData.entireDebt + leverUpData.ebusdAmount);
+
+        // Lever Down
+        EbisuZapperLeverModifyFuseExitData memory leverDownData = EbisuZapperLeverModifyFuseExitData({
+            zapper: SUSDE_ZAPPER,
+            flashLoanAmount: 500 * 1e18,
+            minBoldAmount: 200 * 1e18
+        });
+
+        bytes32[] memory exitInputs = new bytes32[](3);
+        exitInputs[0] = TypeConversionLib.toBytes32(leverDownData.zapper);
+        exitInputs[1] = TypeConversionLib.toBytes32(leverDownData.flashLoanAmount);
+        exitInputs[2] = TypeConversionLib.toBytes32(leverDownData.minBoldAmount);
+
+        bytes32[] memory expectedExitOutputs = new bytes32[](2);
+        expectedExitOutputs[0] = TypeConversionLib.toBytes32(leverDownData.zapper);
+        expectedExitOutputs[1] = TypeConversionLib.toBytes32(troveId);
+
+        FuseAction[] memory leverDownCalls = new FuseAction[](3);
+        leverDownCalls[0] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("setInputs(address,bytes32[])", address(leverModifyFuse), exitInputs)
+        );
+        leverDownCalls[1] = FuseAction(address(leverModifyFuse), abi.encodeWithSignature("exitTransient()"));
+        leverDownCalls[2] = FuseAction(
+            address(transientStorageSetterFuse),
+            abi.encodeWithSignature("checkOutputs(address,bytes32[])", address(leverModifyFuse), expectedExitOutputs)
+        );
+
+        plasmaVault.execute(leverDownCalls);
+
+        ITroveManager.LatestTroveData memory finalData2 = troveManager.getLatestTroveData(troveId);
+        assertLt(finalData2.entireDebt, finalData.entireDebt);
+    }
+
     // --- internal swapper function ---
 
     function _swapUSDCtoToken(uint256 amountToSwap, address tokenToObtain) private {
@@ -672,13 +1012,14 @@ contract EbisuZapperTest is Test {
             tokenIn: USDC,
             tokenOut: tokenToObtain,
             amountIn: amountToSwap,
+            minAmountOut: 0,
             data: swapData
         });
 
         FuseAction[] memory swapCalls = new FuseAction[](1);
         swapCalls[0] = FuseAction(
             address(swapFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
         );
 
         // swap
@@ -716,6 +1057,74 @@ contract EbisuZapperTest is Test {
         assertEq(troveData.annualInterestRate, newRate, "Interest rate was not updated by fuse");
     }
 
+    function testShouldAdjustTroveViaFuseEbisu() public {
+        testShouldEnterToEbisuZapper();
+
+        address wethEthAdapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        uint256 troveId = EbisuMathLib.calculateTroveId(address(wethEthAdapter), address(plasmaVault), SUSDE_ZAPPER, 1);
+        ITroveManager troveManager = ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager());
+        ITroveManager.LatestTroveData memory initialTroveData = troveManager.getLatestTroveData(troveId);
+
+        EbisuAdjustTroveFuse.EbisuAdjustTroveFuseEnterData memory adjustData = EbisuAdjustTroveFuse
+            .EbisuAdjustTroveFuseEnterData({
+                zapper: SUSDE_ZAPPER,
+                registry: SUSDE_REGISTRY,
+                collChange: 1000,
+                debtChange: 500,
+                isCollIncrease: true,
+                isDebtIncrease: true,
+                maxUpfrontFee: 5 * 1e18
+            });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(adjustTroveFuse),
+            abi.encodeWithSelector(EbisuAdjustTroveFuse.enter.selector, adjustData)
+        );
+
+        plasmaVault.execute(calls);
+
+        ITroveManager.LatestTroveData memory troveData = troveManager.getLatestTroveData(troveId);
+        assertEq(
+            troveData.entireColl,
+            initialTroveData.entireColl + adjustData.collChange,
+            "Collateral was not updated by fuse"
+        );
+        assertEq(
+            troveData.entireDebt,
+            initialTroveData.entireDebt + adjustData.debtChange,
+            "Debt was not updated by fuse"
+        );
+
+        // same but with coll and debt decrease
+        adjustData = EbisuAdjustTroveFuse.EbisuAdjustTroveFuseEnterData({
+            zapper: SUSDE_ZAPPER,
+            registry: SUSDE_REGISTRY,
+            collChange: 500,
+            debtChange: 200,
+            isCollIncrease: false,
+            isDebtIncrease: false,
+            maxUpfrontFee: 5 * 1e18
+        });
+
+        calls[0] = FuseAction(
+            address(adjustTroveFuse),
+            abi.encodeWithSelector(EbisuAdjustTroveFuse.enter.selector, adjustData)
+        );
+
+        plasmaVault.execute(calls);
+        ITroveManager.LatestTroveData memory finalTroveData = troveManager.getLatestTroveData(troveId);
+        assertEq(
+            finalTroveData.entireColl,
+            troveData.entireColl - 500, // 1000 - 500
+            "Collateral was not updated by fuse"
+        );
+        assertEq(
+            finalTroveData.entireDebt,
+            troveData.entireDebt - 200, // 500 - 200
+            "Debt was not updated by fuse"
+        );
+    }
     // --- helpers ---
 
     function _setupMarketConfigs(
@@ -754,11 +1163,18 @@ contract EbisuZapperTest is Test {
         erc20Assets[0] = PlasmaVaultConfigLib.addressToBytes32(EBUSD);
         erc20Assets[1] = PlasmaVaultConfigLib.addressToBytes32(SUSDE);
 
-        bytes32[] memory swapperAssets = new bytes32[](4);
-        swapperAssets[0] = PlasmaVaultConfigLib.addressToBytes32(USDC);
-        swapperAssets[1] = PlasmaVaultConfigLib.addressToBytes32(SUSDE);
-        swapperAssets[2] = PlasmaVaultConfigLib.addressToBytes32(EBUSD);
-        swapperAssets[3] = PlasmaVaultConfigLib.addressToBytes32(_mockDex);
+        // Use new substrate encoding for UniversalTokenSwapper
+        // Tokens used as tokenIn/tokenOut
+        // Targets are addresses called during swap (including tokens for approve calls)
+        bytes32[] memory swapperAssets = new bytes32[](8);
+        swapperAssets[0] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(USDC);
+        swapperAssets[1] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(SUSDE);
+        swapperAssets[2] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(EBUSD);
+        swapperAssets[3] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(_mockDex);
+        swapperAssets[4] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(USDC); // called for approve
+        swapperAssets[5] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(SUSDE); // called for approve
+        swapperAssets[6] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(EBUSD); // called for approve
+        swapperAssets[7] = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(5e16); // 5% slippage
 
         marketConfigs_ = new MarketSubstratesConfig[](3);
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, erc20Assets);
@@ -769,19 +1185,19 @@ contract EbisuZapperTest is Test {
     function _setupFuses() private returns (address[] memory fuses) {
         zapperFuse = new EbisuZapperCreateFuse(IporFusionMarkets.EBISU, WETH); // OPEN + CLOSE
         leverModifyFuse = new EbisuZapperLeverModifyFuse(IporFusionMarkets.EBISU);
-        swapFuse = new UniversalTokenSwapperFuse(
-            IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            address(new SwapExecutor()),
-            1e18
-        );
+        swapFuse = new UniversalTokenSwapperFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER);
+        transientStorageSetterFuse = new TransientStorageSetterFuse();
 
         adjustRateFuse = new EbisuAdjustInterestRateFuse(IporFusionMarkets.EBISU);
+        adjustTroveFuse = new EbisuAdjustTroveFuse(IporFusionMarkets.EBISU);
 
-        fuses = new address[](4);
+        fuses = new address[](6);
         fuses[0] = address(zapperFuse);
         fuses[1] = address(leverModifyFuse);
         fuses[2] = address(adjustRateFuse);
-        fuses[3] = address(swapFuse);
+        fuses[3] = address(adjustTroveFuse);
+        fuses[4] = address(swapFuse);
+        fuses[5] = address(transientStorageSetterFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {

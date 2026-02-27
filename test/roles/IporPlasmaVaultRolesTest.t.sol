@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, PlasmaVaultInitData, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
@@ -671,7 +671,8 @@ contract IporPlasmaVaultRolesTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(_accessManager),
                 address(new PlasmaVaultBase()),
-                address(_withdrawManager)
+                address(_withdrawManager),
+                address(0)
             )
         );
         vm.stopPrank();

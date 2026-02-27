@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -59,13 +59,13 @@ library WithdrawManagerStorageLib {
 
     /// @notice Emitted when a withdraw request is created or updated
     /// @param account Address of the account making the request
-    /// @param amount Amount requested for withdrawal
+    /// @param shares Number of shares requested for withdrawal
     /// @param endWithdrawWindow Timestamp when the withdraw window expires
-    event WithdrawRequestUpdated(address account, uint256 amount, uint32 endWithdrawWindow);
+    event WithdrawRequestUpdated(address account, uint256 shares, uint32 endWithdrawWindow);
 
-    /// @notice Emitted when funds are released
-    /// @param releaseTimestamp Timestamp when funds were released
-    /// @param sharesToRelease Amount of funds released
+    /// @notice Emitted when shares are released for withdrawal
+    /// @param releaseTimestamp Timestamp when shares were released
+    /// @param sharesToRelease Number of shares released for withdrawal
     event ReleaseFundsUpdated(uint32 releaseTimestamp, uint128 sharesToRelease);
 
     /// @notice Thrown when attempting to set withdraw window length to zero
@@ -257,40 +257,40 @@ library WithdrawManagerStorageLib {
         return _getPlasmaVaultAddress().plasmaVault;
     }
 
-    function _getRequestFee() private view returns (RequestFee storage requestFee) {
+    function _getRequestFee() private pure returns (RequestFee storage requestFee) {
         assembly {
             requestFee.slot := REQUEST_FEE
         }
     }
 
-    function _getWithdrawFee() private view returns (WithdrawFee storage withdrawFee) {
+    function _getWithdrawFee() private pure returns (WithdrawFee storage withdrawFee) {
         assembly {
             withdrawFee.slot := WITHDRAW_FEE
         }
     }
 
     /// @dev Retrieves the withdraw window configuration from storage
-    function _getWithdrawWindowLength() private view returns (WithdrawWindow storage withdrawWindow) {
+    function _getWithdrawWindowLength() private pure returns (WithdrawWindow storage withdrawWindow) {
         assembly {
             withdrawWindow.slot := WITHDRAW_WINDOW_IN_SECONDS
         }
     }
 
     /// @dev Retrieves the withdraw requests mapping from storage
-    function _getWithdrawRequests() private view returns (WithdrawRequests storage requests) {
+    function _getWithdrawRequests() private pure returns (WithdrawRequests storage requests) {
         assembly {
             requests.slot := WITHDRAW_REQUESTS
         }
     }
 
     /// @dev Retrieves the release funds timestamp from storage
-    function _getReleaseFunds() private view returns (ReleaseFunds storage releaseFundsResult) {
+    function _getReleaseFunds() private pure returns (ReleaseFunds storage releaseFundsResult) {
         assembly {
             releaseFundsResult.slot := LAST_RELEASE_FUNDS
         }
     }
 
-    function _getPlasmaVaultAddress() private view returns (PlasmaVaultAddress storage plasmaVaultAddress) {
+    function _getPlasmaVaultAddress() private pure returns (PlasmaVaultAddress storage plasmaVaultAddress) {
         assembly {
             plasmaVaultAddress.slot := PLASMA_VAULT_ADDRESS
         }

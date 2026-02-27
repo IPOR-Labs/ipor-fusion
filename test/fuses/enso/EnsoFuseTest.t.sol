@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
@@ -8,7 +8,8 @@ import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 
 // Enso Fuses
 import {EnsoFuse, EnsoFuseEnterData, EnsoFuseExitData} from "../../../contracts/fuses/enso/EnsoFuse.sol";
@@ -69,6 +70,9 @@ contract EnsoFuseTest is Test {
 
         fusionFactory = FusionFactory(FUSION_FACTORY_PROXY);
 
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
         _deployMockContracts();
         _createVaultWithFusionFactory();
         _deployEnsoFuses();
@@ -99,12 +103,13 @@ contract EnsoFuseTest is Test {
 
     function _createVaultWithFusionFactory() private {
         // Create vault using FusionFactory with USDC as underlying
-        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Enso Test Vault",
             "ENSO-V",
             USDC, // underlying token
             1 seconds, // redemption delay
-            ATOMIST // owner
+            ATOMIST, // owner
+            0 // feePackageIndex
         );
 
         plasmaVault = PlasmaVault(instance.plasmaVault);

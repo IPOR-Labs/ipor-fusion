@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title Context Manager Storage Library
 /// @notice Library managing storage for approved addresses and nonces in the Context Manager system
@@ -102,7 +102,7 @@ library ContextManagerStorageLib {
     }
 
     /// @notice Checks if an address is approved
-    /// @dev Quick O(1) lookup using the addressGranted mapping
+    /// @dev Quick O(1) lookup using the ApprovedTargets.targetApproved mapping
     /// @param target_ The address to check approval status for
     /// @return True if the address is approved, false otherwise
     function isTargetApproved(address target_) internal view returns (bool) {

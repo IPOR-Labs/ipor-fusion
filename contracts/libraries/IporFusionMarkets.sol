@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 /// @title Predefined markets used in the IPOR Fusion protocol
 /// @notice For documentation purposes: When new markets are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.
@@ -93,7 +93,7 @@ library IporFusionMarkets {
     uint256 public constant VELODROME_SUPERCHAIN_SLIPSTREAM = 32;
 
     /// @dev Velodrome Superchain Slipstream market
-    /// @dev Substrate type: AreodromeSlipstreamSubstrate
+    /// @dev Substrate type: AerodromeSlipstreamSubstrate
     uint256 public constant AREODROME_SLIPSTREAM = 33;
 
     /// @dev StakeDaoV2 market
@@ -170,8 +170,40 @@ library IporFusionMarkets {
     /// @dev Supports batch execution of multiple calls with ETH value forwarding
     uint256 public constant ASYNC_ACTION = 40;
 
+    /// @dev Morpho liquidity in markets market
+    uint256 public constant MORPHO_LIQUIDITY_IN_MARKETS = 41;
+
+    /// @dev Odos Swapper market for optimized token swapping via Odos Smart Order Routing V3
+    /// @dev Substrate type: OdosSubstrateType (Token or Slippage)
+    /// @dev Substrate values:
+    ///      - Token: Allowed token addresses for swapping (encoded with OdosSubstrateLib.encodeTokenSubstrate)
+    ///      - Slippage: Custom slippage limit in WAD (encoded with OdosSubstrateLib.encodeSlippageSubstrate)
+    /// @dev Used for executing Odos swaps via OdosSwapExecutor contract
+    uint256 public constant ODOS_SWAPPER = 42;
+
+
+    /// @dev Velora Swapper market for optimized token swapping via Velora/ParaSwap Augustus v6.2
+    /// @dev Substrate type: VeloraSubstrateType (Token or Slippage)
+    /// @dev Substrate values:
+    ///      - Token: Allowed token addresses for swapping (encoded with VeloraSubstrateLib.encodeTokenSubstrate)
+    ///      - Slippage: Custom slippage limit in WAD (encoded with VeloraSubstrateLib.encodeSlippageSubstrate)
+    /// @dev Used for executing Velora swaps via VeloraSwapExecutor contract
+    uint256 public constant VELORA_SWAPPER = 43;
+
+        /// @dev Aave V4 Hub & Spoke market
+    /// @dev Substrate type: AaveV4SubstrateType (Asset or Spoke)
+    /// @dev Substrate values: Encoded combination of type flag and address
+    ///      - Asset: AaveV4SubstrateLib.encodeAsset(tokenAddress) - ERC20 token address with flag 0x01
+    ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
+    uint256 public constant AAVE_V4 = 45;
+
+    /// @dev Midas RWA market (mTBILL, mBASIS)
+    /// @dev Substrate type: MidasSubstrateType (M_TOKEN, DEPOSIT_VAULT, REDEMPTION_VAULT, INSTANT_REDEMPTION_VAULT, ASSET)
+    /// @dev Substrate values: Encoded combination of type flag and address (see MidasSubstrateLib)
+    uint256 public constant MIDAS = 45;
+
     /// @dev Napier market
-    uint256 public constant NAPIER = 3822; // 0xeee
+    uint256 public constant NAPIER = 46;
     
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;

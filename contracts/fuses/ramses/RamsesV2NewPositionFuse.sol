@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManagerRamses} from "./ext/INonfungiblePositionManagerRamses.sol";
-import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 
 /// @notice Data for entering new position in Ramses V2
 struct RamsesV2NewPositionFuseEnterData {
@@ -98,38 +100,45 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
     /**
      * @notice Function to create a new liquidity position
      * @param data_ The data containing the parameters for creating a new position
+     * @return tokenId The ID of the token
+     * @return liquidity The amount of liquidity added
+     * @return amount0 The amount of token0 added
+     * @return amount1 The amount of token1 added
+     * @return token0 The address of token0
+     * @return token1 The address of token1
+     * @return fee The fee associated with the pool
+     * @return tickLower The lower end of the tick range for the position
+     * @return tickUpper The higher end of the tick range for the position
      */
-    function enter(RamsesV2NewPositionFuseEnterData calldata data_) public {
-        if (
-            !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
-            !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
-        ) {
-            revert RamsesV2NewPositionFuseUnsupportedToken(data_.token0, data_.token1);
+    function enter(
+        RamsesV2NewPositionFuseEnterData memory data_
+    )
+        public
+        returns (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper
+        )
+    {
+        {
+            if (
+                !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
+                !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
+            ) {
+                revert RamsesV2NewPositionFuseUnsupportedToken(data_.token0, data_.token1);
+            }
         }
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount0Desired);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), data_.amount1Desired);
 
-        // Note that the pool defined by token0/token1 and fee tier must already be created and initialized in order to mint
-        (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = INonfungiblePositionManagerRamses(
-            NONFUNGIBLE_POSITION_MANAGER
-        ).mint(
-                /// @dev The values for tickLower and tickUpper may not work for all tick spacings. Setting amount0Min and amount1Min to 0 is unsafe.
-                INonfungiblePositionManagerRamses.MintParams({
-                    token0: data_.token0,
-                    token1: data_.token1,
-                    fee: data_.fee,
-                    tickLower: data_.tickLower,
-                    tickUpper: data_.tickUpper,
-                    amount0Desired: data_.amount0Desired,
-                    amount1Desired: data_.amount1Desired,
-                    amount0Min: data_.amount0Min,
-                    amount1Min: data_.amount1Min,
-                    recipient: address(this),
-                    deadline: data_.deadline,
-                    veRamTokenId: data_.veRamTokenId
-                })
-            );
+        (tokenId, liquidity, amount0, amount1) = _mint(data_);
 
         IERC20(data_.token0).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
         IERC20(data_.token1).forceApprove(address(NONFUNGIBLE_POSITION_MANAGER), 0);
@@ -138,40 +147,147 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
         tokensIds.indexes[tokenId] = tokensIds.tokenIds.length;
         tokensIds.tokenIds.push(tokenId);
 
+        token0 = data_.token0;
+        token1 = data_.token1;
+        fee = data_.fee;
+        tickLower = data_.tickLower;
+        tickUpper = data_.tickUpper;
+
         emit RamsesV2NewPositionFuseEnter(
             VERSION,
             tokenId,
             liquidity,
             amount0,
             amount1,
-            data_.token0,
-            data_.token1,
-            data_.fee,
-            data_.tickLower,
-            data_.tickUpper
+            token0,
+            token1,
+            fee,
+            tickLower,
+            tickUpper
         );
+    }
+
+    function _mint(
+        RamsesV2NewPositionFuseEnterData memory data_
+    ) private returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
+        INonfungiblePositionManagerRamses.MintParams memory params = INonfungiblePositionManagerRamses.MintParams({
+            token0: data_.token0,
+            token1: data_.token1,
+            fee: data_.fee,
+            tickLower: data_.tickLower,
+            tickUpper: data_.tickUpper,
+            amount0Desired: data_.amount0Desired,
+            amount1Desired: data_.amount1Desired,
+            amount0Min: data_.amount0Min,
+            amount1Min: data_.amount1Min,
+            recipient: address(this),
+            deadline: data_.deadline,
+            veRamTokenId: data_.veRamTokenId
+        });
+        return INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).mint(params);
     }
 
     /**
      * @notice Function to close liquidity positions
      * @param closePositions The data containing the token IDs of the positions to close
+     * @return tokenIds The array of token IDs that were closed
      */
-    function exit(RamsesV2NewPositionFuseExitData calldata closePositions) public {
+    function exit(RamsesV2NewPositionFuseExitData memory closePositions) public returns (uint256[] memory tokenIds) {
         FuseStorageLib.RamsesV2TokenIds storage tokensIds = FuseStorageLib.getRamsesV2TokenIds();
 
         uint256 len = tokensIds.tokenIds.length;
         uint256 tokenIndex;
 
-        for (uint256 i; i < len; i++) {
-            INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).burn(closePositions.tokenIds[i]);
+        tokenIds = closePositions.tokenIds;
 
-            tokenIndex = tokensIds.indexes[closePositions.tokenIds[i]];
+        uint256 tokenId;
+        uint256 lastTokenId;
+        for (uint256 i; i < closePositions.tokenIds.length; ++i) {
+            tokenId = closePositions.tokenIds[i];
+            INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
+
+            tokenIndex = tokensIds.indexes[tokenId];
             if (tokenIndex != len - 1) {
-                tokensIds.tokenIds[tokenIndex] = tokensIds.tokenIds[len - 1];
+                lastTokenId = tokensIds.tokenIds[len - 1];
+                tokensIds.tokenIds[tokenIndex] = lastTokenId;
+                tokensIds.indexes[lastTokenId] = tokenIndex;
             }
             tokensIds.tokenIds.pop();
+            delete tokensIds.indexes[tokenId];
+            --len;
 
-            emit RamsesV2NewPositionFuseExit(VERSION, closePositions.tokenIds[i]);
+            emit RamsesV2NewPositionFuseExit(VERSION, tokenId);
         }
+    }
+
+    /// @notice Enters the Fuse using transient storage for parameters
+    /// @dev Reads all parameters from transient storage and writes returned values to outputs
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        RamsesV2NewPositionFuseEnterData memory data_ = RamsesV2NewPositionFuseEnterData({
+            token0: TypeConversionLib.toAddress(inputs[0]),
+            token1: TypeConversionLib.toAddress(inputs[1]),
+            fee: uint24(TypeConversionLib.toUint256(inputs[2])),
+            tickLower: int24(TypeConversionLib.toInt256(inputs[3])),
+            tickUpper: int24(TypeConversionLib.toInt256(inputs[4])),
+            amount0Desired: TypeConversionLib.toUint256(inputs[5]),
+            amount1Desired: TypeConversionLib.toUint256(inputs[6]),
+            amount0Min: TypeConversionLib.toUint256(inputs[7]),
+            amount1Min: TypeConversionLib.toUint256(inputs[8]),
+            deadline: TypeConversionLib.toUint256(inputs[9]),
+            veRamTokenId: TypeConversionLib.toUint256(inputs[10])
+        });
+
+        (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1,
+            address returnedToken0,
+            address returnedToken1,
+            uint24 returnedFee,
+            int24 returnedTickLower,
+            int24 returnedTickUpper
+        ) = enter(data_);
+
+        bytes32[] memory outputs = new bytes32[](9);
+        outputs[0] = TypeConversionLib.toBytes32(tokenId);
+        outputs[1] = TypeConversionLib.toBytes32(uint256(liquidity));
+        outputs[2] = TypeConversionLib.toBytes32(amount0);
+        outputs[3] = TypeConversionLib.toBytes32(amount1);
+        outputs[4] = TypeConversionLib.toBytes32(returnedToken0);
+        outputs[5] = TypeConversionLib.toBytes32(returnedToken1);
+        outputs[6] = TypeConversionLib.toBytes32(uint256(returnedFee));
+        outputs[7] = TypeConversionLib.toBytes32(uint256(int256(returnedTickLower)));
+        outputs[8] = TypeConversionLib.toBytes32(uint256(int256(returnedTickUpper)));
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Exits the Fuse using transient storage for parameters
+    /// @dev Reads tokenIds array from transient storage (first element is length, subsequent elements are tokenIds)
+    /// @dev Writes returned tokenIds array length to transient storage outputs
+    function exitTransient() external {
+        bytes32 lengthBytes32 = TransientStorageLib.getInput(VERSION, 0);
+        uint256 len = TypeConversionLib.toUint256(lengthBytes32);
+
+        bytes32[] memory outputs = new bytes32[](1);
+
+        if (len == 0) {
+            outputs[0] = TypeConversionLib.toBytes32(uint256(0));
+            TransientStorageLib.setOutputs(VERSION, outputs);
+            return;
+        }
+
+        uint256[] memory tokenIds = new uint256[](len);
+        for (uint256 i; i < len; ++i) {
+            bytes32 tokenIdBytes32 = TransientStorageLib.getInput(VERSION, i + 1);
+            tokenIds[i] = TypeConversionLib.toUint256(tokenIdBytes32);
+        }
+
+        uint256[] memory returnedTokenIds = exit(RamsesV2NewPositionFuseExitData({tokenIds: tokenIds}));
+
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenIds.length);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 }

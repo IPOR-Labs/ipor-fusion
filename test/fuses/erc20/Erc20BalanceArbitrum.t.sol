@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -111,7 +111,8 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            minSharesOut: 0
         });
         data = new bytes[](1);
         data[0] = abi.encode(enterData);
@@ -140,11 +141,12 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
@@ -204,11 +206,12 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
@@ -269,11 +272,12 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
@@ -336,11 +340,12 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;

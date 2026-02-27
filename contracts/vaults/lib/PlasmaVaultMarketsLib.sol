@@ -15,23 +15,39 @@ library PlasmaVaultMarketsLib {
     using Address for address;
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
 
+    /// @dev Error thrown when asset price is zero
+    error AssetPriceIsZero();
+
+    /// @notice Updates balances for specified markets by fetching balance from balance fuses and converting from USD to underlying asset
+    /// @param markets_ Array of market IDs to update balances for
+    /// @param assetAddress_ Address of the underlying asset
+    /// @param decimals_ Number of decimals for the underlying asset
+    /// @param decimalsOffset_ Offset to apply when converting decimals
+    /// @return dataToCheck Data structure containing markets and their balances for validation
+    /// @dev Filters zero markets, checks balance fuse dependencies, fetches asset price from oracle,
+    ///      converts balances from USD (WAD) to underlying asset decimals, and updates total assets in markets
     function updateMarketsBalances(
         uint256[] memory markets_,
         address assetAddress_,
         uint256 decimals_,
         uint256 decimalsOffset_
     ) public returns (DataToCheck memory dataToCheck) {
+        uint256[] memory filteredMarkets = _filterZeroMarkets(markets_);
+
         uint256 wadBalanceAmountInUSD;
         // DataToCheck memory dataToCheck;
         address balanceFuse;
         int256 deltasInUnderlying;
-        uint256[] memory markets = _checkBalanceFusesDependencies(markets_);
+        uint256[] memory markets = _checkBalanceFusesDependencies(filteredMarkets);
         uint256 marketsLength = markets.length;
 
-        /// @dev USD price is represented in 8 decimals
         (uint256 underlyingAssetPrice, uint256 underlyingAssePriceDecimals) = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         ).getAssetPrice(assetAddress_);
+
+        if (underlyingAssetPrice == 0) {
+            revert AssetPriceIsZero();
+        }
 
         dataToCheck.marketsToCheck = new MarketToCheck[](marketsLength);
 
@@ -68,6 +84,13 @@ library PlasmaVaultMarketsLib {
         emit MarketBalancesUpdated(markets, deltasInUnderlying);
     }
 
+    /// @notice Withdraws assets from markets using instant withdrawal fuses until the required amount is met
+    /// @param assetAddress_ Address of the underlying asset to withdraw
+    /// @param assets_ Total amount of assets needed to be withdrawn
+    /// @param vaultCurrentBalanceUnderlying_ Current balance of the vault in underlying token
+    /// @return markets Array of unique market IDs that were touched during the withdrawal process
+    /// @dev Uses instant withdrawal fuses to withdraw assets from markets, tracking unique market IDs
+    ///      that were affected. The array may contain zero values at the end if fewer markets were used.
     function withdrawFromMarkets(
         address assetAddress_,
         uint256 assets_,
@@ -138,15 +161,14 @@ library PlasmaVaultMarketsLib {
                     marketsChecked[index] = marketsToCheck[i];
                     ++index;
 
-                    uint256 dependentMarketsLength = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i]).length;
+                    uint256[] memory dependentMarkets = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i]);
+                    uint256 dependentMarketsLength = dependentMarkets.length;
                     if (dependentMarketsLength > 0) {
                         for (uint256 j; j < dependentMarketsLength; ++j) {
                             if (tempMarketsToCheck.length == tempIndex) {
                                 tempMarketsToCheck = _increaseArray(tempMarketsToCheck, tempMarketsToCheck.length * 2);
                             }
-                            tempMarketsToCheck[tempIndex] = PlasmaVaultLib.getDependencyBalanceGraph(marketsToCheck[i])[
-                                j
-                            ];
+                            tempMarketsToCheck[tempIndex] = dependentMarkets[j];
                             ++tempIndex;
                         }
                     }
@@ -204,5 +226,42 @@ library PlasmaVaultMarketsLib {
             }
         }
         return false;
+    }
+
+    /// @notice Filters zero values from markets array
+    /// @param markets_ Array that may contain zero values
+    /// @return Compacted array without zero values
+    function _filterZeroMarkets(uint256[] memory markets_) private pure returns (uint256[] memory) {
+        uint256 length = markets_.length;
+        if (length == 0) {
+            return markets_;
+        }
+
+        // Count non-zero elements
+        uint256 count;
+        for (uint256 i; i < length; ++i) {
+            if (markets_[i] != 0) {
+                unchecked {
+                    ++count;
+                }
+            }
+        }
+
+        // If all elements are non-zero, return original array
+        if (count == length) {
+            return markets_;
+        }
+
+        // Create compacted array
+        uint256[] memory filtered = new uint256[](count);
+        uint256 index;
+        for (uint256 i; i < length; ++i) {
+            if (markets_[i] != 0) {
+                filtered[index] = markets_[i];
+                ++index;
+            }
+        }
+
+        return filtered;
     }
 }

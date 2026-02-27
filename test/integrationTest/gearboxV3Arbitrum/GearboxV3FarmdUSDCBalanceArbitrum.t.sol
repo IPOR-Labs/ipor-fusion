@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -141,7 +141,8 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            minSharesOut: 0
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             farmdToken: FARM_D_USDC,
@@ -181,7 +182,8 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             dTokenAmount: depositAmount,
@@ -189,7 +191,7 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         });
 
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataFarm);
 
         uint256 len = data.length;
@@ -247,14 +249,15 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             dTokenAmount: depositAmount,
             farmdToken: FARM_D_USDC
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataFarm);
         uint256 len = data.length;
         FuseAction[] memory enterCalls = new FuseAction[](len);
@@ -326,14 +329,15 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             dTokenAmount: depositAmount,
             farmdToken: FARM_D_USDC
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataFarm);
         uint256 len = data.length;
         FuseAction[] memory enterCalls = new FuseAction[](len);
@@ -431,14 +435,15 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
         GearboxV3FarmdSupplyFuseEnterData memory enterDataFarm = GearboxV3FarmdSupplyFuseEnterData({
             dTokenAmount: depositAmount,
             farmdToken: FARM_D_USDC
         });
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
         data[1] = abi.encodeWithSignature("enter((uint256,address))", enterDataFarm);
 
         uint256 len = data.length;
@@ -545,8 +550,8 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
         enterCalls[0] = FuseAction(
             fuses[0],
             abi.encodeWithSignature(
-                "enter((address,uint256))",
-                Erc4626SupplyFuseEnterData({vault: D_USDC, vaultAssetAmount: depositAmount})
+                "enter((address,uint256,uint256))",
+                Erc4626SupplyFuseEnterData({vault: D_USDC, vaultAssetAmount: depositAmount, minSharesOut: 0})
             )
         );
 
@@ -604,12 +609,13 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
 
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](2);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;
@@ -661,12 +667,13 @@ contract GearboxV3FarmdUSDCArbitrum is TestAccountSetup, TestPriceOracleSetup, T
 
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: D_USDC,
-            vaultAssetAmount: depositAmount
+            vaultAssetAmount: depositAmount,
+            minSharesOut: 0
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
 
-        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256))", enterData));
+        enterCalls[0] = FuseAction(fuses[0], abi.encodeWithSignature("enter((address,uint256,uint256))", enterData));
 
         uint256[] memory marketIds = new uint256[](2);
         marketIds[0] = IporFusionMarkets.GEARBOX_POOL_V3;

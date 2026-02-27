@@ -1,57 +1,41 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {PlasmaVault, PlasmaVaultInitData, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
-import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Roles} from "../../../contracts/libraries/Roles.sol";
+import {AccessManagerFactory} from "../../../contracts/factory/AccessManagerFactory.sol";
+import {ContextManagerFactory} from "../../../contracts/factory/ContextManagerFactory.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
+import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
+import {PriceManagerFactory} from "../../../contracts/factory/PriceManagerFactory.sol";
 import {RewardsManagerFactory} from "../../../contracts/factory/RewardsManagerFactory.sol";
 import {WithdrawManagerFactory} from "../../../contracts/factory/WithdrawManagerFactory.sol";
-import {ContextManagerFactory} from "../../../contracts/factory/ContextManagerFactory.sol";
-import {PriceManagerFactory} from "../../../contracts/factory/PriceManagerFactory.sol";
-import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
-import {AccessManagerFactory} from "../../../contracts/factory/AccessManagerFactory.sol";
-import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
-import {MockERC20} from "../../test_helpers/MockERC20.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {BurnRequestFeeFuse} from "../../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
-import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {IPriceFeed} from "../../../contracts/price_oracle/price_feed/IPriceFeed.sol";
-import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
-
-import {TacStakingStorageLib} from "../../../contracts/fuses/tac/lib/TacStakingStorageLib.sol";
-import {TacStakingDelegatorAddressReader} from "../../../contracts/readers/TacStakingDelegatorAddressReader.sol";
-import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
-import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {TacValidatorAddressConverter} from "../../../contracts/fuses/tac/lib/TacValidatorAddressConverter.sol";
-import {Description, CommissionRates} from "../../../contracts/fuses/tac/ext/IStaking.sol";
-import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
-import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
-import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
-
-import {BalanceFusesReader} from "../../../contracts/readers/BalanceFusesReader.sol";
-
-// Import Yield Basis fuses
 import {YieldBasisLtBalanceFuse} from "../../../contracts/fuses/yield_basis/YieldBasisLtBalanceFuse.sol";
 import {YieldBasisLtSupplyFuse, YieldBasisLtSupplyFuseEnterData, YieldBasisLtSupplyFuseExitData} from "../../../contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol";
 import {IYieldBasisLT} from "../../../contracts/fuses/yield_basis/ext/IYieldBasisLT.sol";
-
-// Import test helpers
-import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
-import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccessManagerHelper.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
+import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
+import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {Roles} from "../../../contracts/libraries/Roles.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
+import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
+import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccessManagerHelper.sol";
+import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
 import {PriceOracleMiddlewareHelper} from "../../test_helpers/PriceOracleMiddlewareHelper.sol";
 
 interface IGaugeController {
@@ -92,6 +76,7 @@ contract YieldBasisFuseTest is Test {
     bytes32[] substrates;
     address yieldBasisSupplyFuse;
     address yieldBasisBalanceFuse;
+    address _transientStorageSetInputsFuse;
 
     // Fusion Factory related variables
     FusionFactory fusionFactory;
@@ -194,7 +179,6 @@ contract YieldBasisFuseTest is Test {
 
         vm.warp(block.timestamp + 1);
 
-        uint256 totalAssetBefore = plasmaVault.totalAssets();
         uint256 wbtcBalanceBefore = IERC20(WBTC).balanceOf(address(plasmaVault));
         uint256 balanceInMarketBeforeSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
         uint256 yieldBasisLtBalanceBeforeSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
@@ -205,7 +189,6 @@ contract YieldBasisFuseTest is Test {
         uint256 yieldBasisLtBalanceAfterSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
         uint256 balanceInMarketAfterSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
         uint256 wbtcBalanceAfter = IERC20(WBTC).balanceOf(address(plasmaVault));
-        uint256 totalAssetAfter = plasmaVault.totalAssets();
 
         assertGt(yieldBasisLtBalanceAfterSupply, 0, "Should have Yield Basis LT tokens after supply");
         assertGt(
@@ -243,7 +226,6 @@ contract YieldBasisFuseTest is Test {
         uint256 yieldBasisLtBalanceAfterWithdraw = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
         uint256 balanceInMarketAfterWithdraw = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
         uint256 wbtcBalanceAfterWithdraw = IERC20(WBTC).balanceOf(address(plasmaVault));
-        uint256 totalAssetAfterWithdraw = plasmaVault.totalAssets();
 
         assertEq(
             yieldBasisLtBalanceAfterWithdraw,
@@ -290,7 +272,6 @@ contract YieldBasisFuseTest is Test {
 
         vm.warp(block.timestamp + 1);
 
-        uint256 totalAssetBefore = plasmaVault.totalAssets();
         uint256 wbtcBalanceBefore = IERC20(WBTC).balanceOf(address(plasmaVault));
         uint256 balanceInMarketBeforeSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
         uint256 yieldBasisLtBalanceBeforeSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
@@ -301,7 +282,6 @@ contract YieldBasisFuseTest is Test {
         uint256 yieldBasisLtBalanceAfterSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
         uint256 balanceInMarketAfterSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
         uint256 wbtcBalanceAfter = IERC20(WBTC).balanceOf(address(plasmaVault));
-        uint256 totalAssetAfter = plasmaVault.totalAssets();
 
         assertGt(yieldBasisLtBalanceAfterSupply, 0, "Should have Yield Basis LT tokens after supply");
         assertGt(
@@ -339,7 +319,6 @@ contract YieldBasisFuseTest is Test {
         uint256 yieldBasisLtBalanceAfterWithdraw = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
         uint256 balanceInMarketAfterWithdraw = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
         uint256 wbtcBalanceAfterWithdraw = IERC20(WBTC).balanceOf(address(plasmaVault));
-        uint256 totalAssetAfterWithdraw = plasmaVault.totalAssets();
 
         assertGt(
             yieldBasisLtBalanceAfterWithdraw,
@@ -360,8 +339,6 @@ contract YieldBasisFuseTest is Test {
         uint256 depositAmount = 1e3;
 
         // Get initial balances
-        uint256 userWbtcBalanceBefore = IERC20(WBTC).balanceOf(WBTC_HOLDER);
-
         uint256 userLtBalanceBefore = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(WBTC_HOLDER);
 
         uint256 ltTotalSupplyBefore = IYieldBasisLT(YIELD_BASIS_LT_WBTC).totalSupply();
@@ -373,7 +350,6 @@ contract YieldBasisFuseTest is Test {
 
         uint256 userWbtcBalanceAfterDeposit = IERC20(WBTC).balanceOf(WBTC_HOLDER);
         uint256 userLtBalanceAfterDeposit = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(WBTC_HOLDER);
-        uint256 ltTotalSupplyAfterDeposit = IYieldBasisLT(YIELD_BASIS_LT_WBTC).totalSupply();
 
         vm.warp(block.timestamp + 1);
 
@@ -560,6 +536,168 @@ contract YieldBasisFuseTest is Test {
         plasmaVault.execute(supplyActions);
     }
 
+    /// @notice Tests entering Yield Basis Supply Fuse using transient storage
+    /// @dev Verifies that enterTransient() correctly reads inputs from transient storage and supplies assets
+    function testShouldEnterUsingTransientStorage() public {
+        // given
+        _createVaultWithFusionFactory();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ATOMIST_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
+        vm.stopPrank();
+
+        _setupPriceOracleMiddleware();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, WBTC_HOLDER, 0);
+        vm.stopPrank();
+
+        _addYieldBasisFuses();
+
+        uint256 supplyLtAssetAmount = 1e5;
+        uint256 debt = 20e18;
+        uint256 minSharesToReceive = (supplyLtAssetAmount * 95) / 100;
+
+        _fundVaultWithWBTC(supplyLtAssetAmount);
+
+        vm.warp(block.timestamp + 1);
+
+        uint256 balanceInMarketBeforeSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
+        uint256 yieldBasisLtBalanceBeforeSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
+
+        // Prepare transient inputs
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = yieldBasisSupplyFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](4);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(YIELD_BASIS_LT_WBTC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(supplyLtAssetAmount);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(debt);
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(minSharesToReceive);
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call enterTransient()
+        calls[1] = FuseAction({fuse: yieldBasisSupplyFuse, data: abi.encodeWithSignature("enterTransient()")});
+
+        // when
+        vm.startPrank(alpha);
+        plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 yieldBasisLtBalanceAfterSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
+        uint256 balanceInMarketAfterSupply = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
+
+        assertGt(yieldBasisLtBalanceAfterSupply, 0, "Should have Yield Basis LT tokens after supply");
+        assertGt(
+            yieldBasisLtBalanceAfterSupply,
+            yieldBasisLtBalanceBeforeSupply,
+            "Yield Basis LT balance should increase after supply"
+        );
+
+        assertGt(balanceInMarketAfterSupply, 0, "Market balance should be greater than 0 after supply");
+        assertGt(
+            balanceInMarketAfterSupply,
+            balanceInMarketBeforeSupply,
+            "Market balance should increase after supply"
+        );
+    }
+
+    /// @notice Tests exiting Yield Basis Supply Fuse using transient storage
+    /// @dev Verifies that exitTransient() correctly reads inputs from transient storage and withdraws assets
+    function testShouldExitUsingTransientStorage() public {
+        // given
+        _createVaultWithFusionFactory();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ATOMIST_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.FUSE_MANAGER_ROLE, atomist, 0);
+        accessManager.grantRole(Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE, atomist, 0);
+        vm.stopPrank();
+
+        _setupPriceOracleMiddleware();
+
+        vm.startPrank(atomist);
+        accessManager.grantRole(Roles.ALPHA_ROLE, alpha, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, user, 0);
+        accessManager.grantRole(Roles.WHITELIST_ROLE, WBTC_HOLDER, 0);
+        vm.stopPrank();
+
+        _addYieldBasisFuses();
+
+        uint256 supplyLtAssetAmount = 1e5;
+
+        _fundVaultWithWBTC(supplyLtAssetAmount);
+
+        vm.warp(block.timestamp + 1);
+
+        // First supply to Yield Basis
+        _executeSupply(supplyLtAssetAmount);
+
+        uint256 yieldBasisLtBalanceAfterSupply = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
+        uint256 wbtcBalanceBeforeWithdraw = IERC20(WBTC).balanceOf(address(plasmaVault));
+
+        assertGt(yieldBasisLtBalanceAfterSupply, 0, "Should have Yield Basis LT tokens after supply");
+
+        // Prepare transient inputs for withdrawal
+        uint256 withdrawLtSharesAmount = yieldBasisLtBalanceAfterSupply;
+        uint256 minLtAssetAmountToReceive = 0;
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = yieldBasisSupplyFuse;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(YIELD_BASIS_LT_WBTC);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(withdrawLtSharesAmount);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(minLtAssetAmountToReceive);
+
+        // Create FuseAction array with two actions
+        FuseAction[] memory calls = new FuseAction[](2);
+
+        // Action 1: Set inputs to transient storage
+        calls[0] = FuseAction({
+            fuse: _transientStorageSetInputsFuse,
+            data: abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        });
+
+        // Action 2: Call exitTransient()
+        calls[1] = FuseAction({fuse: yieldBasisSupplyFuse, data: abi.encodeWithSignature("exitTransient()")});
+
+        // when
+        vm.startPrank(alpha);
+        plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 yieldBasisLtBalanceAfterWithdraw = IYieldBasisLT(YIELD_BASIS_LT_WBTC).balanceOf(address(plasmaVault));
+        uint256 balanceInMarketAfterWithdraw = plasmaVault.totalAssetsInMarket(YIELD_BASIS_MARKET_ID);
+        uint256 wbtcBalanceAfterWithdraw = IERC20(WBTC).balanceOf(address(plasmaVault));
+
+        assertEq(yieldBasisLtBalanceAfterWithdraw, 0, "Yield Basis LT balance should be 0 after full withdrawal");
+        assertEq(balanceInMarketAfterWithdraw, 0, "Market balance should be 0 after withdrawal");
+        assertGt(wbtcBalanceAfterWithdraw, wbtcBalanceBeforeWithdraw, "WBTC balance should increase after withdrawal");
+    }
+
     // Helper functions
     function _grantRoles() private {
         vm.startPrank(atomist);
@@ -681,12 +819,44 @@ contract YieldBasisFuseTest is Test {
         );
         fusionFactory = FusionFactory(address(new ERC1967Proxy(address(implementation), initData)));
 
+        // Deploy PlasmaVault base for cloning and set up base addresses
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        address accessManagerBase = address(new IporFusionAccessManager(atomist, 0));
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(atomist, priceOracleMiddleware));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+        address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
+        address[] memory approvedTargets = new address[](1);
+        approvedTargets[0] = plasmaVaultCoreBase;
+        address contextManagerBase = ContextManagerFactory(factoryAddresses.contextManagerFactory).create(
+            0,
+            accessManagerBase,
+            approvedTargets
+        );
+
         vm.startPrank(atomist);
+        fusionFactory.grantRole(fusionFactory.MAINTENANCE_MANAGER_ROLE(), atomist);
+        fusionFactory.updateBaseAddresses(
+            1,
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
+        );
         fusionFactory.grantRole(fusionFactory.DAO_FEE_MANAGER_ROLE(), atomist);
         vm.stopPrank();
 
+        // Setup fee packages
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 100,
+            performanceFee: 100,
+            feeRecipient: atomist
+        });
+
         vm.startPrank(atomist);
-        fusionFactory.updateDaoFee(atomist, 100, 100);
+        fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
 
@@ -702,12 +872,13 @@ contract YieldBasisFuseTest is Test {
     }
 
     function _createVaultWithFusionFactory() private {
-        FusionFactoryLib.FusionInstance memory instance = fusionFactory.create(
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Yield Basis Vault",
             "yieldBasisVault",
             WBTC,
             1 seconds,
-            atomist
+            atomist,
+            0
         );
 
         plasmaVault = PlasmaVault(instance.plasmaVault);
@@ -720,13 +891,22 @@ contract YieldBasisFuseTest is Test {
         // Deploy yield basis fuses
         yieldBasisSupplyFuse = address(new YieldBasisLtSupplyFuse(YIELD_BASIS_MARKET_ID));
         yieldBasisBalanceFuse = address(new YieldBasisLtBalanceFuse(YIELD_BASIS_MARKET_ID));
+        _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
 
-        address[] memory fuses = new address[](1);
+        address[] memory fuses = new address[](2);
         fuses[0] = yieldBasisSupplyFuse;
+        fuses[1] = _transientStorageSetInputsFuse;
 
         vm.startPrank(atomist);
         PlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
         PlasmaVaultGovernance(address(plasmaVault)).addBalanceFuse(YIELD_BASIS_MARKET_ID, yieldBasisBalanceFuse);
+
+        // Add balance fuse for ERC20_VAULT_BALANCE (required for TransientStorageSetInputsFuse)
+        ERC20BalanceFuse erc20BalanceFuse = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
+        PlasmaVaultGovernance(address(plasmaVault)).addBalanceFuse(
+            IporFusionMarkets.ERC20_VAULT_BALANCE,
+            address(erc20BalanceFuse)
+        );
 
         // Set up substrates for yield basis (LT addresses as assets)
         substrates = new bytes32[](1);

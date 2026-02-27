@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {DualCrossReferencePriceFeed} from "../../../contracts/price_oracle/price_feed/DualCrossReferencePriceFeed.sol";
@@ -194,7 +194,8 @@ contract LoopingBorrowSupplyAaveV3FlashLoanMorphoTest is Test {
             feeConfig: feeConfig,
             accessManager: _accessManager,
             plasmaVaultBase: address(new PlasmaVaultBase()),
-            withdrawManager: _withdrawManager
+            withdrawManager: _withdrawManager,
+            plasmaVaultVotesPlugin: address(0)
         });
 
         vm.startPrank(_ATOMIST);

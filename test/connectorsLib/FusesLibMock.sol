@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
@@ -45,5 +45,9 @@ contract FusesLibMock {
     function getBalanceFusesIndexes(uint256 marketId) external view returns (uint256) {
         PlasmaVaultStorageLib.BalanceFuses storage balanceFuses = PlasmaVaultStorageLib.getBalanceFuses();
         return balanceFuses.indexes[marketId];
+    }
+
+    function setUnderlyingDecimals(uint8 decimals_) external {
+        PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals = decimals_;
     }
 }

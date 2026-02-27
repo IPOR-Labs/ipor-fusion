@@ -1,9 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {FusionFactory} from "../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryStorageLib} from "../contracts/factory/lib/FusionFactoryStorageLib.sol";
+import {PlasmaVaultFactory} from "../contracts/factory/PlasmaVaultFactory.sol";
+import {FeeManagerFactory} from "../contracts/managers/fee/FeeManagerFactory.sol";
+import {AccessManagerFactory} from "../contracts/factory/AccessManagerFactory.sol";
+import {PriceManagerFactory} from "../contracts/factory/PriceManagerFactory.sol";
+import {WithdrawManagerFactory} from "../contracts/factory/WithdrawManagerFactory.sol";
+import {RewardsManagerFactory} from "../contracts/factory/RewardsManagerFactory.sol";
+import {ContextManagerFactory} from "../contracts/factory/ContextManagerFactory.sol";
 import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../contracts/managers/access/IporFusionAccessManager.sol";
@@ -17,7 +26,7 @@ import {FuseAction} from "../contracts/interfaces/IPlasmaVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract TestConfigurationExample is Test {
-    address public constant FUSION_FACTORY_PROXY = 0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852;
+    address public constant EXISTING_FUSION_FACTORY_PROXY = 0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
@@ -32,6 +41,7 @@ contract TestConfigurationExample is Test {
     PlasmaVault public plasmaVault;
     IporFusionAccessManager public accessManager;
     PriceOracleMiddlewareManager public priceManager;
+    address public daoFeeManager;
 
     address public constant balanceFuseErc4626Market1 = 0x2C10C36028C430f445a4bA9f7Dd096a5DcC75d5e;
     address public constant supplyFuseErc4626Market1 = 0x12FD0EE183c85940CAedd4877f5d3Fc637515870;
@@ -42,14 +52,18 @@ contract TestConfigurationExample is Test {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 23831825);
 
-        fusionFactory = FusionFactory(FUSION_FACTORY_PROXY);
+        daoFeeManager = makeAddr("DAO_FEE_MANAGER");
 
-        FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        // Deploy fresh FusionFactory with fee packages support
+        fusionFactory = _deployFreshFusionFactory();
+
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "Test Configuration Vault",
             "TCV",
             USDC,
             0,
-            owner
+            owner,
+            0 // Fee package index
         );
 
         accessManager = IporFusionAccessManager(fusionInstance.accessManager);
@@ -201,17 +215,12 @@ contract TestConfigurationExample is Test {
         // Step 4: Calculate half amount
         uint256 halfAmount = depositAmount / 2;
 
-        // Step 5: Create Erc4626SupplyFuseEnterData with IPOR_USDC_PRIME vault and half amount
-        Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
-            vault: IPOR_USDC_PRIME,
-            vaultAssetAmount: halfAmount
-        });
-
-        // Step 6: Create FuseAction array with supplyFuseErc4626Market1 address and encoded enter data
+        // Step 5-6: Create FuseAction with supplyFuseErc4626Market1 address and encoded enter data
+        // Note: supplyFuseErc4626Market1 is a deployed on-chain contract with the old 2-field struct signature
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: supplyFuseErc4626Market1,
-            data: abi.encodeWithSignature("enter((address,uint256))", enterData)
+            data: abi.encodeWithSignature("enter((address,uint256))", IPOR_USDC_PRIME, halfAmount)
         });
 
         // Step 7: Execute as alpha
@@ -230,5 +239,95 @@ contract TestConfigurationExample is Test {
         // that the execute succeeded by checking the vault's total assets in the market
         uint256 totalAssetsInMarket = plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC4626_0001);
         assertGt(totalAssetsInMarket, 0, "Market has assets");
+    }
+
+    function _deployFreshFusionFactory() internal returns (FusionFactory) {
+        // Get existing factory to copy configuration
+        FusionFactory existingFactory = FusionFactory(EXISTING_FUSION_FACTORY_PROXY);
+
+        // Deploy all new factories - fork factories only have create(), not clone()
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses;
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
+        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory());
+        factoryAddresses.priceManagerFactory = address(new PriceManagerFactory());
+        factoryAddresses.withdrawManagerFactory = address(new WithdrawManagerFactory());
+        factoryAddresses.rewardsManagerFactory = address(new RewardsManagerFactory());
+        factoryAddresses.contextManagerFactory = address(new ContextManagerFactory());
+
+        address plasmaVaultBase = existingFactory.getPlasmaVaultBaseAddress();
+        address priceOracleMiddleware = existingFactory.getPriceOracleMiddleware();
+        address burnRequestFeeFuse = existingFactory.getBurnRequestFeeFuseAddress();
+        address burnRequestFeeBalanceFuse = existingFactory.getBurnRequestFeeBalanceFuseAddress();
+        address[] memory plasmaVaultAdminArray = existingFactory.getPlasmaVaultAdminArray();
+
+        // Deploy fresh FusionFactory with fee packages support
+        FusionFactory implementation = new FusionFactory();
+        bytes memory initData = abi.encodeWithSelector(
+            FusionFactory.initialize.selector,
+            owner,
+            plasmaVaultAdminArray,
+            factoryAddresses,
+            plasmaVaultBase,
+            priceOracleMiddleware,
+            burnRequestFeeFuse,
+            burnRequestFeeBalanceFuse
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        FusionFactory newFactory = FusionFactory(address(proxy));
+
+        // Grant roles
+        vm.startPrank(owner);
+        newFactory.grantRole(newFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
+        newFactory.grantRole(newFactory.MAINTENANCE_MANAGER_ROLE(), owner);
+        vm.stopPrank();
+
+        // Copy base addresses from existing factory, but deploy fresh PlasmaVault core base
+        // The existing plasmaVaultCoreBase on fork is an initialized proxy that cannot be used with Clones.clone()
+        FusionFactoryStorageLib.BaseAddresses memory existingBases = existingFactory.getBaseAddresses();
+        existingBases.plasmaVaultCoreBase = address(new PlasmaVault());
+        uint256 version = existingFactory.getFusionFactoryVersion();
+
+        vm.prank(owner);
+        newFactory.updateBaseAddresses(
+            version,
+            existingBases.plasmaVaultCoreBase,
+            existingBases.accessManagerBase,
+            existingBases.priceManagerBase,
+            existingBases.withdrawManagerBase,
+            existingBases.rewardsManagerBase,
+            existingBases.contextManagerBase
+        );
+
+        vm.prank(owner);
+        newFactory.updatePlasmaVaultBase(plasmaVaultBase);
+
+        // Copy vesting period and withdraw window
+        uint256 vestingPeriod = existingFactory.getVestingPeriodInSeconds();
+        vm.prank(owner);
+        newFactory.updateVestingPeriodInSeconds(vestingPeriod);
+
+        uint256 withdrawWindow = existingFactory.getWithdrawWindowInSeconds();
+        vm.prank(owner);
+        newFactory.updateWithdrawWindowInSeconds(withdrawWindow);
+
+        // Setup fee packages
+        _setupDaoFeePackages(newFactory);
+
+        return newFactory;
+    }
+
+    function _setupDaoFeePackages(FusionFactory factory_) internal {
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+
+        // Package 0: Standard fees (0% management, 0% performance for testing simplicity)
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 0,
+            performanceFee: 0,
+            feeRecipient: makeAddr("feeRecipient")
+        });
+
+        vm.prank(daoFeeManager);
+        factory_.setDaoFeePackages(packages);
     }
 }

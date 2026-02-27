@@ -1,17 +1,31 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
+
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
-import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
 import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+
 import {AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
 import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {CompoundV2SupplyFuseEnterData, CompoundV2SupplyFuseExitData} from "../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
 import {CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
+import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../contracts/fuses/midas/MidasSupplyFuse.sol";
+import {MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {AaveV4SupplyFuseEnterData, AaveV4SupplyFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
+import {AaveV4BorrowFuseEnterData, AaveV4BorrowFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4BorrowFuse.sol";
+import {AaveV4EModeFuseEnterData} from "../../contracts/fuses/aave_v4/AaveV4EModeFuse.sol";
+import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
+import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
+import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
+import {TransientStorageLib} from "../../contracts/transient_storage/TransientStorageLib.sol";
 
 contract PlasmaVaultMock {
     using Address for address;
@@ -24,26 +38,66 @@ contract PlasmaVaultMock {
         balanceFuse = balanceFuse_;
     }
 
-    function enterCompoundV3Supply(CompoundV3SupplyFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+    function enterCompoundV3Supply(CompoundV3SupplyFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data_));
+    }
+
+    function enterCompoundV3SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
     }
 
     function enterCompoundV2Supply(CompoundV2SupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
     }
 
+    function enterCompoundV2SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitCompoundV2SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
     function enterAaveV3Supply(AaveV3SupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256,uint256))", data));
+    }
+
+    function enterAaveV3SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
     }
 
     function enterAaveV2Supply(AaveV2SupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
     }
     function enterErc4626Supply(Erc4626SupplyFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256,uint256))", data));
+    }
+
+    function enterErc4626SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitErc4626SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
+    function enterEulerV2SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitEulerV2SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
     function enterSparkSupply(SparkSupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256))", data));
+    }
+
+    function enterSparkSupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitSparkSupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 
     function enterMorphoSupply(MorphoSupplyFuseEnterData memory data) external {
@@ -54,12 +108,20 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
     }
 
+    function exitCompoundV3SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
     function exitCompoundV2Supply(CompoundV2SupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
     }
 
     function exitAaveV3Supply(AaveV3SupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+    }
+
+    function exitAaveV3SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 
     function exitSparkSupply(SparkSupplyFuseExitData memory data) external {
@@ -71,21 +133,76 @@ contract PlasmaVaultMock {
     }
 
     function exitErc4626Supply(Erc4626SupplyFuseExitData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256,uint256))", data));
     }
 
     function exitMorphoSupply(MorphoSupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((bytes32,uint256))", data));
     }
 
+    function enterAaveV4Supply(AaveV4SupplyFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,uint256))", data_)
+        );
+    }
+
+    function exitAaveV4Supply(AaveV4SupplyFuseExitData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,address,uint256,uint256,uint256))", data_)
+        );
+    }
+
+    function enterAaveV4SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitAaveV4SupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
+    function enterAaveV4Borrow(AaveV4BorrowFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,uint256))", data_)
+        );
+    }
+
+    function exitAaveV4Borrow(AaveV4BorrowFuseExitData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,address,uint256,uint256,uint256))", data_)
+        );
+    }
+
+    function enterAaveV4BorrowTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitAaveV4BorrowTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
+    }
+
+    function enterAaveV4EMode(AaveV4EModeFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,uint8))", data_)
+        );
+    }
+
+    function enterAaveV4EModeTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
     //solhint-disable-next-line
-    function enter(bytes calldata data) external {
+    function enter(bytes calldata data_) external {
         address(fuse).functionDelegateCall(msg.data);
     }
 
     //solhint-disable-next-line
-    function exit(bytes calldata data) external {
+    function exit(bytes calldata data_) external {
         address(fuse).functionDelegateCall(msg.data);
+    }
+
+    //solhint-disable-next-line
+    function instantWithdraw(bytes32[] calldata params) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("instantWithdraw(bytes32[])", params));
     }
 
     function grantAssetsToMarket(uint256 marketId, address[] calldata assets) external {
@@ -118,5 +235,100 @@ contract PlasmaVaultMock {
 
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external {
         PlasmaVaultLib.setPriceOracleMiddleware(priceOracleMiddleware_);
+    }
+
+    function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_) external {
+        PlasmaVaultLib.configureInstantWithdrawalFuses(fuses_);
+    }
+
+    function addFuses(address[] calldata fuses_) external {
+        for (uint256 i; i < fuses_.length; ++i) {
+            FusesLib.addFuse(fuses_[i]);
+        }
+    }
+
+    /// @notice Sets input parameters for a specific account in transient storage
+    /// @param account_ The address of the account
+    /// @param inputs_ Array of input values
+    function setInputs(address account_, bytes32[] calldata inputs_) external {
+        TransientStorageLib.setInputs(account_, inputs_);
+    }
+
+    /// @notice Retrieves a single input parameter for a specific account at a given index
+    /// @param account_ The address of the account
+    /// @param index_ The index of the input parameter
+    /// @return The input value at the specified index
+    function getInput(address account_, uint256 index_) external view returns (bytes32) {
+        return TransientStorageLib.getInput(account_, index_);
+    }
+
+    /// @notice Retrieves all input parameters for a specific account
+    /// @param account_ The address of the account
+    /// @return inputs Array of input values
+    function getInputs(address account_) external view returns (bytes32[] memory) {
+        return TransientStorageLib.getInputs(account_);
+    }
+
+    /// @notice Retrieves all output parameters for a specific account
+    /// @param account_ The address of the account
+    /// @return outputs Array of output values
+    function getOutputs(address account_) external view returns (bytes32[] memory) {
+        return TransientStorageLib.getOutputs(account_);
+    }
+
+    function enterMidasSupply(MidasSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,address))", data)
+        );
+    }
+
+    function enterMidasRequestSupply(MidasRequestSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address,address,uint256,address))", data)
+        );
+    }
+
+    function exitMidasSupply(MidasSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,uint256,uint256,address,address))", data)
+        );
+    }
+
+    function exitMidasRequestSupply(MidasRequestSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("exit((address,uint256,address,address))", data)
+        );
+    }
+
+    function cleanupMidasPendingDeposits(address depositVault_, uint256 maxIterations_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("cleanupPendingDeposits(address,uint256)", depositVault_, maxIterations_)
+        );
+    }
+
+    function cleanupMidasPendingRedemptions(address redemptionVault_, uint256 maxIterations_) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("cleanupPendingRedemptions(address,uint256)", redemptionVault_, maxIterations_)
+        );
+    }
+
+    function execute(address fuse_, bytes calldata data_) external {
+        address(fuse_).functionDelegateCall(data_);
+    }
+
+    fallback() external payable {
+        address target = fuse;
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let result := delegatecall(gas(), target, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch result
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
+            }
+        }
     }
 }

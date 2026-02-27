@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
@@ -67,10 +67,11 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     ) public view virtual override returns (bytes[] memory data) {
         Erc4626SupplyFuseEnterData memory enterData = Erc4626SupplyFuseEnterData({
             vault: GEARBOX_V3_POOL,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            minSharesOut: 0
         });
         data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("enter((address,uint256))", enterData);
+        data[0] = abi.encodeWithSignature("enter((address,uint256,uint256))", enterData);
     }
 
     function getExitFuseData(
@@ -80,10 +81,11 @@ contract GearboxV3USDCArbitrum is SupplyTest {
     ) public view virtual override returns (address[] memory fusesSetup, bytes[] memory data) {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: GEARBOX_V3_POOL,
-            vaultAssetAmount: amount_
+            vaultAssetAmount: amount_,
+            maxSharesBurned: 0
         });
         data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("exit((address,uint256))", exitData);
+        data[0] = abi.encodeWithSignature("exit((address,uint256,uint256))", exitData);
         fusesSetup = fuses;
     }
 }

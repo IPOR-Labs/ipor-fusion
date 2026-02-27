@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -87,12 +87,12 @@ library IporFusionAccessManagerInitializerLibV1 {
     error InvalidAddress();
 
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 40;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
-    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 7;
+    uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 9;
 
     /// @notice Generates the data for the initialization of the IPOR Fusion Plasma Vault.
     /// @param data_ Data for the initialization of the IPOR Fusion Plasma Vault.
@@ -789,6 +789,13 @@ library IporFusionAccessManagerInitializerLibV1 {
             minimalExecutionDelay: 0
         });
 
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.accessManager,
+            roleId: Roles.TECH_PLASMA_VAULT_ROLE,
+            functionSelector: IporFusionAccessManager.canCallAndUpdate.selector,
+            minimalExecutionDelay: 0
+        });
+
         // RewardsClaimManager
         if (plasmaVaultAddress_.rewardsClaimManager != address(0)) {
             rolesToFunction[_next(iterator)] = RoleToFunction({
@@ -994,6 +1001,18 @@ library IporFusionAccessManagerInitializerLibV1 {
         }
 
         if (plasmaVaultAddress_.priceOracleMiddlewareManager != address(0)) {
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.setupContext.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.priceOracleMiddlewareManager,
+                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
+                functionSelector: ContextClient.clearContext.selector,
+                minimalExecutionDelay: 0
+            });
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.priceOracleMiddlewareManager,
                 roleId: Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -9,6 +9,8 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
 /// @notice Data structure for entering - supply - the ERC4626 vault
 struct Erc4626SupplyFuseEnterData {
@@ -16,6 +18,8 @@ struct Erc4626SupplyFuseEnterData {
     address vault;
     /// @dev amount to supply, this is amount of underlying asset in the given ERC4626 vault
     uint256 vaultAssetAmount;
+    /// @dev minimum amount of shares expected to receive from the deposit
+    uint256 minSharesOut;
 }
 
 /// @notice Data structure for exiting - withdrawing - the ERC4626 vault
@@ -24,6 +28,8 @@ struct Erc4626SupplyFuseExitData {
     address vault;
     /// @dev amount to withdraw, this is amount of underlying asset in the given ERC4626 vault
     uint256 vaultAssetAmount;
+    /// @dev maximum number of vault shares that can be burned during the withdraw, 0 means no limit
+    uint256 maxSharesBurned;
 }
 
 /// @title Generic fuse for ERC4626 vaults responsible for supplying and withdrawing assets from the ERC4626 vaults based on preconfigured market substrates
@@ -32,7 +38,19 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeCast for uint256;
     using SafeERC20 for ERC20;
 
+    /// @notice Emitted when assets are successfully deposited into an ERC4626 vault
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the underlying asset being deposited
+    /// @param vault The address of the ERC4626 vault receiving the deposit
+    /// @param vaultAssetAmount The amount of underlying assets deposited into the vault
     event Erc4626SupplyFuseEnter(address version, address asset, address vault, uint256 vaultAssetAmount);
+
+    /// @notice Emitted when assets are successfully withdrawn from an ERC4626 vault
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the underlying asset being withdrawn
+    /// @param vault The address of the ERC4626 vault from which assets are withdrawn
+    /// @param vaultAssetAmount The amount of underlying assets withdrawn from the vault
+    /// @param shares The amount of vault shares redeemed for the withdrawal
     event Erc4626SupplyFuseExit(
         address version,
         address asset,
@@ -40,9 +58,25 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 vaultAssetAmount,
         uint256 shares
     );
+
+    /// @notice Emitted when withdrawal from an ERC4626 vault fails (used in instant withdraw scenarios)
+    /// @param version The address of this fuse contract version
+    /// @param asset The address of the underlying asset that failed to withdraw
+    /// @param vault The address of the ERC4626 vault from which withdrawal was attempted
+    /// @param vaultAssetAmount The amount of underlying assets that failed to withdraw
     event Erc4626SupplyFuseExitFailed(address version, address asset, address vault, uint256 vaultAssetAmount);
 
     error Erc4626SupplyFuseUnsupportedVault(string action, address asset);
+
+    /// @notice Thrown when received shares are below the minimum required
+    /// @param receivedShares The amount of shares actually received
+    /// @param minSharesOut The minimum amount of shares required
+    error Erc4626SupplyFuseInsufficientShares(uint256 receivedShares, uint256 minSharesOut);
+
+    /// @notice Thrown when shares burned during withdraw exceed the maximum allowed
+    /// @param sharesBurned The amount of shares actually burned
+    /// @param maxSharesBurned The maximum amount of shares allowed to be burned
+    error Erc4626SupplyFuseExcessiveSharesBurned(uint256 sharesBurned, uint256 maxSharesBurned);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -52,9 +86,9 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         MARKET_ID = marketId_;
     }
 
-    function enter(Erc4626SupplyFuseEnterData memory data_) external {
+    function enter(Erc4626SupplyFuseEnterData memory data_) public returns (uint256 finalVaultAssetAmount) {
         if (data_.vaultAssetAmount == 0) {
-            return;
+            return 0;
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
@@ -63,24 +97,54 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address underlyingAsset = IERC4626(data_.vault).asset();
 
-        uint256 finalVaultAssetAmount = IporMath.min(
+        finalVaultAssetAmount = IporMath.min(
             data_.vaultAssetAmount,
-            IERC4626(underlyingAsset).balanceOf(address(this))
+            ERC20(underlyingAsset).balanceOf(address(this))
         );
 
         if (finalVaultAssetAmount == 0) {
-            return;
+            return 0;
         }
 
         ERC20(underlyingAsset).forceApprove(data_.vault, finalVaultAssetAmount);
 
-        IERC4626(data_.vault).deposit(finalVaultAssetAmount, address(this));
+        uint256 shares = IERC4626(data_.vault).deposit(finalVaultAssetAmount, address(this));
+
+        if (shares < data_.minSharesOut) {
+            revert Erc4626SupplyFuseInsufficientShares(shares, data_.minSharesOut);
+        }
 
         emit Erc4626SupplyFuseEnter(VERSION, underlyingAsset, data_.vault, finalVaultAssetAmount);
     }
 
-    function exit(Erc4626SupplyFuseExitData calldata data_) external {
-        _exit(data_, false);
+    function enterTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address vault = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+        uint256 minSharesOut = TypeConversionLib.toUint256(inputs[2]);
+
+        uint256 suppliedAmount = enter(Erc4626SupplyFuseEnterData({vault: vault, vaultAssetAmount: amount, minSharesOut: minSharesOut}));
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(suppliedAmount);
+        TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    function exit(Erc4626SupplyFuseExitData memory data_) public returns (uint256 shares) {
+        return _exit({data_: data_, catchExceptions_: false});
+    }
+
+    function exitTransient() external {
+        bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+        address vault = TypeConversionLib.toAddress(inputs[0]);
+        uint256 amount = TypeConversionLib.toUint256(inputs[1]);
+        uint256 maxSharesBurned = TypeConversionLib.toUint256(inputs[2]);
+
+        uint256 shares = exit(Erc4626SupplyFuseExitData({vault: vault, vaultAssetAmount: amount, maxSharesBurned: maxSharesBurned}));
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(shares);
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @dev params[0] - amount in underlying asset, params[1] - vault address
@@ -89,12 +153,12 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address vault = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        _exit(Erc4626SupplyFuseExitData(vault, amount), true);
+        _exit(Erc4626SupplyFuseExitData(vault, amount, 0), true);
     }
 
-    function _exit(Erc4626SupplyFuseExitData memory data_, bool catchExceptions_) internal {
+    function _exit(Erc4626SupplyFuseExitData memory data_, bool catchExceptions_) internal returns (uint256 shares) {
         if (data_.vaultAssetAmount == 0) {
-            return;
+            return 0;
         }
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
@@ -103,28 +167,40 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         uint256 finalVaultAssetAmount = IporMath.min(
             data_.vaultAssetAmount,
-            IERC4626(data_.vault).convertToAssets(IERC4626(data_.vault).balanceOf(address(this)))
+            IERC4626(data_.vault).maxWithdraw(address(this))
         );
 
         if (finalVaultAssetAmount == 0) {
-            return;
+            return 0;
         }
 
-        _performWithdraw(data_.vault, finalVaultAssetAmount, catchExceptions_);
+        return _performWithdraw(data_.vault, finalVaultAssetAmount, data_.maxSharesBurned, catchExceptions_);
     }
 
-    function _performWithdraw(address vault_, uint256 finalVaultAssetAmount_, bool catchExceptions_) private {
+    function _performWithdraw(
+        address vault_,
+        uint256 finalVaultAssetAmount_,
+        uint256 maxSharesBurned_,
+        bool catchExceptions_
+    ) private returns (uint256 shares) {
         if (catchExceptions_) {
             try IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this)) returns (
-                uint256 shares
+                uint256 shares_
             ) {
+                if (maxSharesBurned_ > 0 && shares_ > maxSharesBurned_) {
+                    revert Erc4626SupplyFuseExcessiveSharesBurned(shares_, maxSharesBurned_);
+                }
+                shares = shares_;
                 emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_, shares);
             } catch {
                 /// @dev if withdraw failed, continue with the next step
                 emit Erc4626SupplyFuseExitFailed(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_);
             }
         } else {
-            uint256 shares = IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this));
+            shares = IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this));
+            if (maxSharesBurned_ > 0 && shares > maxSharesBurned_) {
+                revert Erc4626SupplyFuseExcessiveSharesBurned(shares, maxSharesBurned_);
+            }
             emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_, shares);
         }
     }

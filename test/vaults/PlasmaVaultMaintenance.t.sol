@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
@@ -82,7 +82,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -120,7 +121,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -166,7 +168,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -202,7 +205,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -238,7 +242,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -271,7 +276,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -306,7 +312,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -352,7 +359,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -395,7 +403,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -437,7 +446,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -482,7 +492,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
         setupRoles(plasmaVault, accessManager, withdrawManager);
@@ -523,7 +534,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 
@@ -2626,7 +2638,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                address(withdrawManager)
+                address(withdrawManager),
+                address(0)
             )
         );
 
@@ -2910,7 +2923,8 @@ contract PlasmaVaultMaintenanceTest is Test {
                 FeeConfigHelper.createZeroFeeConfig(),
                 address(accessManager),
                 address(new PlasmaVaultBase()),
-                withdrawManager
+                withdrawManager,
+                address(0)
             )
         );
 

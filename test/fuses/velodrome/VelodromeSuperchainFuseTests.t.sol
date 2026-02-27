@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -14,7 +14,8 @@ import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccess
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
-import {FusionFactoryLib} from "../../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {VelodromeSuperchainBalanceFuse} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainBalanceFuse.sol";
 import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainLib.sol";
@@ -25,8 +26,11 @@ import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.
 import {IRouter} from "../../../contracts/fuses/velodrome_superchain/ext/IRouter.sol";
 import {VelodromeSuperchainGaugeClaimFuse} from "../../../contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainGaugeClaimFuse.sol";
 import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILeafGauge.sol";
+import {IPool} from "../../../contracts/fuses/velodrome_superchain/ext/IPool.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {IWETH9} from "../erc4626/IWETH9.sol";
 
@@ -68,6 +72,7 @@ contract VelodromeSuperchainFuseTests is Test {
     VelodromeSuperchainGaugeFuse private _velodromeGaugeFuse;
     VelodromeSuperchainGaugeClaimFuse private _velodromeGaugeClaimFuse;
     RewardsClaimManager private _rewardsClaimManager;
+    TransientStorageSetInputsFuse private _transientStorageSetInputsFuse;
 
     function setUp() public {
         // Fork Base network
@@ -75,12 +80,16 @@ contract VelodromeSuperchainFuseTests is Test {
 
         FusionFactory fusionFactory = FusionFactory(_fusionFactory);
 
-        FusionFactoryLib.FusionInstance memory fusionInstance = fusionFactory.create(
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
+
+        FusionFactoryLogicLib.FusionInstance memory fusionInstance = fusionFactory.clone(
             "Velodrome",
             "VEL",
             _UNDERLYING_TOKEN,
             0,
-            _ATOMIST
+            _ATOMIST,
+            0
         );
 
         _plasmaVault = PlasmaVault(fusionInstance.plasmaVault);
@@ -130,10 +139,12 @@ contract VelodromeSuperchainFuseTests is Test {
         );
         _velodromeGaugeFuse = new VelodromeSuperchainGaugeFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
         _velodromeGaugeClaimFuse = new VelodromeSuperchainGaugeClaimFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
+        _transientStorageSetInputsFuse = new TransientStorageSetInputsFuse();
 
-        address[] memory fuses = new address[](3);
+        address[] memory fuses = new address[](4);
         fuses[0] = address(_velodromeLiquidityFuse);
         fuses[1] = address(_velodromeGaugeFuse);
+        fuses[2] = address(_transientStorageSetInputsFuse);
         ERC20BalanceFuse erc20Balance = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
 
         address[] memory rewardFuses = new address[](1);
@@ -1712,5 +1723,444 @@ contract VelodromeSuperchainFuseTests is Test {
                 "Substrate address should match for all addresses"
             );
         }
+    }
+
+    function test_shouldEnterUsingTransientStorage() public {
+        // given
+        uint256 amountADesired = 1e18;
+        uint256 amountBDesired = 400_000e18;
+        uint256 amountAMin = 0;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        uint256 initialUnderlineBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 initialDineroBalance = IERC20(_DINERO).balanceOf(address(_plasmaVault));
+        uint256 initialVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
+
+        // Prepare transient inputs: tokenA, tokenB, stable, amountADesired, amountBDesired, amountAMin, amountBMin, deadline
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromeLiquidityFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](8);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_UNDERLYING_TOKEN);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(_DINERO);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(0)); // stable = false
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(amountADesired);
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(amountBDesired);
+        inputsByFuse[0][5] = TypeConversionLib.toBytes32(amountAMin);
+        inputsByFuse[0][6] = TypeConversionLib.toBytes32(amountBMin);
+        inputsByFuse[0][7] = TypeConversionLib.toBytes32(deadline);
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(_velodromeLiquidityFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 finalUnderlineBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 finalDineroBalance = IERC20(_DINERO).balanceOf(address(_plasmaVault));
+        uint256 finalVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
+
+        assertLt(finalUnderlineBalance, initialUnderlineBalance, "WETH balance should have decreased");
+        assertLt(finalDineroBalance, initialDineroBalance, "DINERO balance should have decreased");
+        assertGt(finalVelodromeBalance, initialVelodromeBalance, "Velodrome market balance should have increased");
+    }
+
+    function test_shouldExitUsingTransientStorage() public {
+        // given
+        uint256 amountADesired = 1e18;
+        uint256 amountBDesired = 400_000e18;
+        uint256 amountAMin = 0;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        // First, add liquidity using regular enter
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _DINERO,
+            stable: false,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_velodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false);
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        uint256 afterAddUnderlineBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 afterAddDineroBalance = IERC20(_DINERO).balanceOf(address(_plasmaVault));
+        uint256 afterAddVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
+
+        // Prepare transient inputs for exit: tokenA, tokenB, stable, liquidity, amountAMin, amountBMin, deadline
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromeLiquidityFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](7);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_UNDERLYING_TOKEN);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(_DINERO);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(0)); // stable = false
+        inputsByFuse[0][3] = TypeConversionLib.toBytes32(lpTokenBalance);
+        inputsByFuse[0][4] = TypeConversionLib.toBytes32(amountAMin);
+        inputsByFuse[0][5] = TypeConversionLib.toBytes32(amountBMin);
+        inputsByFuse[0][6] = TypeConversionLib.toBytes32(deadline);
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(_velodromeLiquidityFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 finalUnderlineBalance = IERC20(_UNDERLYING_TOKEN).balanceOf(address(_plasmaVault));
+        uint256 finalDineroBalance = IERC20(_DINERO).balanceOf(address(_plasmaVault));
+        uint256 finalVelodromeBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
+
+        assertGt(finalUnderlineBalance, afterAddUnderlineBalance, "WETH balance should have increased after removal");
+        assertGt(finalDineroBalance, afterAddDineroBalance, "DINERO balance should have increased after removal");
+        assertLt(finalVelodromeBalance, afterAddVelodromeBalance, "Velodrome market balance should have decreased");
+    }
+
+    function test_shouldEnterGaugeUsingTransientStorage() public {
+        // given
+        uint256 amountADesired = 1e18;
+        uint256 amountBDesired = 400_000e18;
+        uint256 amountAMin = 0;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        // First, add liquidity to get LP tokens
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _DINERO,
+            stable: false,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_velodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false);
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        uint256 beforeGaugeDepositLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        // Prepare transient inputs for gauge enter: gaugeAddress, amount, minAmount
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromeGaugeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_VELODROME_GAUGE);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(lpTokenBalance);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(0)); // minAmount = 0
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(_velodromeGaugeFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 afterGaugeDepositLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterGaugeDepositGaugeBalance = ILeafGauge(_VELODROME_GAUGE).balanceOf(address(_plasmaVault));
+
+        assertLt(
+            afterGaugeDepositLpTokenBalance,
+            beforeGaugeDepositLpTokenBalance,
+            "LP token balance should have decreased"
+        );
+        assertEq(afterGaugeDepositGaugeBalance, lpTokenBalance, "Gauge balance should equal deposited amount");
+    }
+
+    function test_shouldExitGaugeUsingTransientStorage() public {
+        // given
+        uint256 amountADesired = 1e18;
+        uint256 amountBDesired = 400_000e18;
+        uint256 amountAMin = 0;
+        uint256 amountBMin = 0;
+        uint256 deadline = block.timestamp + 3600;
+
+        // First, add liquidity to get LP tokens
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _DINERO,
+            stable: false,
+            amountADesired: amountADesired,
+            amountBDesired: amountBDesired,
+            amountAMin: amountAMin,
+            amountBMin: amountBMin,
+            deadline: deadline
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_velodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        // Get pool address and LP token balance
+        address poolAddress = IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false);
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        // Deposit all LP tokens to gauge using regular enter
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
+            gaugeAddress: _VELODROME_GAUGE,
+            amount: lpTokenBalance,
+            minAmount: 0
+        });
+
+        actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_velodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+
+        uint256 beforeGaugeWithdrawLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        // Prepare transient inputs for gauge exit: gaugeAddress, amount, minAmount
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_velodromeGaugeFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(_VELODROME_GAUGE);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(lpTokenBalance);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(0)); // minAmount = 0
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            address(_transientStorageSetInputsFuse),
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls[1] = FuseAction(address(_velodromeGaugeFuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 afterGaugeWithdrawLpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 afterGaugeWithdrawGaugeBalance = ILeafGauge(_VELODROME_GAUGE).balanceOf(address(_plasmaVault));
+
+        assertGt(
+            afterGaugeWithdrawLpTokenBalance,
+            beforeGaugeWithdrawLpTokenBalance,
+            "LP token balance should have increased"
+        );
+        assertEq(afterGaugeWithdrawLpTokenBalance, lpTokenBalance, "LP token balance should be restored");
+        assertEq(afterGaugeWithdrawGaugeBalance, 0, "Gauge balance should be zero");
+    }
+
+    /// @notice IL-6790 R3.H2: Regression test to verify that gauge-staked LP fees are correctly attributed
+    ///         to the gauge's fee caches (fees0/fees1) prorated by vault's share, NOT to the vault's pool fee indices.
+    /// @dev When LP tokens are staked in a Gauge, the Pool accrues per-account fees to the address that holds
+    ///      LP tokens at the Pool (typically the Gauge), not to the original depositor's address (vault).
+    ///      The fix uses ILeafGauge.fees0()/fees1() prorated by (vault_stake / gauge_totalSupply) instead of
+    ///      using IPool.supplyIndex0/supplyIndex1 keyed to the vault address.
+    function test_IL6790_H2_GaugeFeesProration() public {
+        // Step 1: Add liquidity to get LP tokens
+        _addLiquidityToPool(1e18, 400_000e18);
+
+        address poolAddress = IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false);
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        // Step 2: Stake all LP tokens in the gauge
+        _stakeInGauge(lpTokenBalance);
+
+        // Verify LP tokens are staked in gauge
+        uint256 vaultGaugeBalance = ILeafGauge(_VELODROME_GAUGE).balanceOf(address(_plasmaVault));
+        assertEq(vaultGaugeBalance, lpTokenBalance, "All LP tokens should be staked");
+        assertEq(IERC20(poolAddress).balanceOf(address(_plasmaVault)), 0, "No LP should remain");
+
+        // Step 3: Verify vault's pool-level claimables are zero (fees accrue to gauge, not vault)
+        // This demonstrates the bug scenario: using vault's pool indices would give wrong values
+        assertEq(IPool(poolAddress).claimable0(address(_plasmaVault)), 0, "Pool claimable0 should be 0");
+        assertEq(IPool(poolAddress).claimable1(address(_plasmaVault)), 0, "Pool claimable1 should be 0");
+
+        // Step 4: Get the actual balance from the fuse (uses correct gauge-based calculation)
+        uint256 actualBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
+        assertGt(actualBalance, 0, "Balance should be positive for gauge position");
+
+        // Log for debugging
+        emit log_named_uint("Vault gauge balance", vaultGaugeBalance);
+        emit log_named_uint("Gauge fees0", ILeafGauge(_VELODROME_GAUGE).fees0());
+        emit log_named_uint("Gauge fees1", ILeafGauge(_VELODROME_GAUGE).fees1());
+        emit log_named_uint("Actual balance", actualBalance);
+    }
+
+    /// @notice IL-6790 R3.H2: Test fee attribution after time passage
+    function test_IL6790_H2_GaugeFeesAfterTimePassage() public {
+        // Add liquidity and stake in gauge
+        _addLiquidityToPool(1e18, 400_000e18);
+        address poolAddress = IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false);
+        uint256 lpTokenBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        _stakeInGauge(lpTokenBalance);
+
+        // Record balance before time passage
+        uint256 balanceBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
+
+        // Simulate time passage (4 days)
+        vm.warp(block.timestamp + 4 days);
+
+        // Record balance after time passage
+        uint256 balanceAfter = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
+
+        // The balance should remain reasonable after time passage
+        assertGt(balanceAfter, 0, "Balance should remain positive");
+
+        // Balance change should be within reasonable bounds (not inflated due to wrong attribution)
+        uint256 maxReasonableChange = balanceBefore / 10; // 10% max change for 4 days
+        uint256 actualChange = balanceAfter > balanceBefore
+            ? balanceAfter - balanceBefore
+            : balanceBefore - balanceAfter;
+
+        assertLe(actualChange, maxReasonableChange, "Balance change should be reasonable");
+
+        emit log_named_uint("Balance before", balanceBefore);
+        emit log_named_uint("Balance after", balanceAfter);
+    }
+
+    /// @notice IL-6790 R3.H2: Test mixed pool and gauge positions
+    function test_IL6790_H2_MixedPositions() public {
+        // Add liquidity
+        _addLiquidityToPool(2e18, 800_000e18);
+        address poolAddress = IRouter(_VELODROME_ROUTER).poolFor(_DINERO, _UNDERLYING_TOKEN, false);
+        uint256 totalLpBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+
+        // Stake only HALF of LP tokens in gauge
+        _stakeInGauge(totalLpBalance / 2);
+
+        // Verify the split
+        uint256 poolBalance = IERC20(poolAddress).balanceOf(address(_plasmaVault));
+        uint256 gaugeBalance = ILeafGauge(_VELODROME_GAUGE).balanceOf(address(_plasmaVault));
+
+        assertApproxEqAbs(poolBalance, totalLpBalance / 2, 1, "Half should remain in pool");
+        assertApproxEqAbs(gaugeBalance, totalLpBalance / 2, 1, "Half should be in gauge");
+
+        // Get total balance - should account for both positions
+        uint256 totalBalance = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.VELODROME_SUPERCHAIN);
+        assertGt(totalBalance, 0, "Total balance should be positive");
+
+        emit log_named_uint("Pool LP balance", poolBalance);
+        emit log_named_uint("Gauge LP balance", gaugeBalance);
+        emit log_named_uint("Total balance", totalBalance);
+    }
+
+    /// @dev Helper function to add liquidity to the pool
+    function _addLiquidityToPool(uint256 amountA, uint256 amountB) internal {
+        VelodromeSuperchainLiquidityFuseEnterData memory enterData = VelodromeSuperchainLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _DINERO,
+            stable: false,
+            amountADesired: amountA,
+            amountBDesired: amountB,
+            amountAMin: 0,
+            amountBMin: 0,
+            deadline: block.timestamp + 3600
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_velodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+    }
+
+    /// @dev Helper function to stake LP tokens in the gauge
+    function _stakeInGauge(uint256 amount) internal {
+        VelodromeSuperchainGaugeFuseEnterData memory gaugeEnterData = VelodromeSuperchainGaugeFuseEnterData({
+            gaugeAddress: _VELODROME_GAUGE,
+            amount: amount,
+            minAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_velodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
     }
 }

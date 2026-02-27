@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {FusionFactory} from "../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
-import {FusionFactoryLib} from "../../contracts/factory/lib/FusionFactoryLib.sol";
+import {FusionFactoryLogicLib} from "../../contracts/factory/lib/FusionFactoryLogicLib.sol";
+import {FusionFactoryDaoFeePackagesHelper} from "../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {ValidateAllAssetsPricesPreHook} from "../../contracts/handlers/pre_hooks/pre_hooks/ValidateAllAssetsPricesPreHook.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -14,6 +15,13 @@ import {PriceOracleMiddlewareManagerLib} from "../../contracts/managers/price/Pr
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
+import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
+import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
+import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
+import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
+import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {AccessManagerFactory} from "../../contracts/factory/AccessManagerFactory.sol";
 
 /// @title ValidateAllAssetsPricesPreHookTest
 /// @notice Placeholder test suite for `ValidateAllAssetsPricesPreHook`
@@ -23,7 +31,7 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    FusionFactoryLib.FusionInstance private _fusionInstance;
+    FusionFactoryLogicLib.FusionInstance private _fusionInstance;
     ValidateAllAssetsPricesPreHook private _validateAllAssetsPricesPreHook;
     MutableValuePriceFeed private _mutableValuePriceFeed;
 
@@ -35,28 +43,44 @@ contract ValidateAllAssetsPricesPreHookTest is Test {
 
         FusionFactory fusionFactoryImpl = new FusionFactory();
         FusionFactory factory = FusionFactory(FACTORY);
-        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = factory.getBaseAddresses();
-
-        PriceOracleMiddlewareManager priceOracleMiddlewareManager = new PriceOracleMiddlewareManager(
-            ADMIN,
-            baseAddresses.priceManagerBase
-        );
-        baseAddresses.priceManagerBase = address(priceOracleMiddlewareManager);
 
         vm.startPrank(ADMIN);
         factory.grantRole(keccak256("MAINTENANCE_MANAGER_ROLE"), ADMIN);
         factory.upgradeToAndCall(address(fusionFactoryImpl), "");
+
+        // Update factory addresses with new PlasmaVaultFactory
+        FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses = factory.getFactoryAddresses();
+        factoryAddresses.plasmaVaultFactory = address(new PlasmaVaultFactory());
+        factoryAddresses.feeManagerFactory = address(new FeeManagerFactory());
+        factoryAddresses.accessManagerFactory = address(new AccessManagerFactory());
+        factory.updateFactoryAddresses(5, factoryAddresses);
+
+        // Deploy all base addresses for cloning
+        address plasmaVaultCoreBase = address(new PlasmaVault());
+        address accessManagerBase = address(new IporFusionAccessManager(ADMIN, 0));
+        address priceOracleMiddleware = factory.getPriceOracleMiddleware();
+        address priceManagerBase = address(new PriceOracleMiddlewareManager(ADMIN, priceOracleMiddleware));
+        address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
+        address rewardsManagerBase = address(new RewardsClaimManager(accessManagerBase, plasmaVaultCoreBase));
+        address[] memory approvedTargets = new address[](1);
+        approvedTargets[0] = plasmaVaultCoreBase;
+        address contextManagerBase = address(new ContextManager(accessManagerBase, approvedTargets));
         factory.updateBaseAddresses(
             5,
-            baseAddresses.plasmaVaultCoreBase,
-            baseAddresses.accessManagerBase,
-            baseAddresses.priceManagerBase,
-            baseAddresses.withdrawManagerBase,
-            baseAddresses.rewardsManagerBase,
-            baseAddresses.contextManagerBase
+            plasmaVaultCoreBase,
+            accessManagerBase,
+            priceManagerBase,
+            withdrawManagerBase,
+            rewardsManagerBase,
+            contextManagerBase
         );
+        vm.stopPrank();
 
-        _fusionInstance = factory.clone("TEST PLASMA VAULT", "TPLASMA", USDC, 0, ADMIN);
+        // Setup fee packages before creating vault
+        FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, factory);
+
+        vm.startPrank(ADMIN);
+        _fusionInstance = factory.clone("TEST PLASMA VAULT", "TPLASMA", USDC, 0, ADMIN, 0);
 
         IporFusionAccessManager iporFusionAccessManager = IporFusionAccessManager(
             address(_fusionInstance.accessManager)

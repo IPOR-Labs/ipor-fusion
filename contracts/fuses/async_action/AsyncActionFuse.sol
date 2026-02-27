@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -7,6 +7,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
+import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {AsyncActionFuseLib, AllowedAmountToOutside, AllowedTargets, AllowedSlippage} from "./AsyncActionFuseLib.sol";
 import {AsyncExecutor, SwapExecutorEthData} from "./AsyncExecutor.sol";
 
@@ -121,28 +123,32 @@ contract AsyncActionFuse is IFuseCommon {
 
     /// @notice Validates provided payload and forwards execution instructions to the async executor
     /// @param data_ Complete execution payload encoded off-chain
+    /// @return tokenOut Address of the asset that was transferred to the async executor
+    /// @return amountOut Amount of `tokenOut` transferred to the async executor
     /// @dev Performs validation of token, amount, and target/selector pairs against market substrates.
     ///      Validates that tokenOut is allowed and amountOut does not exceed allowed limits.
     ///      Validates that each target/selector pair is in the allowed list.
     ///      If executor balance is zero and amountOut > 0, transfers tokens to executor before execution.
     ///      Reverts if executor has non-zero balance when amountOut > 0.
     ///      Requires price oracle to be configured in the Plasma Vault.
-    function enter(AsyncActionFuseEnterData calldata data_) external {
+    function enter(AsyncActionFuseEnterData memory data_) public returns (address tokenOut, uint256 amountOut) {
         if (data_.tokenOut == address(0)) {
             revert AsyncActionFuseInvalidTokenOut();
         }
 
         uint256 targetsLength = data_.targets.length;
+
         if (targetsLength != data_.callDatas.length || targetsLength != data_.ethAmounts.length) {
             revert AsyncActionFuseInvalidArrayLength();
         }
 
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
+
         (AllowedAmountToOutside[] memory allowedAmounts, AllowedTargets[] memory allowedTargets, ) = AsyncActionFuseLib
             .decodeAsyncActionFuseSubstrates(substrates);
 
         _validateTokenOutAndAmount(data_.tokenOut, data_.amountOut, allowedAmounts);
-        _validateTargets(data_.targets, data_.callDatas, allowedTargets);
+        _validateTargetsMemory(data_.targets, data_.callDatas, allowedTargets);
 
         address payable executor = payable(AsyncActionFuseLib.getAsyncExecutorAddress(W_ETH, address(this)));
 
@@ -170,18 +176,108 @@ contract AsyncActionFuse is IFuseCommon {
         );
 
         emit AsyncActionFuseEnter(VERSION, data_.tokenOut, data_.amountOut);
+
+        return (data_.tokenOut, data_.amountOut);
+    }
+
+    /// @notice Validates provided payload and forwards execution instructions to the async executor using transient storage
+    /// @dev Reads tokenOut, amountOut, targets, callDatas, and ethAmounts from transient storage.
+    ///      Input 0: tokenOut (address)
+    ///      Input 1: amountOut (uint256)
+    ///      Input 2: targetsLength (uint256)
+    ///      Inputs 3 to 3+targetsLength-1: targets (address[])
+    ///      Input 3+targetsLength: callDatasLength (uint256)
+    ///      For each callData (i from 0 to callDatasLength-1):
+    ///        Input 3+targetsLength+1+i*2: callDataLength (uint256)
+    ///        Inputs 3+targetsLength+1+i*2+1 to 3+targetsLength+1+i*2+1+ceil(callDataLength/32)-1: callData chunks (bytes32[])
+    ///      Input after callDatas: ethAmountsLength (uint256)
+    ///      Inputs after ethAmountsLength: ethAmounts (uint256[])
+    ///      Writes returned tokenOut and amountOut to transient storage outputs.
+    function enterTransient() external {
+        bytes32 tokenOutBytes32 = TransientStorageLib.getInput(VERSION, 0);
+        bytes32 amountOutBytes32 = TransientStorageLib.getInput(VERSION, 1);
+        bytes32 targetsLengthBytes32 = TransientStorageLib.getInput(VERSION, 2);
+
+        address tokenOut = PlasmaVaultConfigLib.bytes32ToAddress(tokenOutBytes32);
+        uint256 amountOut = TypeConversionLib.toUint256(amountOutBytes32);
+        uint256 targetsLength = TypeConversionLib.toUint256(targetsLengthBytes32);
+
+        address[] memory targets = new address[](targetsLength);
+
+        for (uint256 i; i < targetsLength; ++i) {
+            bytes32 targetBytes32 = TransientStorageLib.getInput(VERSION, 3 + i);
+            targets[i] = PlasmaVaultConfigLib.bytes32ToAddress(targetBytes32);
+        }
+
+        // Read callDatas
+        uint256 currentIndex = 3 + targetsLength;
+        bytes32 callDatasLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+        uint256 callDatasLength = TypeConversionLib.toUint256(callDatasLengthBytes32);
+        ++currentIndex;
+
+        bytes[] memory callDatas = new bytes[](callDatasLength);
+        for (uint256 i; i < callDatasLength; ++i) {
+            bytes32 callDataLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+            uint256 callDataLength = TypeConversionLib.toUint256(callDataLengthBytes32);
+            ++currentIndex;
+
+            bytes memory callData = new bytes(callDataLength);
+            uint256 chunksCount = (callDataLength + 31) / 32; // ceil(callDataLength / 32)
+            for (uint256 j; j < chunksCount; ++j) {
+                bytes32 chunk = TransientStorageLib.getInput(VERSION, currentIndex);
+                uint256 chunkStart = j * 32;
+                assembly {
+                    let dataPtr := add(add(callData, 0x20), chunkStart)
+                    mstore(dataPtr, chunk)
+                }
+                ++currentIndex;
+            }
+            callDatas[i] = callData;
+        }
+
+        // Read ethAmounts
+        bytes32 ethAmountsLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+        uint256 ethAmountsLength = TypeConversionLib.toUint256(ethAmountsLengthBytes32);
+        ++currentIndex;
+
+        uint256[] memory ethAmounts = new uint256[](ethAmountsLength);
+        for (uint256 i; i < ethAmountsLength; ++i) {
+            bytes32 ethAmountBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+            ethAmounts[i] = TypeConversionLib.toUint256(ethAmountBytes32);
+            ++currentIndex;
+        }
+
+        address[] memory tokensDustToCheck = new address[](0);
+
+        AsyncActionFuseEnterData memory data = AsyncActionFuseEnterData({
+            tokenOut: tokenOut,
+            amountOut: amountOut,
+            targets: targets,
+            callDatas: callDatas,
+            ethAmounts: ethAmounts,
+            tokensDustToCheck: tokensDustToCheck
+        });
+
+        (address returnedTokenOut, uint256 returnedAmountOut) = enter(data);
+
+        bytes32[] memory outputs = new bytes32[](2);
+        outputs[0] = TypeConversionLib.toBytes32(returnedTokenOut);
+        outputs[1] = TypeConversionLib.toBytes32(returnedAmountOut);
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @notice Fetches assets from async executor back to Plasma Vault
     /// @param data_ Complete exit payload containing assets to fetch
+    /// @return assets Array of asset addresses that were fetched
     /// @dev Fetches specified assets from the async executor and transfers them to the Plasma Vault.
     ///      Slippage tolerance is read from market substrates.
     ///      Requires executor address to be set and price oracle to be configured in the Plasma Vault.
     ///      Returns early if assets array is empty.
-    function exit(AsyncActionFuseExitData calldata data_) external {
+    function exit(AsyncActionFuseExitData memory data_) public returns (address[] memory assets) {
         uint256 assetsLength = data_.assets.length;
         if (assetsLength == 0) {
-            return;
+            return new address[](0);
         }
 
         // Get slippage from substrates
@@ -201,12 +297,69 @@ contract AsyncActionFuse is IFuseCommon {
             revert AsyncActionFusePriceOracleNotConfigured();
         }
 
-        _validateTargets(data_.assets, data_.fetchCallDatas, allowedTargets);
+        _validateTargetsMemory(data_.assets, data_.fetchCallDatas, allowedTargets);
 
         // Call fetchAssets on executor
         AsyncExecutor(executor).fetchAssets(data_.assets, priceOracle, allowedSlippage.slippage);
 
         emit AsyncActionFuseExit(VERSION, data_.assets);
+
+        return data_.assets;
+    }
+
+    /// @notice Fetches assets from async executor back to Plasma Vault using transient storage
+    /// @dev Reads assets array and fetchCallDatas from transient storage.
+    ///      Input 0: assetsLength (uint256)
+    ///      Inputs 1 to assetsLength: assets (address[])
+    ///      Input assetsLength+1: fetchCallDatasLength (uint256)
+    ///      For each fetchCallData (i from 0 to fetchCallDatasLength-1):
+    ///        Input assetsLength+2+i*2: fetchCallDataLength (uint256)
+    ///        Inputs assetsLength+2+i*2+1 to assetsLength+2+i*2+1+ceil(fetchCallDataLength/32)-1: fetchCallData chunks (bytes32[])
+    ///      Writes returned assets array length to transient storage outputs.
+    function exitTransient() external {
+        bytes32 assetsLengthBytes32 = TransientStorageLib.getInput(VERSION, 0);
+        uint256 assetsLength = TypeConversionLib.toUint256(assetsLengthBytes32);
+
+        address[] memory assets = new address[](assetsLength);
+        for (uint256 i; i < assetsLength; ++i) {
+            bytes32 assetBytes32 = TransientStorageLib.getInput(VERSION, 1 + i);
+            assets[i] = PlasmaVaultConfigLib.bytes32ToAddress(assetBytes32);
+        }
+
+        // Read fetchCallDatas
+        uint256 currentIndex = 1 + assetsLength;
+        bytes32 fetchCallDatasLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+        uint256 fetchCallDatasLength = TypeConversionLib.toUint256(fetchCallDatasLengthBytes32);
+        ++currentIndex;
+
+        bytes[] memory fetchCallDatas = new bytes[](fetchCallDatasLength);
+        for (uint256 i; i < fetchCallDatasLength; ++i) {
+            bytes32 fetchCallDataLengthBytes32 = TransientStorageLib.getInput(VERSION, currentIndex);
+            uint256 fetchCallDataLength = TypeConversionLib.toUint256(fetchCallDataLengthBytes32);
+            ++currentIndex;
+
+            bytes memory fetchCallData = new bytes(fetchCallDataLength);
+            uint256 chunksCount = (fetchCallDataLength + 31) / 32; // ceil(fetchCallDataLength / 32)
+            for (uint256 j; j < chunksCount; ++j) {
+                bytes32 chunk = TransientStorageLib.getInput(VERSION, currentIndex);
+                uint256 chunkStart = j * 32;
+                assembly {
+                    let dataPtr := add(add(fetchCallData, 0x20), chunkStart)
+                    mstore(dataPtr, chunk)
+                }
+                ++currentIndex;
+            }
+            fetchCallDatas[i] = fetchCallData;
+        }
+
+        AsyncActionFuseExitData memory data = AsyncActionFuseExitData({assets: assets, fetchCallDatas: fetchCallDatas});
+
+        address[] memory returnedAssets = exit(data);
+
+        bytes32[] memory outputs = new bytes32[](1);
+        outputs[0] = TypeConversionLib.toBytes32(uint256(returnedAssets.length));
+
+        TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
     /// @notice Ensures token and amount requested are within substrate-defined boundaries
@@ -248,14 +401,14 @@ contract AsyncActionFuse is IFuseCommon {
     /// @dev Validates that each target address and function selector combination is present in allowedTargets_.
     ///      Extracts selector from first 4 bytes of each callData.
     ///      Reverts if callData is too short (< 4 bytes) or if any target/selector pair is not found in the allowed list.
-    function _validateTargets(
-        address[] calldata targets_,
-        bytes[] calldata callDatas_,
+    function _validateTargetsMemory(
+        address[] memory targets_,
+        bytes[] memory callDatas_,
         AllowedTargets[] memory allowedTargets_
     ) private pure {
         uint256 targetsLength = targets_.length;
         uint256 allowedTargetsLength = allowedTargets_.length;
-        bytes calldata callData;
+        bytes memory callData;
 
         for (uint256 i; i < targetsLength; ++i) {
             callData = callDatas_[i];
@@ -264,7 +417,11 @@ contract AsyncActionFuse is IFuseCommon {
             }
 
             // Extract function selector from first 4 bytes of callData
-            bytes4 selector = bytes4(callData[:4]);
+            bytes4 selector;
+            assembly {
+                selector := mload(add(callData, 0x20))
+            }
+            selector = bytes4(selector);
             address target = targets_[i];
             bool allowed;
 

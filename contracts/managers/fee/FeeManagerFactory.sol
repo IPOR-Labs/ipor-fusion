@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import {FeeManager, FeeManagerInitData} from "./FeeManager.sol";
 
@@ -57,7 +57,8 @@ contract FeeManagerFactory {
     /// @dev Creates and initializes a new FeeManager with associated fee accounts
     /// @param initData_ Initialization parameters for the fee manager
     /// @return feeManagerData Data structure containing addresses and fee information of the deployed system
-    /// @custom:security Validates fee recipient addresses and fee percentages during deployment
+    /// @custom:security No input validation is performed at the factory layer. Fee recipients, percentages,
+    ///                    and other invariants are validated by the FeeManager constructor and downstream governance calls.
     function deployFeeManager(
         FeeManagerInitData memory initData_
     ) external returns (FeeManagerData memory feeManagerData) {
