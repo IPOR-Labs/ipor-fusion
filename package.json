@@ -28,6 +28,7 @@
         "@pendle/core-v2": "^5.1.1",
         "@uniswap/v3-core": "^1.0.1",
         "@uniswap/v3-periphery": "^1.4.4",
+        "@uniswap/v4-core": "^1.0.2",
         "ethereum-vault-connector": "github:euler-xyz/ethereum-vault-connector"
     }
 }

@@ -136,6 +136,7 @@ library IporFusionMarkets {
 
     /// @dev Ebisu market
     /// @dev Substrate type: EbisuZapperSubstrate
+
     uint256 public constant EBISU = 39;
 
     /// @dev Async Action market
@@ -196,12 +197,14 @@ library IporFusionMarkets {
     ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
     uint256 public constant AAVE_V4 = 45;
 
-
     /// @dev Midas RWA market (mTBILL, mBASIS)
     /// @dev Substrate type: MidasSubstrateType (M_TOKEN, DEPOSIT_VAULT, REDEMPTION_VAULT, INSTANT_REDEMPTION_VAULT, ASSET)
     /// @dev Substrate values: Encoded combination of type flag and address (see MidasSubstrateLib)
     uint256 public constant MIDAS = 45;
 
+    /// @dev Napier market
+    uint256 public constant NAPIER = 46;
+    
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
