@@ -132,7 +132,7 @@ contract MorphoLiquidityInMarketsTest is Test {
         bytes32[3] memory markets = [MARKET_1, MARKET_2, MARKET_3];
         IMorpho morpho = IMorpho(MORPHO);
 
-        for (uint i = 0; i < 3; i++) {
+        for (uint256 i = 0; i < 3; i++) {
             MarketParams memory params = morpho.idToMarketParams(Id.wrap(markets[i]));
             address loanToken = params.loanToken;
             if (loanToken == USDC) {

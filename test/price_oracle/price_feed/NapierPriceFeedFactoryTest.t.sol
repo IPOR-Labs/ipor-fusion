@@ -307,7 +307,7 @@ contract NapierPriceFeedFactoryTest is Test {
         assertLt(price, 1e18, "Price should be less than 1e18");
         assertEq(timestamp, block.timestamp, "Timestamp should match block timestamp");
 
-        console2.log("price", price);
+        
     }
 
     function testCreateTwapPriceFeed() public {
@@ -330,7 +330,7 @@ contract NapierPriceFeedFactoryTest is Test {
         assertLt(price, 1e18, "Price should be less than 1e18");
         assertEq(timestamp, block.timestamp, "Timestamp should match block timestamp");
 
-        console2.log("price", price);
+        
     }
 
     function testCreateYtTwapPriceFeed() public {
