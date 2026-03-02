@@ -72,7 +72,7 @@ contract Erc4626BalanceFuse is IMarketBalanceFuse {
             vaultAssets = vault.convertToAssets(vault.balanceOf(plasmaVault));
             asset = vault.asset();
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
-            balance += IporMath.convertToWad(vaultAssets * price, IERC20Metadata(asset).decimals() + priceDecimals);
+            balance += IporMath.convertToWad(vaultAssets * price,  priceDecimals);
         }
 
         return balance;

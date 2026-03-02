@@ -153,7 +153,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         uint256 redemptionDelayInSeconds_,
         address owner_,
         uint256 daoFeePackageIndex_
-    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
+    ) external  returns (FusionFactoryLogicLib.FusionInstance memory) {
         return
             FusionFactoryLib.clone(
                 assetName_,
@@ -191,7 +191,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
             underlyingToken_,
             redemptionDelayInSeconds_,
             owner_,
-            false,
+            true,
             daoFeePackageIndex_,
             masterSalt_
         );
@@ -267,7 +267,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     ) external returns (address deployedAddress) {
         if (!hasRole(MAINTENANCE_MANAGER_ROLE, msg.sender)) {
             address accessManager = IAccessManaged(plasmaVault_).authority();
-            (bool isAtomist, ) = IporFusionAccessManager(accessManager).hasRole(Roles.ATOMIST_ROLE, msg.sender);
+            (bool isAtomist, ) = IporFusionAccessManager(accessManager).hasRole(Roles.ATOMIST_ROLE, address(this));
             if (!isAtomist) revert UnauthorizedCaller();
         }
 

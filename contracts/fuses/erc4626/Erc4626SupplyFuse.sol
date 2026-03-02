@@ -91,7 +91,7 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return 0;
         }
 
-        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.vault)) {
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(this))) {
             revert Erc4626SupplyFuseUnsupportedVault("enter", data_.vault);
         }
 

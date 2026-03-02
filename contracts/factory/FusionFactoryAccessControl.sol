@@ -25,7 +25,7 @@ abstract contract FusionFactoryAccessControl is AccessControlEnumerableUpgradeab
     bytes32 public constant PAUSE_MANAGER_ROLE = keccak256("PAUSE_MANAGER_ROLE");
 
     /// @notice Role for managing DAO fee configuration
-    /// @dev 0x12ca4a5ac2cad705272a39c92e45caa2d9c303ba57e709eab1ff20b24512e266
+    /// @dev 0x12ca4a5ac2cad705272a39c92e45caa2d9c303ba57e709eab1ff20b24512e269
     /// @dev Protects:
     /// - updateIporDaoFee()
     bytes32 public constant DAO_FEE_MANAGER_ROLE = keccak256("DAO_FEE_MANAGER_ROLE");

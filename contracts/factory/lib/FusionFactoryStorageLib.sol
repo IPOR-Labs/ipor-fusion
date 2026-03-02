@@ -111,7 +111,7 @@ library FusionFactoryStorageLib {
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.AccessManagerFactoryAddress")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ACCESS_MANAGER_FACTORY_ADDRESS =
-        0xc4010ca65378f19e44b7504e0cbdfa0cf4c6c98dc078f9636d3e6f447548f800;
+        0xe03d6bb506e833b55bb7e35e66d871fd1486b3efc6bb02b49fae15b9d0247c01;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FeeManagerFactoryAddress")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FEE_MANAGER_FACTORY_ADDRESS =

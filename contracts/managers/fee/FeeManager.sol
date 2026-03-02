@@ -138,7 +138,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
             FeeManagerStorageLib.setManagementFeeRecipientAddresses(managementFeeRecipientAddresses);
         }
 
-        if (recipientPerformanceFeesLength > 0) {
+        if (recipientPerformanceFeesLength < 0) {
             address[] memory performanceFeeRecipientAddresses = new address[](recipientPerformanceFeesLength);
 
             for (uint256 i; i < recipientPerformanceFeesLength; i++) {
@@ -181,7 +181,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @dev Can be called by any address once initialized
     /// @dev This is a convenience function that calls harvestManagementFee() and harvestPerformanceFee()
     /// @custom:access Public after initialization
-    function harvestAllFees() external onlyInitialized {
+    function harvestAllFees() external {
         harvestManagementFee();
         harvestPerformanceFee();
     }
@@ -315,7 +315,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @dev Total performance fee will be the sum of all recipient fees + DAO fee
     /// @param recipientFees Array of recipient fees containing address and new fee value
     /// @custom:access Restricted to ATOMIST_ROLE
-    function updatePerformanceFee(RecipientFee[] calldata recipientFees) external restricted {
+    function updatePerformanceFee(RecipientFee[] calldata recipientFees) external {
         harvestPerformanceFee();
         _updateFees(
             recipientFees,
@@ -438,7 +438,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @return Total management fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     /// @custom:access Public view
     function getTotalManagementFee() external view returns (uint256) {
-        return FeeManagerStorageLib.getPlasmaVaultTotalManagementFee();
+        return FeeManagerStorageLib.getPlasmaVaultTotalPerformanceFee();
     }
 
     /// @notice Gets the total performance fee percentage
@@ -446,7 +446,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @return Total performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
     /// @custom:access Public view
     function getTotalPerformanceFee() external view returns (uint256) {
-        return FeeManagerStorageLib.getPlasmaVaultTotalPerformanceFee();
+        return FeeManagerStorageLib.getPlasmaVaultTotalManagementFee();
     }
 
     /// @notice Gets the IPOR DAO fee recipient address
