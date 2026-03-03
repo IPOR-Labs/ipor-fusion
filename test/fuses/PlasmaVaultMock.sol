@@ -21,7 +21,7 @@ import {MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from ".
 import {AaveV4SupplyFuseEnterData, AaveV4SupplyFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
 import {AaveV4BorrowFuseEnterData, AaveV4BorrowFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4BorrowFuse.sol";
 import {AaveV4EModeFuseEnterData} from "../../contracts/fuses/aave_v4/AaveV4EModeFuse.sol";
-import {LitePsmSupplyFuseEnterData, LitePsmSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/litepsm/LitePsmSupplyFuse.sol";
+import {LitePSMSupplyFuseEnterData, LitePSMSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol";
 import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -129,19 +129,19 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((uint256))", data));
     }
 
-    function enterLitePsmSupply(LitePsmSupplyFuseEnterData memory data) external {
+    function enterLitePSMSupply(LitePSMSupplyFuseEnterData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256,uint256))", data));
     }
 
-    function enterLitePsmSupplyTransient() external {
+    function enterLitePSMSupplyTransient() external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
     }
 
-    function exitLitePsmSupply(LitePsmSupplyFuseExitData memory data) external {
+    function exitLitePSMSupply(LitePSMSupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((uint256,uint256))", data));
     }
 
-    function exitLitePsmSupplyTransient() external {
+    function exitLitePSMSupplyTransient() external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 

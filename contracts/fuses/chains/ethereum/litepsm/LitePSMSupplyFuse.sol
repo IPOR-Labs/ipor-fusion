@@ -13,7 +13,7 @@ import {IFuseInstantWithdraw} from "../../../IFuseInstantWithdraw.sol";
 import {ILitePSM} from "./ext/ILitePSM.sol";
 
 /// @notice Data structure for entering the LitePSM fuse (USDC -> USDS -> sUSDS)
-struct LitePsmSupplyFuseEnterData {
+struct LitePSMSupplyFuseEnterData {
     /// @dev amount of USDC to convert to USDS and deposit into sUSDS (6 decimals)
     uint256 amount;
     /// @dev maximum allowed tin fee (WAD-based), reverts if actual tin exceeds this value
@@ -21,7 +21,7 @@ struct LitePsmSupplyFuseEnterData {
 }
 
 /// @notice Data structure for exiting the LitePSM fuse (sUSDS -> USDS -> USDC)
-struct LitePsmSupplyFuseExitData {
+struct LitePSMSupplyFuseExitData {
     /// @dev amount of USDC to receive (6 decimals)
     uint256 amount;
     /// @dev maximum allowed tout fee (WAD-based), reverts if actual tout exceeds this value
@@ -29,7 +29,7 @@ struct LitePsmSupplyFuseExitData {
 }
 
 /// @notice Thrown when the actual PSM fee exceeds the allowed threshold
-error LitePsmSupplyFuseFeeExceeded(uint256 actualFee, uint256 allowedFee);
+error LitePSMSupplyFuseFeeExceeded(uint256 actualFee, uint256 allowedFee);
 
 /// @title Fuse for Sky LitePSM + sUSDS responsible for converting USDC to sUSDS and back
 /// @notice Integrates with the LitePSMWrapper-USDS-USDC contract and sUSDS ERC4626 vault from the Sky ecosystem.
@@ -41,7 +41,7 @@ error LitePsmSupplyFuseFeeExceeded(uint256 actualFee, uint256 allowedFee);
 ///         Governance-controlled fees (tin/tout) may apply to sellGem/buyGem respectively.
 /// @dev Uses the LitePSMWrapper which routes USDS<->USDC swaps through DAI internally.
 ///      See: https://developers.skyeco.com/guides/psm/litepsm/
-contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
+contract LitePSMSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for ERC20;
 
     /// @notice Address of USDC token
@@ -72,18 +72,18 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param version Address of the fuse
     /// @param usdcAmount Amount of USDC sold
     /// @param usdsAmount Amount of USDS received
-    event LitePsmSupplyFuseEnter(address version, uint256 usdcAmount, uint256 usdsAmount);
+    event LitePSMSupplyFuseEnter(address version, uint256 usdcAmount, uint256 usdsAmount);
 
     /// @notice Emitted when exiting (USDS -> USDC)
     /// @param version Address of the fuse
     /// @param usdcAmount Amount of USDC received
     /// @param usdsAmount Amount of USDS sold
-    event LitePsmSupplyFuseExit(address version, uint256 usdcAmount, uint256 usdsAmount);
+    event LitePSMSupplyFuseExit(address version, uint256 usdcAmount, uint256 usdsAmount);
 
     /// @notice Emitted when exit fails
     /// @param version Address of the fuse
     /// @param amount Amount of USDC attempted to withdraw
-    event LitePsmSupplyFuseExitFailed(address version, uint256 amount);
+    event LitePSMSupplyFuseExitFailed(address version, uint256 amount);
 
     /// @notice Constructor
     /// @param marketIdInput Market ID
@@ -95,14 +95,14 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Enters by converting USDC to USDS via LitePSM sellGem, then depositing USDS into sUSDS
     /// @param data The input data containing the USDC amount
     /// @return usdsReceived The amount of USDS received and deposited into sUSDS
-    function enter(LitePsmSupplyFuseEnterData memory data) public returns (uint256 usdsReceived) {
+    function enter(LitePSMSupplyFuseEnterData memory data) public returns (uint256 usdsReceived) {
         if (data.amount == 0) {
             return 0;
         }
 
         uint256 tin = ILitePSM(LITE_PSM).tin();
         if (tin > data.allowedTin) {
-            revert LitePsmSupplyFuseFeeExceeded(tin, data.allowedTin);
+            revert LitePSMSupplyFuseFeeExceeded(tin, data.allowedTin);
         }
 
         uint256 finalAmount = IporMath.min(data.amount, ERC20(USDC).balanceOf(address(this)));
@@ -120,7 +120,7 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         ERC20(USDS).forceApprove(SUSDS, usdsReceived);
         IERC4626(SUSDS).deposit(usdsReceived, address(this));
 
-        emit LitePsmSupplyFuseEnter(VERSION, finalAmount, usdsReceived);
+        emit LitePSMSupplyFuseEnter(VERSION, finalAmount, usdsReceived);
     }
 
     /// @notice Enters using transient storage for input/output
@@ -129,7 +129,7 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 amount = TypeConversionLib.toUint256(inputs[0]);
         uint256 allowedTin = TypeConversionLib.toUint256(inputs[1]);
 
-        uint256 usdsReceived = enter(LitePsmSupplyFuseEnterData({amount: amount, allowedTin: allowedTin}));
+        uint256 usdsReceived = enter(LitePSMSupplyFuseEnterData({amount: amount, allowedTin: allowedTin}));
 
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(usdsReceived);
@@ -139,7 +139,7 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Exits by withdrawing from sUSDS, then converting USDS to USDC via LitePSM buyGem
     /// @param data The input data containing the USDC amount to receive (6 decimals)
     /// @return usdcReceived The amount of USDC received
-    function exit(LitePsmSupplyFuseExitData calldata data) external returns (uint256 usdcReceived) {
+    function exit(LitePSMSupplyFuseExitData calldata data) external returns (uint256 usdcReceived) {
         return _exit(data, false);
     }
 
@@ -149,7 +149,7 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 amount = TypeConversionLib.toUint256(inputs[0]);
         uint256 allowedTout = TypeConversionLib.toUint256(inputs[1]);
 
-        uint256 usdcReceived = _exit(LitePsmSupplyFuseExitData({amount: amount, allowedTout: allowedTout}), false);
+        uint256 usdcReceived = _exit(LitePSMSupplyFuseExitData({amount: amount, allowedTout: allowedTout}), false);
 
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(usdcReceived);
@@ -160,14 +160,14 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @dev params[0] - amount in USDC (6 decimals), params[1] - allowedTout (WAD-based)
     /// @param params_ The parameters for instant withdraw
     function instantWithdraw(bytes32[] calldata params_) external override {
-        _exit(LitePsmSupplyFuseExitData({amount: uint256(params_[0]), allowedTout: uint256(params_[1])}), true);
+        _exit(LitePSMSupplyFuseExitData({amount: uint256(params_[0]), allowedTout: uint256(params_[1])}), true);
     }
 
     /// @notice Internal exit logic: sUSDS -> USDS -> USDC
     /// @param data_ The input data for exiting (amount in USDC, 6 decimals)
     /// @param catchExceptions_ Whether to catch exceptions
     /// @return usdcReceived The amount of USDC received
-    function _exit(LitePsmSupplyFuseExitData memory data_, bool catchExceptions_) private returns (uint256 usdcReceived) {
+    function _exit(LitePSMSupplyFuseExitData memory data_, bool catchExceptions_) private returns (uint256 usdcReceived) {
         if (data_.amount == 0) {
             return 0;
         }
@@ -175,9 +175,9 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 tout = ILitePSM(LITE_PSM).tout();
         if (tout > data_.allowedTout) {
             if (!catchExceptions_) {
-                revert LitePsmSupplyFuseFeeExceeded(tout, data_.allowedTout);
+                revert LitePSMSupplyFuseFeeExceeded(tout, data_.allowedTout);
             }
-            emit LitePsmSupplyFuseExitFailed(VERSION, data_.amount);
+            emit LitePSMSupplyFuseExitFailed(VERSION, data_.amount);
             return 0;
         }
 
@@ -194,26 +194,26 @@ contract LitePsmSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             ERC20(USDS).forceApprove(LITE_PSM, finalUsdsAmount);
             ILitePSM(LITE_PSM).buyGem(address(this), finalUsdcAmount);
             usdcReceived = ERC20(USDC).balanceOf(address(this)) - usdcBalanceBefore;
-            emit LitePsmSupplyFuseExit(VERSION, usdcReceived, finalUsdsAmount);
+            emit LitePSMSupplyFuseExit(VERSION, usdcReceived, finalUsdsAmount);
             return usdcReceived;
         }
 
         try IERC4626(SUSDS).withdraw(finalUsdsAmount, address(this), address(this)) {} catch {
-            emit LitePsmSupplyFuseExitFailed(VERSION, finalUsdcAmount);
+            emit LitePSMSupplyFuseExitFailed(VERSION, finalUsdcAmount);
             return 0;
         }
         // force approve cannot fail
         ERC20(USDS).forceApprove(LITE_PSM, finalUsdsAmount);
         try ILitePSM(LITE_PSM).buyGem(address(this), finalUsdcAmount) {
             usdcReceived = ERC20(USDC).balanceOf(address(this)) - usdcBalanceBefore;
-            emit LitePsmSupplyFuseExit(VERSION, usdcReceived, finalUsdsAmount);
+            emit LitePSMSupplyFuseExit(VERSION, usdcReceived, finalUsdsAmount);
         } catch {
             // buyGem failed, deposit USDS balance back into sUSDS to avoid leaving loose USDS
             uint256 usdsBalance = ERC20(USDS).balanceOf(address(this));
             ERC20(USDS).forceApprove(SUSDS, usdsBalance);
             // we try our best to clean up state, if this fails the tx will revert
             IERC4626(SUSDS).deposit(usdsBalance, address(this));
-            emit LitePsmSupplyFuseExitFailed(VERSION, finalUsdcAmount);
+            emit LitePSMSupplyFuseExitFailed(VERSION, finalUsdcAmount);
         }
     }
 
