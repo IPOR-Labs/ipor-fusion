@@ -21,6 +21,7 @@ import {MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from ".
 import {AaveV4SupplyFuseEnterData, AaveV4SupplyFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
 import {AaveV4BorrowFuseEnterData, AaveV4BorrowFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4BorrowFuse.sol";
 import {AaveV4EModeFuseEnterData} from "../../contracts/fuses/aave_v4/AaveV4EModeFuse.sol";
+import {LitePsmSupplyFuseEnterData, LitePsmSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/litepsm/LitePsmSupplyFuse.sol";
 import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -126,6 +127,22 @@ contract PlasmaVaultMock {
 
     function exitSparkSupply(SparkSupplyFuseExitData memory data) external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((uint256))", data));
+    }
+
+    function enterLitePsmSupply(LitePsmSupplyFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256))", data));
+    }
+
+    function enterLitePsmSupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitLitePsmSupply(LitePsmSupplyFuseExitData memory data) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((uint256))", data));
+    }
+
+    function exitLitePsmSupplyTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 
     function exitAaveV2Supply(AaveV2SupplyFuseExitData memory data) external {
