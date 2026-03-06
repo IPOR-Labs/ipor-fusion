@@ -67,6 +67,11 @@ library FusionFactoryStorageLib {
         FeePackage[] packages;
     }
 
+    /// @dev ERC-7201 namespaced storage struct for business client fee packages
+    struct BusinessClientFeePackagesStorage {
+        mapping(address => FeePackage[]) clientPackages;
+    }
+
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryVersion")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSION_FACTORY_VERSION =
         0x12d32eeb1bff59ce950917bf8e830c4c4200d70d78bc80ef73671dd3e0c72000;
@@ -125,6 +130,10 @@ library FusionFactoryStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FeePackages")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant DAO_FEE_PACKAGES_STORAGE_SLOT =
         0x59feb9265c4719d36ddde95dfd6b130deb8154e067cc891498b39e0bd8956900;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.BusinessClientFeePackages")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant BUSINESS_CLIENT_FEE_PACKAGES_STORAGE_SLOT =
+        0xe0e5362dddc0800f01413c3ddfe63a5811a144af374a6c011371f2d4ecdf8d00;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.WithdrawWindowInSeconds")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant WITHDRAW_WINDOW_IN_SECONDS =
@@ -500,5 +509,57 @@ library FusionFactoryStorageLib {
         for (uint256 i; i < length; ++i) {
             storagePackages.push(packages_[i]);
         }
+    }
+
+    // ============ Business Client Fee Packages Storage Functions ============
+
+    function _getBusinessClientFeePackagesStorageSlot()
+        private
+        pure
+        returns (BusinessClientFeePackagesStorage storage $)
+    {
+        assembly {
+            $.slot := BUSINESS_CLIENT_FEE_PACKAGES_STORAGE_SLOT
+        }
+    }
+
+    /// @notice Returns all fee packages for a specific business client
+    /// @param client_ Address of the business client
+    /// @return Array of fee packages for the client
+    function getBusinessClientFeePackages(address client_) internal view returns (FeePackage[] memory) {
+        return _getBusinessClientFeePackagesStorageSlot().clientPackages[client_];
+    }
+
+    /// @notice Returns a specific fee package for a business client by index
+    /// @param client_ Address of the business client
+    /// @param index_ Index of the fee package
+    /// @return Fee package at the specified index
+    function getBusinessClientFeePackage(address client_, uint256 index_) internal view returns (FeePackage memory) {
+        return _getBusinessClientFeePackagesStorageSlot().clientPackages[client_][index_];
+    }
+
+    /// @notice Returns the number of fee packages for a specific business client
+    /// @param client_ Address of the business client
+    /// @return Number of fee packages
+    function getBusinessClientFeePackagesLength(address client_) internal view returns (uint256) {
+        return _getBusinessClientFeePackagesStorageSlot().clientPackages[client_].length;
+    }
+
+    /// @notice Sets fee packages for a specific business client (replaces entire array)
+    /// @param client_ Address of the business client
+    /// @param packages_ Array of fee packages to set
+    function setBusinessClientFeePackages(address client_, FeePackage[] memory packages_) internal {
+        delete _getBusinessClientFeePackagesStorageSlot().clientPackages[client_];
+        FeePackage[] storage storagePackages = _getBusinessClientFeePackagesStorageSlot().clientPackages[client_];
+        uint256 length = packages_.length;
+        for (uint256 i; i < length; ++i) {
+            storagePackages.push(packages_[i]);
+        }
+    }
+
+    /// @notice Removes all fee packages for a specific business client
+    /// @param client_ Address of the business client
+    function removeBusinessClientFeePackages(address client_) internal {
+        delete _getBusinessClientFeePackagesStorageSlot().clientPackages[client_];
     }
 }
