@@ -42,6 +42,15 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
     event PlasmaVaultAdminArrayUpdated(address[] newPlasmaVaultAdminArray);
     event DaoFeePackagesUpdated(FusionFactoryStorageLib.FeePackage[] packages, address updatedBy);
+    event BusinessClientFeePackagesSet(
+        address indexed client,
+        FusionFactoryStorageLib.FeePackage[] packages,
+        address updatedBy
+    );
+    event BusinessClientFeePackagesRemoved(address indexed client, address removedBy);
+
+    /// @notice Maximum fee value in basis points (100% = 10_000)
+    uint256 private constant MAX_FEE_BASIS_POINTS = 10_000;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -148,7 +157,7 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
     /// @notice Sets the DAO fee packages array (replaces entire array)
     /// @param packages_ Array of DAO fee packages to set
-    /// @dev Each package must have valid fees (<=10000) and non-zero recipient
+    /// @dev Each package must have valid fees (<=MAX_FEE_BASIS_POINTS) and non-zero recipient
     function setDaoFeePackages(
         FusionFactoryStorageLib.FeePackage[] calldata packages_
     ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
@@ -156,11 +165,11 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
         uint256 length = packages_.length;
         for (uint256 i; i < length; ++i) {
-            if (packages_[i].managementFee > 10000) {
-                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].managementFee, 10000);
+            if (packages_[i].managementFee > MAX_FEE_BASIS_POINTS) {
+                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].managementFee, MAX_FEE_BASIS_POINTS);
             }
-            if (packages_[i].performanceFee > 10000) {
-                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].performanceFee, 10000);
+            if (packages_[i].performanceFee > MAX_FEE_BASIS_POINTS) {
+                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].performanceFee, MAX_FEE_BASIS_POINTS);
             }
             if (packages_[i].feeRecipient == address(0)) {
                 revert FusionFactoryLib.FeeRecipientZeroAddress();
@@ -175,6 +184,65 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
         FusionFactoryStorageLib.setDaoFeePackages(packagesMemory);
         emit DaoFeePackagesUpdated(packagesMemory, msg.sender);
+    }
+
+    /// @notice Sets custom fee packages for a specific business client
+    /// @param client_ Address of the business client
+    /// @param packages_ Array of fee packages to assign
+    /// @dev Only callable by DAO_FEE_MANAGER_ROLE
+    function setBusinessClientFeePackages(
+        address client_,
+        FusionFactoryStorageLib.FeePackage[] calldata packages_
+    ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
+        if (client_ == address(0)) revert FusionFactoryLib.BusinessClientAddressZero();
+        if (packages_.length == 0) revert FusionFactoryLib.DaoFeePackagesArrayEmpty();
+
+        uint256 length = packages_.length;
+        for (uint256 i; i < length; ++i) {
+            if (packages_[i].managementFee > MAX_FEE_BASIS_POINTS) {
+                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].managementFee, MAX_FEE_BASIS_POINTS);
+            }
+            if (packages_[i].performanceFee > MAX_FEE_BASIS_POINTS) {
+                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].performanceFee, MAX_FEE_BASIS_POINTS);
+            }
+            if (packages_[i].feeRecipient == address(0)) {
+                revert FusionFactoryLib.FeeRecipientZeroAddress();
+            }
+        }
+
+        FusionFactoryStorageLib.FeePackage[] memory packagesMemory = new FusionFactoryStorageLib.FeePackage[](length);
+        for (uint256 i; i < length; ++i) {
+            packagesMemory[i] = packages_[i];
+        }
+
+        FusionFactoryStorageLib.setBusinessClientFeePackages(client_, packagesMemory);
+        emit BusinessClientFeePackagesSet(client_, packagesMemory, msg.sender);
+    }
+
+    /// @notice Removes custom fee packages for a specific business client
+    /// @param client_ Address of the business client
+    /// @dev Only callable by DAO_FEE_MANAGER_ROLE. Reverts if no packages are set.
+    function removeBusinessClientFeePackages(address client_) external onlyRole(DAO_FEE_MANAGER_ROLE) {
+        if (client_ == address(0)) revert FusionFactoryLib.BusinessClientAddressZero();
+        uint256 length = FusionFactoryStorageLib.getBusinessClientFeePackagesLength(client_);
+        if (length == 0) revert FusionFactoryLib.DaoFeePackagesArrayEmpty();
+
+        FusionFactoryStorageLib.removeBusinessClientFeePackages(client_);
+        emit BusinessClientFeePackagesRemoved(client_, msg.sender);
+    }
+
+    /// @notice Returns the fee packages for a specific business client
+    /// @param client_ Address of the business client
+    /// @return packages Array of fee packages (client-specific if set, otherwise global)
+    /// @return isCustom True if the client has custom packages set
+    function getBusinessClientFeePackages(
+        address client_
+    ) external view returns (FusionFactoryStorageLib.FeePackage[] memory packages, bool isCustom) {
+        uint256 clientLength = FusionFactoryStorageLib.getBusinessClientFeePackagesLength(client_);
+        if (clientLength > 0) {
+            return (FusionFactoryStorageLib.getBusinessClientFeePackages(client_), true);
+        }
+        return (FusionFactoryStorageLib.getDaoFeePackages(), false);
     }
 
     /// @notice Updates the factory addresses
