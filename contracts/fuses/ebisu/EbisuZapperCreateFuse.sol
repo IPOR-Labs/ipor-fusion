@@ -51,18 +51,21 @@ struct EbisuZapperCreateFuseEnterData {
 struct EbisuZapperCreateFuseExitData {
     /// @notice The address of the Ebisu Zapper contract used to close the Trove
     address zapper;
+    /// @notice If true, repayment of ebUSD debt is done through a flash loan of collateral tokens swapped for ebUSD
+    /// @dev If false, ebUSD debt is repaid directly by PlasmaVault transfer. In both cases, PlasmaVault receives excess collateral.
+    ///      When true, PlasmaVault may also receive excess ebUSD after debt repayment.
+    bool exitFromCollateral;
     /// @notice The amount of flash loan requested to close the Trove (only relevant if exitFromCollateral = true)
     /// @dev When exitFromCollateral is true, this flash loan is used to swap collateral for ebUSD to repay debt
     uint256 flashLoanAmount;
     /// @notice The minimum amount of collateral expected after closure (only relevant if exitFromCollateral = true)
     /// @dev Used as a slippage protection when swapping collateral for ebUSD
     uint256 minExpectedCollateral;
-    /// @notice If true, repayment of ebUSD debt is done through a flash loan of collateral tokens swapped for ebUSD
-    /// @dev If false, ebUSD debt is repaid directly by PlasmaVault transfer. In both cases, PlasmaVault receives excess collateral.
-    ///      When true, PlasmaVault may also receive excess ebUSD after debt repayment.
-    bool exitFromCollateral;
 }
 
+/// @title EbisuZapperCreateFuse
+/// @author IPOR Labs
+/// @notice Fuse for opening and closing leveraged Troves through Ebisu Zapper
 contract EbisuZapperCreateFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 

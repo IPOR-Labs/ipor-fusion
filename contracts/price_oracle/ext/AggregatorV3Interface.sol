@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.24;
 
 /// @title An interface for Chainlink's AggregatorV3Interface on Ethereum Mainnet
 interface AggregatorV3Interface {
