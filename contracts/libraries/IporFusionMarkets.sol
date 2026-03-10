@@ -136,6 +136,7 @@ library IporFusionMarkets {
 
     /// @dev Ebisu market
     /// @dev Substrate type: EbisuZapperSubstrate
+
     uint256 public constant EBISU = 39;
 
     /// @dev Async Action market
@@ -200,10 +201,14 @@ library IporFusionMarkets {
     /// @dev Substrate values: Encoded combination of type flag and address (see MidasSubstrateLib)
     uint256 public constant MIDAS = 45;
 
+    /// @dev Napier market
+    uint256 public constant NAPIER = 46;
+    
+
     /// @dev Dolomite market
     /// @dev Substrate type: DolomiteSubstrate (asset, subAccountId, canBorrow)
     /// @dev Substrate values: Encoded combination of asset address, sub-account ID, and borrow permission
-    uint256 public constant DOLOMITE = 46;
+    uint256 public constant DOLOMITE = 47;
 
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
