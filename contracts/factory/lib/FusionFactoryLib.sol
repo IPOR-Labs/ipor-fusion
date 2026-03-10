@@ -49,6 +49,9 @@ library FusionFactoryLib {
     /// @notice Thrown when fee recipient is zero address
     error FeeRecipientZeroAddress();
 
+    /// @notice Thrown when business client address is zero
+    error BusinessClientAddressZero();
+
     function initialize(
         address[] memory initialPlasmaVaultAdminArray_,
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses_,
@@ -97,7 +100,7 @@ library FusionFactoryLib {
         FusionFactoryStorageLib.setBurnRequestFeeBalanceFuseAddress(burnRequestFeeBalanceFuse_);
     }
 
-    function clone(
+     function clone(
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,

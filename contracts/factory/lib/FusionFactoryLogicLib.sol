@@ -53,12 +53,21 @@ library FusionFactoryLogicLib {
         address priceManager;
     }
 
-    /// @notice Validates and retrieves a DAO fee package by index
-    /// @param index_ Index of the DAO fee package
-    /// @return DAO fee package at the specified index
+    /// @notice Validates and retrieves a DAO fee package by index, checking business client packages first
+    /// @param index_ Index of the fee package
+    /// @return Fee package at the specified index
+    /// @dev Uses msg.sender to check for business client packages (preserved via delegatecall from FusionFactory)
     function _validateAndGetDaoFeePackage(
         uint256 index_
     ) internal view returns (FusionFactoryStorageLib.FeePackage memory) {
+        // Check business client packages first
+        uint256 clientLength = FusionFactoryStorageLib.getBusinessClientFeePackagesLength(msg.sender);
+        if (clientLength > 0) {
+            if (index_ >= clientLength) revert DaoFeePackageIndexOutOfBounds(index_, clientLength);
+            return FusionFactoryStorageLib.getBusinessClientFeePackage(msg.sender, index_);
+        }
+
+        // Fall back to global DAO fee packages
         uint256 length = FusionFactoryStorageLib.getDaoFeePackagesLength();
         if (length == 0) revert DaoFeePackagesArrayEmpty();
         if (index_ >= length) revert DaoFeePackageIndexOutOfBounds(index_, length);
@@ -84,7 +93,9 @@ library FusionFactoryLogicLib {
         bool withAdmin_,
         uint256 daoFeePackageIndex_
     ) public returns (FusionInstance memory) {
-        FusionFactoryStorageLib.FeePackage memory daoFeePackage = _validateAndGetDaoFeePackage(daoFeePackageIndex_);
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage = _validateAndGetDaoFeePackage(
+            daoFeePackageIndex_
+        );
 
         fusionAddresses = _cloneManagers(fusionAddresses, redemptionDelayInSeconds_);
 
