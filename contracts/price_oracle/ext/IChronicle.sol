@@ -12,6 +12,11 @@ interface IChronicle {
     /// @return value The oracle's current value.
     function read() external view returns (uint256 value);
 
+    /// @notice Returns the oracle's current value and the timestamp of the last update.
+    /// @return value The oracle's current value.
+    /// @return age The timestamp when the value was last updated.
+    function readWithAge() external view returns (uint256 value, uint256 age);
+
     /// @notice Returns the number of decimals of the oracle's value.
     function decimals() external view returns (uint8);
 }

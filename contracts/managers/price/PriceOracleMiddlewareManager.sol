@@ -7,6 +7,7 @@ import {UniversalReader} from "../../universal_reader/UniversalReader.sol";
 import {PriceOracleMiddlewareManagerLib} from "./PriceOracleMiddlewareManagerLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IPriceFeed} from "../../price_oracle/price_feed/IPriceFeed.sol";
+import {SequencerUptimeLib} from "./SequencerUptimeLib.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -247,73 +248,196 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
         }
     }
 
-    /// @notice Internal function to get asset price from either custom source or PriceOracleMiddleware
+    // ======================== Oracle Security Configuration ========================
+
+    /// @notice Configures the L2 sequencer uptime feed for this vault
+    /// @param sequencerFeed_ Address of the Chainlink Sequencer Uptime Feed (address(0) to disable)
+    /// @param isOpStackFeed_ True for Base/OP Stack, false for Arbitrum
+    function configureSequencerCheck(address sequencerFeed_, bool isOpStackFeed_) external restricted {
+        PriceOracleMiddlewareManagerLib.setSequencerConfig(sequencerFeed_, isOpStackFeed_);
+    }
+
+    /// @notice Enables or disables the sequencer uptime check
+    /// @param enabled_ True to enable, false to disable
+    function setSequencerCheckEnabled(bool enabled_) external restricted {
+        PriceOracleMiddlewareManagerLib.setSequencerCheckEnabled(enabled_);
+    }
+
+    /// @notice Returns the current sequencer configuration
+    function getSequencerConfig() external view returns (address feed, bool isOpStack, bool enabled) {
+        return PriceOracleMiddlewareManagerLib.getSequencerConfig();
+    }
+
+    /// @notice Sets per-asset staleness thresholds (in seconds)
+    /// @param assets_ Asset addresses to configure
+    /// @param maxStaleness_ Maximum staleness in seconds for each asset (0 = disable for that asset)
+    function setAssetsStalenessThresholds(
+        address[] calldata assets_,
+        uint256[] calldata maxStaleness_
+    ) external restricted {
+        uint256 assetsLength = assets_.length;
+        if (assetsLength == 0) {
+            revert EmptyArrayNotSupported();
+        }
+        if (assetsLength != maxStaleness_.length) {
+            revert ArrayLengthMismatch();
+        }
+        for (uint256 i; i < assetsLength; ++i) {
+            PriceOracleMiddlewareManagerLib.setAssetStaleness(assets_[i], maxStaleness_[i]);
+        }
+    }
+
+    /// @notice Removes staleness thresholds for specified assets
+    /// @param assets_ Asset addresses to clear
+    function removeAssetsStalenessThresholds(address[] calldata assets_) external restricted {
+        uint256 assetsLength = assets_.length;
+        if (assetsLength == 0) {
+            revert EmptyArrayNotSupported();
+        }
+        for (uint256 i; i < assetsLength; ++i) {
+            PriceOracleMiddlewareManagerLib.removeAssetStaleness(assets_[i]);
+        }
+    }
+
+    /// @notice Sets the default staleness threshold used when no per-asset config exists
+    /// @param defaultMaxStaleness_ Default max staleness in seconds (0 = no global default)
+    function setDefaultStalenessThreshold(uint256 defaultMaxStaleness_) external restricted {
+        PriceOracleMiddlewareManagerLib.setDefaultStaleness(defaultMaxStaleness_);
+    }
+
+    /// @notice Returns the effective staleness threshold for an asset (per-asset or default fallback)
+    function getAssetStalenessThreshold(address asset_) external view returns (uint256) {
+        return PriceOracleMiddlewareManagerLib.getAssetMaxStaleness(asset_);
+    }
+
+    /// @notice Returns the default staleness threshold
+    function getDefaultStalenessThreshold() external view returns (uint256) {
+        return PriceOracleMiddlewareManagerLib.getAssetMaxStaleness(address(0));
+    }
+
+    /// @notice Sets per-asset price bounds (in WAD = 18 decimals)
+    /// @param assets_ Asset addresses to configure
+    /// @param minPrices_ Minimum acceptable price for each asset (0 = no floor)
+    /// @param maxPrices_ Maximum acceptable price for each asset (0 = no ceiling)
+    function setAssetsPriceBounds(
+        address[] calldata assets_,
+        uint256[] calldata minPrices_,
+        uint256[] calldata maxPrices_
+    ) external restricted {
+        uint256 assetsLength = assets_.length;
+        if (assetsLength == 0) {
+            revert EmptyArrayNotSupported();
+        }
+        if (assetsLength != minPrices_.length || assetsLength != maxPrices_.length) {
+            revert ArrayLengthMismatch();
+        }
+        for (uint256 i; i < assetsLength; ++i) {
+            PriceOracleMiddlewareManagerLib.setAssetPriceBounds(assets_[i], minPrices_[i], maxPrices_[i]);
+        }
+    }
+
+    /// @notice Removes price bounds for specified assets
+    /// @param assets_ Asset addresses to clear
+    function removeAssetsPriceBounds(address[] calldata assets_) external restricted {
+        uint256 assetsLength = assets_.length;
+        if (assetsLength == 0) {
+            revert EmptyArrayNotSupported();
+        }
+        for (uint256 i; i < assetsLength; ++i) {
+            PriceOracleMiddlewareManagerLib.removeAssetPriceBounds(assets_[i]);
+        }
+    }
+
+    /// @notice Returns the price bounds for an asset
+    function getAssetPriceBounds(address asset_) external view returns (uint256 minPrice, uint256 maxPrice) {
+        return PriceOracleMiddlewareManagerLib.getAssetPriceBounds(asset_);
+    }
+
+    // ======================== Internal Price Logic ========================
+
+    /// @notice Internal function to get asset price with security checks
     /// @param asset_ The address of the asset to price
     /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
     /// @return decimals The number of decimals in the returned price (always QUOTE_CURRENCY_DECIMALS)
-    /// @dev Tries custom price source first, falls back to PriceOracleMiddleware if no custom source is set
-    /// @dev Reverts if:
-    /// @dev - asset_ is zero address
-    /// @dev - price <= 0
-    /// @dev - no custom price source is set and PriceOracleMiddleware reverts
     function _getAssetPrice(address asset_) private view returns (uint256 assetPrice, uint256 decimals) {
         if (asset_ == address(0)) {
             revert UnsupportedAsset();
         }
 
+        // Sequencer uptime check (if configured)
+        (address sequencerFeed, bool isOpStack, bool sequencerEnabled) = PriceOracleMiddlewareManagerLib
+            .getSequencerConfig();
+        if (sequencerEnabled) {
+            SequencerUptimeLib.checkSequencerUptime(sequencerFeed, isOpStack);
+        }
+
         address source = PriceOracleMiddlewareManagerLib.getSourceOfAssetPrice(asset_);
         int256 priceFeedPrice;
         uint256 priceFeedDecimals;
+        uint256 updatedAt;
 
         if (source != address(0)) {
-            // Use custom source directly
+            // Use custom source directly — capture updatedAt for staleness check
             try IPriceFeed(source).latestRoundData() returns (
                 uint80 /*roundId*/,
                 int256 price,
                 uint256 /*startedAt*/,
-                uint256 /*timestamp*/,
+                uint256 timestamp,
                 uint80 /*answeredInRound*/
             ) {
                 priceFeedPrice = price;
+                updatedAt = timestamp;
             } catch {
-                revert UnexpectedPriceResult(); // Custom feed failed
+                revert UnexpectedPriceResult();
             }
 
             try IPriceFeed(source).decimals() returns (uint8 customDecimals) {
                 priceFeedDecimals = customDecimals;
             } catch {
-                revert UnexpectedPriceResult(); // Custom feed decimals call failed
+                revert UnexpectedPriceResult();
             }
 
             // Convert price to standard 18 decimals
             assetPrice = IporMath.convertToWad(priceFeedPrice.toUint256(), priceFeedDecimals);
 
-            if (assetPrice <= 0) {
+            if (assetPrice == 0) {
                 revert UnexpectedPriceResult();
             }
 
             decimals = QUOTE_CURRENCY_DECIMALS;
+
+            // Staleness check (per-asset or default, only if updatedAt is available)
+            uint256 maxStaleness = PriceOracleMiddlewareManagerLib.getAssetMaxStaleness(asset_);
+            if (maxStaleness > 0 && updatedAt > 0) {
+                if (block.timestamp - updatedAt > maxStaleness) {
+                    revert PriceOracleMiddlewareManagerLib.StalePrice(asset_, updatedAt, maxStaleness);
+                }
+            }
         } else {
             // No custom source, delegate to PriceOracleMiddleware
             address middleware = PriceOracleMiddlewareManagerLib.getPriceOracleMiddleware();
             if (middleware == address(0)) {
-                // Should not happen if constructor validation is correct, but good practice
                 revert InvalidPriceOracleMiddleware();
             }
 
-            // Let PriceOracleMiddleware handle Chainlink fallback and validation
-            // Errors from middleware (like UnsupportedAsset, UnexpectedPriceResult) will propagate
             (assetPrice, decimals) = IPriceOracleMiddleware(middleware).getAssetPrice(asset_);
 
-            // Middleware should ideally return 18 decimals, but handle conversion if necessary
             if (decimals != QUOTE_CURRENCY_DECIMALS) {
-                // Convert the price received from middleware to the standard 18 decimals
                 assetPrice = IporMath.convertToWad(assetPrice, decimals);
-                decimals = QUOTE_CURRENCY_DECIMALS; // Update decimals to reflect the conversion
+                decimals = QUOTE_CURRENCY_DECIMALS;
             }
-            if (assetPrice <= 0) {
+            if (assetPrice == 0) {
                 revert UnexpectedPriceResult();
             }
+        }
+
+        // Price bounds check (applies to both custom source and middleware paths)
+        (uint256 minPrice, uint256 maxPrice) = PriceOracleMiddlewareManagerLib.getAssetPriceBounds(asset_);
+        if (minPrice > 0 && assetPrice < minPrice) {
+            revert PriceOracleMiddlewareManagerLib.PriceOutOfBounds(asset_, assetPrice, minPrice, maxPrice);
+        }
+        if (maxPrice > 0 && assetPrice > maxPrice) {
+            revert PriceOracleMiddlewareManagerLib.PriceOutOfBounds(asset_, assetPrice, minPrice, maxPrice);
         }
     }
 }

@@ -91,7 +91,8 @@ contract DualCrossReferencePriceFeed is IPriceFeed {
             )
             .toInt256();
 
-        return (0, price, 0, 0, 0);
+        uint256 minUpdatedAt = assetYUpdatedAt < assetXYUpdatedAt ? assetYUpdatedAt : assetXYUpdatedAt;
+        return (0, price, 0, minUpdatedAt, 0);
     }
 
     /// @dev Internal function to return the number of decimals

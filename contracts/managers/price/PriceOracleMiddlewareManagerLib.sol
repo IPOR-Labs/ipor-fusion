@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 struct AssetsPricesSources {
     /// @dev Maps asset addresses to their corresponding price feed addresses
     mapping(address asset => address priceFeed) sources;
@@ -20,6 +21,30 @@ struct PriceValidation {
 
 struct PriceOracle {
     address priceOracle;
+}
+
+/// @dev Packed price bounds for a single asset (fits in one storage slot)
+struct PriceBounds {
+    /// @dev Minimum acceptable price in WAD (0 = no floor), max ~3.4e38
+    uint128 minPrice;
+    /// @dev Maximum acceptable price in WAD (0 = no ceiling), max ~3.4e38
+    uint128 maxPrice;
+}
+
+struct OracleSecurityConfig {
+    /// @dev Chainlink Sequencer Uptime Feed address (address(0) = disabled)
+    /// @dev Packed in slot with isOpStackFeed (1B) + sequencerCheckEnabled (1B) + defaultMaxStaleness (6B) = 28B
+    address sequencerUptimeFeed;
+    /// @dev True for Base/OP Stack, false for Arbitrum
+    bool isOpStackFeed;
+    /// @dev Owner can disable sequencer check
+    bool sequencerCheckEnabled;
+    /// @dev Fallback staleness threshold in seconds (0 = no global default, max ~8.9M years)
+    uint48 defaultMaxStaleness;
+    /// @dev Per-asset maximum staleness in seconds (0 = disabled for that asset)
+    mapping(address asset => uint256 maxStaleness) maxStaleness;
+    /// @dev Per-asset price bounds packed as (uint128 minPrice, uint128 maxPrice) in a single slot
+    mapping(address asset => PriceBounds) priceBounds;
 }
 
 library PriceOracleMiddlewareManagerLib {
@@ -61,6 +86,20 @@ library PriceOracleMiddlewareManagerLib {
     /// @param maxPriceDelta Maximum allowed price delta configured for the asset.
     event PriceValidationUpdated(address asset, uint256 maxPriceDelta);
 
+    // Oracle Security errors
+    error StalePrice(address asset, uint256 updatedAt, uint256 maxStaleness);
+    error PriceOutOfBounds(address asset, uint256 price, uint256 minPrice, uint256 maxPrice);
+    error MinPriceAboveMaxPrice(uint256 minPrice, uint256 maxPrice);
+
+    // Oracle Security events
+    event SequencerConfigSet(address feed, bool isOpStack);
+    event SequencerCheckEnabledSet(bool enabled);
+    event AssetStalenessSet(address asset, uint256 maxStaleness);
+    event AssetStalenessRemoved(address asset);
+    event DefaultStalenessSet(uint256 defaultMaxStaleness);
+    event AssetPriceBoundsSet(address asset, uint256 minPrice, uint256 maxPrice);
+    event AssetPriceBoundsRemoved(address asset);
+
     /// @dev Storage slot for assets price sources mapping
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracleManager.AssetsPricesSources")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ASSETS_PRICES_SOURCES = 0xbc7b173cf41b66df25801705abbfb53e317f15848d6d19b9b70f825d127da300;
@@ -73,6 +112,11 @@ library PriceOracleMiddlewareManagerLib {
     /// @dev Storage slot for price validation
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracleManager.PriceValidation")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PRICE_VALIDATION_SLOT = 0x3a824addd7109b2e3c773a32f64f1d2526ce6e5a09fab1aeb4bf87a74d878200;
+
+    /// @dev Storage slot for oracle security configuration
+    /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.priceOracleManager.OracleSecurityConfig")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ORACLE_SECURITY_CONFIG_SLOT =
+        0xd8aed5716bbca04c31ebecb7327e8139add85b48e1b4a9855fbfa7939c9e7900;
 
     function getSourceOfAssetPrice(address asset_) internal view returns (address source) {
         return _getAssetsPricesSourcesSlot().sources[asset_];
@@ -226,6 +270,94 @@ library PriceOracleMiddlewareManagerLib {
             priceValidation.lastValidatedPrices[asset_] = price_;
             emit PriceValidationBaselineUpdated(asset_, price_);
             return true;
+        }
+    }
+
+    // ======================== Oracle Security Config ========================
+
+    function setSequencerConfig(address feed_, bool isOpStack_) internal {
+        OracleSecurityConfig storage config = _getOracleSecurityConfigSlot();
+        config.sequencerUptimeFeed = feed_;
+        config.isOpStackFeed = isOpStack_;
+        if (feed_ != address(0)) {
+            config.sequencerCheckEnabled = true;
+        }
+        emit SequencerConfigSet(feed_, isOpStack_);
+    }
+
+    function setSequencerCheckEnabled(bool enabled_) internal {
+        _getOracleSecurityConfigSlot().sequencerCheckEnabled = enabled_;
+        emit SequencerCheckEnabledSet(enabled_);
+    }
+
+    function getSequencerConfig() internal view returns (address feed, bool isOpStack, bool enabled) {
+        OracleSecurityConfig storage config = _getOracleSecurityConfigSlot();
+        return (config.sequencerUptimeFeed, config.isOpStackFeed, config.sequencerCheckEnabled);
+    }
+
+    function setAssetStaleness(address asset_, uint256 maxStaleness_) internal {
+        if (asset_ == address(0)) {
+            revert AssetsAddressCanNotBeZero();
+        }
+        _getOracleSecurityConfigSlot().maxStaleness[asset_] = maxStaleness_;
+        emit AssetStalenessSet(asset_, maxStaleness_);
+    }
+
+    function removeAssetStaleness(address asset_) internal {
+        if (asset_ == address(0)) {
+            revert AssetsAddressCanNotBeZero();
+        }
+        delete _getOracleSecurityConfigSlot().maxStaleness[asset_];
+        emit AssetStalenessRemoved(asset_);
+    }
+
+    function setDefaultStaleness(uint256 defaultMaxStaleness_) internal {
+        _getOracleSecurityConfigSlot().defaultMaxStaleness = SafeCast.toUint48(defaultMaxStaleness_);
+        emit DefaultStalenessSet(defaultMaxStaleness_);
+    }
+
+    function getAssetMaxStaleness(address asset_) internal view returns (uint256) {
+        OracleSecurityConfig storage config = _getOracleSecurityConfigSlot();
+        uint256 assetStaleness = config.maxStaleness[asset_];
+        if (assetStaleness > 0) {
+            return assetStaleness;
+        }
+        return config.defaultMaxStaleness;
+    }
+
+    function setAssetPriceBounds(address asset_, uint256 minPrice_, uint256 maxPrice_) internal {
+        if (asset_ == address(0)) {
+            revert AssetsAddressCanNotBeZero();
+        }
+        if (minPrice_ > maxPrice_ && maxPrice_ > 0) {
+            revert MinPriceAboveMaxPrice(minPrice_, maxPrice_);
+        }
+        OracleSecurityConfig storage config = _getOracleSecurityConfigSlot();
+        config.priceBounds[asset_] = PriceBounds({
+            minPrice: SafeCast.toUint128(minPrice_),
+            maxPrice: SafeCast.toUint128(maxPrice_)
+        });
+        emit AssetPriceBoundsSet(asset_, minPrice_, maxPrice_);
+    }
+
+    function removeAssetPriceBounds(address asset_) internal {
+        if (asset_ == address(0)) {
+            revert AssetsAddressCanNotBeZero();
+        }
+        delete _getOracleSecurityConfigSlot().priceBounds[asset_];
+        emit AssetPriceBoundsRemoved(asset_);
+    }
+
+    function getAssetPriceBounds(address asset_) internal view returns (uint256 minPrice, uint256 maxPrice) {
+        PriceBounds storage bounds = _getOracleSecurityConfigSlot().priceBounds[asset_];
+        return (bounds.minPrice, bounds.maxPrice);
+    }
+
+    // ======================== Private Slot Accessors ========================
+
+    function _getOracleSecurityConfigSlot() private pure returns (OracleSecurityConfig storage config) {
+        assembly {
+            config.slot := ORACLE_SECURITY_CONFIG_SLOT
         }
     }
 
