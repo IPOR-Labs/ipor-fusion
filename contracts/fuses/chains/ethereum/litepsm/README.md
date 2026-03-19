@@ -126,11 +126,41 @@ struct LitePSMSupplyFuseExitData {
 
 ### Instant Withdraw
 
-Same as exit but with `catchExceptions = true`:
+Best-effort exit that never reverts on operational failures:
 - Fee check failure emits `LitePSMSupplyFuseExitFailed` instead of reverting
-- sUSDS withdraw failure emits event and returns 0
+- sUSDS withdraw failure emits event and returns
 - buyGem failure deposits USDS back into sUSDS to maintain vault state
-- `minAmountOut` is always 0 (best-effort, does not revert on slippage)
+- No `minAmountOut` check (best-effort, does not revert on slippage)
+
+#### Instant Withdraw Parameters
+
+```
+params[0] = amount in USDC (6 decimals)  — set by PlasmaVault at withdrawal time
+params[1] = allowedTout (WAD-based)      — configured upfront during setup
+```
+
+#### Setup via `configureInstantWithdrawalFuses`
+
+```solidity
+import {InstantWithdrawalFusesParamsStruct} from "../../libraries/PlasmaVaultLib.sol";
+
+// Configure LitePSM as an instant withdrawal path
+InstantWithdrawalFusesParamsStruct[] memory fuses = new InstantWithdrawalFusesParamsStruct[](1);
+
+bytes32[] memory litePsmParams = new bytes32[](2);
+litePsmParams[0] = bytes32(0); // placeholder — amount is set at withdrawal time
+litePsmParams[1] = bytes32(uint256(0)); // allowedTout — recommend 0 since tout is currently zero
+
+fuses[0] = InstantWithdrawalFusesParamsStruct({
+    fuse: address(litePsmSupplyFuse),
+    params: litePsmParams
+});
+
+PlasmaVaultGovernance(plasmaVault).configureInstantWithdrawalFuses(fuses);
+```
+
+> **Note:** `params[1]` (`allowedTout`) controls the maximum tout fee the fuse will accept during instant withdrawals.
+> Recommended value is `0` since tout is currently zero. If governance enables a tout fee in the future, this parameter must be updated to match or exceed the new fee, otherwise instant withdrawals will silently fail.
 
 ## Events
 

@@ -209,7 +209,12 @@ contract LitePSMSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return 0;
         }
 
-        (uint256 finalUsdcAmount, uint256 finalUsdsAmount) = _validateAndComputeExit(data_.amount, data_.allowedTout);
+        uint256 tout = ILitePSM(LITE_PSM).tout();
+        if (tout > data_.allowedTout) {
+            revert LitePSMSupplyFuseFeeExceeded(tout, data_.allowedTout);
+        }
+
+        (uint256 finalUsdcAmount, uint256 finalUsdsAmount) = _computeExitAmounts(data_.amount, tout);
 
         if (finalUsdcAmount == 0) {
             return 0;
@@ -269,19 +274,6 @@ contract LitePSMSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             IERC4626(SUSDS).deposit(usdsBalance, plasmaVault);
             emit LitePSMSupplyFuseExitFailed(VERSION, finalUsdcAmount);
         }
-    }
-
-    /// @notice Validates tout fee and computes exit amounts — reverts if fee exceeds allowed
-    /// @param amount_ Desired USDC amount to receive (6 decimals)
-    /// @param allowedTout_ Maximum allowed tout fee (WAD-based)
-    /// @return finalUsdcAmount The actual USDC amount that can be received
-    /// @return finalUsdsAmount The USDS amount to withdraw from sUSDS (includes tout fee)
-    function _validateAndComputeExit(uint256 amount_, uint256 allowedTout_) private view returns (uint256 finalUsdcAmount, uint256 finalUsdsAmount) {
-        uint256 tout = ILitePSM(LITE_PSM).tout();
-        if (tout > allowedTout_) {
-            revert LitePSMSupplyFuseFeeExceeded(tout, allowedTout_);
-        }
-        (finalUsdcAmount, finalUsdsAmount) = _computeExitAmounts(amount_, tout);
     }
 
     /// @notice Computes the USDC and USDS amounts for exit, accounting for tout fee and sUSDS availability
