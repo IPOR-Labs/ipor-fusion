@@ -130,7 +130,7 @@ contract PlasmaVaultMock {
     }
 
     function enterLitePSMSupply(LitePSMSupplyFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((uint256,uint256,uint256))", data));
     }
 
     function enterLitePSMSupplyTransient() external {
@@ -138,7 +138,7 @@ contract PlasmaVaultMock {
     }
 
     function exitLitePSMSupply(LitePSMSupplyFuseExitData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((uint256,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((uint256,uint256,uint256))", data));
     }
 
     function exitLitePSMSupplyTransient() external {
