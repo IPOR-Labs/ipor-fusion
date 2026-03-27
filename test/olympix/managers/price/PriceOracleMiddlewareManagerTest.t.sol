@@ -452,4 +452,221 @@ contract PriceOracleMiddlewareManagerTest is OlympixUnitTest("PriceOracleMiddlew
             vm.expectRevert(PriceOracleMiddlewareManager.UnsupportedAsset.selector);
             manager.getAssetPrice(address(0));
         }
+
+    function test_getPriceOracleMiddleware_ReturnsStoredAddress_opix_target_branch_142_true() public {
+            // Arrange: deploy AccessManager authority
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+    
+            // Deploy mock middleware and manager
+            MockPriceOracle mockOracle = new MockPriceOracle();
+            address middleware = address(mockOracle);
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(
+                address(accessManager),
+                middleware
+            );
+    
+            // Act: read the middleware address via the getter
+            address returned = manager.getPriceOracleMiddleware();
+    
+            // Assert: it should match what was set during initialization
+            assertEq(returned, middleware, "PriceOracleMiddleware address mismatch");
+        }
+
+    function test_getSourceOfAssetPrice_UsesLibraryAndReturnsConfiguredSource_opix_target_branch_151_true() public {
+            // Arrange: deploy AccessManager authority
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+
+            // Deploy a non-zero middleware (MockPriceOracle implements IPriceOracleMiddleware)
+            MockPriceOracle mockOracle = new MockPriceOracle();
+
+            // Deploy manager with AccessManager as authority and mock oracle as middleware
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(
+                address(accessManager),
+                address(mockOracle)
+            );
+
+            // Grant permission to call setAssetsPriceSources
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = PriceOracleMiddlewareManager.setAssetsPriceSources.selector;
+            accessManager.setTargetFunctionRole(address(manager), selectors, 0);
+            accessManager.grantRole(0, address(this), 0);
+
+            // Configure a price source via the manager's external function
+            address asset = address(0xABCD);
+            address source = address(0xDEAD);
+            address[] memory assets = new address[](1);
+            address[] memory sources = new address[](1);
+            assets[0] = asset;
+            sources[0] = source;
+            manager.setAssetsPriceSources(assets, sources);
+
+            // Act: call the view function
+            address returnedSource = manager.getSourceOfAssetPrice(asset);
+
+            // Assert: it should return the same source we configured
+            assertEq(returnedSource, source, "getSourceOfAssetPrice should return configured source");
+        }
+
+    function test_getConfiguredAssets_ReturnsFromLib_opix_target_branch_159_true() public {
+            // Arrange: deploy manager with real AccessManager and valid middleware
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+            MockPriceOracle mockOracle = new MockPriceOracle();
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(address(accessManager), address(mockOracle));
+
+            // Grant permission to call setAssetsPriceSources
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = PriceOracleMiddlewareManager.setAssetsPriceSources.selector;
+            accessManager.setTargetFunctionRole(address(manager), selectors, 0);
+            accessManager.grantRole(0, address(this), 0);
+
+            // Configure assets via the manager's external function
+            address[] memory assets = new address[](2);
+            address[] memory sources = new address[](2);
+            assets[0] = address(0xA1);
+            assets[1] = address(0xA2);
+            sources[0] = address(0xB1);
+            sources[1] = address(0xB2);
+            manager.setAssetsPriceSources(assets, sources);
+
+            // Act: call getConfiguredAssets
+            address[] memory configured = manager.getConfiguredAssets();
+
+            // Assert: we get back the two assets we configured
+            assertEq(configured.length, 2, "configured assets length");
+            assertEq(configured[0], assets[0], "first configured asset");
+            assertEq(configured[1], assets[1], "second configured asset");
+        }
+
+    function test_updatePriceValidation_NonEmptyEqualLengthArrays_hitsElseBranch_opix_target_branch_176_false() public {
+            // Arrange: deploy AccessManager authority
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+    
+            // Deploy a non-zero middleware (mock oracle implements IPriceOracleMiddleware)
+            MockPriceOracle mockOracle = new MockPriceOracle();
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(
+                address(accessManager),
+                address(mockOracle)
+            );
+    
+            // Grant this test contract permission to call updatePriceValidation via AccessManager
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = PriceOracleMiddlewareManager.updatePriceValidation.selector;
+            uint64 roleId = 0;
+            accessManager.setTargetFunctionRole(address(manager), selectors, roleId);
+            accessManager.grantRole(roleId, address(this), 0);
+    
+            // Prepare NON-empty, equal-length arrays so:
+            // - assetsLength == 0 is FALSE (takes the else branch at opix-target-branch-169-False)
+            // - assetsLength != maxPricesDelta_.length is FALSE (takes the else branch at opix-target-branch-176-False)
+            address[] memory assets = new address[](2);
+            uint256[] memory maxDeltas = new uint256[](2);
+            assets[0] = address(0xA1);
+            assets[1] = address(0xA2);
+            maxDeltas[0] = 1e17; // 10%
+            maxDeltas[1] = 2e17; // 20%
+    
+            // Act: should execute without revert and hit the `else { assert(true); }` branch
+            manager.updatePriceValidation(assets, maxDeltas);
+    
+            // Assert: basic sanity - configurations are stored in the lib
+            (uint256 storedMaxDelta0,,) = manager.getPriceValidationInfo(assets[0]);
+            (uint256 storedMaxDelta1,,) = manager.getPriceValidationInfo(assets[1]);
+            assertEq(storedMaxDelta0, maxDeltas[0], "max delta for asset 0 should be stored");
+            assertEq(storedMaxDelta1, maxDeltas[1], "max delta for asset 1 should be stored");
+        }
+
+    function test_validateAllAssetsPrices_NonEmptyConfiguredAssets_ElseBranch_opix_target_branch_221_true() public {
+            // Arrange: set up AccessManager authority so `restricted` passes
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+
+            // Deploy a MockPriceOracle as middleware with valid prices
+            MockPriceOracle middleware = new MockPriceOracle();
+
+            // Deploy manager with AccessManager as authority and the mock middleware
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(
+                address(accessManager),
+                address(middleware)
+            );
+
+            // Grant this test contract permission to call updatePriceValidation and validateAllAssetsPrices
+            bytes4[] memory selectors = new bytes4[](2);
+            selectors[0] = PriceOracleMiddlewareManager.updatePriceValidation.selector;
+            selectors[1] = PriceOracleMiddlewareManager.validateAllAssetsPrices.selector;
+            uint64 roleId = 0;
+            accessManager.setTargetFunctionRole(address(manager), selectors, roleId);
+            accessManager.grantRole(roleId, address(this), 0);
+
+            // Configure a valid price on the middleware so _getAssetPrice succeeds
+            address asset = address(0xAA);
+            middleware.setAssetPriceWithDecimals(asset, 1e18, 18);
+
+            // Configure one asset for price validation so assetsLength > 0 and we enter the else-branch
+            address[] memory assets = new address[](1);
+            assets[0] = asset;
+            uint256[] memory maxDeltas = new uint256[](1);
+            maxDeltas[0] = 1e17; // 10%
+
+            manager.updatePriceValidation(assets, maxDeltas);
+
+            // Act: call validateAllAssetsPrices; since configured assets length > 0,
+            // the `if (assetsLength == 0)` condition is FALSE and the opix-target-branch-221 else-branch is executed
+            manager.validateAllAssetsPrices();
+        }
+
+    function test_validateAssetsPrices_NonEmptyArray_hitsElseBranch_opix_target_branch_241_false() public {
+            // Arrange: deploy AccessManager authority
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+
+            // Deploy middleware and manager with AccessManager as authority
+            MockPriceOracle middleware = new MockPriceOracle();
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(address(accessManager), address(middleware));
+
+            // Grant roles for validateAssetsPrices and updatePriceValidation
+            bytes4[] memory selectors = new bytes4[](2);
+            selectors[0] = PriceOracleMiddlewareManager.validateAssetsPrices.selector;
+            selectors[1] = PriceOracleMiddlewareManager.updatePriceValidation.selector;
+            accessManager.setTargetFunctionRole(address(manager), selectors, 0);
+            accessManager.grantRole(0, address(this), 0);
+
+            // Configure a single asset price so _getAssetPrice succeeds
+            address asset = address(0xA1);
+            middleware.setAssetPriceWithDecimals(asset, 1e18, 18);
+
+            // Configure price validation for the asset
+            address[] memory assets = new address[](1);
+            assets[0] = asset;
+            uint256[] memory maxDeltas = new uint256[](1);
+            maxDeltas[0] = 1e17; // 10%
+            manager.updatePriceValidation(assets, maxDeltas);
+
+            // Act: should run without reverting and hit the else branch
+            manager.validateAssetsPrices(assets);
+        }
+
+    function test_getAssetsPrices_NonEmptyArray_EntersElseBranch_opix_target_branch_277_false() public {
+            // Arrange: deploy manager with non-zero authority and valid middleware
+            address dummyAuthority = address(0x1);
+            MockPriceOracle mockOracle = new MockPriceOracle();
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(dummyAuthority, address(mockOracle));
+    
+            // Configure a single asset price so _getAssetPrice succeeds inside getAssetsPrices
+            address asset = address(0xA1);
+            // Set a positive price with 18 decimals so no further conversion is needed
+            mockOracle.setAssetPriceWithDecimals(asset, 1e18, 18);
+    
+            // Prepare NON-empty assets array so `assetsLength == 0` is FALSE
+            address[] memory assets = new address[](1);
+            assets[0] = asset;
+    
+            // Act: call getAssetsPrices with non-empty array, which should
+            // make the `if (assetsLength == 0)` condition false and enter
+            // the `else { assert(true); }` branch at opix-target-branch-277.
+            (uint256[] memory prices, uint256[] memory decimalsList) = manager.getAssetsPrices(assets);
+    
+            // Assert: returned arrays have one element and contain the configured price
+            assertEq(prices.length, 1, "prices length");
+            assertEq(decimalsList.length, 1, "decimals length");
+            assertEq(prices[0], 1e18, "asset price");
+            assertEq(decimalsList[0], 18, "asset price decimals");
+        }
 }

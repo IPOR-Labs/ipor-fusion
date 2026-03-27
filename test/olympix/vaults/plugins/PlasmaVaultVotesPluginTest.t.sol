@@ -102,4 +102,35 @@ contract PlasmaVaultVotesPluginTest is OlympixUnitTest("PlasmaVaultVotesPlugin")
             vm.expectRevert();
             plugin.delegateBySig(dummyDelegatee, dummyNonce, dummyExpiry, v, r, s);
         }
+
+    function test_EIP712VersionHash_ReturnsHashedVersionWhenSet() public {
+            PlasmaVaultVotesPlugin plugin = new PlasmaVaultVotesPlugin();
+    
+            // EIP712Storage is located at fixed slot EIP712_STORAGE_LOCATION.
+            // Layout of EIP712Storage struct:
+            // slot0: bytes32 _hashedName
+            // slot1: bytes32 _hashedVersion
+            // slot2: string  _name  (reference / length slot)
+            // slot3: string  _version (reference / length slot)
+            // We directly write to slot1 in that storage namespace to set _hashedVersion.
+            bytes32 EIP712_STORAGE_LOCATION = 0xa16a46d94261c7517cc8ff89f61c0ce93598e3c849801011dee649a6a557d100;
+            bytes32 hashedVersionSlot = bytes32(uint256(EIP712_STORAGE_LOCATION) + 1);
+    
+            bytes32 expectedHashedVersion = keccak256(bytes("1"));
+            vm.store(address(plugin), hashedVersionSlot, expectedHashedVersion);
+    
+            // Now call a function that uses _EIP712VersionHash via _hashTypedDataV4.
+            // With _hashedVersion != 0, the condition
+            //   if (hashedVersion != 0) { // opix-target-branch-394-True
+            // is true and that branch is executed.
+            address dummyDelegatee = address(0x1234);
+            uint256 dummyNonce = 0;
+            uint256 dummyExpiry = block.timestamp + 1;
+            bytes32 r = bytes32(0);
+            bytes32 s = bytes32(0);
+            uint8 v = 27;
+    
+            vm.expectRevert();
+            plugin.delegateBySig(dummyDelegatee, dummyNonce, dummyExpiry, v, r, s);
+        }
 }

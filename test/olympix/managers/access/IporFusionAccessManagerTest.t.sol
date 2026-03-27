@@ -103,4 +103,67 @@ contract IporFusionAccessManagerTest is OlympixUnitTest("IporFusionAccessManager
     
             vm.stopPrank();
         }
+
+    function test_updateTargetClosed_restrictedBranchTrue() public {
+            IporFusionAccessManager manager = new IporFusionAccessManager(address(this), 1 days);
+    
+            // Configure a custom role and make ADMIN_ROLE its admin so this contract can manage it
+            uint64 roleId = 1;
+            manager.setRoleAdmin(roleId, manager.ADMIN_ROLE());
+    
+            // Set that role as the required role for updateTargetClosed on the manager itself
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = IporFusionAccessManager.updateTargetClosed.selector;
+            manager.setTargetFunctionRole(address(manager), selectors, roleId);
+    
+            // Grant the role to this contract with zero execution delay so calls are immediate
+            manager.grantRole(roleId, address(this), 0);
+    
+            // Call updateTargetClosed as an authorized caller to execute the `if (true)` branch
+            manager.updateTargetClosed(address(0xABC), true);
+        }
+
+    function test_convertToPublicVault_restrictedBranchTrue() public {
+            IporFusionAccessManager manager = new IporFusionAccessManager(address(this), 1 days);
+    
+            // Configure a new role that will act as TECH_PLASMA_VAULT_ROLE
+            uint64 techRoleId = 1;
+            manager.setRoleAdmin(techRoleId, manager.ADMIN_ROLE());
+    
+            // Set that role as the required role for convertToPublicVault on the manager itself
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = IporFusionAccessManager.convertToPublicVault.selector;
+            manager.setTargetFunctionRole(address(manager), selectors, techRoleId);
+    
+            // Grant the TECH_PLASMA_VAULT_ROLE (roleId = 1) to this contract with zero execution delay
+            manager.grantRole(techRoleId, address(this), 0);
+    
+            // Call convertToPublicVault as an authorized caller to enter the `if (true)` branch
+            manager.convertToPublicVault(address(0x1234));
+        }
+
+    function test_grantRole_executionDelayTooShort_revertsTooShortExecutionDelayForRole() public {
+            IporFusionAccessManager manager = new IporFusionAccessManager(address(this), 1 days);
+    
+            // Configure role 1 so that this contract is its admin
+            uint64 roleId = 1;
+            manager.setRoleAdmin(roleId, manager.ADMIN_ROLE());
+    
+            // Set minimal execution delay for this role to a positive value (e.g., 10)
+            uint64[] memory rolesIds = new uint64[](1);
+            rolesIds[0] = roleId;
+            uint256[] memory delays = new uint256[](1);
+            delays[0] = 10;
+            manager.setMinimalExecutionDelaysForRoles(rolesIds, delays);
+    
+            // Grant some role to this contract so it can call setMinimalExecutionDelaysForRoles and grantRole as authorized
+            // By default, ADMIN_ROLE is role admin of itself in OZ AccessManager, so this contract (initialAdmin) can act.
+    
+            // Expect revert from _grantRoleInternal because executionDelay_ < minimal delay
+            vm.expectRevert(
+                abi.encodeWithSelector(IporFusionAccessManager.TooShortExecutionDelayForRole.selector, roleId, uint32(0))
+            );
+    
+            manager.grantRole(roleId, address(0xBEEF), 0);
+        }
 }
