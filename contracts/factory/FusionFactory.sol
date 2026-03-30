@@ -40,7 +40,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     event BurnRequestFeeBalanceFuseUpdated(address newBurnRequestFeeBalanceFuse);
     event WithdrawWindowInSecondsUpdated(uint256 newWithdrawWindowInSeconds);
     event VestingPeriodInSecondsUpdated(uint256 newVestingPeriodInSeconds);
-    event PlasmaVaultAdminArrayUpdated(address[] newPlasmaVaultAdminArray);
     event DaoFeePackagesUpdated(FusionFactoryStorageLib.FeePackage[] packages, address updatedBy);
     event BusinessClientFeePackagesSet(
         address indexed client,
@@ -59,7 +58,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
     function initialize(
         address initialFactoryAdmin_,
-        address[] memory initialPlasmaVaultAdminArray_,
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses_,
         address plasmaVaultBase_,
         address priceOracleMiddleware_,
@@ -74,7 +72,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, initialFactoryAdmin_);
 
         FusionFactoryLib.initialize(
-            initialPlasmaVaultAdminArray_,
             factoryAddresses_,
             plasmaVaultBase_,
             priceOracleMiddleware_,
@@ -143,16 +140,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
                 true,
                 daoFeePackageIndex_
             );
-    }
-
-    function updatePlasmaVaultAdminArray(
-        address[] memory newPlasmaVaultAdminArray_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        for (uint256 i; i < newPlasmaVaultAdminArray_.length; i++) {
-            if (newPlasmaVaultAdminArray_[i] == address(0)) revert FusionFactoryLib.InvalidAddress();
-        }
-        FusionFactoryStorageLib.setPlasmaVaultAdminArray(newPlasmaVaultAdminArray_);
-        emit PlasmaVaultAdminArrayUpdated(newPlasmaVaultAdminArray_);
     }
 
     /// @notice Sets the DAO fee packages array (replaces entire array)
@@ -378,10 +365,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
     function getFusionFactoryIndex() external view returns (uint256) {
         return FusionFactoryStorageLib.getFusionFactoryIndex();
-    }
-
-    function getPlasmaVaultAdminArray() external view returns (address[] memory) {
-        return FusionFactoryStorageLib.getPlasmaVaultAdminArray();
     }
 
     function getFactoryAddresses() external view returns (FusionFactoryStorageLib.FactoryAddresses memory) {

@@ -69,9 +69,7 @@ contract FusionFactoryTest is Test {
         adminOne = address(0x999);
         adminTwo = address(0x1000);
         daoFeeManager = address(0x111);
-        address[] memory plasmaVaultAdminArray = new address[](2);
-        plasmaVaultAdminArray[0] = adminOne;
-        plasmaVaultAdminArray[1] = adminTwo;
+        maintenanceManager = address(0x222);
 
         plasmaVaultBase = address(new PlasmaVaultBase());
         burnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
@@ -85,9 +83,8 @@ contract FusionFactoryTest is Test {
         // Deploy implementation and proxy for FusionFactory
         fusionFactoryImplementation = new FusionFactory();
         bytes memory initData = abi.encodeWithSignature(
-            "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
+            "initialize(address,(address,address,address,address,address,address,address),address,address,address,address)",
             owner,
-            plasmaVaultAdminArray,
             factoryAddresses,
             plasmaVaultBase,
             priceOracleMiddleware,
@@ -400,34 +397,9 @@ contract FusionFactoryTest is Test {
         assertEq(fusionFactory.getVestingPeriodInSeconds(), 0);
     }
 
-    function testShouldUpdatePlasmaVaultAdmin() public {
-        // given
-        address[] memory newPlasmaVaultAdminArray = new address[](2);
-        newPlasmaVaultAdminArray[0] = adminOne;
-        newPlasmaVaultAdminArray[1] = address(0x123);
-
-        // when
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
-        vm.stopPrank();
-
-        // then
-        address[] memory updatedPlasmaVaultAdminArray = fusionFactory.getPlasmaVaultAdminArray();
-        assertEq(updatedPlasmaVaultAdminArray[0], newPlasmaVaultAdminArray[0]);
-        assertEq(updatedPlasmaVaultAdminArray[1], newPlasmaVaultAdminArray[1]);
-    }
-
     function testShouldCreateVaultWithoutAdmin() public {
         // given
         uint256 redemptionDelay = 1 seconds;
-
-        address[] memory newPlasmaVaultAdminArray = new address[](2);
-        newPlasmaVaultAdminArray[0] = address(0x321);
-        newPlasmaVaultAdminArray[1] = address(0x123);
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
-        vm.stopPrank();
 
         // when
         FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
@@ -441,26 +413,16 @@ contract FusionFactoryTest is Test {
 
         // then
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
-        (bool hasRoleOne, uint32 delayOne) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[0]);
-        (bool hasRoleTwo, uint32 delayTwo) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[1]);
+        (bool hasRoleOne, ) = accessManager.hasRole(Roles.ADMIN_ROLE, adminOne);
+        (bool hasRoleTwo, ) = accessManager.hasRole(Roles.ADMIN_ROLE, adminTwo);
         assertFalse(hasRoleOne);
         assertFalse(hasRoleTwo);
-        assertEq(delayOne, 0);
-        assertEq(delayTwo, 0);
     }
 
     function testShouldCloneVaultWithoutAdmin() public {
         // given
         uint256 redemptionDelay = 1 seconds;
 
-        address[] memory newPlasmaVaultAdminArray = new address[](2);
-        newPlasmaVaultAdminArray[0] = address(0x321);
-        newPlasmaVaultAdminArray[1] = address(0x123);
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
-        vm.stopPrank();
-
         // when
         FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
             "Test Asset",
@@ -473,25 +435,15 @@ contract FusionFactoryTest is Test {
 
         // then
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
-        (bool hasRoleOne, uint32 delayOne) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[0]);
-        (bool hasRoleTwo, uint32 delayTwo) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[1]);
+        (bool hasRoleOne, ) = accessManager.hasRole(Roles.ADMIN_ROLE, adminOne);
+        (bool hasRoleTwo, ) = accessManager.hasRole(Roles.ADMIN_ROLE, adminTwo);
         assertFalse(hasRoleOne);
         assertFalse(hasRoleTwo);
-        assertEq(delayOne, 0);
-        assertEq(delayTwo, 0);
     }
 
     function testShouldCreatePremiumVaultWithAdmin() public {
         // given
-        address[] memory newPlasmaVaultAdminArray = new address[](2);
-        newPlasmaVaultAdminArray[0] = address(0x321);
-        newPlasmaVaultAdminArray[1] = address(0x123);
-
         uint256 redemptionDelay = 3 seconds;
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
-        vm.stopPrank();
 
         // when
         vm.startPrank(maintenanceManager);
@@ -507,26 +459,15 @@ contract FusionFactoryTest is Test {
 
         // then
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
-        (bool hasRoleOne, uint32 delayOne) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[0]);
-        (bool hasRoleTwo, uint32 delayTwo) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[1]);
-        assertTrue(hasRoleOne);
-        assertTrue(hasRoleTwo);
-        assertEq(delayOne, 0);
-        assertEq(delayTwo, 0);
+        (bool hasAdminRole, uint32 adminDelay) = accessManager.hasRole(Roles.ADMIN_ROLE, maintenanceManager);
+        assertTrue(hasAdminRole);
+        assertEq(adminDelay, 0);
         assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
     }
 
     function testShouldClonePremiumVaultWithAdmin() public {
         // given
-        address[] memory newPlasmaVaultAdminArray = new address[](2);
-        newPlasmaVaultAdminArray[0] = address(0x321);
-        newPlasmaVaultAdminArray[1] = address(0x123);
-
         uint256 redemptionDelay = 3 seconds;
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
-        vm.stopPrank();
 
         // when
         vm.startPrank(maintenanceManager);
@@ -542,12 +483,9 @@ contract FusionFactoryTest is Test {
 
         // then
         IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
-        (bool hasRoleOne, uint32 delayOne) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[0]);
-        (bool hasRoleTwo, uint32 delayTwo) = accessManager.hasRole(Roles.ADMIN_ROLE, newPlasmaVaultAdminArray[1]);
-        assertTrue(hasRoleOne);
-        assertTrue(hasRoleTwo);
-        assertEq(delayOne, 0);
-        assertEq(delayTwo, 0);
+        (bool hasAdminRole, uint32 adminDelay) = accessManager.hasRole(Roles.ADMIN_ROLE, maintenanceManager);
+        assertTrue(hasAdminRole);
+        assertEq(adminDelay, 0);
         assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
     }
 
@@ -1389,98 +1327,6 @@ contract FusionFactoryTest is Test {
             instance.rewardsManager
         );
         assertTrue(hasRewardsClaimManagerRole, "RewardsClaimManager role not found TECH_REWARDS_CLAIM_MANAGER_ROLE");
-    }
-
-    function testShouldBeAbleToRemovePlasmaVaultAdmin() public {
-        // given
-        address[] memory initialPlasmaVaultAdminArray = new address[](2);
-        initialPlasmaVaultAdminArray[0] = adminOne;
-        initialPlasmaVaultAdminArray[1] = address(0x123);
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(initialPlasmaVaultAdminArray);
-        vm.stopPrank();
-
-        // when
-        address[] memory newPlasmaVaultAdminArray = new address[](1);
-        newPlasmaVaultAdminArray[0] = adminOne; // Keep only adminOne, remove address(0x123)
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
-        vm.stopPrank();
-
-        // then
-        address[] memory updatedPlasmaVaultAdminArray = fusionFactory.getPlasmaVaultAdminArray();
-        assertEq(updatedPlasmaVaultAdminArray.length, 1, "Should have only one admin");
-        assertEq(updatedPlasmaVaultAdminArray[0], adminOne, "Should keep adminOne");
-    }
-
-    function testShouldBeAbleToRemoveAllPlasmaVaultAdmins() public {
-        // given
-        address[] memory initialPlasmaVaultAdminArray = new address[](2);
-        initialPlasmaVaultAdminArray[0] = adminOne;
-        initialPlasmaVaultAdminArray[1] = address(0x123);
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(initialPlasmaVaultAdminArray);
-        vm.stopPrank();
-
-        address[] memory updatedPlasmaVaultAdminArrayBefore = fusionFactory.getPlasmaVaultAdminArray();
-        assertEq(updatedPlasmaVaultAdminArrayBefore.length, 2, "Should have two admins");
-
-        // when
-        address[] memory newPlasmaVaultAdminArray = new address[](0); // Empty array to remove all admins
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
-        vm.stopPrank();
-
-        // then
-        address[] memory updatedPlasmaVaultAdminArrayAfter = fusionFactory.getPlasmaVaultAdminArray();
-        assertEq(updatedPlasmaVaultAdminArrayAfter.length, 0, "Should have no admins");
-    }
-
-    function testShouldCreateVaultWithoutAdminRoleWhenNoPlasmaVaultAdmins() public {
-        // given
-        address[] memory initialPlasmaVaultAdminArray = new address[](2);
-        initialPlasmaVaultAdminArray[0] = adminOne;
-        initialPlasmaVaultAdminArray[1] = address(0x123);
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(initialPlasmaVaultAdminArray);
-        vm.stopPrank();
-
-        uint256 redemptionDelay = 1 seconds;
-
-        // when
-        address[] memory newPlasmaVaultAdminArray = new address[](0); // Remove all admins
-
-        vm.startPrank(owner);
-        fusionFactory.updatePlasmaVaultAdminArray(newPlasmaVaultAdminArray);
-        vm.stopPrank();
-
-        // Create a new vault after removing admins
-        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            0
-        );
-
-        // then
-        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
-
-        (bool hasRoleFactory, ) = accessManager.hasRole(Roles.ADMIN_ROLE, address(fusionFactory));
-        (bool hasRoleOne, ) = accessManager.hasRole(Roles.ADMIN_ROLE, adminOne);
-        (bool hasRoleTwo, ) = accessManager.hasRole(Roles.ADMIN_ROLE, address(0x123));
-        (bool hasRoleOwner, ) = accessManager.hasRole(Roles.ADMIN_ROLE, owner);
-
-        assertFalse(hasRoleOne, "adminOne should not have admin role");
-        assertFalse(hasRoleTwo, "address(0x123) should not have admin role");
-        assertFalse(hasRoleFactory, "fusionFactory should not have admin role");
-        assertFalse(hasRoleOwner, "owner should not have admin role");
     }
 
     function testShouldCreateVaultWithCorrectContextManagerApprovedTargets() public {

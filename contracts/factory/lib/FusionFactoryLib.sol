@@ -53,20 +53,12 @@ library FusionFactoryLib {
     error BusinessClientAddressZero();
 
     function initialize(
-        address[] memory initialPlasmaVaultAdminArray_,
         FusionFactoryStorageLib.FactoryAddresses memory factoryAddresses_,
         address plasmaVaultBase_,
         address priceOracleMiddleware_,
         address burnRequestFeeFuse_,
         address burnRequestFeeBalanceFuse_
     ) internal {
-        if (initialPlasmaVaultAdminArray_.length > 0) {
-            for (uint256 i = 0; i < initialPlasmaVaultAdminArray_.length; i++) {
-                if (initialPlasmaVaultAdminArray_[i] == address(0)) revert InvalidAddress();
-            }
-            FusionFactoryStorageLib.setPlasmaVaultAdminArray(initialPlasmaVaultAdminArray_);
-        }
-
         if (factoryAddresses_.accessManagerFactory == address(0)) revert InvalidFactoryAddress();
         if (factoryAddresses_.plasmaVaultFactory == address(0)) revert InvalidFactoryAddress();
         if (factoryAddresses_.feeManagerFactory == address(0)) revert InvalidFactoryAddress();
