@@ -79,7 +79,8 @@ library FusionFactoryStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryIndex")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FUSION_FACTORY_INDEX = 0x7c54bb33443ce94044aec2970018125c202903e78abecda9a8871f0a2e085400;
 
-    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultAdminArray")) - 1)) & ~bytes32(uint256(0xff))
+    /// @dev DEPRECATED — slot reserved, do not reuse
+    /// keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.PlasmaVaultAdminArray")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PLASMA_VAULT_ADMIN_ARRAY =
         0x09e657bd0ea9e1ace5b99e5e8bb556174727dbd9076ea35b667e7736f1584000;
 
@@ -200,10 +201,6 @@ library FusionFactoryStorageLib {
         return _getFusionFactoryIndexSlot().value;
     }
 
-    function getPlasmaVaultAdminArray() internal view returns (address[] memory) {
-        return _getPlasmaVaultAdminArraySlot().value;
-    }
-
     function getPlasmaVaultBaseAddress() internal view returns (address) {
         return _getPlasmaVaultBaseAddressSlot().value;
     }
@@ -258,11 +255,6 @@ library FusionFactoryStorageLib {
 
     function setFusionFactoryIndex(uint256 value) internal {
         _getFusionFactoryIndexSlot().value = value;
-    }
-
-    function setPlasmaVaultAdminArray(address[] memory value) internal {
-        delete _getPlasmaVaultAdminArraySlot().value;
-        _getPlasmaVaultAdminArraySlot().value = value;
     }
 
     function setPlasmaVaultFactoryAddress(address value) internal {
@@ -380,12 +372,6 @@ library FusionFactoryStorageLib {
     function _getFusionFactoryIndexSlot() private pure returns (Uint256Type storage $) {
         assembly {
             $.slot := FUSION_FACTORY_INDEX
-        }
-    }
-
-    function _getPlasmaVaultAdminArraySlot() private pure returns (AddressArrayType storage $) {
-        assembly {
-            $.slot := PLASMA_VAULT_ADMIN_ARRAY
         }
     }
 

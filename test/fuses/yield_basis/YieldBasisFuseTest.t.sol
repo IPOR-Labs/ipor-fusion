@@ -808,9 +808,8 @@ contract YieldBasisFuseTest is Test {
 
         FusionFactory implementation = new FusionFactory();
         bytes memory initData = abi.encodeWithSignature(
-            "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
+            "initialize(address,(address,address,address,address,address,address,address),address,address,address,address)",
             atomist,
-            new address[](0), // No plasma vault admins
             factoryAddresses,
             plasmaVaultBase,
             priceOracleMiddleware,

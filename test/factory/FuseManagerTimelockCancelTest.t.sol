@@ -93,10 +93,6 @@ contract FuseManagerTimelockCancelTest is Test {
             priceManagerFactory: address(new PriceManagerFactory())
         });
 
-        address[] memory plasmaVaultAdminArray = new address[](2);
-        plasmaVaultAdminArray[0] = adminOne;
-        plasmaVaultAdminArray[1] = adminTwo;
-
         plasmaVaultBase = address(new PlasmaVaultBase());
         burnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
         burnRequestFeeBalanceFuse = address(new ZeroBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
@@ -109,9 +105,8 @@ contract FuseManagerTimelockCancelTest is Test {
         // Deploy implementation and proxy for FusionFactory
         FusionFactory fusionFactoryImplementation = new FusionFactory();
         bytes memory initData = abi.encodeWithSignature(
-            "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
+            "initialize(address,(address,address,address,address,address,address,address),address,address,address,address)",
             owner,
-            plasmaVaultAdminArray,
             factoryAddresses,
             plasmaVaultBase,
             priceOracleMiddleware,

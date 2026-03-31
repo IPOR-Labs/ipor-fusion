@@ -294,10 +294,7 @@ library FusionFactoryLogicLib {
         accessData.isPublic = false;
         accessData.iporDaos = new address[](1);
         accessData.iporDaos[0] = daoFeeRecipientAddress;
-
-        if (withAdmin_) {
-            accessData.admins = FusionFactoryStorageLib.getPlasmaVaultAdminArray();
-        }
+        accessData.admins = _resolveAdmins(withAdmin_);
 
         accessData.owners = new address[](1);
         accessData.owners[0] = owner_;
@@ -317,5 +314,15 @@ library FusionFactoryLogicLib {
         );
 
         return fusionAddresses;
+    }
+
+    function _resolveAdmins(bool withAdmin_) private view returns (address[] memory) {
+        if (!withAdmin_) {
+            return new address[](0);
+        }
+
+        address[] memory admins = new address[](1);
+        admins[0] = msg.sender;
+        return admins;
     }
 }

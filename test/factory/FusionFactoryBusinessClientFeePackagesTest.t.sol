@@ -60,12 +60,6 @@ contract FusionFactoryBusinessClientFeePackagesTest is Test {
         daoFeeRecipient = address(0x888);
         daoFeeManager = address(0x111);
         maintenanceManager = address(0x222);
-        address adminOne = address(0x999);
-        address adminTwo = address(0x1000);
-        address[] memory plasmaVaultAdminArray = new address[](2);
-        plasmaVaultAdminArray[0] = adminOne;
-        plasmaVaultAdminArray[1] = adminTwo;
-
         plasmaVaultBase = address(new PlasmaVaultBase());
         burnRequestFeeFuse = address(new BurnRequestFeeFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
         burnRequestFeeBalanceFuse = address(new ZeroBalanceFuse(IporFusionMarkets.ZERO_BALANCE_MARKET));
@@ -77,9 +71,8 @@ contract FusionFactoryBusinessClientFeePackagesTest is Test {
 
         FusionFactory fusionFactoryImplementation = new FusionFactory();
         bytes memory initData = abi.encodeWithSignature(
-            "initialize(address,address[],(address,address,address,address,address,address,address),address,address,address,address)",
+            "initialize(address,(address,address,address,address,address,address,address),address,address,address,address)",
             owner,
-            plasmaVaultAdminArray,
             factoryAddresses,
             plasmaVaultBase,
             priceOracleMiddleware,

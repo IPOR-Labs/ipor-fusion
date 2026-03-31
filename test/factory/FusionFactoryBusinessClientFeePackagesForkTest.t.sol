@@ -49,13 +49,10 @@ contract FusionFactoryBusinessClientFeePackagesForkTest is Test {
         address priceOracleMiddleware = existingFactory.getPriceOracleMiddleware();
         address burnRequestFeeFuse = existingFactory.getBurnRequestFeeFuseAddress();
         address burnRequestFeeBalanceFuse = existingFactory.getBurnRequestFeeBalanceFuseAddress();
-        address[] memory plasmaVaultAdminArray = existingFactory.getPlasmaVaultAdminArray();
-
         FusionFactory implementation = new FusionFactory();
         bytes memory initData = abi.encodeWithSelector(
             FusionFactory.initialize.selector,
             owner,
-            plasmaVaultAdminArray,
             factoryAddresses,
             plasmaVaultBase,
             priceOracleMiddleware,
