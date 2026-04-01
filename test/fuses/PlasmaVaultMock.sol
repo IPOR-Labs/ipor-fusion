@@ -18,6 +18,7 @@ import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contrac
 import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
 import {MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../contracts/fuses/midas/MidasSupplyFuse.sol";
 import {MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {MidasClaimFromExecutorFuseEnterData} from "../../contracts/fuses/midas/MidasClaimFromExecutorFuse.sol";
 import {AaveV4SupplyFuseEnterData, AaveV4SupplyFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
 import {AaveV4BorrowFuseEnterData, AaveV4BorrowFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4BorrowFuse.sol";
 import {AaveV4EModeFuseEnterData} from "../../contracts/fuses/aave_v4/AaveV4EModeFuse.sol";
@@ -309,6 +310,18 @@ contract PlasmaVaultMock {
     function cleanupMidasPendingRedemptions(address redemptionVault_, uint256 maxIterations_) external {
         address(fuse).functionDelegateCall(
             abi.encodeWithSignature("cleanupPendingRedemptions(address,uint256)", redemptionVault_, maxIterations_)
+        );
+    }
+
+    function enterMidasClaimFromExecutor(MidasClaimFromExecutorFuseEnterData memory data) external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("enter((address))", data)
+        );
+    }
+
+    function deployMidasExecutor() external {
+        address(fuse).functionDelegateCall(
+            abi.encodeWithSignature("deployExecutor()")
         );
     }
 
