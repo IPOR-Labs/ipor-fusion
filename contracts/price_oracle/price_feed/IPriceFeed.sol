@@ -10,11 +10,12 @@ interface IPriceFeed {
 
     /// @notice Returns the latest price of an asset, expressed in USD
     /// @return roundId The round ID from which the data was retrieved
-    /// @return price The latest price of the asset, expressed in USD, with 8 decimals
+    /// @return price The latest price of the asset, expressed in USD, scaled to `decimals()` decimal places
     /// @return startedAt Timestamp of the start of the round
     /// @return time Timestamp of the data of the round
     /// @return answeredInRound The round ID from which the answer was retrieved
-    /// @dev Notice! The price is expressed always in 8 decimals.
+    /// @dev Notice! The number of decimals is implementation-specific. Consumers MUST call `decimals()` to determine
+    ///      the correct scaling. Do NOT assume a fixed number of decimals.
     function latestRoundData()
         external
         view

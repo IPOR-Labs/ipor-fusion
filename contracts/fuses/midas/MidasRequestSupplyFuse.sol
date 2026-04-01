@@ -9,7 +9,10 @@ import {IMidasDepositVault} from "./ext/IMidasDepositVault.sol";
 import {IMidasRedemptionVault} from "./ext/IMidasRedemptionVault.sol";
 import {MidasSubstrateLib} from "./lib/MidasSubstrateLib.sol";
 import {MidasPendingRequestsStorageLib} from "./lib/MidasPendingRequestsStorageLib.sol";
+import {MidasExecutorStorageLib} from "./lib/MidasExecutorStorageLib.sol";
+import {MidasExecutor} from "./MidasExecutor.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
+import {MIDAS_REQUEST_STATUS_PENDING} from "./lib/MidasConstants.sol";
 
 /// @notice Data structure for entering MidasRequestSupplyFuse (async deposit request)
 struct MidasRequestSupplyFuseEnterData {
@@ -35,15 +38,16 @@ struct MidasRequestSupplyFuseExitData {
     address standardRedemptionVault;
 }
 
-/// @dev Midas request status constants
-uint8 constant MIDAS_REQUEST_STATUS_PENDING = 0;
-
 /// @title MidasRequestSupplyFuse
-/// @notice Fuse for submitting async deposit requests to Midas Deposit Vault
+/// @notice Fuse for submitting async deposit and redemption requests to Midas vaults via MidasExecutor
 /// @dev Executes in PlasmaVault storage context via delegatecall. MUST NOT contain storage variables.
-///      After calling depositRequest(), the USDC leaves the PlasmaVault. When the Midas admin
-///      calls approveRequest(), mTokens are minted directly to the PlasmaVault (push-based model).
-///      The pending request is tracked in MidasPendingRequestsStorageLib for NAV reporting.
+///      All async requests are routed through MidasExecutor to prevent double accounting.
+///      enter(): transfers tokenIn (e.g. USDC) to executor, executor calls depositRequest().
+///              When Midas admin approves, mTokens are minted to the EXECUTOR (not PlasmaVault).
+///      exit():  transfers mTokens to executor, executor calls redeemRequest().
+///              When Midas admin approves, USDC is sent to the EXECUTOR (not PlasmaVault).
+///      Use MidasClaimFromExecutorFuse to pull settled assets from executor back to PlasmaVault.
+///      Pending requests are tracked in MidasPendingRequestsStorageLib for NAV reporting.
 contract MidasRequestSupplyFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
@@ -95,20 +99,17 @@ contract MidasRequestSupplyFuse is IFuseCommon {
             return;
         }
 
-        ERC20(data_.tokenIn).forceApprove(data_.depositVault, finalAmount);
+        address executor = MidasExecutorStorageLib.getOrCreateExecutor(address(this));
 
-        uint256 amountInWad = IporMath.convertToWad(finalAmount, ERC20(data_.tokenIn).decimals());
+        ERC20(data_.tokenIn).safeTransfer(executor, finalAmount);
 
-        uint256 requestId =
-            IMidasDepositVault(data_.depositVault).depositRequest(data_.tokenIn, amountInWad, bytes32(0));
+        uint256 requestId = MidasExecutor(executor).depositRequest(data_.tokenIn, finalAmount, data_.depositVault);
 
         if (requestId == 0) {
             revert MidasRequestSupplyFuseInvalidRequestId();
         }
 
         MidasPendingRequestsStorageLib.addPendingDeposit(data_.depositVault, requestId);
-
-        ERC20(data_.tokenIn).forceApprove(data_.depositVault, 0);
 
         emit MidasRequestSupplyFuseEnter(
             VERSION, data_.mToken, finalAmount, data_.tokenIn, requestId, data_.depositVault
@@ -135,18 +136,17 @@ contract MidasRequestSupplyFuse is IFuseCommon {
             return;
         }
 
-        ERC20(data_.mToken).forceApprove(data_.standardRedemptionVault, finalAmount);
+        address executor = MidasExecutorStorageLib.getOrCreateExecutor(address(this));
 
-        uint256 requestId =
-            IMidasRedemptionVault(data_.standardRedemptionVault).redeemRequest(data_.tokenOut, finalAmount);
+        ERC20(data_.mToken).safeTransfer(executor, finalAmount);
+
+        uint256 requestId = MidasExecutor(executor).redeemRequest(data_.mToken, finalAmount, data_.tokenOut, data_.standardRedemptionVault);
 
         if (requestId == 0) {
             revert MidasRequestSupplyFuseInvalidRedeemRequestId();
         }
 
         MidasPendingRequestsStorageLib.addPendingRedemption(data_.standardRedemptionVault, requestId);
-
-        ERC20(data_.mToken).forceApprove(data_.standardRedemptionVault, 0);
 
         emit MidasRequestSupplyFuseExit(
             VERSION, data_.mToken, finalAmount, data_.tokenOut, requestId, data_.standardRedemptionVault

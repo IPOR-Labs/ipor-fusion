@@ -235,6 +235,90 @@ contract PlasmaVaultDepositFeeTest is Test {
         assertEq(totalSupplyBefore, 0, "totalSupplyBefore should be 0");
     }
 
+    function test_shouldMintCorrectAmountOfAssetsWhenFeeIsSet() public {
+        // given
+        uint256 depositFee = 1e17; // 10%
+        uint256 sharesToMint = 10_000e6;
+
+        vm.startPrank(_ATOMIST);
+        _feeManager.setDepositFee(depositFee);
+        vm.stopPrank();
+
+        uint256 expectedAssets = _plasmaVault.previewMint(sharesToMint);
+        uint256 userUsdcBefore = ERC20(_USDC).balanceOf(_USER);
+        uint256 feeRecipientSharesBefore = _plasmaVault.balanceOf(address(_withdrawManager));
+
+        // when
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(_plasmaVault), type(uint256).max);
+        uint256 actualAssets = _plasmaVault.mint(sharesToMint, _USER);
+        vm.stopPrank();
+
+        // then
+        uint256 userUsdcAfter = ERC20(_USDC).balanceOf(_USER);
+        uint256 usdcSpent = userUsdcBefore - userUsdcAfter;
+        uint256 userShares = _plasmaVault.balanceOf(_USER);
+        uint256 feeShares = _plasmaVault.balanceOf(address(_withdrawManager)) - feeRecipientSharesBefore;
+        uint256 expectedFeeShares = sharesToMint * depositFee / 1e18;
+
+        // User pays exactly what previewMint() declared
+        assertEq(actualAssets, expectedAssets, "actualAssets should match previewMint");
+        assertEq(usdcSpent, expectedAssets, "USDC spent should match previewMint");
+        // User gets exactly the shares they requested
+        assertEq(userShares, sharesToMint, "user should receive exactly requested shares");
+        // Fee recipient gets exactly 10% of requested shares
+        assertEq(feeShares, expectedFeeShares, "fee recipient should get exactly 10% fee shares");
+        // Total minted = user shares + fee shares
+        assertEq(_plasmaVault.totalSupply(), sharesToMint + expectedFeeShares, "totalSupply should be shares + fee");
+    }
+
+    function test_shouldMintAndDepositHaveConsistentFeeAccounting() public {
+        // given
+        uint256 depositFee = 1e17; // 10%
+        uint256 depositAmount = 1_000_000e6;
+
+        vm.startPrank(_ATOMIST);
+        _feeManager.setDepositFee(depositFee);
+        vm.stopPrank();
+
+        // Deposit path: user pays depositAmount, gets shares minus fee
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(_plasmaVault), type(uint256).max);
+        _plasmaVault.deposit(depositAmount, _USER);
+        vm.stopPrank();
+
+        uint256 userSharesAfterDeposit = _plasmaVault.balanceOf(_USER);
+        uint256 feeSharesAfterDeposit = _plasmaVault.balanceOf(address(_withdrawManager));
+
+        // Mint path: user requests exact shares, pays assets covering shares + fee
+        address user2 = address(0x1234567890);
+        deal(_USDC, user2, 10_000_000e6);
+
+        // mint(userSharesAfterDeposit) should give user2 exactly userSharesAfterDeposit shares
+        // and additionally mint fee shares to feeRecipient
+        uint256 sharesToMint = userSharesAfterDeposit;
+        uint256 feeManagerBalanceBefore = _plasmaVault.balanceOf(address(_withdrawManager));
+
+        uint256 user2UsdcBefore = ERC20(_USDC).balanceOf(user2);
+
+        vm.startPrank(user2);
+        ERC20(_USDC).approve(address(_plasmaVault), type(uint256).max);
+        uint256 assetsFromMint = _plasmaVault.mint(sharesToMint, user2);
+        vm.stopPrank();
+
+        uint256 user2UsdcSpent = user2UsdcBefore - ERC20(_USDC).balanceOf(user2);
+        uint256 user2SharesAfterMint = _plasmaVault.balanceOf(user2);
+        uint256 feeSharesFromMint = _plasmaVault.balanceOf(address(_withdrawManager)) - feeManagerBalanceBefore;
+
+        // User gets exactly the shares they requested
+        assertEq(user2SharesAfterMint, sharesToMint, "user should get exactly requested shares");
+        // Fee is 10% of requested shares: 90e12 * 10% = 9e12
+        assertEq(feeSharesFromMint, sharesToMint * depositFee / 1e18, "fee shares should be 10% of requested shares");
+        // Assets spent matches previewMint
+        assertEq(assetsFromMint, user2UsdcSpent, "actual cost should match returned assets");
+        assertEq(assetsFromMint, _plasmaVault.previewMint(sharesToMint), "actual cost should match previewMint");
+    }
+
     function test_shouldMintWhenFeeDepositIsNotSet() public {
         //given
         uint256 withdrawManagerBalanceBefore = _plasmaVault.balanceOf(address(_withdrawManager));

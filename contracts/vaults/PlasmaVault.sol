@@ -678,10 +678,10 @@ contract PlasmaVault is
 
         (address feeRecipient, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(shares_);
 
-        depositAssets = super.mint(shares_ + feeShares, receiver_);
+        depositAssets = super.mint(shares_, receiver_);
 
         if (feeShares > 0) {
-            _transfer(receiver_, feeRecipient, feeShares);
+            super._mint(feeRecipient, feeShares);
             emit DepositFeeRealized(feeRecipient, feeShares);
         }
     }

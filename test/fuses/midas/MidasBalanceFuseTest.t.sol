@@ -189,7 +189,7 @@ contract MidasBalanceFuseTest is Test {
         assertEq(balance, mTokenValue + pendingDepositValue, "Balance should include mToken value + pending deposit");
     }
 
-    function testShouldReturnZeroPriceWhenDataFeedReturnsZero() public {
+    function testShouldRevertWhenDataFeedReturnsZero() public {
         // Mock data feed to return 0 price (via deposit vault's mTokenDataFeed)
         address dataFeed = address(uint160(uint256(keccak256(abi.encodePacked("dataFeed", MTBILL_DEPOSIT_VAULT)))));
         vm.mockCall(
@@ -200,8 +200,8 @@ contract MidasBalanceFuseTest is Test {
 
         deal(MTBILL_TOKEN, address(vault), 100e18);
 
-        uint256 balance = vault.balanceOf();
-        assertEq(balance, 0, "Balance should be zero when mToken price is zero");
+        vm.expectRevert(abi.encodeWithSelector(MidasBalanceFuse.MTokenPriceIsZero.selector, MTBILL_TOKEN));
+        vault.balanceOf();
     }
 
     // ============ Additional Balance Tests ============

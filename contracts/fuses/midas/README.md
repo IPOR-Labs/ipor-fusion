@@ -24,37 +24,46 @@ Instant Flow (MidasSupplyFuse):
   PlasmaVault -> depositInstant() -> mTokens received immediately
   PlasmaVault -> redeemInstant()  -> USDC received immediately
 
-Async Flow (MidasRequestSupplyFuse):
-  PlasmaVault -> depositRequest() -> USDC leaves vault, pending request created
-  Midas Admin -> approveRequest() -> mTokens minted to PlasmaVault (push-based)
-  PlasmaVault -> redeemRequest()  -> mTokens locked, pending request created
-  Midas Admin -> approveRequest() -> USDC sent to PlasmaVault (push-based)
+Async Flow (MidasRequestSupplyFuse + MidasExecutor):
+  PlasmaVault -> depositRequest() -> USDC sent via MidasExecutor, pending request created
+  Midas Admin -> approveRequest() -> mTokens minted to MidasExecutor
+  PlasmaVault -> MidasClaimFromExecutorFuse -> claim mTokens from MidasExecutor
+  PlasmaVault -> redeemRequest()  -> mTokens sent via MidasExecutor, pending request created
+  Midas Admin -> approveRequest() -> USDC sent to MidasExecutor
+  PlasmaVault -> MidasClaimFromExecutorFuse -> claim USDC from MidasExecutor
 ```
 
 ### Key Components
 
--   **`MidasBalanceFuse`**: Reports total NAV in USD (18 decimals) across three components:
+-   **`MidasBalanceFuse`**: Reports total NAV in USD (18 decimals) across four components:
     - A) mTokens held by PlasmaVault (balance * price from data feed)
     - B) Pending deposit requests (USDC in transit)
     - C) Pending redemption requests (mTokens in transit, priced via data feed)
+    - D) Executor balance (mTokens and assets held by MidasExecutor during async operations)
 -   **`MidasSupplyFuse`**: Instant deposit/redemption via Deposit Vault and Instant Redemption Vault
 -   **`MidasRequestSupplyFuse`**: Async deposit/redemption requests via Deposit Vault and Standard Redemption Vault. Includes `cleanupPendingDeposits()` and `cleanupPendingRedemptions()` for stale request cleanup.
+-   **`MidasExecutor`**: Routes async deposit/redemption requests through a dedicated executor contract to prevent double accounting. Holds mTokens (from approved deposits) and assets (from approved redemptions) until claimed back to the PlasmaVault.
+-   **`MidasClaimFromExecutorFuse`**: Claims mTokens and assets from MidasExecutor back to PlasmaVault after Midas admin approval.
 -   **`MidasSubstrateLib`**: Typed substrate encoding (M_TOKEN, DEPOSIT_VAULT, REDEMPTION_VAULT, INSTANT_REDEMPTION_VAULT, ASSET)
 -   **`MidasPendingRequestsStorageLib`**: Storage library tracking pending request IDs per vault for NAV reporting
+-   **`MidasExecutorStorageLib`**: Storage library tracking the MidasExecutor address used for async operations
 
 ## Balance Calculation
 
-The balance fuse computes total value across three components:
+The balance fuse computes total value across four components:
 
 1. **Component A (mToken holdings)**: For each unique mToken resolved from deposit vaults, query `balanceOf(PlasmaVault)` and multiply by the mToken price from `mTokenDataFeed().getDataInBase18()`
 2. **Component B (pending deposits)**: Sum `depositedUsdAmount` for all pending deposit requests (status == Pending)
 3. **Component C (pending redemptions)**: Sum `amountMToken * mTokenPrice` for all pending redemption requests (status == Pending)
+4. **Component D (executor balance)**: mTokens and assets (e.g., USDC) held by MidasExecutor during async operations. mTokens are valued using the same data feed prices; assets are valued via PriceOracleMiddleware.
 
 ### Important Notes
 
 -   mToken prices are sourced from Midas data feeds (`mTokenDataFeed()` on deposit vaults)
+-   If any mToken price is zero, `balanceOf()` reverts with `MTokenPriceIsZero(address)`
 -   Each mToken is counted only once even if multiple deposit vaults reference it
 -   Pending request IDs are tracked in `MidasPendingRequestsStorageLib` and cleaned up during supply fuse operations
+-   Executor balance is tracked via `MidasExecutorStorageLib` — executor address must be set for Component D to be included
 
 ## Substrate Configuration
 
