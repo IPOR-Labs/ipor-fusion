@@ -178,10 +178,15 @@ PlasmaVaultGovernance(plasmaVault).configureInstantWithdrawalFuses(fuses);
 | `LitePSMSupplyFuseInsufficientShares(uint256 receivedShares, uint256 minSharesOut)`    | sUSDS shares received below minimum on enter |
 | `LitePSMSupplyFuseInsufficientAmountOut(uint256 receivedAmount, uint256 minAmountOut)` | USDC received below minimum on exit          |
 
+## Market ID
+
+This fuse operates on market `LITE_PSM = 48` (defined in `IporFusionMarkets.sol`).
+
 ## Constants
 
 | Constant   | Value                                        | Description                         |
 | ---------- | -------------------------------------------- | ----------------------------------- |
+| `LITE_PSM` | `48`                                         | Market ID in `IporFusionMarkets`    |
 | `USDC`     | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | USDC token (Ethereum)               |
 | `USDS`     | `0xdC035D45d973E3EC169d2276DDab16f1e407384F` | USDS token (Ethereum)               |
 | `SUSDS`    | `0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD` | sUSDS ERC4626 vault (Ethereum)      |
