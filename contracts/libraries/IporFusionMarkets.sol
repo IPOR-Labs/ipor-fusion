@@ -210,6 +210,10 @@ library IporFusionMarkets {
     /// @dev Substrate values: Encoded combination of asset address, sub-account ID, and borrow permission
     uint256 public constant DOLOMITE = 47;
 
+    /// @dev Sky LitePSM market - converts USDC to yield-bearing sUSDS via LitePSMWrapper (zero-fee USDC<->USDS conversion + sUSDS ERC4626 deposit)
+    /// @dev Balance fuse: ZeroBalanceFuse (this market holds no assets directly; sUSDS balance tracked on a separate market via Erc4626BalanceFuse)
+    uint256 public constant LITE_PSM = 48;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
