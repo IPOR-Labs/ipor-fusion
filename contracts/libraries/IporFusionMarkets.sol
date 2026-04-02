@@ -212,6 +212,7 @@ library IporFusionMarkets {
 
     /// @dev Sky LitePSM market - converts USDC to yield-bearing sUSDS via LitePSMWrapper (zero-fee USDC<->USDS conversion + sUSDS ERC4626 deposit)
     /// @dev Balance fuse: ZeroBalanceFuse (this market holds no assets directly; sUSDS balance tracked on a separate market via Erc4626BalanceFuse)
+    /// @dev Substrates: none
     uint256 public constant LITE_PSM = 48;
 
     /// @dev Market 1 for ERC4626 Vault
