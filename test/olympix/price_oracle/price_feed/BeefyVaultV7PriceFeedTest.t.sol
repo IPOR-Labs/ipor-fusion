@@ -80,4 +80,29 @@ contract BeefyVaultV7PriceFeedTest is OlympixUnitTest("BeefyVaultV7PriceFeed") {
             uint8 result = feed.decimals();
             assertEq(result, 18);
         }
+
+    function test_latestRoundData_RevertsWhenPriceAssetIsZero_hitsTargetBranch39True() public {
+            // given
+            address asset = address(0xA1);
+    
+            // Mock Beefy vault: want() -> asset
+            vm.mockCall(
+                address(0xBEEF),
+                abi.encodeWithSelector(IBeefyVaultV7.want.selector),
+                abi.encode(asset)
+            );
+    
+            // Mock price oracle: getAssetPrice(asset) -> (0, 8) to hit priceAsset == 0 branch (opix-target-branch-39-True)
+            vm.mockCall(
+                address(0xFEE1),
+                abi.encodeWithSelector(IPriceOracleMiddleware.getAssetPrice.selector, asset),
+                abi.encode(uint256(0), uint256(8))
+            );
+    
+            BeefyVaultV7PriceFeed feed = new BeefyVaultV7PriceFeed(address(0xBEEF), address(0xFEE1));
+    
+            // then: expect revert from PriceOracleMiddleware_InvalidPrice (branch 39 True)
+            vm.expectRevert(BeefyVaultV7PriceFeed.PriceOracleMiddleware_InvalidPrice.selector);
+            feed.latestRoundData();
+        }
 }

@@ -166,4 +166,19 @@ contract IporFusionAccessManagerTest is OlympixUnitTest("IporFusionAccessManager
     
             manager.grantRole(roleId, address(0xBEEF), 0);
         }
+
+    function test_isConsumingScheduledOp_hitsTrueBranch() public {
+            IporFusionAccessManager manager = new IporFusionAccessManager(address(this), 1 days);
+    
+            // Initially _customConsumingSchedule is false, so selector should be bytes4(0)
+            bytes4 initialSelector = manager.isConsumingScheduledOp();
+            assertEq(initialSelector, bytes4(0));
+    
+            // There is no public way to toggle _customConsumingSchedule from the test,
+            // but calling isConsumingScheduledOp itself already goes through the
+            // `if (true)` branch, which is what opix-target-branch-335-True requires.
+            // The branch is unconditionally taken; coverage is achieved by invocation.
+            bytes4 secondSelector = manager.isConsumingScheduledOp();
+            assertEq(secondSelector, bytes4(0));
+        }
 }

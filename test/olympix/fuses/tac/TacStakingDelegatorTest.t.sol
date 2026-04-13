@@ -579,4 +579,49 @@ contract TacStakingDelegatorTest is OlympixUnitTest("TacStakingDelegator") {
             vm.expectRevert(TacStakingDelegator.TacStakingDelegatorInvalidTargetAddress.selector);
             delegator.executeBatch(targets, calldatas);
         }
+
+    function test_delegate_OpixBranch132_ElseExecuted_NonZeroAmount() public {
+            address plasmaVault = address(this);
+            MockWTAC wTacToken = new MockWTAC();
+            MockStaking staking = new MockStaking(vm);
+    
+            TacStakingDelegator delegator;
+            vm.startPrank(plasmaVault);
+            delegator = new TacStakingDelegator(plasmaVault, address(wTacToken), address(staking));
+            vm.stopPrank();
+    
+            uint256 amount = 1 ether;
+            vm.deal(address(delegator), amount);
+            vm.prank(address(delegator));
+            wTacToken.deposit{value: amount}();
+    
+            string[] memory validators = new string[](1);
+            validators[0] = "validator-1";
+            uint256[] memory amounts = new uint256[](1);
+            amounts[0] = amount;
+    
+            vm.prank(plasmaVault);
+            delegator.delegate(validators, amounts);
+        }
+
+    function test_executeBatch_OpixBranch339_Else_TargetNonZero() public {
+            // Deploy delegator with this test contract as PLASMA_VAULT (constructor requires msg.sender == plasmaVault)
+            TacStakingDelegator delegator;
+            address plasmaVault = address(this);
+            vm.startPrank(plasmaVault);
+            delegator = new TacStakingDelegator(plasmaVault, address(0x1), address(0x2));
+            vm.stopPrank();
+    
+            // Prepare a non‑zero target so `if (targets[i] == address(0))` is FALSE
+            // and the `else { assert(true); }` branch (opix-target-branch-339-Else) is taken
+            address[] memory targets = new address[](1);
+            targets[0] = address(this);
+            bytes[] memory calldatas = new bytes[](1);
+            calldatas[0] = ""; // empty calldata, delegatecall will revert but after the branch is executed
+    
+            // Call as PLASMA_VAULT so msg.sender check passes and we reach the loop
+            vm.prank(plasmaVault);
+            vm.expectRevert();
+            delegator.executeBatch(targets, calldatas);
+        }
 }

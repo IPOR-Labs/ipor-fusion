@@ -10,6 +10,8 @@ import {IPool} from "contracts/fuses/aerodrome/ext/IPool.sol";
 import {PlasmaVaultConfigLib} from "contracts/libraries/PlasmaVaultConfigLib.sol";
 import {TransientStorageLib} from "contracts/transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "contracts/libraries/TypeConversionLib.sol";
+
+import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "contracts/fuses/aerodrome/AreodromeLib.sol";
 contract AerodromeClaimFeesFuseTest is OlympixUnitTest("AerodromeClaimFeesFuse") {
 
     function setUp() public override {
@@ -101,5 +103,40 @@ contract AerodromeClaimFeesFuseTest is OlympixUnitTest("AerodromeClaimFeesFuse")
             // reads the previously stored inputs and hits the true branch guard
             bytes memory enterTransientCalldata = abi.encodeWithSignature("enterTransient()");
             plasmaVaultMock.execute(address(fuse), enterTransientCalldata);
+        }
+
+    function test_enter_SupportedPool_HitsIsMarketSubstrateGrantedElseBranch() public {
+            uint256 marketId = 1;
+            AerodromeClaimFeesFuse fuse = new AerodromeClaimFeesFuse(marketId);
+            PlasmaVaultMock plasmaVaultMock = new PlasmaVaultMock(address(fuse), address(0));
+    
+            // prepare a single non-zero pool address
+            address pool = address(0x1234);
+    
+            // grant this pool as a substrate for the given market so that
+            // PlasmaVaultConfigLib.isMarketSubstrateGranted(...) returns true
+            AerodromeSubstrate memory substrate = AerodromeSubstrate({
+                substrateType: AerodromeSubstrateType.Pool,
+                substrateAddress: pool
+            });
+            bytes32[] memory substrates = new bytes32[](1);
+            substrates[0] = AerodromeSubstrateLib.substrateToBytes32(substrate);
+            plasmaVaultMock.grantMarketSubstrates(marketId, substrates);
+    
+            // stub claimFees on pool so external call succeeds inside enter()
+            vm.mockCall(
+                pool,
+                abi.encodeWithSelector(IPool.claimFees.selector),
+                abi.encode(uint256(1), uint256(2))
+            );
+    
+            // when: call enter via delegatecall context of PlasmaVaultMock so that
+            // the storage used by PlasmaVaultConfigLib matches where we configured substrates
+            address[] memory pools = new address[](1);
+            pools[0] = pool;
+            AerodromeClaimFeesFuseEnterData memory data_ = AerodromeClaimFeesFuseEnterData({pools: pools});
+    
+            bytes memory callData = abi.encodeWithSelector(AerodromeClaimFeesFuse.enter.selector, data_);
+            plasmaVaultMock.execute(address(fuse), callData);
         }
 }

@@ -669,4 +669,136 @@ contract PriceOracleMiddlewareManagerTest is OlympixUnitTest("PriceOracleMiddlew
             assertEq(prices[0], 1e18, "asset price");
             assertEq(decimalsList[0], 18, "asset price decimals");
         }
+
+    function test_setPriceOracleMiddleware_hitsIfBranch_opix_target_branch_134_true() public {
+            // Arrange: deploy AccessManager authority
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+    
+            // Use a valid non-zero middleware implementing IPriceOracleMiddleware
+            MockPriceOracle initialMiddleware = new MockPriceOracle();
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(
+                address(accessManager),
+                address(initialMiddleware)
+            );
+    
+            // Grant this test contract permission to call setPriceOracleMiddleware via AccessManager
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = PriceOracleMiddlewareManager.setPriceOracleMiddleware.selector;
+            uint64 roleId = 0;
+            accessManager.setTargetFunctionRole(address(manager), selectors, roleId);
+            accessManager.grantRole(roleId, address(this), 0);
+    
+            // New middleware address to set
+            IPriceOracleMiddleware newMiddleware = IPriceOracleMiddleware(address(0xBEEF));
+    
+            // Act: call setPriceOracleMiddleware, which always executes the
+            // `if (true)` branch at opix-target-branch-134-True
+            manager.setPriceOracleMiddleware(address(newMiddleware));
+    
+            // Assert: manager now returns the newly set middleware address
+            assertEq(manager.getPriceOracleMiddleware(), address(newMiddleware), "middleware should be updated");
+        }
+
+    function test_getAssetPrice_WithCustomSource_HitsIfBranch_opix_target_branch_309_true() public {
+            // Arrange: deploy AccessManager authority (needed by AccessManagedUpgradeable)
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+    
+            // Deploy a mock middleware (will not be used because custom source is set)
+            MockPriceOracle mockOracle = new MockPriceOracle();
+    
+            // Deploy manager with AccessManager as authority and mock oracle as middleware
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(
+                address(accessManager),
+                address(mockOracle)
+            );
+    
+            // Grant this test contract permission to call setAssetsPriceSources via AccessManager
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = PriceOracleMiddlewareManager.setAssetsPriceSources.selector;
+            uint64 roleId = 0;
+            accessManager.setTargetFunctionRole(address(manager), selectors, roleId);
+            accessManager.grantRole(roleId, address(this), 0);
+    
+            // Configure a custom price feed source for an asset so `source != address(0)`
+            address asset = address(0xAA);
+            address source = address(0xBB);
+            address[] memory assets = new address[](1);
+            address[] memory sources = new address[](1);
+            assets[0] = asset;
+            sources[0] = source;
+    
+            // Call the restricted function through the manager (now authorized)
+            manager.setAssetsPriceSources(assets, sources);
+    
+            // Mock IPriceFeed at `source` for latestRoundData and decimals so that the custom
+            // source path in _getAssetPrice succeeds and does not revert with UnexpectedPriceResult
+            bytes memory latestRoundDataReturn = abi.encode(
+                uint80(1),          // roundId
+                int256(1e8),        // price with 8 decimals
+                uint256(0),         // startedAt
+                uint256(0),         // updatedAt
+                uint80(1)           // answeredInRound
+            );
+            vm.mockCall(
+                source,
+                abi.encodeWithSelector(IPriceFeed.latestRoundData.selector),
+                latestRoundDataReturn
+            );
+    
+            bytes memory decimalsReturn = abi.encode(uint8(8));
+            vm.mockCall(
+                source,
+                abi.encodeWithSelector(IPriceFeed.decimals.selector),
+                decimalsReturn
+            );
+    
+            // Act: call getAssetPrice, which will go through _getAssetPrice and
+            // take the `if (source != address(0))` branch marked opix-target-branch-309-True
+            (uint256 price, uint256 decimals) = manager.getAssetPrice(asset);
+    
+            // Assert: price was converted from 1e8 (8 decimals) to 1e18 (WAD), decimals == 18
+            assertEq(price, 1e18, "price should be converted to 18 decimals");
+            assertEq(decimals, 18, "decimals should be QUOTE_CURRENCY_DECIMALS (18)");
+        }
+
+    function test_getAssetPrice_MiddlewareDecimalsNot18_hitsTrueBranch_opix_target_branch_354_true() public {
+            // Arrange: deploy AccessManager authority (needed for constructor, though not used by this view)
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+    
+            // Deploy MockPriceOracle as middleware and configure asset with NON‑18 decimals (8)
+            MockPriceOracle middleware = new MockPriceOracle();
+            address asset = address(0xA1);
+            uint256 rawPrice = 1e8; // price with 8 decimals
+            uint256 priceDecimals = 8;
+            middleware.setAssetPriceWithDecimals(asset, rawPrice, priceDecimals);
+    
+            // Deploy manager with AccessManager as authority and our middleware
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(
+                address(accessManager),
+                address(middleware)
+            );
+    
+            // Act: call getAssetPrice so internal _getAssetPrice uses middleware branch
+            // and hits `if (decimals != QUOTE_CURRENCY_DECIMALS)` (opix-target-branch-354-True)
+            (uint256 assetPrice, uint256 decimals) = manager.getAssetPrice(asset);
+    
+            // Assert: price should be converted from 8 to 18 decimals and decimals set to 18
+            assertEq(assetPrice, rawPrice * 1e10, "price should be converted to 18 decimals");
+            assertEq(decimals, 18, "decimals should be 18 after conversion");
+        }
+
+    function test_getAssetPrice_MiddlewareReturnsNonPositivePrice_RevertsUnexpectedPriceResult_opix_target_branch_361_true() public {
+            // Arrange: deploy manager with non-zero authority and mock middleware
+            address dummyAuthority = address(0x1);
+            MockPriceOracle mockOracle = new MockPriceOracle();
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(dummyAuthority, address(mockOracle));
+    
+            // Configure middleware to return zero price for an asset (non-positive)
+            address asset = address(0xA1);
+            mockOracle.setAssetPriceWithDecimals(asset, 0, 18);
+    
+            // Act & Assert: getAssetPrice should revert with UnexpectedPriceResult
+            vm.expectRevert(PriceOracleMiddlewareManager.UnexpectedPriceResult.selector);
+            manager.getAssetPrice(asset);
+        }
 }
