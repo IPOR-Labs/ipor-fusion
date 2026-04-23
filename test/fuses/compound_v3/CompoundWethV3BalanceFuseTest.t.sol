@@ -59,7 +59,7 @@ contract CompoundWethV3BalanceFuseTest is Test {
 
     function testShouldBeAbleToWithdraw() external iterateSupportedTokens {
         // given
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"));
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 24883000);
         balanceFuse = new CompoundV3BalanceFuse(1, COMET_V3_WETH);
         CompoundV3SupplyFuse fuse = new CompoundV3SupplyFuse(1, COMET_V3_WETH);
 
