@@ -71,6 +71,20 @@ interface IPool {
     ) external returns (uint256);
 
     /**
+     * @notice Repays a borrowed `amount` on a specific reserve using the reserve aTokens, burning the
+     * equivalent debt tokens
+     * - E.g. User repays 100 USDC using 100 aUSDC, burning 100 variable/stable debt tokens
+     * @dev Passing uint256.max as amount will clean up any residual aToken dust balance, if the user aToken
+     * balance is not enough to cover the whole debt
+     * @param asset The address of the borrowed underlying asset previously borrowed
+     * @param amount The amount to repay
+     * - Send the value type(uint256).max in order to repay the whole debt for `asset` on the specific `debtMode`
+     * @param interestRateMode The interest rate mode at of the debt the user wants to repay: 1 for Stable, 2 for Variable
+     * @return The final amount repaid
+     */
+    function repayWithATokens(address asset, uint256 amount, uint256 interestRateMode) external returns (uint256);
+
+    /**
      * @notice Allows a user to use the protocol in eMode
      * @param categoryId The id of the category
      */
