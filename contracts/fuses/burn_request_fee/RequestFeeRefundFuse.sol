@@ -7,6 +7,15 @@ import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {IPlasmaVaultBase} from "../../interfaces/IPlasmaVaultBase.sol";
 import {WithdrawManager, WithdrawRequestInfo} from "../../managers/withdraw/WithdrawManager.sol";
 
+/// @dev Minimal interface for resolving the PlasmaVaultBase address on both new
+///      and legacy PlasmaVault deployments. New vaults expose this getter via
+///      `PlasmaVault.PLASMA_VAULT_BASE()` reading `PLASMA_VAULT_BASE_SLOT`;
+///      legacy (pre-migration) vaults expose the same selector backed by an
+///      `immutable` field baked into bytecode. Tracked in IL-7407.
+interface IPlasmaVaultBaseGetter {
+    function PLASMA_VAULT_BASE() external view returns (address);
+}
+
 /**
  * @title RequestFeeRefundFuse - Fuse for Refunding Request Fee Shares
  * @notice Specialized fuse contract that refunds request-fee shares collected
@@ -50,8 +59,11 @@ import {WithdrawManager, WithdrawRequestInfo} from "../../managers/withdraw/With
  *   requests (WithdrawManager uses inclusive `<=` on the boundary).
  * - No storage variables; fuse is stateless.
  * - Amount overflow bounded by ERC20 balance of WithdrawManager.
- * - Delegatecall targets are hard-coded storage reads from
- *   PlasmaVaultStorageLib (WithdrawManager and PlasmaVaultBase slots).
+ * - Delegatecall targets are resolved with backward-compat shims per IL-7407:
+ *   WithdrawManager via PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback()
+ *   (corrected + legacy slot), and PlasmaVaultBase via a self-staticcall to
+ *   `PLASMA_VAULT_BASE()` which is served from `PLASMA_VAULT_BASE_SLOT` on new
+ *   vaults and from a baked-in `immutable` on legacy ones.
  */
 
 /// @notice Data structure for the enter function parameters
@@ -71,8 +83,13 @@ struct RequestFeeRefundDataEnter {
 contract RequestFeeRefundFuse is IFuseCommon {
     using Address for address;
 
-    /// @notice Thrown when WithdrawManager address is not set in PlasmaVault.
+    /// @notice Thrown when WithdrawManager address is not set in either the
+    ///         corrected (IL-6952) or legacy slot of PlasmaVault.
     error RequestFeeRefundWithdrawManagerNotSet();
+
+    /// @notice Thrown when PlasmaVaultBase address resolved via the vault's
+    ///         `PLASMA_VAULT_BASE()` getter is `address(0)` (IL-7407).
+    error RequestFeeRefundPlasmaVaultBaseNotSet();
 
     /// @notice Thrown when the recipient address is address(0).
     /// @dev Guards against drifting into BurnRequestFeeFuse semantics.
@@ -147,12 +164,18 @@ contract RequestFeeRefundFuse is IFuseCommon {
     /// - Validates request existence and expiry.
     ///
     /// @param data_ Struct containing the recipient and the amount to refund.
-    /// @dev IMPORTANT: The fuse reads the WITHDRAW_MANAGER storage slot via
-    /// PlasmaVaultStorageLib.getWithdrawManager(). This slot was corrected in
-    /// IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER. Any
-    /// changes to that slot must be coordinated with all fuses that access
-    /// it, because fuses execute via delegatecall in the PlasmaVault storage
-    /// context.
+    /// @dev IMPORTANT: This fuse resolves vault addresses with backward-compat shims
+    /// so the same bytecode runs against new and legacy PlasmaVaults (IL-7407):
+    ///  1. WithdrawManager: read via PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback(),
+    ///     which prefers the corrected WITHDRAW_MANAGER slot (IL-6952, audit R4H7) and
+    ///     falls back to the legacy slot used by pre-IL-6952 deployments.
+    ///  2. PlasmaVaultBase: read by calling `PLASMA_VAULT_BASE()` on the vault itself
+    ///     (delegatecall context ⇒ address(this) == PlasmaVault). New vaults serve the
+    ///     value from `PLASMA_VAULT_BASE_SLOT`; legacy vaults (e.g. Clearstar) serve it
+    ///     from a baked-in `immutable`. Both expose the same external selector, so the
+    ///     fuse stays drop-in compatible without storage migration.
+    /// Any changes to either slot must be coordinated with BurnRequestFeeFuse,
+    /// PlasmaVaultRequestSharesFuse, UpdateWithdrawManagerMaintenanceFuse and the helper.
     function enter(RequestFeeRefundDataEnter memory data_) public {
         if (data_.amount == 0) {
             return;
@@ -162,7 +185,7 @@ contract RequestFeeRefundFuse is IFuseCommon {
             revert RequestFeeRefundInvalidRecipient();
         }
 
-        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback();
         if (withdrawManager == address(0)) {
             revert RequestFeeRefundWithdrawManagerNotSet();
         }
@@ -181,12 +204,17 @@ contract RequestFeeRefundFuse is IFuseCommon {
             );
         }
 
+        address plasmaVaultBase = IPlasmaVaultBaseGetter(address(this)).PLASMA_VAULT_BASE();
+        if (plasmaVaultBase == address(0)) {
+            revert RequestFeeRefundPlasmaVaultBaseNotSet();
+        }
+
         // Route transfer through PlasmaVaultBase.updateInternal to ensure voting
         // checkpoints and supply-cap validations are properly executed on both
         // the source (withdrawManager) and destination (recipient). Using
         // delegatecall ensures the vault's _update pipeline is used instead of
         // bypassing it (see IL-6952 / BurnRequestFeeVotingRegressionTest).
-        PlasmaVaultStorageLib.getPlasmaVaultBase().functionDelegateCall(
+        plasmaVaultBase.functionDelegateCall(
             abi.encodeWithSelector(
                 IPlasmaVaultBase.updateInternal.selector,
                 withdrawManager,

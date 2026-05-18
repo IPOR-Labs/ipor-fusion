@@ -109,10 +109,22 @@ contract DelegateCaller {
     // Track if MockPlasmaVaultBase.updateInternal was called
     bool public updateInternalWasCalled;
 
+    /// @dev Storage slot for PlasmaVaultBase address; mirrors PlasmaVaultStorageLib.
+    bytes32 private constant _PLASMA_VAULT_BASE_SLOT =
+        0x708fd1151214a098976e0893cd3883792c21aeb94a31cd7733c8947c13c23000;
+
     function callFuse(address fuse, bytes memory data) external returns (bytes memory) {
         (bool success, bytes memory result) = fuse.delegatecall(data);
         require(success, "Delegatecall failed");
         return result;
+    }
+
+    /// @dev Mirrors `PlasmaVault.PLASMA_VAULT_BASE()` so the IL-7407 self-staticcall
+    ///      resolution inside the fuses finds the test's mock PlasmaVaultBase here.
+    function PLASMA_VAULT_BASE() external view returns (address base) {
+        assembly {
+            base := sload(_PLASMA_VAULT_BASE_SLOT)
+        }
     }
 
     // Allow checking storage after delegatecall

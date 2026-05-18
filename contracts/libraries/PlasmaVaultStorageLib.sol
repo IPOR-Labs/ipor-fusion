@@ -722,6 +722,23 @@ library PlasmaVaultStorageLib {
     bytes32 private constant WITHDRAW_MANAGER = 0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100;
 
     /**
+     * @dev Legacy storage slot for withdraw manager — pre-IL-6952 deployments.
+     * @notice Used as fallback when the corrected slot `WITHDRAW_MANAGER` returns address(0).
+     *
+     * Value differs from `CALLBACK_HANDLER` only in the last byte (`0x11` vs `0x00`) —
+     * both originate from the same `keccak256` preimage where the legacy slot was not
+     * masked by `& ~bytes32(uint256(0xff))` per ERC-7201. The value below is the raw
+     * constant that was deployed on legacy PlasmaVaults (e.g. Clearstar vault) and is
+     * pinned by `PlasmaVaultStorageLibSlotTest.testWithdrawManagerLegacySlot_pinsDeployedStateValue`.
+     *
+     * NEVER change this constant — it is a deployed-state value, not a recomputable slot.
+     *
+     * Tracked in IL-7407.
+     */
+    bytes32 private constant WITHDRAW_MANAGER_LEGACY_SLOT =
+        0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e11;
+
+    /**
      * @dev Storage slot for plasma vault base address. Computed as:
      * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PlasmaVaultBase")) - 1)) & ~bytes32(uint256(0xff))
      */
@@ -1128,6 +1145,24 @@ library PlasmaVaultStorageLib {
     function getWithdrawManager() internal pure returns (WithdrawManager storage withdrawManager) {
         assembly {
             withdrawManager.slot := WITHDRAW_MANAGER
+        }
+    }
+
+    /// @notice Reads withdraw-manager address with legacy-slot fallback (IL-7407).
+    /// @dev Returns the value of the corrected `WITHDRAW_MANAGER` slot (IL-6952).
+    ///      If that slot is `address(0)`, falls back to the legacy slot
+    ///      `WITHDRAW_MANAGER_LEGACY_SLOT` used by pre-IL-6952 PlasmaVault deployments.
+    ///      Returns `address(0)` when neither slot is populated.
+    ///
+    ///      Intended exclusively for fuses that must run unchanged against both the
+    ///      new and old PlasmaVault storage layouts (RequestFeeRefundFuse,
+    ///      BurnRequestFeeFuse). New code MUST keep using `getWithdrawManager().manager`.
+    function getWithdrawManagerAddressWithLegacyFallback() internal view returns (address withdrawManager) {
+        withdrawManager = getWithdrawManager().manager;
+        if (withdrawManager == address(0)) {
+            assembly ("memory-safe") {
+                withdrawManager := sload(WITHDRAW_MANAGER_LEGACY_SLOT)
+            }
         }
     }
 
