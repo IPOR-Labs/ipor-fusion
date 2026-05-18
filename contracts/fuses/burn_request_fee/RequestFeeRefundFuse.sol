@@ -51,7 +51,9 @@ import {WithdrawManager, WithdrawRequestInfo} from "../../managers/withdraw/With
  * - No storage variables; fuse is stateless.
  * - Amount overflow bounded by ERC20 balance of WithdrawManager.
  * - Delegatecall targets are hard-coded storage reads from
- *   PlasmaVaultStorageLib (WithdrawManager and PlasmaVaultBase slots).
+ *   PlasmaVaultStorageLib (WithdrawManager via
+ *   getWithdrawManagerAddressWithLegacyFallback() with new+legacy slot
+ *   support per IL-7407, and PlasmaVaultBase slot).
  */
 
 /// @notice Data structure for the enter function parameters
@@ -71,7 +73,8 @@ struct RequestFeeRefundDataEnter {
 contract RequestFeeRefundFuse is IFuseCommon {
     using Address for address;
 
-    /// @notice Thrown when WithdrawManager address is not set in PlasmaVault.
+    /// @notice Thrown when WithdrawManager address is not set in either the
+    ///         corrected (IL-6952) or legacy slot of PlasmaVault.
     error RequestFeeRefundWithdrawManagerNotSet();
 
     /// @notice Thrown when the recipient address is address(0).
@@ -147,12 +150,14 @@ contract RequestFeeRefundFuse is IFuseCommon {
     /// - Validates request existence and expiry.
     ///
     /// @param data_ Struct containing the recipient and the amount to refund.
-    /// @dev IMPORTANT: The fuse reads the WITHDRAW_MANAGER storage slot via
-    /// PlasmaVaultStorageLib.getWithdrawManager(). This slot was corrected in
-    /// IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER. Any
-    /// changes to that slot must be coordinated with all fuses that access
-    /// it, because fuses execute via delegatecall in the PlasmaVault storage
-    /// context.
+    /// @dev IMPORTANT: The fuse reads the WithdrawManager address via
+    /// PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback(), which:
+    ///  1. reads the corrected WITHDRAW_MANAGER slot introduced in IL-6952 (audit R4H7), and
+    ///  2. falls back to the legacy slot (pre-IL-6952 deployments) when the new slot is zero.
+    /// This keeps the fuse drop-in compatible with both new and legacy PlasmaVaults
+    /// (e.g. the Clearstar vault) without requiring storage migration. Tracked in IL-7407.
+    /// Any changes to either slot must be coordinated with BurnRequestFeeFuse,
+    /// PlasmaVaultRequestSharesFuse, UpdateWithdrawManagerMaintenanceFuse and the helper.
     function enter(RequestFeeRefundDataEnter memory data_) public {
         if (data_.amount == 0) {
             return;
@@ -162,7 +167,7 @@ contract RequestFeeRefundFuse is IFuseCommon {
             revert RequestFeeRefundInvalidRecipient();
         }
 
-        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback();
         if (withdrawManager == address(0)) {
             revert RequestFeeRefundWithdrawManagerNotSet();
         }

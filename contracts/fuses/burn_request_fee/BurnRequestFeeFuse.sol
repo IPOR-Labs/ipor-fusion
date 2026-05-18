@@ -64,7 +64,8 @@ struct BurnRequestFeeDataEnter {
 contract BurnRequestFeeFuse is IFuseCommon {
     using Address for address;
 
-    /// @notice Thrown when WithdrawManager address is not set in PlasmaVault
+    /// @notice Thrown when WithdrawManager address is not set in either the
+    ///         corrected (IL-6952) or legacy slot of PlasmaVault.
     error BurnRequestFeeWithdrawManagerNotSet();
 
     /// @notice Thrown when exit function is called (not implemented)
@@ -107,12 +108,14 @@ contract BurnRequestFeeFuse is IFuseCommon {
     /// - Uses nested delegatecall to PlasmaVaultBase for proper hook execution
     ///
     /// @param data_ Struct containing the amount of shares to burn
-    /// @dev IMPORTANT: This fuse reads the WITHDRAW_MANAGER storage slot via PlasmaVaultStorageLib.getWithdrawManager().
-    /// This slot was corrected in IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER.
-    /// Any changes to the WITHDRAW_MANAGER slot in PlasmaVaultStorageLib must be carefully coordinated
-    /// with all fuses that access it, as fuses execute via delegatecall in the PlasmaVault storage context.
+    /// @dev IMPORTANT: This fuse reads the WithdrawManager address via
+    /// PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback(), which:
+    ///  1. reads the corrected WITHDRAW_MANAGER slot introduced in IL-6952 (audit R4H7), and
+    ///  2. falls back to the legacy slot (pre-IL-6952 deployments) when the new slot is zero.
+    /// Keeps the fuse drop-in compatible with both new and legacy PlasmaVaults without
+    /// requiring storage migration. Tracked in IL-7407.
     function enter(BurnRequestFeeDataEnter memory data_) public {
-        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+        address withdrawManager = PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback();
 
         if (withdrawManager == address(0)) {
             revert BurnRequestFeeWithdrawManagerNotSet();

@@ -172,6 +172,20 @@ contract PlasmaVaultStorageLibSlotTest is Test {
         assertTrue(actualSlot != callbackHandlerSlot, "WITHDRAW_MANAGER must differ from CALLBACK_HANDLER");
     }
 
+    /// @notice Pins the IL-7407 legacy fallback slot to the exact deployed-state value.
+    /// @dev This is the slot pre-IL-6952 PlasmaVaults (e.g. Clearstar) wrote the
+    ///      withdraw-manager address to. The constant `WITHDRAW_MANAGER_LEGACY_SLOT`
+    ///      in PlasmaVaultStorageLib MUST equal this value or
+    ///      `getWithdrawManagerAddressWithLegacyFallback()` will silently return zero
+    ///      on legacy vaults and break refunds/burns.
+    function testWithdrawManagerLegacySlot_pinsDeployedStateValue() public pure {
+        bytes32 expectedSlot = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e11;
+        bytes32 callbackHandlerSlot = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
+        assertTrue(expectedSlot != callbackHandlerSlot, "legacy slot must differ from CALLBACK_HANDLER");
+        // Differs from CALLBACK_HANDLER by exactly the last byte (0x11 vs 0x00).
+        assertEq(uint256(expectedSlot) - uint256(callbackHandlerSlot), 0x11, "legacy slot must be CALLBACK_HANDLER + 0x11");
+    }
+
     /// @notice Verifies PLASMA_VAULT_BASE_SLOT
     function testPlasmaVaultBaseSlot() public pure {
         bytes32 expectedSlot = _computeSlot("io.ipor.fusion.PlasmaVaultBase");
