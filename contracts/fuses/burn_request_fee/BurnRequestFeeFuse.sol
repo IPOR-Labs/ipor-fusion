@@ -8,6 +8,15 @@ import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.s
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IPlasmaVaultBase} from "../../interfaces/IPlasmaVaultBase.sol";
 
+/// @dev Minimal interface for resolving the PlasmaVaultBase address on both new
+///      and legacy PlasmaVault deployments. New vaults expose this getter via
+///      `PlasmaVault.PLASMA_VAULT_BASE()` reading `PLASMA_VAULT_BASE_SLOT`;
+///      legacy (pre-migration) vaults expose the same selector backed by an
+///      `immutable` field baked into bytecode. Tracked in IL-7407.
+interface IPlasmaVaultBaseGetter {
+    function PLASMA_VAULT_BASE() external view returns (address);
+}
+
 /**
  * @title BurnRequestFeeFuse - Fuse for Burning Request Fee Shares
  * @notice Specialized fuse contract for burning request fee shares from the PlasmaVault
@@ -68,6 +77,10 @@ contract BurnRequestFeeFuse is IFuseCommon {
     ///         corrected (IL-6952) or legacy slot of PlasmaVault.
     error BurnRequestFeeWithdrawManagerNotSet();
 
+    /// @notice Thrown when PlasmaVaultBase address resolved via the vault's
+    ///         `PLASMA_VAULT_BASE()` getter is `address(0)` (IL-7407).
+    error BurnRequestFeePlasmaVaultBaseNotSet();
+
     /// @notice Thrown when exit function is called (not implemented)
     error BurnRequestFeeExitNotImplemented();
 
@@ -108,12 +121,16 @@ contract BurnRequestFeeFuse is IFuseCommon {
     /// - Uses nested delegatecall to PlasmaVaultBase for proper hook execution
     ///
     /// @param data_ Struct containing the amount of shares to burn
-    /// @dev IMPORTANT: This fuse reads the WithdrawManager address via
-    /// PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback(), which:
-    ///  1. reads the corrected WITHDRAW_MANAGER slot introduced in IL-6952 (audit R4H7), and
-    ///  2. falls back to the legacy slot (pre-IL-6952 deployments) when the new slot is zero.
-    /// Keeps the fuse drop-in compatible with both new and legacy PlasmaVaults without
-    /// requiring storage migration. Tracked in IL-7407.
+    /// @dev IMPORTANT: This fuse resolves vault addresses with backward-compat shims
+    /// so the same bytecode runs against new and legacy PlasmaVaults (IL-7407):
+    ///  1. WithdrawManager: read via PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback(),
+    ///     which prefers the corrected WITHDRAW_MANAGER slot (IL-6952, audit R4H7) and
+    ///     falls back to the legacy slot used by pre-IL-6952 deployments.
+    ///  2. PlasmaVaultBase: read by calling `PLASMA_VAULT_BASE()` on the vault itself
+    ///     (delegatecall context ⇒ address(this) == PlasmaVault). New vaults serve the
+    ///     value from `PLASMA_VAULT_BASE_SLOT`; legacy vaults (e.g. Clearstar) serve it
+    ///     from a baked-in `immutable`. Both expose the same external selector, so the
+    ///     fuse stays drop-in compatible without storage migration.
     function enter(BurnRequestFeeDataEnter memory data_) public {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback();
 
@@ -125,10 +142,15 @@ contract BurnRequestFeeFuse is IFuseCommon {
             return;
         }
 
+        address plasmaVaultBase = IPlasmaVaultBaseGetter(address(this)).PLASMA_VAULT_BASE();
+        if (plasmaVaultBase == address(0)) {
+            revert BurnRequestFeePlasmaVaultBaseNotSet();
+        }
+
         // Route burn through PlasmaVaultBase.updateInternal to ensure voting checkpoints
         // and supply cap validations are properly executed. Using delegatecall ensures
         // the vault's _update pipeline is used instead of bypassing it.
-        PlasmaVaultStorageLib.getPlasmaVaultBase().functionDelegateCall(
+        plasmaVaultBase.functionDelegateCall(
             abi.encodeWithSelector(IPlasmaVaultBase.updateInternal.selector, withdrawManager, address(0), data_.amount)
         );
 

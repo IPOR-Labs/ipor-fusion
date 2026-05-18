@@ -40,6 +40,13 @@ contract RequestFeeRefundFuseLegacySlotTest is Test {
         0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100;
     bytes32 private constant WITHDRAW_MANAGER_LEGACY_SLOT =
         0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e11;
+    bytes32 private constant PLASMA_VAULT_BASE_SLOT =
+        0x708fd1151214a098976e0893cd3883792c21aeb94a31cd7733c8947c13c23000;
+
+    /// @dev Selector of `PLASMA_VAULT_BASE()` (the getter exposed by both new
+    ///      and legacy PlasmaVault deployments). Used to mock the legacy
+    ///      immutable-backed return path in IL-7407 backward-compat tests.
+    bytes4 private constant PLASMA_VAULT_BASE_SELECTOR = bytes4(keccak256("PLASMA_VAULT_BASE()"));
 
     address private _plasmaVault;
     address private _priceOracle = 0x9838c0d15b439816D25d5fD1AEbd259EeddB66B4;
@@ -324,5 +331,130 @@ contract RequestFeeRefundFuseLegacySlotTest is Test {
             userBalBefore + feeAmount,
             unicode"new slot must win — refund must come from real WithdrawManager"
         );
+    }
+
+    // ================================================================
+    // IL-7407 backward-compat for PlasmaVaultBase (immutable getter)
+    // ================================================================
+    //
+    // Pre-migration PlasmaVaults (e.g. Clearstar / yoUSD Looopeer on Base)
+    // expose `PLASMA_VAULT_BASE()` backed by an `immutable` baked into the
+    // deployed bytecode — `PLASMA_VAULT_BASE_SLOT` is empty on those vaults.
+    // New deployments serve the same selector from storage. The fuse resolves
+    // the address via a self-staticcall to `PLASMA_VAULT_BASE()`, so both
+    // shapes must work without per-vault migration. We simulate the legacy
+    // shape by clearing the storage slot and mocking the public getter so it
+    // still returns the real PlasmaVaultBase address (as the legacy
+    // immutable would).
+
+    /// @dev Captures the real PlasmaVaultBase address from the vault, clears the
+    ///      `PLASMA_VAULT_BASE_SLOT`, and mocks `PLASMA_VAULT_BASE()` so it
+    ///      keeps returning the captured address. Mirrors the legacy
+    ///      (immutable-backed) deployment shape.
+    function _simulateLegacyPlasmaVaultBase() private returns (address realBase) {
+        realBase = PlasmaVault(_plasmaVault).PLASMA_VAULT_BASE();
+        require(realBase != address(0), "fixture: PLASMA_VAULT_BASE must be non-zero before legacy simulation");
+        vm.store(_plasmaVault, PLASMA_VAULT_BASE_SLOT, bytes32(0));
+        vm.mockCall(_plasmaVault, abi.encodeWithSelector(PLASMA_VAULT_BASE_SELECTOR), abi.encode(realBase));
+    }
+
+    /// @notice Refund must work when `PLASMA_VAULT_BASE_SLOT` is empty but the
+    ///         vault still serves `PLASMA_VAULT_BASE()` from an immutable.
+    function testRefund_worksWhenPlasmaVaultBaseOnlyInImmutableGetter() external {
+        (uint256 feeAmount, uint256 endTs) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
+        assertGt(feeAmount, 0, "fee must be non-zero");
+
+        vm.warp(endTs + 1);
+        _simulateLegacyPlasmaVaultBase();
+
+        uint256 userBalBefore = PlasmaVaultBase(_plasmaVault).balanceOf(_USER);
+        uint256 wmBalBefore = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
+
+        _executeRefund(_USER, feeAmount);
+
+        assertEq(
+            PlasmaVaultBase(_plasmaVault).balanceOf(_USER),
+            userBalBefore + feeAmount,
+            "user balance must grow by feeAmount"
+        );
+        assertEq(
+            PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager),
+            wmBalBefore - feeAmount,
+            "wm balance must fall by feeAmount"
+        );
+    }
+
+    /// @notice Burn must work when `PLASMA_VAULT_BASE_SLOT` is empty but the
+    ///         vault still serves `PLASMA_VAULT_BASE()` from an immutable.
+    function testBurn_worksWhenPlasmaVaultBaseOnlyInImmutableGetter() external {
+        (uint256 feeAmount, ) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
+        assertGt(feeAmount, 0, "fee must be non-zero");
+
+        _simulateLegacyPlasmaVaultBase();
+
+        uint256 totalSupplyBefore = PlasmaVaultBase(_plasmaVault).totalSupply();
+        uint256 wmBalBefore = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: address(_burnRequestFeeFuse),
+            data: abi.encodeWithSelector(BurnRequestFeeFuse.enter.selector, BurnRequestFeeDataEnter({amount: feeAmount}))
+        });
+
+        vm.prank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        assertEq(
+            PlasmaVaultBase(_plasmaVault).totalSupply(),
+            totalSupplyBefore - feeAmount,
+            "totalSupply must drop by burnt amount"
+        );
+        assertEq(
+            PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager),
+            wmBalBefore - feeAmount,
+            "wm balance must drop by burnt amount"
+        );
+    }
+
+    /// @notice Refund must revert with a domain-specific error when both the
+    ///         storage slot and the public getter return `address(0)`.
+    function testRefund_reverts_whenPlasmaVaultBaseUnresolvable() external {
+        (uint256 feeAmount, uint256 endTs) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
+        vm.warp(endTs + 1);
+
+        vm.store(_plasmaVault, PLASMA_VAULT_BASE_SLOT, bytes32(0));
+        vm.mockCall(_plasmaVault, abi.encodeWithSelector(PLASMA_VAULT_BASE_SELECTOR), abi.encode(address(0)));
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: address(_requestFeeRefundFuse),
+            data: abi.encodeWithSelector(
+                RequestFeeRefundFuse.enter.selector,
+                RequestFeeRefundDataEnter({recipient: _USER, amount: feeAmount})
+            )
+        });
+
+        vm.prank(_ALPHA);
+        vm.expectRevert(RequestFeeRefundFuse.RequestFeeRefundPlasmaVaultBaseNotSet.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    /// @notice Burn must revert with a domain-specific error when both the
+    ///         storage slot and the public getter return `address(0)`.
+    function testBurn_reverts_whenPlasmaVaultBaseUnresolvable() external {
+        (uint256 feeAmount, ) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
+
+        vm.store(_plasmaVault, PLASMA_VAULT_BASE_SLOT, bytes32(0));
+        vm.mockCall(_plasmaVault, abi.encodeWithSelector(PLASMA_VAULT_BASE_SELECTOR), abi.encode(address(0)));
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: address(_burnRequestFeeFuse),
+            data: abi.encodeWithSelector(BurnRequestFeeFuse.enter.selector, BurnRequestFeeDataEnter({amount: feeAmount}))
+        });
+
+        vm.prank(_ALPHA);
+        vm.expectRevert(BurnRequestFeeFuse.BurnRequestFeePlasmaVaultBaseNotSet.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
     }
 }
