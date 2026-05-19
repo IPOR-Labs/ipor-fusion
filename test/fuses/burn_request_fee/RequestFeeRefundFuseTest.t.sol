@@ -253,7 +253,7 @@ contract RequestFeeRefundFuseTest is Test {
         uint256 wmVotesBefore = IVotes(_plasmaVault).getVotes(_withdrawManager);
 
         vm.expectEmit(true, true, true, true, address(_plasmaVault));
-        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, feeAmount, endTs);
+        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, feeAmount);
         _executeRefund(_USER, feeAmount);
 
         assertEq(
@@ -290,7 +290,7 @@ contract RequestFeeRefundFuseTest is Test {
         uint256 wmBalStart = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
 
         vm.expectEmit(true, true, true, true, address(_plasmaVault));
-        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, half, endTs);
+        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, half);
         _executeRefund(_USER, half);
 
         assertEq(PlasmaVaultBase(_plasmaVault).balanceOf(_USER), userBalStart + half, "after first refund: user");
@@ -301,7 +301,7 @@ contract RequestFeeRefundFuseTest is Test {
         );
 
         vm.expectEmit(true, true, true, true, address(_plasmaVault));
-        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, half, endTs);
+        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, half);
         _executeRefund(_USER, half);
 
         assertEq(
@@ -316,30 +316,21 @@ contract RequestFeeRefundFuseTest is Test {
         );
     }
 
-    function testEnter_refundToDifferentRecipient_whenRecipientExpired() external {
+    function testEnter_refundsMultipleRecipients_independentOfRequestState() external {
         (uint256 feeA, uint256 endA) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
 
         vm.warp(endA + 1);
-        (uint256 feeB, uint256 endB) = _userRequestShares(_USER_B, _USER_REQUEST_AMOUNT);
+        (uint256 feeB, ) = _userRequestShares(_USER_B, _USER_REQUEST_AMOUNT);
         assertGt(feeA, 0);
         assertGt(feeB, 0);
-        assertGt(endB, block.timestamp, "USER_B request must still be active");
 
         uint256 userABefore = PlasmaVaultBase(_plasmaVault).balanceOf(_USER);
         _executeRefund(_USER, feeA);
         assertEq(PlasmaVaultBase(_plasmaVault).balanceOf(_USER), userABefore + feeA);
 
-        FuseAction[] memory actions = _buildRefundAction(_USER_B, feeB);
-        vm.prank(_ALPHA);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RequestFeeRefundFuse.RequestFeeRefundRequestStillActive.selector,
-                _USER_B,
-                endB,
-                block.timestamp
-            )
-        );
-        PlasmaVault(_plasmaVault).execute(actions);
+        uint256 userBBefore = PlasmaVaultBase(_plasmaVault).balanceOf(_USER_B);
+        _executeRefund(_USER_B, feeB);
+        assertEq(PlasmaVaultBase(_plasmaVault).balanceOf(_USER_B), userBBefore + feeB);
     }
 
     /// @notice Fuzz partial refund amounts in [1, feeAmount]. Invariant:
@@ -376,86 +367,6 @@ contract RequestFeeRefundFuseTest is Test {
         FuseAction[] memory actions = _buildRefundAction(address(0), 1);
         vm.prank(_ALPHA);
         vm.expectRevert(RequestFeeRefundFuse.RequestFeeRefundInvalidRecipient.selector);
-        PlasmaVault(_plasmaVault).execute(actions);
-    }
-
-    function testEnter_reverts_whenRecipientHasNoRequest() external {
-        address fresh = address(0xDEADBEEF);
-        FuseAction[] memory actions = _buildRefundAction(fresh, 1);
-        vm.prank(_ALPHA);
-        vm.expectRevert(
-            abi.encodeWithSelector(RequestFeeRefundFuse.RequestFeeRefundNoActiveRequest.selector, fresh)
-        );
-        PlasmaVault(_plasmaVault).execute(actions);
-    }
-
-    function testEnter_reverts_whenRecipientIsWithdrawManager() external {
-        FuseAction[] memory actions = _buildRefundAction(_withdrawManager, 1);
-        vm.prank(_ALPHA);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RequestFeeRefundFuse.RequestFeeRefundNoActiveRequest.selector,
-                _withdrawManager
-            )
-        );
-        PlasmaVault(_plasmaVault).execute(actions);
-    }
-
-    function testEnter_reverts_whenRequestStillActive() external {
-        (uint256 feeAmount, uint256 endTs) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
-        assertGt(endTs, block.timestamp, "request must still be active");
-
-        FuseAction[] memory actions = _buildRefundAction(_USER, feeAmount);
-        vm.prank(_ALPHA);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RequestFeeRefundFuse.RequestFeeRefundRequestStillActive.selector,
-                _USER,
-                endTs,
-                block.timestamp
-            )
-        );
-        PlasmaVault(_plasmaVault).execute(actions);
-    }
-
-    /// @notice A second requestShares call overwrites endWithdrawWindowTimestamp.
-    ///         Refund must observe the refreshed expiry, not the original one.
-    function testEnter_reverts_whenNewRequestOverwritesExpiredOne() external {
-        (, uint256 endTs1) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
-
-        vm.warp(endTs1 + 1);
-
-        (, uint256 endTs2) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
-        assertGt(endTs2, endTs1, "second request must refresh endTs forward");
-        assertGt(endTs2, block.timestamp, "second request must be active");
-
-        FuseAction[] memory actions = _buildRefundAction(_USER, 1);
-        vm.prank(_ALPHA);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RequestFeeRefundFuse.RequestFeeRefundRequestStillActive.selector,
-                _USER,
-                endTs2,
-                block.timestamp
-            )
-        );
-        PlasmaVault(_plasmaVault).execute(actions);
-    }
-
-    function testEnter_reverts_atExactExpiryBoundary() external {
-        (uint256 feeAmount, uint256 endTs) = _userRequestShares(_USER, _USER_REQUEST_AMOUNT);
-        vm.warp(endTs);
-
-        FuseAction[] memory actions = _buildRefundAction(_USER, feeAmount);
-        vm.prank(_ALPHA);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RequestFeeRefundFuse.RequestFeeRefundRequestStillActive.selector,
-                _USER,
-                endTs,
-                endTs
-            )
-        );
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
@@ -546,7 +457,7 @@ contract RequestFeeRefundFuseTest is Test {
         );
 
         vm.expectEmit(true, true, true, true, address(_plasmaVault));
-        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, feeAmount, endTs);
+        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, feeAmount);
         _executeRefund(_USER, feeAmount);
 
         assertEq(

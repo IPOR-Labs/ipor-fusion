@@ -5,7 +5,6 @@ import {IFuseCommon} from "../IFuse.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {IPlasmaVaultBase} from "../../interfaces/IPlasmaVaultBase.sol";
-import {WithdrawManager, WithdrawRequestInfo} from "../../managers/withdraw/WithdrawManager.sol";
 
 /// @dev Minimal interface for resolving the PlasmaVaultBase address on both new
 ///      and legacy PlasmaVault deployments. New vaults expose this getter via
@@ -38,8 +37,6 @@ interface IPlasmaVaultBaseGetter {
  *
  * Core Features:
  * - Refunds fee shares from WithdrawManager to a specified recipient.
- * - Enforces that the recipient's WithdrawRequest has expired (strict `>`
- *   against endWithdrawWindowTimestamp).
  * - Routes transfer through the vault's _update pipeline for proper hook
  *   execution.
  * - Maintains version and market tracking.
@@ -48,15 +45,13 @@ interface IPlasmaVaultBaseGetter {
  * Integration Points:
  * - PlasmaVault: Main vault interaction (via delegatecall).
  * - PlasmaVaultBase: Token state management (via nested delegatecall).
- * - WithdrawManager: Source of fee shares and authority on request expiry.
+ * - WithdrawManager: Source of fee shares.
  * - Fuse System: Execution framework.
  *
  * Security Considerations:
  * - Transfer routes through vault's _update pipeline to maintain voting
  *   checkpoints on both the withdraw manager and the recipient.
  * - Recipient guard against address(0) prevents accidental burn semantics.
- * - Strict-`>` expiry check prevents double-dip with active withdraw
- *   requests (WithdrawManager uses inclusive `<=` on the boundary).
  * - No storage variables; fuse is stateless.
  * - Amount overflow bounded by ERC20 balance of WithdrawManager.
  * - Delegatecall targets are resolved with backward-compat shims per IL-7407:
@@ -70,8 +65,6 @@ interface IPlasmaVaultBaseGetter {
 /// @dev Used to pass refund parameters to the enter function.
 struct RequestFeeRefundDataEnter {
     /// @notice Address that will receive the refunded fee shares.
-    /// @dev Must have a previously submitted withdraw request whose window
-    ///      has strictly expired.
     address recipient;
     /// @notice Amount of fee shares to refund. `0` is a no-op.
     uint256 amount;
@@ -95,20 +88,6 @@ contract RequestFeeRefundFuse is IFuseCommon {
     /// @dev Guards against drifting into BurnRequestFeeFuse semantics.
     error RequestFeeRefundInvalidRecipient();
 
-    /// @notice Thrown when the recipient has never submitted a withdraw request.
-    /// @param recipient The recipient address with no prior request.
-    error RequestFeeRefundNoActiveRequest(address recipient);
-
-    /// @notice Thrown when the recipient's withdraw request has not yet expired.
-    /// @param recipient Recipient address whose request is still active.
-    /// @param endWithdrawWindowTimestamp Stored expiry of the recipient's request.
-    /// @param nowTimestamp `block.timestamp` at the time of the call.
-    error RequestFeeRefundRequestStillActive(
-        address recipient,
-        uint256 endWithdrawWindowTimestamp,
-        uint256 nowTimestamp
-    );
-
     /// @notice Thrown when exit function is called (not implemented).
     error RequestFeeRefundExitNotImplemented();
 
@@ -116,14 +95,7 @@ contract RequestFeeRefundFuse is IFuseCommon {
     /// @param version Address of the fuse contract version.
     /// @param recipient Address that received the refund.
     /// @param amount Amount of shares transferred.
-    /// @param endWithdrawWindowTimestamp Expiry timestamp of the recipient's request
-    ///        at the time of refund.
-    event RequestFeeRefundEnter(
-        address version,
-        address indexed recipient,
-        uint256 amount,
-        uint256 endWithdrawWindowTimestamp
-    );
+    event RequestFeeRefundEnter(address version, address recipient, uint256 amount);
 
     /// @notice Address of this fuse contract version.
     /// @dev Immutable value set in constructor; equals `address(this)`.
@@ -149,9 +121,6 @@ contract RequestFeeRefundFuse is IFuseCommon {
     /// - Zero-amount: immediate return, no-op (parity with BurnRequestFeeFuse).
     /// - Validates recipient is non-zero.
     /// - Verifies WithdrawManager is set in PlasmaVault.
-    /// - Reads recipient's WithdrawRequest via WithdrawManager.requestInfo.
-    /// - Requires a request to exist AND block.timestamp >
-    ///   endWithdrawWindowTimestamp (strict).
     /// - Transfers `amount` shares from WithdrawManager to recipient via
     ///   delegatecall to PlasmaVaultBase.updateInternal.
     /// - Emits RequestFeeRefundEnter.
@@ -161,7 +130,6 @@ contract RequestFeeRefundFuse is IFuseCommon {
     ///   checkpoints on both WithdrawManager and recipient.
     /// - Checks WithdrawManager existence.
     /// - Validates recipient against address(0).
-    /// - Validates request existence and expiry.
     ///
     /// @param data_ Struct containing the recipient and the amount to refund.
     /// @dev IMPORTANT: This fuse resolves vault addresses with backward-compat shims
@@ -190,20 +158,6 @@ contract RequestFeeRefundFuse is IFuseCommon {
             revert RequestFeeRefundWithdrawManagerNotSet();
         }
 
-        WithdrawRequestInfo memory info = WithdrawManager(withdrawManager).requestInfo(data_.recipient);
-
-        if (info.endWithdrawWindowTimestamp == 0) {
-            revert RequestFeeRefundNoActiveRequest(data_.recipient);
-        }
-
-        if (block.timestamp <= info.endWithdrawWindowTimestamp) {
-            revert RequestFeeRefundRequestStillActive(
-                data_.recipient,
-                info.endWithdrawWindowTimestamp,
-                block.timestamp
-            );
-        }
-
         address plasmaVaultBase = IPlasmaVaultBaseGetter(address(this)).PLASMA_VAULT_BASE();
         if (plasmaVaultBase == address(0)) {
             revert RequestFeeRefundPlasmaVaultBaseNotSet();
@@ -223,7 +177,7 @@ contract RequestFeeRefundFuse is IFuseCommon {
             )
         );
 
-        emit RequestFeeRefundEnter(VERSION, data_.recipient, data_.amount, info.endWithdrawWindowTimestamp);
+        emit RequestFeeRefundEnter(VERSION, data_.recipient, data_.amount);
     }
 
     /// @notice Exit function (not implemented).

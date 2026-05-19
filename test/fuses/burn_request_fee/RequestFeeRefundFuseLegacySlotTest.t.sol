@@ -247,7 +247,7 @@ contract RequestFeeRefundFuseLegacySlotTest is Test {
         uint256 wmBalBefore = PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager);
 
         vm.expectEmit(true, true, true, true, address(_plasmaVault));
-        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, feeAmount, endTs);
+        emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, feeAmount);
         _executeRefund(_USER, feeAmount);
 
         assertEq(
