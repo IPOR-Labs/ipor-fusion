@@ -203,7 +203,6 @@ library IporFusionMarkets {
 
     /// @dev Napier market
     uint256 public constant NAPIER = 46;
-    
 
     /// @dev Dolomite market
     /// @dev Substrate type: DolomiteSubstrate (asset, subAccountId, canBorrow)
@@ -304,6 +303,11 @@ library IporFusionMarkets {
 
     /// @dev Meta Morpho Market 10
     uint256 public constant META_MORPHO_0010 = 200_010;
+
+    /// @dev Merkl rewards market - gates which received reward tokens MerklClaimWrapperFuse may forward
+    /// @dev Substrate type: substrate-as-asset (the final reward token addresses granted to this market)
+    /// @dev Substrate values: reward token addresses allowed to be forwarded to the RewardsClaimManager
+    uint256 public constant MERKL = type(uint256).max - 3;
 
     /// @dev Exchange Rate Limiter market for pre-hook execution
     /// @dev Substrate type: bytes32 packed ExchangeRateLimiterConfig (see ExchangeRateLimiterConfigLib)
