@@ -87,7 +87,8 @@ contract MerklClaimWrapperFuse {
      * @param amounts_ Array of claimable amounts for each claimed token
      * @param proofs_ Array of merkle proofs for each claimed token
      * @param receivedTokens_ Array of final token addresses that land on the vault after
-     *        unwrapping; the balance delta of each is measured and forwarded
+     *        unwrapping; the balance delta of each is measured and, by default, transferred
+     *        to the RewardsManager (RewardsClaimManager)
      */
     function claim(
         address[] calldata tokens_,
