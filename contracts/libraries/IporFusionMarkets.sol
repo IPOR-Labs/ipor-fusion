@@ -189,12 +189,16 @@ library IporFusionMarkets {
     /// @dev Used for executing Velora swaps via VeloraSwapExecutor contract
     uint256 public constant VELORA_SWAPPER = 43;
 
-    /// @dev Aave V4 Hub & Spoke market
-    /// @dev Substrate type: AaveV4SubstrateType (Asset or Spoke)
-    /// @dev Substrate values: Encoded combination of type flag and address
-    ///      - Asset: AaveV4SubstrateLib.encodeAsset(tokenAddress) - ERC20 token address with flag 0x01
-    ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
-    uint256 public constant AAVE_V4 = 44;
+    /// @dev SparkLend market (Aave V3 fork) - supply/borrow lending on Ethereum mainnet
+    /// @dev Integrated via Aave V3 fuses pointed at SparkLend's PoolAddressesProvider
+    ///      (0x02C3eA4e34C0cBd694D2adFa2c690EECbC1793eE, Ethereum mainnet):
+    ///      - Supply:     AaveV3SupplyFuse
+    ///      - Borrow:     AaveV3BorrowFuse
+    ///      - Collateral: AaveV3CollateralFuse (toggles asset as collateral / eMode)
+    ///      - Balance:    AaveV3WithPriceOracleMiddlewareBalanceFuse (net = aToken supply - debt, priced via PriceOracleMiddleware)
+    /// @dev Substrates: underlying ERC20 asset addresses listed on SparkLend (e.g. DAI, USDC, USDS, WETH, wstETH).
+    ///      Each asset to be supplied, borrowed or used as collateral must be granted as a substrate for this market.
+    uint256 public constant SPARK_LEND = 44;
 
     /// @dev Midas RWA market (mTBILL, mBASIS)
     /// @dev Substrate type: MidasSubstrateType (M_TOKEN, DEPOSIT_VAULT, REDEMPTION_VAULT, INSTANT_REDEMPTION_VAULT, ASSET)
@@ -213,6 +217,13 @@ library IporFusionMarkets {
     /// @dev Balance fuse: ZeroBalanceFuse (this market holds no assets directly; sUSDS balance tracked on a separate market via Erc4626BalanceFuse)
     /// @dev Substrates: none
     uint256 public constant LITE_PSM = 48;
+
+    /// @dev Aave V4 Hub & Spoke market
+    /// @dev Substrate type: AaveV4SubstrateType (Asset or Spoke)
+    /// @dev Substrate values: Encoded combination of type flag and address
+    ///      - Asset: AaveV4SubstrateLib.encodeAsset(tokenAddress) - ERC20 token address with flag 0x01
+    ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
+    uint256 public constant AAVE_V4 = 49;
 
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
