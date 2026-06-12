@@ -56,8 +56,11 @@ contract RewardsClaimManagerTest is Test {
         assertEq(_rewardsClaimManager.balanceOf(), 0, "Initial balance should be zero");
     }
 
-    function testShouldBalanceZeroWhenTransferUnderlyingTokenToRewardsClaimManager() public {
+    function testShouldBalanceMatchTokenBalanceWhenVestingTimeIsZero() public {
         // given
+        // No setupVestingTime call has happened yet, so vestingTime == 0; per the documented
+        // contract semantic this means vesting is disabled and balanceOf() returns the live
+        // IERC20 balance of the manager (so any tokens sitting on it are claimable instantly).
         vm.prank(_userOne);
         ERC20(_underlyingToken).transfer(address(_rewardsClaimManager), 1_000e18);
 
@@ -67,9 +70,12 @@ contract RewardsClaimManagerTest is Test {
         uint256 vestedBalance = _rewardsClaimManager.balanceOf();
 
         // then
-
-        assertEq(rewardElectionBalanceBefore, 1_000e18, "Reward Manager balance should be 1_0000e18");
-        assertEq(vestedBalance, 0, "Vested balance should be zero");
+        assertEq(rewardElectionBalanceBefore, 1_000e18, "Reward Manager balance should be 1_000e18");
+        assertEq(
+            vestedBalance,
+            1_000e18,
+            "vestingTime == 0 means vesting disabled; balanceOf returns live IERC20 balance"
+        );
     }
 
     function testShouldIncreaseVestingBalanceAfterUpdateBalance() public {
@@ -86,7 +92,7 @@ contract RewardsClaimManagerTest is Test {
         // when
         vm.prank(_userOne);
         _rewardsClaimManager.updateBalance();
-        vm.warp(block.number + 12 hours);
+        vm.warp(block.timestamp + 12 hours);
 
         // then
         uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
@@ -113,7 +119,7 @@ contract RewardsClaimManagerTest is Test {
         vm.prank(_userOne);
         _rewardsClaimManager.updateBalance();
 
-        vm.warp(block.number + 12 hours);
+        vm.warp(block.timestamp + 12 hours);
         uint256 plasmaVaultBalanceBefore = ERC20(_underlyingToken).balanceOf(address(_plasmaVault));
 
         // when
@@ -151,7 +157,7 @@ contract RewardsClaimManagerTest is Test {
         // when
         vm.prank(_userOne);
         _rewardsClaimManager.updateBalance();
-        vm.warp(block.number + 2 days);
+        vm.warp(block.timestamp + 2 days);
 
         // then
         uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
@@ -332,7 +338,7 @@ contract RewardsClaimManagerTest is Test {
 
         vm.prank(_userOne);
         _rewardsClaimManager.updateBalance();
-        vm.warp(block.number + 2 days);
+        vm.warp(block.timestamp + 2 days);
 
         uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
 
@@ -358,7 +364,7 @@ contract RewardsClaimManagerTest is Test {
 
         vm.prank(_userOne);
         _rewardsClaimManager.updateBalance();
-        vm.warp(block.number + 2 days);
+        vm.warp(block.timestamp + 2 days);
 
         uint256 vestedBalanceBefore = _rewardsClaimManager.balanceOf();
         bytes memory error = abi.encodeWithSignature("AccessManagedUnauthorized(address)", _userTwo);
@@ -394,8 +400,10 @@ contract RewardsClaimManagerTest is Test {
         assertEq(vestedBalanceAfter, 1_000e18, "Vested balance before should be 1_000e18");
     }
 
-    function testShouldDontIncreaseVestingBalanceAfterTransferWhenDefaultValue() public {
+    function testShouldBalanceMatchTokenBalanceAfterTransferWhenDefaultValue() public {
         // given
+        // Default state (no setupVestingTime call) keeps vestingTime == 0, so vesting is disabled
+        // and balanceOf() tracks the live IERC20 balance of the manager.
         vm.warp(1000 days);
         vm.prank(_userOne);
 
@@ -408,8 +416,12 @@ contract RewardsClaimManagerTest is Test {
         // then
         uint256 vestedBalanceAfter = _rewardsClaimManager.balanceOf();
 
-        assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero");
-        assertEq(vestedBalanceAfter, 0, "Vested balance before should be 0");
+        assertEq(vestedBalanceBefore, 0, "Vested balance before should be zero (no tokens yet)");
+        assertEq(
+            vestedBalanceAfter,
+            1_000e18,
+            "vestingTime == 0 means vesting disabled; balanceOf returns live IERC20 balance"
+        );
     }
 
     function testShouldUpdateBalanceOnClaimRewardsManager() public {

@@ -69,8 +69,19 @@ interface IRewardsClaimManager {
     /// @param releaseTokensDelay_ The delay in seconds before the tokens are released.
     /// @dev This method configures the vesting schedule by setting the delay time for token release.
     /// The delay defines the period that must pass before the tokens can be released to the beneficiary.
-    // @dev setting up this to zero will stopped vesting and freeze underling token on the contract
+    /// @dev Setting this to zero will stop vesting and freeze underlying token on the contract.
+    /// @dev When called mid-flight (transferredTokens > 0 and lastUpdateBalance > 0), reverts with
+    /// UnsafeVestingTime when the requested duration would force balanceOf() into the clamp window
+    /// where vested_now < transferredTokens.
     function setupVestingTime(uint256 releaseTokensDelay_) external;
+
+    /// @notice Rebase the vesting schedule in place without transferring tokens to the Plasma Vault.
+    /// @param newVestingTime_ New vesting duration in seconds. Must be > 0.
+    /// @param newUpdateBalanceTimestamp_ New anchor timestamp for the linear curve. Must be <= block.timestamp.
+    /// @dev Reverts with UnsafeReschedule when the new tuple would force balanceOf() to clamp at
+    /// block.timestamp. Useful when governance changes the vesting length but totalAssets() must
+    /// stay continuous at this block.
+    function rescheduleVesting(uint32 newVestingTime_, uint32 newUpdateBalanceTimestamp_) external;
 
     /// @notice Updates the balance based on the current vesting schedule and transferred tokens.
     /// @dev This method recalculates the balance considering the elapsed time, vesting schedule,

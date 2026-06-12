@@ -188,6 +188,93 @@ contract RewardEulerTokenClaimFuseTest is Test {
         assertEq(eulerRewardsManagerBalanceAfter - eulerRewardsManagerBalanceBefore, accountAmount);
     }
 
+    function testShouldClaimAllUsingCurrentTimestampWhenFullyVested() public {
+        // given
+        uint256[] memory lockTimestamps = IREUL(rEUL).getLockedAmountsLockTimestamps(PLASMA_VAULT);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction({
+            fuse: address(rewardEulerTokenClaimFuse),
+            data: abi.encodeWithSelector(RewardEulerTokenClaimFuse.claimAll.selector, false)
+        });
+
+        vm.warp(block.timestamp + 200 days);
+        (uint256 accountAmount, uint256 remainderAmount) = IREUL(rEUL).getWithdrawAmountsByLockTimestamp(
+            PLASMA_VAULT,
+            lockTimestamps[0]
+        );
+        assertEq(remainderAmount, 0, "lock should be fully vested after 200 days");
+
+        uint256 eulerRewardsManagerBalanceBefore = IERC20(EUL).balanceOf(REWARDS_CLAIM_MANAGER);
+
+        // when
+        vm.startPrank(CLAIM_REWARDS);
+        RewardsClaimManager(REWARDS_CLAIM_MANAGER).claimRewards(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 eulerRewardsManagerBalanceAfter = IERC20(EUL).balanceOf(REWARDS_CLAIM_MANAGER);
+        assertEq(eulerRewardsManagerBalanceAfter - eulerRewardsManagerBalanceBefore, accountAmount);
+        assertEq(IREUL(rEUL).getLockedAmountsLength(PLASMA_VAULT), 0, "all locks should be removed");
+    }
+
+    function testShouldClaimAllUsingCurrentTimestampWithRemainderLoss() public {
+        // given
+        uint256[] memory lockTimestamps = IREUL(rEUL).getLockedAmountsLockTimestamps(PLASMA_VAULT);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction({
+            fuse: address(rewardEulerTokenClaimFuse),
+            data: abi.encodeWithSelector(RewardEulerTokenClaimFuse.claimAll.selector, true)
+        });
+
+        (uint256 accountAmount, uint256 remainderAmount) = IREUL(rEUL).getWithdrawAmountsByLockTimestamp(
+            PLASMA_VAULT,
+            lockTimestamps[0]
+        );
+        assertGt(remainderAmount, 0, "lock should not be fully vested yet");
+
+        uint256 eulerRewardsManagerBalanceBefore = IERC20(EUL).balanceOf(REWARDS_CLAIM_MANAGER);
+
+        // when
+        vm.startPrank(CLAIM_REWARDS);
+        RewardsClaimManager(REWARDS_CLAIM_MANAGER).claimRewards(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 eulerRewardsManagerBalanceAfter = IERC20(EUL).balanceOf(REWARDS_CLAIM_MANAGER);
+        assertEq(eulerRewardsManagerBalanceAfter - eulerRewardsManagerBalanceBefore, accountAmount);
+        assertEq(IREUL(rEUL).getLockedAmountsLength(PLASMA_VAULT), 0, "all locks should be removed");
+    }
+
+    function testShouldSkipImmatureLocksWhenClaimAllWithoutRemainderLoss() public {
+        // given
+        uint256 lockedAmountsLengthBefore = IREUL(rEUL).getLockedAmountsLength(PLASMA_VAULT);
+        assertGt(lockedAmountsLengthBefore, 0, "vault should have locks");
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction({
+            fuse: address(rewardEulerTokenClaimFuse),
+            data: abi.encodeWithSelector(RewardEulerTokenClaimFuse.claimAll.selector, false)
+        });
+
+        uint256 eulerRewardsManagerBalanceBefore = IERC20(EUL).balanceOf(REWARDS_CLAIM_MANAGER);
+
+        // when - locks are immature, but the call must not revert nor forfeit anything
+        vm.startPrank(CLAIM_REWARDS);
+        RewardsClaimManager(REWARDS_CLAIM_MANAGER).claimRewards(calls);
+        vm.stopPrank();
+
+        // then
+        uint256 eulerRewardsManagerBalanceAfter = IERC20(EUL).balanceOf(REWARDS_CLAIM_MANAGER);
+        assertEq(eulerRewardsManagerBalanceAfter, eulerRewardsManagerBalanceBefore, "nothing should be claimed");
+        assertEq(
+            IREUL(rEUL).getLockedAmountsLength(PLASMA_VAULT),
+            lockedAmountsLengthBefore,
+            "immature locks should keep vesting"
+        );
+    }
+
     function testShouldRevertClaimWhenAllowRemainerLostFalse() public {
         // given
         uint256[] memory lockTimestamps = IREUL(rEUL).getLockedAmountsLockTimestamps(PLASMA_VAULT);

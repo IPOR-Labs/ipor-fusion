@@ -232,6 +232,7 @@ contract PlasmaVault is
     error NoSharesToRedeem();
     error NoSharesToMint();
     error NoAssetsToWithdraw();
+    error NoSharesToWithdraw();
     error NoAssetsToDeposit();
     error NoSharesToDeposit();
     error UnsupportedFuse();
@@ -763,7 +764,11 @@ contract PlasmaVault is
             revert ERC4626ExceededMaxWithdraw(owner_, assets_, maxAssets);
         }
 
-        uint256 sharesForAssets = convertToShares(assets_);
+        uint256 sharesForAssets = super.previewWithdraw(assets_);
+
+        if (sharesForAssets == 0) {
+            revert NoSharesToWithdraw();
+        }
 
         uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(sharesForAssets);
 
