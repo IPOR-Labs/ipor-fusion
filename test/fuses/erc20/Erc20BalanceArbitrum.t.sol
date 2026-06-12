@@ -131,7 +131,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
     function testShouldCalculateErc20BalanceEqual0WhenExecute() external {
         // given
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -197,7 +197,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         uint256 daiAmountToTransfer = 100e18;
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -263,7 +263,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
         uint256 daiAmountToTransfer = 100e18;
         uint256 usdtAmountToTransfer = 100e6;
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -331,7 +331,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
         uint256 usdcAmountToTransfer = 10e6;
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );

@@ -57,7 +57,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         // when
         for (uint256 i = 2; i < 5; i++) {
-            amountStep = randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
+            amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
             sharesStep = amountStep * 10 ** PlasmaVaultLib.DECIMALS_OFFSET;
             sum += amountStep;
             sumShares += sharesStep;
@@ -86,7 +86,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
             vm.roll(block.number + 100);
             vm.warp(block.timestamp + 1200);
             for (uint256 i; i < 5; i++) {
-                amountStep = randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
+                amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
                 sharesStep = amountStep * 10 ** PlasmaVaultLib.DECIMALS_OFFSET;
                 sum += amountStep;
                 sumShares += sharesStep;
@@ -113,7 +113,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         // when
         for (uint256 i; i < 5; i++) {
-            amountStep = randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
+            amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
             sharesStep = amountStep * 10 ** PlasmaVaultLib.DECIMALS_OFFSET;
             sum += amountStep;
             sumShares += sharesStep;
@@ -144,7 +144,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
             vm.roll(block.number + 100);
             vm.warp(block.timestamp + 1200);
             for (uint256 i; i < 5; i++) {
-                amountStep = randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
+                amountStep = random.randomNumber(1, 10_000 * 10 ** (ERC20(asset).decimals()));
                 sharesStep = amountStep * 10 ** PlasmaVaultLib.DECIMALS_OFFSET;
                 sum += amountStep;
                 sumShares += sharesStep;
@@ -167,7 +167,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         // given
 
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -197,14 +197,14 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         // given
 
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             2 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
         vm.prank(userOne);
         PlasmaVault(plasmaVault).deposit(depositAmount, userOne);
 
-        uint256 enterAmount = randomNumber(1 * 10 ** (ERC20(asset).decimals()), depositAmount / 2);
+        uint256 enterAmount = random.randomNumber(1 * 10 ** (ERC20(asset).decimals()), depositAmount / 2);
 
         FuseAction[] memory callsOriginal = generateEnterCallsData(enterAmount, new bytes32[](0));
 
@@ -243,7 +243,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         // given
 
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -277,7 +277,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         address userOne = accounts[1];
 
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -310,17 +310,14 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
 
         assertGe(userAssetsAfter, userAssetsBefore, "userAssets from shares");
         assertEq(totalSharesAfter, totalSharesBefore, "totalShares");
-        /// @dev after time warp the market accrues interest on the deposit, so after exiting the full
-        /// assetsInMarketBefore only the interest accrued over 12000s may remain - well below 1% of the deposit
-        assertGe(assetsInMarketBefore + ERROR_DELTA, depositAmount, "assetsInMarketBefore covers deposit");
-        assertLe(assetsInMarketAfter, depositAmount / 100 + ERROR_DELTA, "assetsInMarket residual interest only");
+        assertApproxEqAbs(assetsInMarketAfter + depositAmount, assetsInMarketBefore, ERROR_DELTA, "assetsInMarket");
     }
 
     function testShouldUseExitMethodTwice() external {
         // given
 
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             10_000 * 10 ** (ERC20(asset).decimals()),
             20_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -367,7 +364,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         // given
 
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             10_000 * 10 ** (ERC20(asset).decimals()),
             20_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -384,7 +381,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
         for (uint256 i; i < 50; i++) {
             vm.roll(block.number + 100);
             vm.warp(block.timestamp + 1200);
-            if (randomNumber(0, 1) == 1) {
+            if (random.randomNumber(0, 1) == 1) {
                 uint256 totalAssetsInMarket = PlasmaVault(plasmaVault).totalAssetsInMarket(getMarketId());
                 uint256 totalAssets = PlasmaVault(plasmaVault).totalAssets();
                 uint256 maxAmount = totalAssets - totalAssetsInMarket;
@@ -393,7 +390,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
                     continue;
                 }
 
-                uint256 enterAmount = randomNumber(1, maxAmount);
+                uint256 enterAmount = random.randomNumber(1, maxAmount);
 
                 vm.prank(alpha);
                 PlasmaVault(plasmaVault).execute(generateEnterCallsData(enterAmount, new bytes32[](0)));
@@ -404,7 +401,7 @@ abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaul
                     continue;
                 }
 
-                uint256 exitAmount = randomNumber(1, inMarket);
+                uint256 exitAmount = random.randomNumber(1, inMarket);
 
                 vm.prank(alpha);
                 PlasmaVault(plasmaVault).execute(generateExitCallsData(exitAmount, new bytes32[](0)));

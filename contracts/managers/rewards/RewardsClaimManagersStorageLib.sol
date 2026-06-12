@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {VestingData} from "../../interfaces/IRewardsClaimManager.sol";
 
 /// @title RewardsClaimManagersStorageLib
@@ -24,14 +25,14 @@ library RewardsClaimManagersStorageLib {
 
     /// @notice Emitted when vesting data is updated
     /// @param transferredTokens Amount of tokens that have been transferred to the Plasma Vault
-    /// @param balanceOnLastUpdate Balance of tokens at the last update
+    /// @param lastUpdateBalance Balance of tokens at the last update
     /// @param vestingTime Duration of the vesting period in seconds
-    /// @param lastUpdateBalance Timestamp of the last balance update
+    /// @param updateBalanceTimestamp Timestamp of the last balance update
     event VestingDataUpdated(
         uint128 transferredTokens,
-        uint128 balanceOnLastUpdate,
+        uint128 lastUpdateBalance,
         uint32 vestingTime,
-        uint32 lastUpdateBalance
+        uint32 updateBalanceTimestamp
     );
 
     /// @notice Emitted when vesting time is updated
@@ -53,7 +54,9 @@ library RewardsClaimManagersStorageLib {
 
     /// @notice Updates all vesting parameters
     /// @param vestingData_ New vesting configuration to be stored
-    /// @dev Updates all fields of the vesting data struct and emits a VestingDataUpdated event
+    /// @dev Updates all fields of the vesting data struct and emits a VestingDataUpdated event.
+    /// @dev The VestingDataUpdated event reports field values using their canonical struct names
+    /// (transferredTokens, lastUpdateBalance, vestingTime, updateBalanceTimestamp).
     function setVestingData(VestingData memory vestingData_) internal {
         VestingData storage vestingData = getVestingData();
         vestingData.vestingTime = vestingData_.vestingTime;
@@ -122,5 +125,35 @@ library RewardsClaimManagersStorageLib {
         assembly {
             sstore(PLASMA_VAULT_SLOT, vault_)
         }
+    }
+
+    /// @notice Linearly-vested portion of `lastUpdateBalance_` at `nowTs_` under the schedule
+    /// defined by (vestingTime_, updateBalanceTimestamp_).
+    /// @dev Single source of truth for the vesting curve. Used by balanceOf() to compute the
+    /// claimable amount, by setupVestingTime() to derive the safe-boundary cap, and by
+    /// rescheduleVesting() to verify the cross-field invariant before persisting a new schedule.
+    /// @param lastUpdateBalance_ Balance snapshot taken at `updateBalanceTimestamp_`.
+    /// @param vestingTime_ Vesting duration in seconds. Zero ⇒ returns 0 (handled by the caller).
+    /// @param updateBalanceTimestamp_ Anchor timestamp of the linear curve.
+    /// @param nowTs_ The reference timestamp against which to compute the vested portion.
+    /// @return The vested portion of `lastUpdateBalance_`; clamped to `lastUpdateBalance_` once
+    /// the elapsed time meets or exceeds `vestingTime_`.
+    function vestedAt(
+        uint256 lastUpdateBalance_,
+        uint32 vestingTime_,
+        uint32 updateBalanceTimestamp_,
+        uint256 nowTs_
+    ) internal pure returns (uint256) {
+        if (vestingTime_ == 0 || nowTs_ <= updateBalanceTimestamp_) {
+            return 0;
+        }
+        uint256 elapsed;
+        unchecked {
+            elapsed = nowTs_ - updateBalanceTimestamp_;
+        }
+        if (elapsed >= vestingTime_) {
+            return lastUpdateBalance_;
+        }
+        return Math.mulDiv(lastUpdateBalance_, (elapsed * 1e18) / vestingTime_, 1e18);
     }
 }

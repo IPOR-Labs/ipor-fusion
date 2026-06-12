@@ -171,7 +171,7 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     function testShouldEnterUsingTransient() external {
         // given
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );
@@ -202,7 +202,7 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
     function testShouldExitUsingTransient() external {
         // given
         address userOne = accounts[1];
-        uint256 depositAmount = randomNumber(
+        uint256 depositAmount = random.randomNumber(
             1 * 10 ** (ERC20(asset).decimals()),
             10_000 * 10 ** (ERC20(asset).decimals())
         );

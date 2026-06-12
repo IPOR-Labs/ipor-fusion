@@ -12,6 +12,7 @@ remappings = [
     'eth-gas-reporter/=node_modules/eth-gas-reporter/',
     'ds-test/=lib/forge-std/lib/ds-test/src/',
     'forge-std/=lib/forge-std/src/',
+    'foundry-random=lib/foundry-random/src/',
     "@ethereum-vault-connector/=node_modules/ethereum-vault-connector/",
     "@pendle/core-v2/=node_modules/@pendle/core-v2/"
 ]

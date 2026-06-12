@@ -2,11 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-
-/// @dev forge-std v1.8.0 does not expose `randomUint` yet, but the cheatcode is supported by forge itself
-interface VmRandom {
-    function randomUint(uint256 min, uint256 max) external returns (uint256);
-}
+import {FoundryRandom} from "foundry-random/FoundryRandom.sol";
 
 abstract contract TestStorage is Test {
     address[] public accounts;
@@ -15,6 +11,7 @@ abstract contract TestStorage is Test {
     address public priceOracle;
     address public alpha;
     address public feeManager;
+    FoundryRandom public random;
     address[] public fuses;
     address public accessManager;
 
@@ -24,15 +21,8 @@ abstract contract TestStorage is Test {
 
     function initStorage() public {
         setupAsset();
+        random = new FoundryRandom();
     }
 
     function setupAsset() public virtual;
-
-    function randomNumber(uint256 minVal, uint256 maxVal) internal returns (uint256) {
-        return VmRandom(address(vm)).randomUint(minVal, maxVal);
-    }
-
-    function randomNumber(uint256 maxVal) internal returns (uint256) {
-        return VmRandom(address(vm)).randomUint(0, maxVal);
-    }
 }
