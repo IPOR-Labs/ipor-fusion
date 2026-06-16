@@ -156,9 +156,6 @@ contract InitializeAccessManagerTest is Test {
 
         // then
         for (uint256 i; i < initData.roleToFunctions.length; i++) {
-            if (initData.roleToFunctions[i].target == address(0)) {
-                continue;
-            }
             assertEq(
                 accessManager.getTargetFunctionRole(
                     initData.roleToFunctions[i].target,
@@ -614,6 +611,28 @@ contract InitializeAccessManagerTest is Test {
 
         // then
         assertEq(Roles.FUSE_MANAGER_ROLE, roleId);
+    }
+
+    /// @dev Guards against drift between ROLES_TO_FUNCTION_* size constants and the actual
+    /// number of entries written to the array. A zero target slot would be silently accepted
+    /// by AccessManager._setTargetFunctionRole as a no-op, so the skew never reverts at runtime.
+    function testShouldNotEmitZeroRoleToFunctionEntries() public {
+        DataForInitialization memory data = _generateDataForInitialization();
+        data.plasmaVaultAddress.plasmaVault = address(plasmaVault);
+        data.plasmaVaultAddress.accessManager = address(accessManager);
+        data.plasmaVaultAddress.rewardsClaimManager = address(rewardsClaimManager);
+
+        InitializationData memory initData = IporFusionAccessManagerInitializerLibV1.generateInitializeIporPlasmaVault(
+            data
+        );
+
+        for (uint256 i; i < initData.roleToFunctions.length; ++i) {
+            assertTrue(
+                initData.roleToFunctions[i].target != address(0) ||
+                    initData.roleToFunctions[i].functionSelector != bytes4(0),
+                "ROLES_TO_FUNCTION_* size constant is out of sync with written entries (zero slot detected)"
+            );
+        }
     }
 
     function _generateDataForInitialization() private returns (DataForInitialization memory) {

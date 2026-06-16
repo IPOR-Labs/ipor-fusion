@@ -49,6 +49,28 @@ contract RewardEulerTokenClaimFuse {
     /// @notice Claims accrued rewards from the Euler reward system.
     /// @dev This function should be overridden by child contracts to implement actual claim logic.
     function claim(ClaimData calldata data_) external {
+        _claim(data_.lockTimestamps, data_.allowRemainderLoss);
+    }
+
+    /// @notice Claims accrued rewards from the Euler reward system using the current block timestamp.
+    /// @dev Reads the vault's normalized lock timestamps directly from the rEUL contract, so the caller does not
+    /// need to provide them. When `allowRemainderLoss_` is false, only locks that are fully vested at the current
+    /// block timestamp (zero remainder) are withdrawn - immature locks are skipped and keep vesting, so the call
+    /// never forfeits tokens nor reverts due to the lock schedule. When true, all locks are withdrawn and the
+    /// unvested remainder is forfeited as per the rEUL lock schedule.
+    /// @param allowRemainderLoss_ If true, withdraws all locks accepting remainder loss; if false, withdraws only
+    /// fully vested locks.
+    function claimAll(bool allowRemainderLoss_) external {
+        uint256[] memory lockTimestamps = IREUL(rEUL).getLockedAmountsLockTimestamps(address(this));
+
+        if (!allowRemainderLoss_) {
+            lockTimestamps = _filterFullyVested(lockTimestamps);
+        }
+
+        _claim(lockTimestamps, allowRemainderLoss_);
+    }
+
+    function _claim(uint256[] memory lockTimestamps_, bool allowRemainderLoss_) private {
         address rewardsClaimManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
         if (rewardsClaimManager == address(0)) {
             revert RewardEulerTokenClaimFuseRewardsClaimManagerNotSet();
@@ -56,7 +78,7 @@ contract RewardEulerTokenClaimFuse {
 
         uint256 eulerRewardsManagerBalanceBefore = IERC20(EUL).balanceOf(rewardsClaimManager);
 
-        IREUL(rEUL).withdrawToByLockTimestamps(rewardsClaimManager, data_.lockTimestamps, data_.allowRemainderLoss);
+        IREUL(rEUL).withdrawToByLockTimestamps(rewardsClaimManager, lockTimestamps_, allowRemainderLoss_);
 
         uint256 eulerRewardsManagerBalanceAfter = IERC20(EUL).balanceOf(rewardsClaimManager);
         if (eulerRewardsManagerBalanceBefore > eulerRewardsManagerBalanceAfter) {
@@ -67,5 +89,32 @@ contract RewardEulerTokenClaimFuse {
             rewardsClaimManager,
             eulerRewardsManagerBalanceAfter - eulerRewardsManagerBalanceBefore
         );
+    }
+
+    /// @dev Returns only the lock timestamps whose remainder at the current block timestamp is zero, i.e. locks
+    /// that can be withdrawn in full without any loss.
+    function _filterFullyVested(uint256[] memory lockTimestamps_) private view returns (uint256[] memory) {
+        uint256 length = lockTimestamps_.length;
+        uint256 count;
+        uint256[] memory fullyVested = new uint256[](length);
+
+        for (uint256 i; i < length; ++i) {
+            (, uint256 remainderAmount) = IREUL(rEUL).getWithdrawAmountsByLockTimestamp(
+                address(this),
+                lockTimestamps_[i]
+            );
+            if (remainderAmount == 0) {
+                fullyVested[count] = lockTimestamps_[i];
+                unchecked {
+                    ++count;
+                }
+            }
+        }
+
+        assembly {
+            mstore(fullyVested, count)
+        }
+
+        return fullyVested;
     }
 }

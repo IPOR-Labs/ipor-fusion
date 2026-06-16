@@ -52,6 +52,20 @@ struct ClaimData {
     -   If `true`: Allows the withdrawal even if there are remainders that will be transferred to the configured receiver address (as per the lock schedule)
     -   If `false`: The withdrawal will revert if there are any remainder amounts that cannot be fully withdrawn
 
+### Claiming Without Providing Timestamps: `claimAll()`
+
+The `claimAll(bool allowRemainderLoss)` function claims rewards using the current block timestamp, without requiring the caller to provide lock timestamps. The fuse reads the vault's normalized lock timestamps directly from the rEUL contract:
+
+-   `allowRemainderLoss = false`: Only locks that are **fully vested** at the current block timestamp (zero remainder) are withdrawn. Immature locks are skipped and keep vesting — the call never forfeits tokens nor reverts due to the lock schedule. This is the recommended mode for periodic/automated claiming.
+-   `allowRemainderLoss = true`: **All** locks are withdrawn immediately; the unvested remainder of immature locks is forfeited to the rEUL remainder receiver, as per the lock schedule.
+
+```solidity
+FuseAction memory action = FuseAction({
+    fuse: address(rewardEulerTokenClaimFuse),
+    data: abi.encodeWithSelector(RewardEulerTokenClaimFuse.claimAll.selector, false)
+});
+```
+
 ### Integration with RewardsClaimManager
 
 This fuse must be registered with a `RewardsClaimManager` contract. The manager:

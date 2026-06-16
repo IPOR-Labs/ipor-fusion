@@ -87,8 +87,8 @@ library IporFusionAccessManagerInitializerLibV1 {
     error InvalidAddress();
 
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 40;
-    uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 7;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
+    uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 8;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
@@ -820,6 +820,12 @@ library IporFusionAccessManagerInitializerLibV1 {
                 target: plasmaVaultAddress_.rewardsClaimManager,
                 roleId: Roles.ATOMIST_ROLE,
                 functionSelector: RewardsClaimManager.setupVestingTime.selector,
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.rewardsClaimManager,
+                roleId: Roles.ATOMIST_ROLE,
+                functionSelector: RewardsClaimManager.rescheduleVesting.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({

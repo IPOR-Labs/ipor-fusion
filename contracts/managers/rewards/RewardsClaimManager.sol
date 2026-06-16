@@ -5,7 +5,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {FusesLib} from "../../libraries/FusesLib.sol";
 import {FuseAction} from "../../vaults/PlasmaVault.sol";
 import {RewardsClaimManagersStorageLib, VestingData} from "./RewardsClaimManagersStorageLib.sol";
@@ -42,9 +41,49 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
 
     error UnableToTransferUnderlyingToken();
 
+    /// @notice Thrown when setupVestingTime would force balanceOf() into the
+    /// transient clamp window where the linearly-vested portion is below
+    /// transferredTokens. Surfaced instead of silently corrupting state.
+    /// @param requestedVestingTime The vestingTime requested by the caller.
+    /// @param maxSafeVestingTime The largest vestingTime that still keeps
+    /// vested_now >= transferredTokens at the current block.
+    error UnsafeVestingTime(uint256 requestedVestingTime, uint256 maxSafeVestingTime);
+
+    /// @notice Thrown when rescheduleVesting parameters would still leave the
+    /// contract in a state where balanceOf() must clamp.
+    /// @param newVestingTime The proposed new vesting duration.
+    /// @param newUpdateBalanceTimestamp The proposed new anchor timestamp.
+    /// @param vestedAfter Linearly-vested portion at block.timestamp under the proposed schedule.
+    /// @param transferredTokens Currently-tracked transferredTokens.
+    error UnsafeReschedule(
+        uint256 newVestingTime,
+        uint256 newUpdateBalanceTimestamp,
+        uint256 vestedAfter,
+        uint256 transferredTokens
+    );
+
+    /// @notice Thrown when newVestingTime is zero.
+    error InvalidVestingTime();
+
+    /// @notice Thrown when newUpdateBalanceTimestamp is in the future relative to block.timestamp.
+    error InvalidTimestamp();
+
     /// @notice Emitted when rewards are withdrawn
     /// @param amount The amount of tokens withdrawn
     event AmountWithdrawn(uint256 amount);
+
+    /// @notice Emitted when the vesting schedule is rebased in place without
+    /// transferring tokens to the Plasma Vault (rescheduleVesting path).
+    /// @param newVestingTime New vesting duration in seconds.
+    /// @param newUpdateBalanceTimestamp New anchor timestamp for the linear curve.
+    /// @param transferredTokens Unchanged transferredTokens at the time of reschedule.
+    /// @param lastUpdateBalance Unchanged lastUpdateBalance at the time of reschedule.
+    event VestingRescheduled(
+        uint256 newVestingTime,
+        uint256 newUpdateBalanceTimestamp,
+        uint256 transferredTokens,
+        uint256 lastUpdateBalance
+    );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address initialAuthority_, address plasmaVault_) initializer {
@@ -64,13 +103,15 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
 
         RewardsClaimManagersStorageLib.setUnderlyingToken(PlasmaVault(plasmaVault_).asset());
         RewardsClaimManagersStorageLib.setPlasmaVault(plasmaVault_);
-
-        RewardsClaimManagersStorageLib.setupVestingTime(1);
     }
 
     /// @notice Returns the current balance of vested tokens
     /// @return The amount of tokens currently available for claiming
-    /// @dev Calculates vested amount based on vesting schedule
+    /// @dev Calculates vested amount based on vesting schedule. Uses saturating subtraction:
+    /// transferredTokens may temporarily exceed the linearly-vested portion when the schedule
+    /// is rebased while a vest is in progress. Returning 0 in that transient window keeps
+    /// totalAssets() live; the missing piece is reaccounted automatically once enough
+    /// wall-clock time passes. The clamp can only understate the vault, never overstate.
     /// @custom:access Public
     function balanceOf() public view returns (uint256) {
         VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
@@ -83,20 +124,14 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
             return 0;
         }
 
-        uint256 ratio = 1e18;
-        if (block.timestamp >= data.updateBalanceTimestamp) {
-            ratio = ((block.timestamp - data.updateBalanceTimestamp) * 1e18) / data.vestingTime;
-        }
+        uint256 vested = RewardsClaimManagersStorageLib.vestedAt(
+            data.lastUpdateBalance,
+            data.vestingTime,
+            data.updateBalanceTimestamp,
+            block.timestamp
+        );
 
-        if (ratio == 0) {
-            return 0;
-        }
-
-        if (ratio >= 1e18) {
-            return data.lastUpdateBalance - data.transferredTokens;
-        } else {
-            return Math.mulDiv(data.lastUpdateBalance, ratio, 1e18) - data.transferredTokens;
-        }
+        return vested > data.transferredTokens ? vested - data.transferredTokens : 0;
     }
 
     /// @notice Checks if a given fuse is supported for rewards
@@ -213,9 +248,83 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
 
     /// @notice Sets the vesting duration
     /// @param vestingTime_ The new vesting duration in seconds
+    /// @dev When called mid-flight (transferredTokens > 0 and lastUpdateBalance > 0), reverts
+    /// with UnsafeVestingTime when the requested duration would force balanceOf() into the
+    /// clamp window where vested_now < transferredTokens. The caller should either invoke
+    /// updateBalance() first (drain & reset) or use rescheduleVesting() to rebase the curve
+    /// in place without moving tokens.
     /// @custom:access ATOMIST_ROLE
     function setupVestingTime(uint256 vestingTime_) external restricted {
+        VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
+
+        if (data.transferredTokens != 0 && data.lastUpdateBalance != 0) {
+            uint256 elapsed = block.timestamp > data.updateBalanceTimestamp
+                ? block.timestamp - data.updateBalanceTimestamp
+                : 0;
+
+            // Max vt' s.t. last * elapsed / vt' >= transferred
+            //  <=>  vt' <= elapsed * last / transferred
+            // transferredTokens != 0 guaranteed by the outer guard.
+            uint256 maxSafeVestingTime = (elapsed * uint256(data.lastUpdateBalance)) /
+                uint256(data.transferredTokens);
+
+            if (vestingTime_ > maxSafeVestingTime) {
+                revert UnsafeVestingTime(vestingTime_, maxSafeVestingTime);
+            }
+        }
+
         RewardsClaimManagersStorageLib.setupVestingTime(vestingTime_);
+    }
+
+    /// @notice Rebase the vesting schedule in place without transferring tokens to the Plasma Vault.
+    /// @dev Use case: governance changes the vesting length but totalAssets() must stay continuous
+    /// at this block (e.g. fee snapshot, oracle freeze). Caller computes the new anchor off-chain as
+    ///     t0' = block.timestamp - ceil(transferredTokens * newVestingTime / lastUpdateBalance)
+    /// when the goal is to lengthen the curve while keeping totalAssets continuous. Reverts when the
+    /// proposed (newVestingTime_, newUpdateBalanceTimestamp_) tuple would force balanceOf() to clamp
+    /// at block.timestamp.
+    /// @param newVestingTime_ New vesting duration in seconds. Must be > 0.
+    /// @param newUpdateBalanceTimestamp_ New anchor timestamp for the linear curve. Must be > 0 and <= block.timestamp.
+    /// Zero is rejected because balanceOf() treats updateBalanceTimestamp == 0 as an uninitialized
+    /// sentinel and returns 0 — accepting a zero anchor here would silently zero out totalAssets()
+    /// even though the vestedAt() invariant guard would pass.
+    /// @custom:access ATOMIST_ROLE
+    function rescheduleVesting(
+        uint32 newVestingTime_,
+        uint32 newUpdateBalanceTimestamp_
+    ) external restricted {
+        if (newVestingTime_ == 0) revert InvalidVestingTime();
+        if (newUpdateBalanceTimestamp_ == 0) revert InvalidTimestamp();
+        if (uint256(newUpdateBalanceTimestamp_) > block.timestamp) revert InvalidTimestamp();
+
+        VestingData memory data = RewardsClaimManagersStorageLib.getVestingData();
+
+        uint256 vestedAfter = RewardsClaimManagersStorageLib.vestedAt(
+            uint256(data.lastUpdateBalance),
+            newVestingTime_,
+            newUpdateBalanceTimestamp_,
+            block.timestamp
+        );
+
+        if (vestedAfter < uint256(data.transferredTokens)) {
+            revert UnsafeReschedule(
+                uint256(newVestingTime_),
+                uint256(newUpdateBalanceTimestamp_),
+                vestedAfter,
+                uint256(data.transferredTokens)
+            );
+        }
+
+        data.vestingTime = newVestingTime_;
+        data.updateBalanceTimestamp = newUpdateBalanceTimestamp_;
+        RewardsClaimManagersStorageLib.setVestingData(data);
+
+        emit VestingRescheduled(
+            uint256(newVestingTime_),
+            uint256(newUpdateBalanceTimestamp_),
+            uint256(data.transferredTokens),
+            uint256(data.lastUpdateBalance)
+        );
     }
 
     /// @notice Internal function to get the message sender from context
