@@ -268,6 +268,13 @@ library IporFusionMarkets {
     ///      four singleton parameters (STALENESS_MAX, BIG_CHANGE_BPS, DUST_THRESHOLD, MIN_UPDATE_INTERVAL).
     uint256 public constant RWA = 50;
 
+    /// @dev Reservoir Agua Global Carry Vault market (aguaUSDCgc).
+    ///      Synchronous 4626-compliant deposit, asynchronous (request -> complete) exit with an
+    ///      optional fee-charging early-redemption path. Substrate types are encoded via
+    ///      AguaSubstrateLib: VAULT (the Agua vault, which is also its own share token) and
+    ///      ASSET (the allowed deposit/redemption asset, e.g. USDC).
+    uint256 public constant AGUA_GLOBAL_CARRY = 51;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
