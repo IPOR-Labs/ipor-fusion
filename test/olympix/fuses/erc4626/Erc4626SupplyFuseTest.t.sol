@@ -14,6 +14,10 @@ import {PlasmaVaultStorageLib} from "contracts/libraries/PlasmaVaultStorageLib.s
 import {Erc4626SupplyFuseEnterData} from "contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {Erc4626SupplyFuseExitData} from "contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {PlasmaVaultMock} from "test/fuses/PlasmaVaultMock.sol";
+
+import {TransientStorageLib} from "contracts/transient_storage/TransientStorageLib.sol";
+import {TypeConversionLib} from "contracts/libraries/TypeConversionLib.sol";
+import {MockERC4626WithFee} from "test/test_helpers/MockERC4626WithFee.sol";
 contract Erc4626SupplyFuseTest is OlympixUnitTest("Erc4626SupplyFuse") {
     Erc4626SupplyFuse public erc4626SupplyFuse;
 
@@ -98,5 +102,127 @@ contract Erc4626SupplyFuseTest is OlympixUnitTest("Erc4626SupplyFuse") {
     
             // Assert: function should early‑return 0 when vaultAssetAmount == 0
             assertEq(sharesBurned, 0, "exit should return 0 when vaultAssetAmount is zero");
+        }
+
+    function test_enter_unsupportedVault_reverts_and_hitsBranch92True() public {
+        // Arrange: deploy underlying token and ERC4626 vault
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+        MockERC4626 vault = new MockERC4626(underlying, "Vault", "vTKN");
+    
+        // Prepare enter data with non‑zero amount so the first early‑return is skipped
+        Erc4626SupplyFuseEnterData memory data_ = Erc4626SupplyFuseEnterData({
+            vault: address(vault),
+            vaultAssetAmount: 1e18,
+            minSharesOut: 0
+        });
+    
+        // Act & Assert: since the vault was NOT granted as a substrate for MARKET_ID=1,
+        // PlasmaVaultConfigLib.isSubstrateAsAssetGranted(1, vault) returns false and
+        // the opix‑target‑branch‑92‑True path is taken, reverting with the custom error
+        vm.expectRevert();
+        erc4626SupplyFuse.enter(data_);
+    }
+
+    function test_enterTransient_UsesInputsAndSetsOutputs_opixBranch122True() public {
+        // Arrange: underlying token and ERC4626 vault
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+        MockERC4626 vault = new MockERC4626(underlying, "Vault", "vTKN");
+    
+        // PlasmaVaultMock so fuse runs via delegatecall in same storage context
+        PlasmaVaultMock pvMock = new PlasmaVaultMock(address(erc4626SupplyFuse), address(0));
+    
+        // Grant vault as supported substrate for MARKET_ID = 1 so the unsupported‑vault revert path is NOT taken
+        address[] memory assets = new address[](1);
+        assets[0] = address(vault);
+        pvMock.grantAssetsToMarket(1, assets);
+    
+        // Mint underlying to PlasmaVaultMock and approve to the vault
+        underlying.mint(address(pvMock), 1e18);
+        vm.prank(address(pvMock));
+        underlying.approve(address(vault), 1e18);
+    
+        // Prepare transient inputs for VERSION key stored in the fuse
+        bytes32[] memory inputs = new bytes32[](3);
+        inputs[0] = TypeConversionLib.toBytes32(address(vault));
+        inputs[1] = TypeConversionLib.toBytes32(uint256(5e17)); // amount = 0.5 tokens
+        inputs[2] = TypeConversionLib.toBytes32(uint256(0));    // minSharesOut = 0
+    
+        // Set inputs in transient storage under VERSION (erc4626SupplyFuse.VERSION()) via pvMock,
+        // so that inputs and the delegatecalled fuse share the same transient storage context
+        pvMock.setInputs(address(erc4626SupplyFuse), inputs);
+
+        // Act: call enterTransient via delegatecall through PlasmaVaultMock
+        pvMock.enterErc4626SupplyTransient();
+
+        // Assert: outputs stored under VERSION should contain supplied amount > 0
+        bytes32[] memory outputs = pvMock.getOutputs(address(erc4626SupplyFuse));
+        assertEq(outputs.length, 1, "enterTransient should set exactly one output");
+        uint256 suppliedAmount = TypeConversionLib.toUint256(outputs[0]);
+        assertGt(suppliedAmount, 0, "suppliedAmount from enterTransient should be greater than zero");
+    }
+
+    function test_exitTransient_hitsBranch144True_andReturnsShares() public {
+            // Arrange: deploy underlying token and ERC4626 vault
+            MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+            MockERC4626 vault = new MockERC4626(underlying, "Vault", "vTKN");
+    
+            // Use PlasmaVaultMock so that storage context (including VERSION‑keyed transient storage)
+            // and fuse execution are shared via delegatecall
+            PlasmaVaultMock pvMock = new PlasmaVaultMock(address(erc4626SupplyFuse), address(0));
+    
+            // Grant the vault as a supported substrate in pvMock's storage for MARKET_ID = 1
+            address[] memory assets = new address[](1);
+            assets[0] = address(vault);
+            pvMock.grantAssetsToMarket(1, assets);
+    
+            // Mint underlying to pvMock and deposit into the vault so that a later withdraw is possible
+            underlying.mint(address(pvMock), 1e18);
+            vm.prank(address(pvMock));
+            underlying.approve(address(vault), 1e18);
+            vm.prank(address(pvMock));
+            vault.deposit(1e18, address(pvMock));
+    
+            // Prepare transient storage inputs for exitTransient:
+            // inputs[0] = vault address, inputs[1] = amount, inputs[2] = maxSharesBurned
+            bytes32[] memory inputs = new bytes32[](3);
+            inputs[0] = bytes32(uint256(uint160(address(vault))));
+            inputs[1] = bytes32(uint256(5e17)); // withdraw 0.5 tokens
+            inputs[2] = bytes32(uint256(0));   // no maxSharesBurned limit
+    
+            // Set inputs under key VERSION (erc4626SupplyFuse address) in transient storage via pvMock
+            pvMock.setInputs(address(erc4626SupplyFuse), inputs);
+    
+            // Act: call exitTransient via pvMock (delegatecall into fuse)
+            pvMock.exitErc4626SupplyTransient();
+    
+            // Read outputs back for the same VERSION key; outputs[0] holds burned shares
+            bytes32[] memory outputs = pvMock.getOutputs(address(erc4626SupplyFuse));
+            uint256 burnedShares = uint256(outputs[0]);
+    
+            // Assert: some shares must have been burned and underlying withdrawn back to pvMock
+            assertGt(burnedShares, 0, "exitTransient should burn some shares");
+            uint256 underlyingBalance = underlying.balanceOf(address(pvMock));
+            assertGt(underlyingBalance, 0, "exitTransient should result in underlying balance on vault mock");
+        }
+
+    function test_exit_unsupportedVault_reverts_and_hitsBranch178True() public {
+            // Arrange: deploy underlying token and an ERC4626 vault
+            MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+            MockERC4626WithFee vault = new MockERC4626WithFee(underlying, "Vault", "vTKN", 0);
+    
+            // Note: we DO NOT grant the vault as a substrate for MARKET_ID = 1 here,
+            // so PlasmaVaultConfigLib.isSubstrateAsAssetGranted(1, vault) will return false.
+    
+            // Prepare exit data with non‑zero amount so the initial early‑return is skipped
+            Erc4626SupplyFuseExitData memory data_ = Erc4626SupplyFuseExitData({
+                vault: address(vault),
+                vaultAssetAmount: 1e18,
+                maxSharesBurned: 0
+            });
+    
+            // Act & Assert: calling exit should revert due to unsupported vault,
+            // taking the opix-target-branch-178-True path in _exit
+            vm.expectRevert();
+            erc4626SupplyFuse.exit(data_);
         }
 }

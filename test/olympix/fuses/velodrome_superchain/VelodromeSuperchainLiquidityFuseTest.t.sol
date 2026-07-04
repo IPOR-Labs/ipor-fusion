@@ -270,4 +270,50 @@ contract VelodromeSuperchainLiquidityFuseTest is OlympixUnitTest("VelodromeSuper
             // in exitTransient was at least exercised.
             assertTrue(outputs.length == 0 || outputs.length == 6, "outputs length should be 0 or 6");
         }
+
+    function test_exit_RevertWhenPoolNotGranted_opix_branch_240_true() public {
+            // Arrange: valid tokens so we pass the initial invalid-token check
+            VelodromeSuperchainLiquidityFuseExitData memory data = VelodromeSuperchainLiquidityFuseExitData({
+                tokenA: address(0x10),
+                tokenB: address(0x20),
+                stable: false,
+                liquidity: 1,
+                amountAMin: 0,
+                amountBMin: 0,
+                deadline: block.timestamp + 1 days
+            });
+    
+            // Mock router.poolFor to return a deterministic pool address
+            address fakePool = address(0xABCDEF);
+            vm.mockCall(
+                velodromeSuperchainLiquidityFuse.VELODROME_ROUTER(),
+                abi.encodeWithSelector(IRouter.poolFor.selector, data.tokenA, data.tokenB, data.stable),
+                abi.encode(fakePool)
+            );
+    
+            // Sanity: ensure PlasmaVaultConfigLib reports this pool as NOT granted for this MARKET_ID
+            bytes32 substrateKey = VelodromeSuperchainSubstrateLib.substrateToBytes32(
+                VelodromeSuperchainSubstrate({
+                    substrateType: VelodromeSuperchainSubstrateType.Pool,
+                    substrateAddress: fakePool
+                })
+            );
+            bool granted = PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                velodromeSuperchainLiquidityFuse.MARKET_ID(),
+                substrateKey
+            );
+            assertFalse(granted, "Precondition: pool must not be granted as market substrate");
+    
+            // Expect revert from the opix-target-branch condition in `exit` when substrate is not granted
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    VelodromeSuperchainLiquidityFuse.VelodromeSuperchainLiquidityFuseUnsupportedPool.selector,
+                    "exit",
+                    fakePool
+                )
+            );
+    
+            // Act
+            velodromeSuperchainLiquidityFuse.exit(data);
+        }
 }

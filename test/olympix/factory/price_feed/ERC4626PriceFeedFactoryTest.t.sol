@@ -8,6 +8,9 @@ import {MockERC4626} from "test/test_helpers/MockErc4626.sol";
 import {MockPriceOracle} from "test/fuses/aave_v4/MockPriceOracle.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {MockERC20} from "test/test_helpers/MockERC20.sol";
+import {IPriceOracleMiddleware} from "contracts/price_oracle/IPriceOracleMiddleware.sol";
+
+import {ERC4626PriceFeedFactory} from "contracts/factory/price_feed/ERC4626PriceFeedFactory.sol";
 contract ERC4626PriceFeedFactoryTest is OlympixUnitTest("ERC4626PriceFeedFactory") {
     ERC4626PriceFeedFactory public eRC4626PriceFeedFactory;
 
@@ -48,5 +51,38 @@ contract ERC4626PriceFeedFactoryTest is OlympixUnitTest("ERC4626PriceFeedFactory
             address priceFeed = eRC4626PriceFeedFactory.create(address(vault), address(oracle));
     
             assertTrue(priceFeed != address(0), "price feed should be created");
+        }
+
+    function test_create_revertsWhenAssetPriceOrDecimalsInvalid() public {
+            // deploy underlying ERC20 and ERC4626 vault
+            MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+            underlying.mint(address(this), 1_000e18);
+            MockERC4626 vault = new MockERC4626(underlying, "Vault", "vTKN");
+    
+            // deposit so convertToAssets returns > 0 and vault is valid
+            underlying.approve(address(vault), 1_000e18);
+            vault.deposit(1_000e18, address(this));
+    
+            // deploy mock oracle
+            MockPriceOracle oracle = new MockPriceOracle();
+    
+            // 1) assetPrice == 0, decimals > 0  -> AssetOfVaultNotValid branch
+            oracle.setAssetPriceWithDecimals(address(underlying), 0, 8);
+            vm.expectRevert(ERC4626PriceFeedFactory.AssetOfVaultNotValid.selector);
+            eRC4626PriceFeedFactory.create(address(vault), address(oracle));
+    
+            // 2) assetPrice > 0, decimals == 0  -> AssetOfVaultNotValid branch
+            // MockPriceOracle.getAssetPrice substitutes DEFAULT_PRICE_DECIMALS (8) whenever the
+            // stored decimals are 0, so setAssetPriceWithDecimals(..., 0) can never make the oracle
+            // return decimals == 0. Mock the call so the oracle genuinely returns (1e8, 0) and the
+            // `decimals <= 0` condition in ERC4626PriceFeedFactory.create is truly exercised.
+            vm.mockCall(
+                address(oracle),
+                abi.encodeWithSelector(IPriceOracleMiddleware.getAssetPrice.selector, address(underlying)),
+                abi.encode(uint256(1e8), uint256(0))
+            );
+            vm.expectRevert(ERC4626PriceFeedFactory.AssetOfVaultNotValid.selector);
+            eRC4626PriceFeedFactory.create(address(vault), address(oracle));
+            vm.clearMockedCalls();
         }
 }

@@ -191,4 +191,52 @@ contract TransientStorageMapperFuseTest is OlympixUnitTest("TransientStorageMapp
             ));
             mock.enter(enterData);
         }
+
+    function test_convertSignedDecimals_decimalDiffTooLarge_reverts() public {
+            // Deploy implementation and mock delegating to it
+            TransientStorageMapperFuse fuseImpl = new TransientStorageMapperFuse();
+            TransientStorageMapperFuseMock mock = new TransientStorageMapperFuseMock(address(fuseImpl));
+    
+            // Prepare a simple signed value in transient storage
+            int256 signedValue = 1;
+            bytes32[] memory inputs = new bytes32[](1);
+            inputs[0] = bytes32(uint256(signedValue));
+    
+            // Initialize destination storage for dataToAddress index 0
+            mock.setInputs(address(this), inputs);
+            // Store value as INPUT[0] for dataFromAddress = address(this)
+            mock.setInputs(address(this), inputs);
+    
+            // Choose fromDecimals and toDecimals so that |diff| > MAX_DECIMAL_DIFF (77)
+            // e.g. fromDecimals = 0, toDecimals = 78 -> diff = 78 > 77
+            uint256 fromDecimals = 0;
+            uint256 toDecimals = 78;
+    
+            TransientStorageMapperItem[] memory items = new TransientStorageMapperItem[](1);
+            items[0] = TransientStorageMapperItem({
+                paramType: TransientStorageParamTypes.INPUTS_BY_FUSE,
+                dataFromAddress: address(this),
+                dataFromIndex: 0,
+                dataFromType: DataType.INT256,
+                dataFromDecimals: fromDecimals,
+                dataToAddress: address(this),
+                dataToIndex: 0,
+                dataToType: DataType.INT256,
+                dataToDecimals: toDecimals
+            });
+    
+            TransientStorageMapperEnterData memory enterData = TransientStorageMapperEnterData({items: items});
+    
+            // Expect revert from _convertSignedDecimals when decimalDiff > MAX_DECIMAL_DIFF
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    TransientStorageMapperFuse.TransientStorageMapperFuseDecimalDifferenceTooLarge.selector,
+                    fromDecimals,
+                    toDecimals,
+                    77
+                )
+            );
+    
+            mock.enter(enterData);
+        }
 }

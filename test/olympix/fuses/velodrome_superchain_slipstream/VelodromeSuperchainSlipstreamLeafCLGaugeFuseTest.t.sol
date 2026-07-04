@@ -197,4 +197,50 @@ contract VelodromeSuperchainSlipstreamLeafCLGaugeFuseTest is OlympixUnitTest("Ve
             assertEq(TypeConversionLib.toAddress(outputs[0]), gauge, "output gaugeAddress mismatch");
             assertEq(TypeConversionLib.toUint256(outputs[1]), 7, "output tokenId mismatch");
         }
+
+    function test_enter_WithGrantedGaugeAndNonZeroTokenId_ExecutesDepositAndWritesOutputs() public {
+        // Arrange: deploy fresh fuse and PlasmaVaultMock (delegatecall target)
+        VelodromeSuperchainSlipstreamLeafCLGaugeFuse fuse = new VelodromeSuperchainSlipstreamLeafCLGaugeFuse(1);
+        PlasmaVaultMock vault = new PlasmaVaultMock(address(fuse), address(0));
+    
+        // Configure storage so that given gauge address is an allowed substrate for MARKET_ID = 1
+        address gauge = address(0x1234);
+        bytes32 substrate = VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32(
+            VelodromeSuperchainSlipstreamSubstrate({
+                substrateType: VelodromeSuperchainSlipstreamSubstrateType.Gauge,
+                substrateAddress: gauge
+            })
+        );
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = substrate;
+        vault.grantMarketSubstrates(1, substrates);
+    
+        // Mock external gauge and NFT interactions so enter() can run without reverting
+        uint256 tokenId = 7;
+        address fakeNft = address(0x9999);
+        // gauge.nft() -> fakeNft
+        vm.mockCall(gauge, abi.encodeWithSelector(ILeafCLGauge.nft.selector), abi.encode(fakeNft));
+        // fakeNft.approve(gauge, tokenId)
+        vm.mockCall(fakeNft, abi.encodeWithSelector(bytes4(keccak256("approve(address,uint256)")), gauge, tokenId), abi.encode());
+        // gauge.deposit(tokenId)
+        vm.mockCall(gauge, abi.encodeWithSelector(ILeafCLGauge.deposit.selector, tokenId), abi.encode());
+    
+        // Prepare transient storage inputs for VERSION key (address of fuse)
+        bytes32[] memory inputs = new bytes32[](2);
+        inputs[0] = TypeConversionLib.toBytes32(gauge);
+        inputs[1] = TypeConversionLib.toBytes32(tokenId);
+        vault.setInputs(address(fuse), inputs);
+    
+        // Act: call enterTransient via delegatecall through PlasmaVaultMock.
+        // This will:
+        //  - execute the `if (true)` block in enterTransient
+        //  - call enter() with non‑zero tokenId, taking the else-branch after the tokenId==0 check
+        vault.enterCompoundV2SupplyTransient();
+    
+        // Assert: transient storage outputs are written for same VERSION key
+        bytes32[] memory outputs = vault.getOutputs(address(fuse));
+        assertEq(outputs.length, 2, "outputs length");
+        assertEq(TypeConversionLib.toAddress(outputs[0]), gauge, "gauge output");
+        assertEq(TypeConversionLib.toUint256(outputs[1]), tokenId, "tokenId output");
+    }
 }
