@@ -90,7 +90,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
     }
 
     // -----------------------------------------------------------------------------------
-    // §6.1 balanceOf() saturation
+    // balanceOf() saturation
     // -----------------------------------------------------------------------------------
 
     /// @notice Replays the mainnet incident storage tuple and asserts balanceOf() returns 0
@@ -165,7 +165,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
     }
 
     // -----------------------------------------------------------------------------------
-    // §6.2 setupVestingTime validation
+    // setupVestingTime validation
     // -----------------------------------------------------------------------------------
 
     /// @notice The exact mainnet incident call (setupVestingTime(21 days) into a 7-day
@@ -285,7 +285,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
     }
 
     // -----------------------------------------------------------------------------------
-    // §6.3 rescheduleVesting
+    // rescheduleVesting
     // -----------------------------------------------------------------------------------
 
     /// @notice Path B from the runbook: replay the incident with rescheduleVesting instead.
@@ -462,7 +462,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
     }
 
     // -----------------------------------------------------------------------------------
-    // §6.4 Cross-layer / regression
+    // Cross-layer / regression
     // -----------------------------------------------------------------------------------
 
     /// @notice transferVestedTokensToVault must short-circuit (no transfer, no revert) when
@@ -523,7 +523,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
     }
 
     // -----------------------------------------------------------------------------------
-    // §6.5 vestedAt helper (single source of truth)
+    // vestedAt helper (single source of truth)
     // -----------------------------------------------------------------------------------
 
     /// @notice vestedAt must be in [0, lastUpdateBalance] for any input.

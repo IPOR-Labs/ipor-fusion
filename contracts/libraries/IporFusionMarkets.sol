@@ -275,6 +275,29 @@ library IporFusionMarkets {
     ///      ASSET (the allowed deposit/redemption asset, e.g. USDC).
     uint256 public constant AGUA_GLOBAL_CARRY = 51;
 
+        /// @dev Term Finance market - fixed-rate, fixed-term repo (lender AND borrower sides)
+    /// @dev Substrate type: TYPE-byte encoded bytes32 via `TermFinanceSubstrateLib`
+    /// @dev Substrate values:
+    ///      - TYPE 0x00 SERVICER: `TermRepoServicer` proxy addresses (upper byte = 0x00,
+    ///        backward-compatible with raw `addressToBytes32(servicer)` from lender side)
+    ///      - TYPE 0x01 COLLATERAL_TOKEN: ERC20 collateral token addresses accepted by a
+    ///        borrower's TermRepoCollateralManager (upper byte = 0x01)
+    /// @dev Balance fuse: TermFinanceBalanceFuse with signed-int aggregation across 5 legs:
+    ///      held repo tokens (+), pending offers (+), pending bids (+), locked collateral (+),
+    ///      debt PV (-). No external self-call is used (under delegatecall `address(this)` is
+    ///      the vault, so `try this.fn(...)` would hit the vault fallback); instead each foreign
+    ///      Term Finance read is wrapped in its own per-call try/catch, degrading an UNTRACKED
+    ///      servicer leg to 0 on revert. A TRACKED leg re-raises (`*PriceZeroForTracked`,
+    ///      `*DebtReadFailedForTrackedServicer`, `*DebtRateFailedForTrackedServicer`) to freeze
+    ///      share math. Per-leg saturation at MAX_VALUE_PER_LEG = 1e36 USD-WAD.
+    /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with
+    ///      balance of ERC20_VAULT_BALANCE — purchase tokens (USDC/WETH) are returned to the
+    ///      vault on `RedeemFuse.enter`, `OfferFuse.exit` (pre-reveal cancel), `BidFuse.exit`
+    ///      (unlock bid), `CollateralFuse.exit` (unlock collateral), and on bid clearing
+    ///      (loan disbursement); the vault's ERC20 balance must be re-evaluated atomically
+    ///      with TERM_FINANCE on every action that exits the position.
+    uint256 public constant TERM_FINANCE = 52;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
