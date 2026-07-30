@@ -426,6 +426,189 @@ contract ChainlinkGuardedPriceFeedTest is Test {
     }
 
     // ------------------------------------------------------------------
+    // deployment round as the oldest round in scope
+    // ------------------------------------------------------------------
+
+    function test_constructor_AnchorsWindowAtDeploymentRound() public {
+        (uint80 realRoundId, , , , ) = AggregatorV3Interface(CHAINLINK_ETH_USD).latestRoundData();
+
+        ChainlinkGuardedPriceFeed feed = _deploy();
+
+        assertEq(feed.INITIAL_ROUND_ID(), realRoundId, "INITIAL_ROUND_ID should be the round current at deployment");
+        assertEq(feed.INITIAL_PHASE_ID(), uint16(realRoundId >> 64), "phase should be split out of the round id");
+        assertEq(
+            feed.INITIAL_AGGREGATOR_ROUND_ID(),
+            uint64(realRoundId),
+            "in-phase round id should be split out of the round id"
+        );
+    }
+
+    function test_constructor_RevertsWhenAggregatorHasNoUsableAnswer() public {
+        _mockLatest(SYNTH_PHASE | 20, 0, block.timestamp);
+        vm.expectRevert(ChainlinkGuardedPriceFeed.InvalidPrice.selector);
+        _deploy();
+
+        _mockLatest(SYNTH_PHASE | 20, 1000e8, 0);
+        vm.expectRevert(ChainlinkGuardedPriceFeed.StalePrice.selector);
+        _deploy();
+    }
+
+    /// @dev A feed deployed against a brand new aggregator whose deployment round is its
+    /// only round must serve that answer: the deployer read it and accepted it.
+    function test_latestRoundData_DeploymentRoundIsServedWithoutAnyHistory() public {
+        uint80 latestRoundId = SYNTH_PHASE | 1;
+        _mockLatest(latestRoundId, 1000e8, block.timestamp);
+        // no getRoundData mocks at all - the window must not be consulted
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            MAX_DEV,
+            ROUNDS,
+            ROUNDS
+        );
+
+        (uint80 roundId, int256 price, , , ) = feed.latestRoundData();
+
+        assertEq(roundId, latestRoundId, "deployment round should pass through");
+        assertEq(price, 1000e8, "deployment round should be served with an empty window");
+    }
+
+    /// @dev The deployment round is exempt only from the window requirement - the
+    /// staleness guard still applies to it.
+    function test_latestRoundData_DeploymentRoundStillSubjectToStaleness() public {
+        uint80 latestRoundId = SYNTH_PHASE | 1;
+        _mockLatest(latestRoundId, 1000e8, block.timestamp);
+        ChainlinkGuardedPriceFeed feed = _deploy();
+
+        vm.warp(block.timestamp + uint256(MAX_STALE) + 1);
+        vm.expectRevert(ChainlinkGuardedPriceFeed.StalePrice.selector);
+        feed.latestRoundData();
+    }
+
+    /// @dev Warm-up: `MIN_VALID_ROUNDS` is capped by the rounds that exist above the
+    /// deployment round, so the feed keeps working from the first new round onwards.
+    function test_latestRoundData_WarmUp_MinValidRoundsCappedByReachableWindow() public {
+        _mockLatest(SYNTH_PHASE | 10, 1000e8, block.timestamp);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            MAX_DEV,
+            ROUNDS,
+            ROUNDS
+        );
+
+        // one new round on top of the deployment round: window can only hold round 10
+        _mockLatest(SYNTH_PHASE | 11, 1020e8, block.timestamp);
+        _mockRound(SYNTH_PHASE | 10, 1000e8, block.timestamp);
+
+        (, int256 price, , , ) = feed.latestRoundData();
+        assertEq(price, 1020e8, "a single reachable round should satisfy the capped minimum");
+
+        // the check itself is not skipped - 1060e8 vs a mean of 1000e8 is 6% > 5%
+        _mockLatest(SYNTH_PHASE | 11, 1060e8, block.timestamp);
+        vm.expectRevert(abi.encodeWithSelector(ChainlinkGuardedPriceFeed.DeviationTooHigh.selector, 6e16, MAX_DEV));
+        feed.latestRoundData();
+    }
+
+    /// @dev Even during warm-up the capped minimum must be met: the only reachable round
+    /// is unusable here, so the read fails closed.
+    function test_latestRoundData_WarmUp_FailsClosedWhenReachableRoundUnusable() public {
+        _mockLatest(SYNTH_PHASE | 10, 1000e8, block.timestamp);
+        ChainlinkGuardedPriceFeed feed = _deploy();
+
+        _mockLatest(SYNTH_PHASE | 11, 1000e8, block.timestamp);
+        _mockRoundRevert(SYNTH_PHASE | 10);
+
+        vm.expectRevert(abi.encodeWithSelector(ChainlinkGuardedPriceFeed.InsufficientValidRounds.selector, 0, 1));
+        feed.latestRoundData();
+    }
+
+    /// @dev Rounds older than the deployment round are out of scope even when they exist
+    /// and would otherwise fill the window.
+    function test_latestRoundData_WindowNeverReachesBelowDeploymentRound() public {
+        _mockLatest(SYNTH_PHASE | 10, 1000e8, block.timestamp);
+        ChainlinkGuardedPriceFeed feed = _deploy();
+
+        _mockLatest(SYNTH_PHASE | 11, 1000e8, block.timestamp);
+        _mockRound(SYNTH_PHASE | 10, 1000e8, block.timestamp);
+        // pre-deployment history that would drag the mean down to 600e8 over 5 rounds
+        for (uint80 i = 6; i < 10; ++i) {
+            _mockRound(SYNTH_PHASE | i, 100e8, block.timestamp);
+        }
+
+        // mean must be 1000e8 (round 10 only) -> deviation 0 -> pass
+        (, int256 price, , , ) = feed.latestRoundData();
+        assertEq(price, 1000e8, "pre-deployment rounds must not enter the mean");
+    }
+
+    /// @dev Once `MIN_VALID_ROUNDS` rounds exist above the deployment round the cap is
+    /// gone and a degraded window fails closed again.
+    function test_latestRoundData_AfterWarmUp_MinValidRoundsEnforcedInFull() public {
+        _mockLatest(SYNTH_PHASE | 10, 1000e8, block.timestamp);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, MAX_DEV, ROUNDS, 3);
+
+        // rounds 10..13 exist (4 reachable, cap no longer binds), but only 2 are usable
+        _mockLatest(SYNTH_PHASE | 14, 1000e8, block.timestamp);
+        _mockRound(SYNTH_PHASE | 13, 1000e8, block.timestamp);
+        _mockRound(SYNTH_PHASE | 12, 1000e8, block.timestamp);
+        _mockRound(SYNTH_PHASE | 11, 0, block.timestamp);
+        _mockRoundRevert(SYNTH_PHASE | 10);
+
+        vm.expectRevert(abi.encodeWithSelector(ChainlinkGuardedPriceFeed.InsufficientValidRounds.selector, 2, 3));
+        feed.latestRoundData();
+    }
+
+    /// @dev A new aggregator phase gets no warm-up relaxation: nobody signed off on its
+    /// first answers, so the full `MIN_VALID_ROUNDS` is required from round 1.
+    function test_latestRoundData_NewPhase_NoWarmUpRelaxation() public {
+        _mockLatest(SYNTH_PHASE | 10, 1000e8, block.timestamp);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, MAX_DEV, ROUNDS, 3);
+
+        uint80 nextPhase = uint80(100) << 64;
+        _mockLatest(nextPhase | 2, 1000e8, block.timestamp);
+        _mockRound(nextPhase | 1, 1000e8, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(ChainlinkGuardedPriceFeed.InsufficientValidRounds.selector, 1, 3));
+        feed.latestRoundData();
+    }
+
+    /// @dev An aggregator reporting a round id at or below the deployment round within the
+    /// deployment phase is anomalous - it must fail closed, not skip the check.
+    function test_latestRoundData_FailsClosedWhenRoundIdGoesBackwards() public {
+        _mockLatest(SYNTH_PHASE | 10, 1000e8, block.timestamp);
+        ChainlinkGuardedPriceFeed feed = _deploy();
+
+        _mockLatest(SYNTH_PHASE | 9, 1000e8, block.timestamp);
+        _mockRound(SYNTH_PHASE | 8, 1000e8, block.timestamp);
+
+        vm.expectRevert(abi.encodeWithSelector(ChainlinkGuardedPriceFeed.InsufficientValidRounds.selector, 0, 1));
+        feed.latestRoundData();
+    }
+
+    /// @dev Real fork data: the deviation check runs against the aggregator's genuine
+    /// history once a round is published above the deployment round.
+    function test_latestRoundData_RealHistory_UsedAfterDeploymentRound() public {
+        (uint80 realRoundId, int256 realAnswer, , uint256 realUpdatedAt, ) = AggregatorV3Interface(CHAINLINK_ETH_USD)
+            .latestRoundData();
+        vm.warp(realUpdatedAt + 1);
+
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            5e17,
+            ROUNDS,
+            MIN_ROUNDS
+        );
+
+        // a new round in the same phase, one above the deployment round: the window is
+        // capped to the deployment round itself, whose data comes from the real aggregator
+        _mockLatest(realRoundId + 1, realAnswer, block.timestamp);
+
+        (, int256 price, , , ) = feed.latestRoundData();
+        assertEq(price, realAnswer, "real deployment round should serve as the reference");
+    }
+
+    // ------------------------------------------------------------------
     // helpers
     // ------------------------------------------------------------------
 

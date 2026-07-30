@@ -19,6 +19,16 @@ import {IPriceFeed} from "./IPriceFeed.sol";
 /// rounds cover a short period in volatile markets and a much longer one in quiet
 /// markets - the effective protection window varies with feed update frequency.
 /// Size `ROUNDS_TO_CHECK` per feed with its heartbeat in mind.
+///
+/// The window never reaches below `INITIAL_ROUND_ID` - the round current when this
+/// feed was deployed. History predating the feed is out of scope, so the window
+/// grows from empty at deployment to `ROUNDS_TO_CHECK` as new rounds are published.
+/// During that warm-up the `MIN_VALID_ROUNDS` floor is capped by what the window can
+/// possibly hold, and the deployment round itself needs no reference at all: the
+/// deployer read that answer and accepted it. Both relaxations are limited to the
+/// aggregator phase the feed was deployed against - after a phase change (aggregator
+/// migration) the full `MIN_VALID_ROUNDS` is mandatory again, because no one signed
+/// off on the new aggregator's first answers.
 contract ChainlinkGuardedPriceFeed is IPriceFeed {
     /// @notice Hard upper bound on `MAX_STALE_PERIOD`; rules out misconfig
     /// (e.g. `type(uint32).max`) effectively disabling staleness checks.
@@ -50,13 +60,16 @@ contract ChainlinkGuardedPriceFeed is IPriceFeed {
     /// @param roundsToCheck Number of previous rounds averaged for the deviation check.
     /// @param minValidRounds Minimum number of usable previous rounds required.
     /// @param decimals Aggregator decimals cached by the feed.
+    /// @param initialRoundId Aggregator round current at deployment - the oldest round
+    ///        the deviation check will ever consult.
     event PriceFeedInitialized(
         address aggregator,
         uint32 maxStalePeriod,
         uint256 maxDeviation,
         uint256 roundsToCheck,
         uint256 minValidRounds,
-        uint8 decimals
+        uint8 decimals,
+        uint80 initialRoundId
     );
 
     /// @notice Chainlink aggregator (proxy) address this feed wraps.
@@ -82,6 +95,17 @@ contract ChainlinkGuardedPriceFeed is IPriceFeed {
     /// @notice Decimals of the wrapped aggregator, cached at deployment.
     /// Chainlink aggregator proxies are not expected to change decimals.
     uint8 public immutable PRICE_FEED_DECIMALS;
+
+    /// @notice Aggregator round current at deployment. It is the oldest round the
+    /// deviation check may consult (inclusive) - rounds published before this feed
+    /// existed never enter the reference window.
+    uint80 public immutable INITIAL_ROUND_ID;
+
+    /// @notice Phase of `INITIAL_ROUND_ID`, cached to keep the read path shift-free.
+    uint16 public immutable INITIAL_PHASE_ID;
+
+    /// @notice In-phase round id of `INITIAL_ROUND_ID`, cached alongside the phase.
+    uint64 public immutable INITIAL_AGGREGATOR_ROUND_ID;
 
     /// @param aggregator_ Chainlink aggregator (proxy) address to wrap.
     /// @param maxStalePeriod_ Maximum allowed answer age, in seconds, in (0, 7 days].
@@ -113,13 +137,26 @@ contract ChainlinkGuardedPriceFeed is IPriceFeed {
         /// @dev also rejects addresses without aggregator code at deploy time
         PRICE_FEED_DECIMALS = AggregatorV3Interface(aggregator_).decimals();
 
+        /// @dev Anchors the reference window at the round the deployer saw and accepted.
+        /// A feed with no usable answer at deployment is a misconfiguration, not a
+        /// transient condition - reject it here rather than at first read.
+        (uint80 initialRoundId, int256 initialAnswer, , uint256 initialUpdatedAt, ) = AggregatorV3Interface(aggregator_)
+            .latestRoundData();
+        if (initialAnswer <= 0) revert InvalidPrice();
+        if (initialUpdatedAt == 0) revert StalePrice();
+
+        INITIAL_ROUND_ID = initialRoundId;
+        INITIAL_PHASE_ID = uint16(initialRoundId >> 64);
+        INITIAL_AGGREGATOR_ROUND_ID = uint64(initialRoundId);
+
         emit PriceFeedInitialized(
             aggregator_,
             maxStalePeriod_,
             maxDeviation_,
             roundsToCheck_,
             minValidRounds_,
-            PRICE_FEED_DECIMALS
+            PRICE_FEED_DECIMALS,
+            initialRoundId
         );
     }
 
@@ -154,18 +191,43 @@ contract ChainlinkGuardedPriceFeed is IPriceFeed {
     /// mean of the previous `ROUNDS_TO_CHECK` rounds.
     ///
     /// Chainlink round ids are `(phaseId << 64) | aggregatorRoundId` with aggregator
-    /// round ids starting at 1 within each phase, so the loop bound `i < aggregatorRoundId`
-    /// both prevents underflow and keeps the walk inside the current phase. The walk
-    /// starts at `i = 1` so the latest round is never part of its own reference mean.
-    /// Rounds that revert or carry no valid data (answer <= 0 or updatedAt == 0) shrink
-    /// the window; fewer than `MIN_VALID_ROUNDS` usable rounds fail the read closed.
+    /// round ids starting at 1 within each phase. The walk is bounded by the number of
+    /// rounds between the latest round and the oldest one in scope (`INITIAL_ROUND_ID`
+    /// in the deployment phase, round 1 in any later phase), which prevents underflow,
+    /// keeps the walk inside the current phase and stops it from reaching history that
+    /// predates the feed. The walk starts at `i = 1` so the latest round is never part
+    /// of its own reference mean. Rounds that revert or carry no valid data
+    /// (answer <= 0 or updatedAt == 0) shrink the window.
+    ///
+    /// Two warm-up relaxations apply, both confined to the deployment phase:
+    /// the deployment round is accepted with no reference window at all (the deployer
+    /// read and accepted that answer), and while fewer than `MIN_VALID_ROUNDS` rounds
+    /// exist above it the floor is capped by the reachable window size. Outside those
+    /// cases fewer than `MIN_VALID_ROUNDS` usable rounds fail the read closed.
     function _checkDeviation(uint80 latestRoundId_, uint256 latestPrice_) internal view {
+        /// @dev No round published since deployment - nothing to compare against, and
+        /// the staleness guard already bounds how long this answer stays acceptable.
+        if (latestRoundId_ == INITIAL_ROUND_ID) return;
+
         uint64 aggregatorRoundId = uint64(latestRoundId_);
+        bool deploymentPhase = uint16(latestRoundId_ >> 64) == INITIAL_PHASE_ID;
+
+        /// @dev Oldest in-phase round id in scope, inclusive.
+        uint64 oldestRoundId = deploymentPhase ? INITIAL_AGGREGATOR_ROUND_ID : 1;
+        uint256 reachableRounds = aggregatorRoundId > oldestRoundId ? aggregatorRoundId - oldestRoundId : 0;
+
+        /// @dev The cap never drops below one round: a deployment-phase round id at or
+        /// below the deployment round means the aggregator went backwards, which must
+        /// fail closed rather than skip the check (and would divide by a zero count).
+        uint256 minValidRounds = MIN_VALID_ROUNDS;
+        if (deploymentPhase && reachableRounds < minValidRounds) {
+            minValidRounds = reachableRounds == 0 ? 1 : reachableRounds;
+        }
 
         uint256 sum;
         uint256 count;
 
-        for (uint256 i = 1; i <= ROUNDS_TO_CHECK && i < aggregatorRoundId; ++i) {
+        for (uint256 i = 1; i <= ROUNDS_TO_CHECK && i <= reachableRounds; ++i) {
             try AggregatorV3Interface(AGGREGATOR).getRoundData(latestRoundId_ - uint80(i)) returns (
                 uint80,
                 int256 prevAnswer,
@@ -182,7 +244,7 @@ contract ChainlinkGuardedPriceFeed is IPriceFeed {
             }
         }
 
-        if (count < MIN_VALID_ROUNDS) revert InsufficientValidRounds(count, MIN_VALID_ROUNDS);
+        if (count < minValidRounds) revert InsufficientValidRounds(count, minValidRounds);
 
         uint256 mean = sum / count;
         uint256 diff = latestPrice_ > mean ? latestPrice_ - mean : mean - latestPrice_;
