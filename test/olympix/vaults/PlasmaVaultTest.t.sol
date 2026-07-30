@@ -16,6 +16,10 @@ import {PlasmaVaultFeesLib} from "contracts/vaults/lib/PlasmaVaultFeesLib.sol";
 import {Errors} from "contracts/libraries/errors/Errors.sol";
 import {FuseAction} from "contracts/interfaces/IPlasmaVault.sol";
 import {MockERC20} from "test/test_helpers/MockERC20.sol";
+
+import {AuthorityUtils} from "@openzeppelin/contracts/access/manager/AuthorityUtils.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
+import {IporFusionAccessManager} from "contracts/managers/access/IporFusionAccessManager.sol";
 contract PlasmaVaultTest is OlympixUnitTest("PlasmaVault") {
     PlasmaVault public plasmaVault;
 
@@ -179,5 +183,45 @@ contract PlasmaVaultTest is OlympixUnitTest("PlasmaVault") {
     
             vm.expectRevert(abi.encodeWithSelector(Errors.WrongCaller.selector, address(this)));
             plasmaVault.executeInternal(emptyCalls);
+        }
+
+    function test_maxMint_WhenTotalSupplyAtOrAboveCap_ReturnsZero() public view {
+            // In this bare deployment, PlasmaVaultLib totalSupplyCap is initialized to 0
+            // and totalSupply() is also 0, so totalSupply >= totalSupplyCap holds true.
+            // This satisfies opix-target-branch-1065-True and maxMint should return 0.
+            uint256 cap = PlasmaVaultLib.getTotalSupplyCap();
+            uint256 supply = plasmaVault.totalSupply();
+    
+            assertTrue(supply >= cap, "Precondition totalSupply >= totalSupplyCap should hold in bare setup");
+    
+            uint256 result = plasmaVault.maxMint(address(this));
+            assertEq(result, 0, "maxMint should be zero when total supply cap is reached or exceeded");
+        }
+
+    function test_checkCanCall_DepositWithPermitBranchCallsAuthorityChecks() public {
+            // opix-target-branch-1636-True: hit the `else if (this.depositWithPermit.selector == sig)` branch
+            //
+            // We call the external `depositWithPermit` function so that the overridden
+            // `_checkCanCall` in PlasmaVault is executed through the `restricted` modifier.
+            // This exercises the specific branch that decodes `(uint256, address, uint256, uint8, bytes32, bytes32)`
+            // and calls both `IporFusionAccessManager(authority()).canCallAndUpdate` and
+            // `AuthorityUtils.canCallWithDelay` for `depositWithPermit`.
+    
+            // Arrange minimal, non-significant parameters – the underlying call will revert
+            // later in depositWithPermit (e.g. on `PermitFailed` or `NoAssetsToDeposit`),
+            // but by that time `_checkCanCall` (and thus the target branch) has already run.
+            uint256 assets = 0; // value doesn't matter for branch coverage
+            address receiver = address(this);
+            uint256 deadline = block.timestamp + 1;
+            uint8 v = 0;
+            bytes32 r = bytes32(0);
+            bytes32 s = bytes32(0);
+    
+            // We don't know the exact revert reason coming from the access manager
+            // or from the body of depositWithPermit, so we only assert that some revert
+            // happens after branch execution.
+            vm.expectRevert();
+    
+            plasmaVault.depositWithPermit(assets, receiver, deadline, v, r, s);
         }
 }

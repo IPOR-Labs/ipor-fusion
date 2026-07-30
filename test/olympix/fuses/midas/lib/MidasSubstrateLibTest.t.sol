@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {OlympixUnitTest} from "test/OlympixUnitTest.sol";
 
 /// @dev Target contract: contracts/fuses/midas/lib/MidasSubstrateLib.sol
-contract MidasSubstrateLibTest is OlympixUnitTest("MidasSubstrateLib") {
+contract MidasSubstrateLibTest is OlympixUnitTest("MidasSubstrateLibCaller") {
 
     function setUp() public override {
         // Setup will be filled by Olympix

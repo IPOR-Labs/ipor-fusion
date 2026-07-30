@@ -801,4 +801,64 @@ contract PriceOracleMiddlewareManagerTest is OlympixUnitTest("PriceOracleMiddlew
             vm.expectRevert(PriceOracleMiddlewareManager.UnexpectedPriceResult.selector);
             manager.getAssetPrice(asset);
         }
+
+    function test_getAssetPrice_CustomSourcePriceNonPositive_RevertsUnexpectedPriceResult_opix_target_branch_316_true() public {
+            // Arrange: set up AccessManager authority required by AccessManagedUpgradeable
+            IporFusionAccessManager accessManager = new IporFusionAccessManager(address(this), 0);
+    
+            // Deploy a mock middleware (won't be used because a custom source will be configured)
+            MockPriceOracle mockMiddleware = new MockPriceOracle();
+    
+            // Deploy the manager with a valid (non‑zero) authority and middleware
+            PriceOracleMiddlewareManager manager = new PriceOracleMiddlewareManager(
+                address(accessManager),
+                address(mockMiddleware)
+            );
+    
+            // Give this test contract permission to call setAssetsPriceSources via the AccessManager
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = PriceOracleMiddlewareManager.setAssetsPriceSources.selector;
+            uint64 roleId = 0;
+            accessManager.setTargetFunctionRole(address(manager), selectors, roleId);
+            accessManager.grantRole(roleId, address(this), 0);
+    
+            // Configure a custom price feed source for an asset so `_getAssetPrice` takes the
+            // `if (source != address(0))` branch and reads from IPriceFeed.latestRoundData
+            address asset = address(0xABCD);
+            address source = address(0xBEEF);
+            address[] memory assets = new address[](1);
+            address[] memory sources = new address[](1);
+            assets[0] = asset;
+            sources[0] = source;
+            manager.setAssetsPriceSources(assets, sources);
+    
+            // Mock the IPriceFeed at `source` so that latestRoundData returns price = 0
+            // This makes `assetPrice` (after convertToWad) equal 0, triggering:
+            //    if (assetPrice <= 0) { revert UnexpectedPriceResult(); }
+            // which is annotated as opix-target-branch-316-True.
+            bytes memory latestRoundDataReturn = abi.encode(
+                uint80(1),          // roundId
+                int256(0),          // price <= 0
+                uint256(0),         // startedAt
+                uint256(0),         // updatedAt
+                uint80(1)           // answeredInRound
+            );
+            vm.mockCall(
+                source,
+                abi.encodeWithSelector(IPriceFeed.latestRoundData.selector),
+                latestRoundDataReturn
+            );
+    
+            // Also mock decimals() to return a valid value (e.g. 8)
+            bytes memory decimalsReturn = abi.encode(uint8(8));
+            vm.mockCall(
+                source,
+                abi.encodeWithSelector(IPriceFeed.decimals.selector),
+                decimalsReturn
+            );
+    
+            // Act & Assert: getAssetPrice should now revert with UnexpectedPriceResult
+            vm.expectRevert(PriceOracleMiddlewareManager.UnexpectedPriceResult.selector);
+            manager.getAssetPrice(asset);
+        }
 }

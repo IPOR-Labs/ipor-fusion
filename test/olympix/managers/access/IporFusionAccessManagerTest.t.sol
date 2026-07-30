@@ -8,6 +8,8 @@ import {InitializationData} from "contracts/managers/access/IporFusionAccessMana
 import {Roles} from "contracts/libraries/Roles.sol";
 import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {RedemptionDelayLib} from "contracts/managers/access/RedemptionDelayLib.sol";
+
+import {IporFusionAccessManager} from "contracts/managers/access/IporFusionAccessManager.sol";
 contract IporFusionAccessManagerTest is OlympixUnitTest("IporFusionAccessManager") {
 
     function setUp() public override {
@@ -181,4 +183,50 @@ contract IporFusionAccessManagerTest is OlympixUnitTest("IporFusionAccessManager
             bytes4 secondSelector = manager.isConsumingScheduledOp();
             assertEq(secondSelector, bytes4(0));
         }
+
+    function test_initialize_revertTooLongRedemptionDelay_hitsTrueBranch() public {
+        uint256 tooLongDelay = 7 days + 1;
+    
+        vm.expectRevert(
+            abi.encodeWithSelector(IporFusionAccessManager.TooLongRedemptionDelay.selector, tooLongDelay)
+        );
+    
+        new IporFusionAccessManager(address(this), tooLongDelay);
+    }
+
+    function test_checkCanCall_delayGreaterThanZero_triggersConsumeScheduledOp() public {
+            IporFusionAccessManager manager = new IporFusionAccessManager(address(this), 1 days);
+    
+            // Configure a role and make ADMIN_ROLE its admin so this contract can manage it
+            uint64 roleId = 1;
+            manager.setRoleAdmin(roleId, manager.ADMIN_ROLE());
+    
+            // Prepare a selector for a restricted function on the manager itself
+            bytes4 selector = IporFusionAccessManager.updateTargetClosed.selector;
+            bytes4[] memory selectors = new bytes4[](1);
+            selectors[0] = selector;
+    
+            // Require roleId for calling updateTargetClosed on manager
+            manager.setTargetFunctionRole(address(manager), selectors, roleId);
+    
+            // Set minimal execution delay for this role to a positive value so that
+            // the first call is scheduled (immediate = false, delay > 0)
+            uint64[] memory rolesIds = new uint64[](1);
+            rolesIds[0] = roleId;
+            uint256[] memory delays = new uint256[](1);
+            delays[0] = 1;
+            manager.setMinimalExecutionDelaysForRoles(rolesIds, delays);
+    
+            // Grant the role to this contract with an execution delay that satisfies the minimum
+            manager.grantRole(roleId, address(this), 1);
+    
+            // First call: schedule the operation, causing canCall to return (false, delay>0)
+            // This will exercise the `if (delay > 0)` branch in _checkCanCall via the modifier.
+            manager.updateTargetClosed(address(0xABC), true);
+    
+            // Second call: now that a scheduled operation exists and has been consumed,
+            // the call should be executable immediately without reverting.
+            manager.updateTargetClosed(address(0xABC), false);
+        }
+    
 }
