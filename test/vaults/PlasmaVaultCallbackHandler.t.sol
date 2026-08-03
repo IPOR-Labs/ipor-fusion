@@ -113,7 +113,7 @@ contract PlasmaVaultCallbackHandler is Test {
     }
 
     function _setupFuses() private returns (address[] memory fuses) {
-        _morphoFuse = new MorphoSupplyWithCallBackDataFuse(_MORPHO_MARKET_ID, address(_MORPHO));
+        _morphoFuse = new MorphoSupplyWithCallBackDataFuse(_MORPHO_MARKET_ID);
         _supplyFuseAaveV3 = new AaveV3SupplyFuse(_AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         _supplyFuseCompoundV3 = new CompoundV3SupplyFuse(_COMPOUND_V3_MARKET_ID, _COMET_V3_USDC);
 

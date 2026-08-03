@@ -57,8 +57,8 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
     using MarketParamsLib for MarketParams;
 
     /// @notice Morpho protocol contract address
-    /// @dev Immutable value set in constructor, used for Morpho protocol interactions
-    IMorpho public immutable MORPHO;
+    /// @dev Immutable constant set at contract deployment
+    IMorpho public constant MORPHO = IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
 
     /// @notice Emitted when assets are supplied to Morpho protocol
     /// @param version The address of this fuse contract version
@@ -95,15 +95,13 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
     uint256 public immutable MARKET_ID;
 
     /**
-     * @notice Initializes the MorphoSupplyWithCallBackDataFuse with a market ID and Morpho protocol address
+     * @notice Initializes the MorphoSupplyWithCallBackDataFuse with a market ID
      * @param marketId_ The market ID used to identify the Morpho market substrates
-     * @param morpho_ The address of the Morpho protocol contract
      * @dev Sets VERSION to the address of this contract instance for tracking purposes
      */
-    constructor(uint256 marketId_, address morpho_) {
+    constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
-        MORPHO = IMorpho(morpho_);
     }
 
     /**
