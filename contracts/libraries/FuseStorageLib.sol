@@ -283,6 +283,37 @@ library FuseStorageLib {
     bytes32 private constant AERODROME_SLIPSTREAM_TOKEN_IDS =
         0x0c954f82f9216b16230a9847b4d73bfde1ddedf5d9a25bf9eb22e669cbfcd600;
 
+    /**
+     * @dev Storage slot for Uniswap V4 position token IDs
+     * @notice Tracks NFT position tokens (minted by the Uniswap V4 PositionManager) held by the vault
+     *
+     * Calculation:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.UniswapV4TokenIds")) - 1)) & ~bytes32(uint256(0xff))
+     *
+     * Purpose:
+     * - Tracks Uniswap V4 concentrated liquidity positions owned by the vault
+     * - Manages position enumeration for the UniswapV4Balance fuse
+     * - Enables efficient position tracking and swap-and-pop removal
+     *
+     * Storage Structure:
+     * - UniswapV4TokenIds struct containing:
+     *   - tokenIds: uint256[] array of Uniswap V4 PositionManager NFT position IDs
+     *   - indexes: mapping(uint256 tokenId => uint256 index) for position lookup
+     *
+     * Usage Pattern:
+     * - Updated when creating (UniswapV4NewPositionFuse.enter) and closing (exit) V4 positions
+     * - Referenced during position management and balance calculation
+     *
+     * Integration Points:
+     * - UniswapV4NewPositionFuse: Position creation and closure
+     * - UniswapV4Balance: Balance calculation for NAV
+     *
+     * Security Considerations:
+     * - Must accurately track all vault positions; the fuse is the only writer
+     * - Prevents DoS via malicious NFT transfers to vault (only fuse-minted ids are tracked)
+     */
+    bytes32 private constant UNISWAP_V4_TOKEN_IDS = 0xa0cb9820b479943d568ab227efebaab415b98a8a6852b9c25e27d9ce5c481900;
+
     /// @custom:storage-location erc7201:io.ipor.CfgFuses
     struct Fuses {
         /// @dev fuse address => If index = 0 - is not granted, otherwise - granted
@@ -321,6 +352,12 @@ library FuseStorageLib {
 
     /// @custom:storage-location erc7201:io.ipor.AerodromeSlipstreamTokenIds
     struct AerodromeSlipstreamTokenIds {
+        uint256[] tokenIds;
+        mapping(uint256 tokenId => uint256 index) indexes;
+    }
+
+    /// @custom:storage-location erc7201:io.ipor.UniswapV4TokenIds
+    struct UniswapV4TokenIds {
         uint256[] tokenIds;
         mapping(uint256 tokenId => uint256 index) indexes;
     }
@@ -379,6 +416,13 @@ library FuseStorageLib {
     {
         assembly {
             aerodromeSlipstreamTokenIds.slot := AERODROME_SLIPSTREAM_TOKEN_IDS
+        }
+    }
+
+    /// @notice Gets the UniswapV4TokenIds storage pointer
+    function getUniswapV4TokenIds() internal pure returns (UniswapV4TokenIds storage uniswapV4TokenIds) {
+        assembly {
+            uniswapV4TokenIds.slot := UNISWAP_V4_TOKEN_IDS
         }
     }
 }

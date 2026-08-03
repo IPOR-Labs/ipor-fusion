@@ -275,7 +275,7 @@ library IporFusionMarkets {
     ///      ASSET (the allowed deposit/redemption asset, e.g. USDC).
     uint256 public constant AGUA_GLOBAL_CARRY = 51;
 
-        /// @dev Term Finance market - fixed-rate, fixed-term repo (lender AND borrower sides)
+    /// @dev Term Finance market - fixed-rate, fixed-term repo (lender AND borrower sides)
     /// @dev Substrate type: TYPE-byte encoded bytes32 via `TermFinanceSubstrateLib`
     /// @dev Substrate values:
     ///      - TYPE 0x00 SERVICER: `TermRepoServicer` proxy addresses (upper byte = 0x00,
@@ -297,6 +297,15 @@ library IporFusionMarkets {
     ///      (loan disbursement); the vault's ERC20 balance must be re-evaluated atomically
     ///      with TERM_FINANCE on every action that exits the position.
     uint256 public constant TERM_FINANCE = 52;
+
+    /// @dev Uniswap V4 concentrated liquidity positions market
+    /// @dev Substrates (two-level whitelist, see UniswapV4SubstrateLib):
+    ///      - PoolId (raw bytes32, keccak256(abi.encode(PoolKey))) — transitively whitelists the
+    ///        pool's hook address, fee tier and tick spacing (all part of the PoolKey)
+    ///      - token addresses (substrate-as-asset) for both pool currencies, required for
+    ///        price-oracle valuation and asset distribution protection
+    /// @dev Native-currency pools (currency0 == address(0)) are not supported; use WETH pools
+    uint256 public constant UNISWAP_V4 = 53;
 
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
