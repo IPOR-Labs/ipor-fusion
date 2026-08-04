@@ -307,6 +307,47 @@ library IporFusionMarkets {
     /// @dev Native-currency pools (currency0 == address(0)) are not supported; use WETH pools
     uint256 public constant UNISWAP_V4 = 53;
 
+
+    /// @dev Polygon sPOL unstake market (Ethereum mainnet) — values POL pending in the sPOLController
+    ///      unstake cooldown queue (~80 checkpoints / ~3 days, driven by the Polygon StakeManager).
+    /// @dev Market ID is intentionally out of sequence: both mainnet fuses were deployed with
+    ///      MARKET_ID = 424243 (0x67933) baked in as an immutable, so this constant must match the deployments.
+    /// @dev Fuses (Ethereum mainnet deployments):
+    ///      - SPOLUnstakeFuse (enter = sellSPOL, exit = withdrawPOL): 0xF7379E4D945B2CAA89630d4F81a7A3863629Fd02
+    ///      - SPOLBalanceFuse (balance fuse of this market):          0x69A206f638019e3a419CF3408991df9E87538949
+    /// @dev External protocol (github.com/0xPolygon/sPOL-contracts, Ethereum mainnet):
+    ///      - sPOLController (substrate of this market):                0xEaadA411F2600570796c341552b9869DA708a28B
+    ///      - sPOL token:                                               0x3B790d651e950497c7723D47B24E6f61534f7969
+    ///      - POL token:                                                0x455e53CBB86018Ac2B8092FdCd39d8444aFFC3F6
+    ///      - Polygon StakeManagerProxy (epoch / withdrawalDelay = 80): 0x5e3Ef299fDDf15eAa0432E6e66473ace8c13D908
+    /// @dev Substrate type: address
+    /// @dev Substrate values: sPOLController addresses the vault is allowed to unstake through
+    /// @dev Balance fuse semantics: sums ALL open unstake nonces of the vault on the controller
+    ///      (in-cooldown + matured-but-unclaimed, via controller.getUserOpenNonces(vault)), priced with
+    ///      PriceOracleMiddleware using controller.polToken(). Queued amounts are FIXED at sellSPOL time
+    ///      (convertSPOLtoPOL at the sell-time rate) — later exchange-rate changes do not reprice the queue.
+    /// @dev Required configuration:
+    ///      - SPOLBalanceFuse as the balance fuse of this market, sPOLController granted as substrate;
+    ///      - sPOL granted as substrate of ERC20_VAULT_BALANCE (the vault wallet holds sPOL before unstaking);
+    ///      - dependency graph: this market -> ERC20_VAULT_BALANCE (enter burns wallet sPOL and creates the
+    ///        pending claim atomically, so both markets must re-evaluate in the same execute);
+    ///      - POL and sPOL price sources configured in the vault's PriceOracleMiddleware.
+    /// @dev Exit semantics: the controller reverts with NoOpenNonces(vault) on an empty queue and with
+    ///      NoNoncesReady(vault) when nothing has matured — call SPOLUnstakeFuse.exit only when a claim is
+    ///      known to be withdrawable. Claims are FIFO and stop at the first non-matured nonce.
+    /// @dev SECURITY — permissionless claim / stale-balance window: sPOLController.withdrawPOL(address) is
+    ///      callable by ANYONE on behalf of the vault (POL always goes to the vault, never the caller),
+    ///      bypassing SPOLUnstakeFuse.exit. Such a claim moves POL into the vault wallet (counted in
+    ///      totalAssets immediately) while this market keeps reporting the already-paid claim until
+    ///      updateMarketsBalances([SPOL_UNSTAKE]) runs — during that window totalAssets and the share price
+    ///      are INFLATED by the full claimed amount, so depositors overpay and redeemers extract value from
+    ///      the remaining holders. Because the trigger is permissionless, the vault cannot control when the
+    ///      window opens. REQUIRED mitigation on production vaults: UpdateBalancesPreHook wired to the
+    ///      deposit/mint/withdraw/redeem selectors so balances are refreshed before any share pricing;
+    ///      additionally the protocol keeper should pair withdrawPOL claims with updateMarketsBalances in
+    ///      the same transaction bundle.
+    uint256 public constant SPOL_UNSTAKE = 424_243;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
