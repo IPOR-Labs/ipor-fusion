@@ -35,7 +35,7 @@ Wiring Agua through the generic `Erc4626SupplyFuse` would make its instant-withd
 withdraw — so a `PlasmaVault.withdraw` routed through Agua would **silently under-deliver**: a
 redemption DoS. This fuse set is therefore **structurally barred from instant withdrawal** (see §7).
 
-The valuation is fully on-chain (Agua's own rate factor), so no RWA custodian-attestation framework
+The valuation is fully on-chain (Agua's own rate factor), so no ExternalState custodian-attestation framework
 and no standalone price feed are needed; the balance fuse self-values via `convertToAssets` and
 `previewCompleteRedemption`.
 
