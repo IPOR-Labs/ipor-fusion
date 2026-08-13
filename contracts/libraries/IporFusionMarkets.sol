@@ -237,21 +237,22 @@ library IporFusionMarkets {
     ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
     uint256 public constant AAVE_V4 = 49;
 
-    /// @dev Real World Asset market — generic integration family for off-chain RWA strategies
-    ///      operated under custodian dual-approval. One vault hosts at most one RWA integration
-    ///      via this fuse family (see RWAExecutorStorageLib.RWAMultipleMarketsNotSupported).
+    /// @dev External State market — generic integration family for off-chain strategies
+    ///      operated under custodian dual-approval. One vault hosts at most one External State
+    ///      integration via this fuse family
+    ///      (see ExternalStateExecutorStorageLib.ExternalStateMultipleMarketsNotSupported).
     ///
-    /// @dev Balance fuse: RWABalanceFuse (reads cached per-balance-account values from RWAExecutor;
-    ///      no on-chain price oracle for the off-chain leg — values are written by 2-of-N custodians
-    ///      via propose/confirm).
+    /// @dev Balance fuse: ExternalStateBalanceFuse (reads cached per-balance-account values from
+    ///      ExternalStateExecutor; no on-chain price oracle for the off-chain leg — values are
+    ///      written by 2-of-N custodians via propose/confirm).
     ///
-    /// @dev Substrate types (encoded via RWASubstrateLib; first byte = type tag):
+    /// @dev Substrate types (encoded via ExternalStateSubstrateLib; first byte = type tag):
     ///      - ASSET                — ERC20 token transferred from vault into the executor on enter
     ///                               and from executor back to vault on exit (e.g. USDC, USDT).
     ///      - BALANCE_ACCOUNT      — off-chain account whose underlying balance is tracked
     ///                               (e.g. a custodian sub-account holding T-Bills).
     ///      - CUSTODIAN            — EOA / multisig authorized to propose or confirm balance updates.
-    ///      - TARGET               — contract address that RWAOperationFuse is allowed to call
+    ///      - TARGET               — contract address that ExternalStateOperationFuse is allowed to call
     ///                               from the executor context (e.g. an issuer's mint/redeem router).
     ///      - STALENESS_MAX        — maximum age (seconds) of the oldest balance update before the
     ///                               pre-hook blocks user operations.
@@ -266,7 +267,7 @@ library IporFusionMarkets {
     ///      one ASSET (USDC), two CUSTODIAN multisigs (proposer + confirmer), three BALANCE_ACCOUNT
     ///      addresses (one per custody sub-account), one TARGET (issuer's mint contract), plus the
     ///      four singleton parameters (STALENESS_MAX, BIG_CHANGE_BPS, DUST_THRESHOLD, MIN_UPDATE_INTERVAL).
-    uint256 public constant RWA = 50;
+    uint256 public constant EXTERNAL_STATE = 50;
 
     /// @dev Reservoir Agua Global Carry Vault market (aguaUSDCgc).
     ///      Synchronous 4626-compliant deposit, asynchronous (request -> complete) exit with an

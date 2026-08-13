@@ -8,7 +8,7 @@ import {TransientStorageLib} from "../../../../contracts/transient_storage/Trans
 /// @notice Minimal PlasmaVault-like harness used by EulerSwap unit tests.
 /// @dev Stores substrates in the canonical storage slots (via {PlasmaVaultConfigLib}) and forwards
 ///      fuse calls via delegatecall, so inside the fuse `address(this)` == this harness and the
-///      substrate storage is read from this harness. Mirrors {MockPlasmaVaultForRWA}.
+///      substrate storage is read from this harness. Mirrors {MockPlasmaVaultForExternalState}.
 contract EulerV2SwapTestVault {
     /// @notice Grant substrates to a market (overwriting any previous grants).
     function grantMarketSubstrates(uint256 marketId_, bytes32[] memory substrates_) external {
