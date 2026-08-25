@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 
 import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
+import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV4SubstrateLib} from "../../../contracts/fuses/aave_v4/AaveV4SubstrateLib.sol";
 import {AaveV4BalanceFuse} from "../../../contracts/fuses/aave_v4/AaveV4BalanceFuse.sol";
 import {AaveV4SupplyFuse, AaveV4SupplyFuseEnterData} from "../../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
@@ -16,7 +17,7 @@ import {ERC20Mock} from "./ERC20Mock.sol";
 /// @title AaveV4BalanceFuseTest
 /// @notice Tests for AaveV4BalanceFuse contract
 contract AaveV4BalanceFuseTest is Test {
-    uint256 public constant MARKET_ID = 43;
+    uint256 public constant MARKET_ID = 49;
     uint256 public constant RESERVE_ID_1 = 1;
     uint256 public constant RESERVE_ID_2 = 2;
 
@@ -28,8 +29,6 @@ contract AaveV4BalanceFuseTest is Test {
     AaveV4SupplyFuse public supplyFuse;
     AaveV4BorrowFuse public borrowFuse;
     PlasmaVaultMock public vaultMock;
-    PlasmaVaultMock public supplyVaultMock;
-    PlasmaVaultMock public borrowVaultMock;
     MockAaveV4Spoke public spoke;
     MockAaveV4Spoke public spoke2;
     MockPriceOracle public oracle;
@@ -63,12 +62,10 @@ contract AaveV4BalanceFuseTest is Test {
         oracle.setAssetPrice(address(token), TOKEN_PRICE);
         oracle.setAssetPrice(address(token2), TOKEN2_PRICE);
 
-        // Grant substrates
-        bytes32[] memory substrates = new bytes32[](4);
-        substrates[0] = AaveV4SubstrateLib.encodeAsset(address(token));
-        substrates[1] = AaveV4SubstrateLib.encodeAsset(address(token2));
-        substrates[2] = AaveV4SubstrateLib.encodeSpoke(address(spoke));
-        substrates[3] = AaveV4SubstrateLib.encodeSpoke(address(spoke2));
+        // Grant reserves: (spoke, 1) borrowable, (spoke2, 2) plain
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        substrates[1] = AaveV4SubstrateLib.encodeReserve(address(spoke2), RESERVE_ID_2, false, false);
         vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
 
         // Label
@@ -106,16 +103,7 @@ contract AaveV4BalanceFuseTest is Test {
         // given - supply 1000 tokens at $1 each = $1000
         uint256 supplyAmount = 1_000e18;
         token.mint(address(vaultMock), supplyAmount);
-
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke),
-                asset: address(token),
-                reserveId: RESERVE_ID_1,
-                amount: supplyAmount,
-                minShares: 0
-            })
-        );
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
 
         // when
         uint256 balance = vaultMock.balanceOf();
@@ -129,47 +117,124 @@ contract AaveV4BalanceFuseTest is Test {
         uint256 supplyAmount = 1_000e18;
         uint256 borrowAmount = 200e18;
         token.mint(address(vaultMock), supplyAmount);
-
-        // Supply
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke),
-                asset: address(token),
-                reserveId: RESERVE_ID_1,
-                amount: supplyAmount,
-                minShares: 0
-            })
-        );
-
-        // Borrow via separate vault mock with borrow fuse
-        borrowVaultMock = new PlasmaVaultMock(address(borrowFuse), address(balanceFuse));
-        bytes32[] memory substrates = new bytes32[](4);
-        substrates[0] = AaveV4SubstrateLib.encodeAsset(address(token));
-        substrates[1] = AaveV4SubstrateLib.encodeAsset(address(token2));
-        substrates[2] = AaveV4SubstrateLib.encodeSpoke(address(spoke));
-        substrates[3] = AaveV4SubstrateLib.encodeSpoke(address(spoke2));
-        borrowVaultMock.grantMarketSubstrates(MARKET_ID, substrates);
-
-        // We need to borrow from same vault address, so use vaultMock.execute
-        vaultMock.execute(
-            address(borrowFuse),
-            abi.encodeWithSignature(
-                "enter((address,address,uint256,uint256,uint256))",
-                AaveV4BorrowFuseEnterData({
-                    spoke: address(spoke),
-                    asset: address(token),
-                    reserveId: RESERVE_ID_1,
-                    amount: borrowAmount,
-                    minShares: 0
-                })
-            )
-        );
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
+        _borrow(address(spoke), address(token), RESERVE_ID_1, borrowAmount);
 
         // when
         uint256 balance = vaultMock.balanceOf();
 
         // then - net = supply - debt = $1000 - $200 = $800 in WAD
         assertEq(balance, 800e18, "Balance should be $800 (supply - debt) in WAD");
+    }
+
+    function testShouldCountDebtEvenWhenGrantLacksCanBorrow() public {
+        // given - supply 1000, borrow 200, then the atomist revokes canBorrow (plain grant)
+        uint256 supplyAmount = 1_000e18;
+        uint256 borrowAmount = 200e18;
+        token.mint(address(vaultMock), supplyAmount);
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
+        _borrow(address(spoke), address(token), RESERVE_ID_1, borrowAmount);
+
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, false);
+        substrates[1] = AaveV4SubstrateLib.encodeReserve(address(spoke2), RESERVE_ID_2, false, false);
+        vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
+
+        // when
+        uint256 balance = vaultMock.balanceOf();
+
+        // then - debt still subtracted
+        assertEq(balance, 800e18, "Debt must be counted regardless of the canBorrow flag");
+    }
+
+    function testShouldNotDoubleCountDuplicateGrantVariants() public {
+        // given - the same reserve granted twice with different flags
+        bytes32[] memory substrates = new bytes32[](3);
+        substrates[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, true, false);
+        substrates[1] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        substrates[2] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, true, true);
+        vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
+
+        uint256 supplyAmount = 1_000e18;
+        token.mint(address(vaultMock), supplyAmount);
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
+
+        // when
+        uint256 balance = vaultMock.balanceOf();
+
+        // then - counted once
+        assertEq(balance, 1_000e18, "Duplicate grant variants must be counted once");
+    }
+
+    function testShouldIgnoreNonReserveSubstrates() public {
+        // given - a legacy address-style word mixed into the grant list
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(address(token));
+        substrates[1] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
+
+        uint256 supplyAmount = 1_000e18;
+        token.mint(address(vaultMock), supplyAmount);
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
+
+        // when
+        uint256 balance = vaultMock.balanceOf();
+
+        // then - no revert, only the reserve substrate counted
+        assertEq(balance, 1_000e18);
+    }
+
+    function testShouldIgnoreNonCanonicalReserveWord() public {
+        // given - a canonical grant plus the same pair with dirty reserved bits
+        bytes32 canonical = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = bytes32(uint256(canonical) | 1);
+        substrates[1] = canonical;
+        vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
+
+        uint256 supplyAmount = 1_000e18;
+        token.mint(address(vaultMock), supplyAmount);
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
+
+        // when/then - counted exactly once, dirty word ignored
+        assertEq(vaultMock.balanceOf(), 1_000e18);
+    }
+
+    function testShouldNotRevertWhenNonGrantedReserveHasOnlySupply() public {
+        // given - supply on a reserve that is later revoked (assets hidden = conservative, no revert)
+        uint256 reserveId3 = 3;
+        ERC20Mock token3 = new ERC20Mock("Token Three", "TK3", 6);
+        spoke.addReserve(reserveId3, address(token3));
+        oracle.setAssetPrice(address(token3), 1e8);
+
+        bytes32[] memory both = new bytes32[](2);
+        both[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        both[1] = AaveV4SubstrateLib.encodeReserve(address(spoke), reserveId3, false, false);
+        vaultMock.grantMarketSubstrates(MARKET_ID, both);
+        token3.mint(address(vaultMock), 500e6);
+        _supply(address(spoke), address(token3), reserveId3, 500e6);
+
+        bytes32[] memory onlyOne = new bytes32[](1);
+        onlyOne[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        vaultMock.grantMarketSubstrates(MARKET_ID, onlyOne);
+
+        // when/then
+        assertEq(vaultMock.balanceOf(), 0, "hidden supply is simply not counted");
+    }
+
+    function testShouldSkipGrantedReserveIdNotListedOnSpoke() public {
+        // given - the atomist pre-granted reserve 9 which the spoke has not listed yet
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        substrates[1] = AaveV4SubstrateLib.encodeReserve(address(spoke), 9, false, false);
+        vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
+
+        uint256 supplyAmount = 1_000e18;
+        token.mint(address(vaultMock), supplyAmount);
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
+
+        // when/then - no revert, the unlisted id contributes nothing
+        assertEq(vaultMock.balanceOf(), 1_000e18);
     }
 
     function testShouldSkipReservesWithNoPosition() public {
@@ -183,20 +248,23 @@ contract AaveV4BalanceFuseTest is Test {
         assertEq(balance, 0, "Balance should be 0 when no positions exist");
     }
 
+    function testShouldNotQueryPriceForReservesWithoutPosition() public {
+        // given - token2 has no price (would revert if queried), vault only has a position in token
+        oracle.setAssetPrice(address(token2), 0);
+        uint256 supplyAmount = 1_000e18;
+        token.mint(address(vaultMock), supplyAmount);
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
+
+        // when/then - no revert
+        uint256 balance = vaultMock.balanceOf();
+        assertEq(balance, 1_000e18);
+    }
+
     function testShouldRevertWhenPriceIsZero() public {
         // given - supply tokens, then set price to 0
         uint256 amount = 1_000e18;
         token.mint(address(vaultMock), amount);
-
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke),
-                asset: address(token),
-                reserveId: RESERVE_ID_1,
-                amount: amount,
-                minShares: 0
-            })
-        );
+        _supply(address(spoke), address(token), RESERVE_ID_1, amount);
 
         oracle.setAssetPrice(address(token), 0);
 
@@ -209,17 +277,7 @@ contract AaveV4BalanceFuseTest is Test {
         // given - supply 100 token2 (8 decimals) at $2000 each = $200,000
         uint256 supplyAmount = 100e8;
         token2.mint(address(vaultMock), supplyAmount);
-
-        // Need a vault with spoke2 configured
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke2),
-                asset: address(token2),
-                reserveId: RESERVE_ID_2,
-                amount: supplyAmount,
-                minShares: 0
-            })
-        );
+        _supply(address(spoke2), address(token2), RESERVE_ID_2, supplyAmount);
 
         // when
         uint256 balance = vaultMock.balanceOf();
@@ -235,25 +293,8 @@ contract AaveV4BalanceFuseTest is Test {
         token.mint(address(vaultMock), amount1);
         token2.mint(address(vaultMock), amount2);
 
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke),
-                asset: address(token),
-                reserveId: RESERVE_ID_1,
-                amount: amount1,
-                minShares: 0
-            })
-        );
-
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke2),
-                asset: address(token2),
-                reserveId: RESERVE_ID_2,
-                amount: amount2,
-                minShares: 0
-            })
-        );
+        _supply(address(spoke), address(token), RESERVE_ID_1, amount1);
+        _supply(address(spoke2), address(token2), RESERVE_ID_2, amount2);
 
         // when
         uint256 balance = vaultMock.balanceOf();
@@ -269,25 +310,8 @@ contract AaveV4BalanceFuseTest is Test {
         token.mint(address(vaultMock), amount1);
         token2.mint(address(vaultMock), amount2);
 
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke),
-                asset: address(token),
-                reserveId: RESERVE_ID_1,
-                amount: amount1,
-                minShares: 0
-            })
-        );
-
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke2),
-                asset: address(token2),
-                reserveId: RESERVE_ID_2,
-                amount: amount2,
-                minShares: 0
-            })
-        );
+        _supply(address(spoke), address(token), RESERVE_ID_1, amount1);
+        _supply(address(spoke2), address(token2), RESERVE_ID_2, amount2);
 
         // when
         uint256 balance = vaultMock.balanceOf();
@@ -304,13 +328,11 @@ contract AaveV4BalanceFuseTest is Test {
         token3.mint(address(spoke), 100_000_000e6);
         oracle.setAssetPrice(address(token3), 1e8); // $1
 
-        // Re-grant substrates to include the new asset
-        bytes32[] memory substrates = new bytes32[](5);
-        substrates[0] = AaveV4SubstrateLib.encodeAsset(address(token));
-        substrates[1] = AaveV4SubstrateLib.encodeAsset(address(token2));
-        substrates[2] = AaveV4SubstrateLib.encodeAsset(address(token3));
-        substrates[3] = AaveV4SubstrateLib.encodeSpoke(address(spoke));
-        substrates[4] = AaveV4SubstrateLib.encodeSpoke(address(spoke2));
+        // Re-grant substrates to include the new reserve
+        bytes32[] memory substrates = new bytes32[](3);
+        substrates[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        substrates[1] = AaveV4SubstrateLib.encodeReserve(address(spoke2), RESERVE_ID_2, false, false);
+        substrates[2] = AaveV4SubstrateLib.encodeReserve(address(spoke), reserveId3, false, false);
         vaultMock.grantMarketSubstrates(MARKET_ID, substrates);
 
         // Supply to both reserves in spoke1
@@ -319,31 +341,37 @@ contract AaveV4BalanceFuseTest is Test {
         token.mint(address(vaultMock), amount1);
         token3.mint(address(vaultMock), amount3);
 
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke),
-                asset: address(token),
-                reserveId: RESERVE_ID_1,
-                amount: amount1,
-                minShares: 0
-            })
-        );
-
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke),
-                asset: address(token3),
-                reserveId: reserveId3,
-                amount: amount3,
-                minShares: 0
-            })
-        );
+        _supply(address(spoke), address(token), RESERVE_ID_1, amount1);
+        _supply(address(spoke), address(token3), reserveId3, amount3);
 
         // when
         uint256 balance = vaultMock.balanceOf();
 
         // then - $100 + $500 = $600
         assertEq(balance, 600e18, "Balance should aggregate multiple reserves in same Spoke");
+    }
+
+    function testShouldOnlyCountGrantedReserveOfDuplicateAsset() public {
+        // given - the same underlying listed twice on spoke1; both hold positions, only reserve 1 granted
+        uint256 duplicateReserveId = 4;
+        spoke.addReserve(duplicateReserveId, address(token));
+        token.mint(address(vaultMock), 300e18);
+        _supply(address(spoke), address(token), RESERVE_ID_1, 100e18);
+
+        bytes32[] memory both = new bytes32[](2);
+        both[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        both[1] = AaveV4SubstrateLib.encodeReserve(address(spoke), duplicateReserveId, false, false);
+        vaultMock.grantMarketSubstrates(MARKET_ID, both);
+        _supply(address(spoke), address(token), duplicateReserveId, 200e18);
+        assertEq(vaultMock.balanceOf(), 300e18, "Both granted reserves counted");
+
+        // when - revoke reserve 4
+        bytes32[] memory onlyOne = new bytes32[](1);
+        onlyOne[0] = AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID_1, false, true);
+        vaultMock.grantMarketSubstrates(MARKET_ID, onlyOne);
+
+        // then - position on the revoked reserve is not visible (documented behaviour)
+        assertEq(vaultMock.balanceOf(), 100e18, "Only the granted reserve is counted");
     }
 
     function testShouldRevertWhenDebtExceedsSupply() public {
@@ -353,40 +381,48 @@ contract AaveV4BalanceFuseTest is Test {
         uint256 borrowAmount = 500e18;
         token.mint(address(vaultMock), supplyAmount);
 
-        // Supply
-        vaultMock.enterAaveV4Supply(
-            AaveV4SupplyFuseEnterData({
-                spoke: address(spoke),
-                asset: address(token),
-                reserveId: RESERVE_ID_1,
-                amount: supplyAmount,
-                minShares: 0
-            })
-        );
+        _supply(address(spoke), address(token), RESERVE_ID_1, supplyAmount);
+        _borrow(address(spoke), address(token), RESERVE_ID_1, borrowAmount);
 
-        // Borrow via execute on borrow fuse
+        // when/then - net is negative, should revert
+        int256 expectedBalance = int256(supplyAmount) - int256(borrowAmount); // -400e18
+        vm.expectRevert(
+            abi.encodeWithSelector(AaveV4BalanceFuse.AaveV4BalanceFuseNegativeBalance.selector, expectedBalance)
+        );
+        vaultMock.balanceOf();
+    }
+
+    // ============ Helpers ============
+
+    function _supply(address spoke_, address asset_, uint256 reserveId_, uint256 amount_) private {
+        vaultMock.execute(
+            address(supplyFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256))",
+                AaveV4SupplyFuseEnterData({
+                    spoke: spoke_,
+                    asset: asset_,
+                    reserveId: reserveId_,
+                    amount: amount_,
+                    minShares: 0
+                })
+            )
+        );
+    }
+
+    function _borrow(address spoke_, address asset_, uint256 reserveId_, uint256 amount_) private {
         vaultMock.execute(
             address(borrowFuse),
             abi.encodeWithSignature(
                 "enter((address,address,uint256,uint256,uint256))",
                 AaveV4BorrowFuseEnterData({
-                    spoke: address(spoke),
-                    asset: address(token),
-                    reserveId: RESERVE_ID_1,
-                    amount: borrowAmount,
+                    spoke: spoke_,
+                    asset: asset_,
+                    reserveId: reserveId_,
+                    amount: amount_,
                     minShares: 0
                 })
             )
         );
-
-        // when/then - net is negative, should revert
-        int256 expectedBalance = int256(supplyAmount) - int256(borrowAmount); // -400e18
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AaveV4BalanceFuse.AaveV4BalanceFuseNegativeBalance.selector,
-                expectedBalance
-            )
-        );
-        vaultMock.balanceOf();
     }
 }

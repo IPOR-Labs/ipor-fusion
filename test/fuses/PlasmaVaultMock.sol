@@ -5,24 +5,51 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
-import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {
+    SparkSupplyFuseEnterData,
+    SparkSupplyFuseExitData
+} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
 import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
-import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {
+    Erc4626SupplyFuseEnterData,
+    Erc4626SupplyFuseExitData
+} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 
 import {AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
 import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {CompoundV2SupplyFuseEnterData, CompoundV2SupplyFuseExitData} from "../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
-import {CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
-import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {
+    CompoundV2SupplyFuseEnterData,
+    CompoundV2SupplyFuseExitData
+} from "../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuseEnterData,
+    CompoundV3SupplyFuseExitData
+} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    Erc4626SupplyFuseEnterData,
+    Erc4626SupplyFuseExitData
+} from "../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
-import {SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {
+    SparkSupplyFuseEnterData,
+    SparkSupplyFuseExitData
+} from "../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
 import {MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../contracts/fuses/midas/MidasSupplyFuse.sol";
-import {MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {
+    MidasRequestSupplyFuseEnterData,
+    MidasRequestSupplyFuseExitData
+} from "../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
 import {MidasClaimFromExecutorFuseEnterData} from "../../contracts/fuses/midas/MidasClaimFromExecutorFuse.sol";
 import {AaveV4SupplyFuseEnterData, AaveV4SupplyFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4SupplyFuse.sol";
 import {AaveV4BorrowFuseEnterData, AaveV4BorrowFuseExitData} from "../../contracts/fuses/aave_v4/AaveV4BorrowFuse.sol";
-import {AaveV4EModeFuseEnterData} from "../../contracts/fuses/aave_v4/AaveV4EModeFuse.sol";
-import {LitePSMSupplyFuseEnterData, LitePSMSupplyFuseExitData} from "../../contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol";
+import {
+    AaveV4CollateralFuseEnterData,
+    AaveV4CollateralFuseExitData
+} from "../../contracts/fuses/aave_v4/AaveV4CollateralFuse.sol";
+import {
+    LitePSMSupplyFuseEnterData,
+    LitePSMSupplyFuseExitData
+} from "../../contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol";
 import {FusesLib} from "../../contracts/libraries/FusesLib.sol";
 import {InstantWithdrawalFusesParamsStruct, PlasmaVaultLib} from "../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -198,14 +225,20 @@ contract PlasmaVaultMock {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 
-    function enterAaveV4EMode(AaveV4EModeFuseEnterData memory data_) external {
-        address(fuse).functionDelegateCall(
-            abi.encodeWithSignature("enter((address,uint8))", data_)
-        );
+    function enterAaveV4Collateral(AaveV4CollateralFuseEnterData memory data_) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,uint256))", data_));
     }
 
-    function enterAaveV4EModeTransient() external {
+    function exitAaveV4Collateral(AaveV4CollateralFuseExitData memory data_) external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256))", data_));
+    }
+
+    function enterAaveV4CollateralTransient() external {
         address(fuse).functionDelegateCall(abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function exitAaveV4CollateralTransient() external {
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exitTransient()"));
     }
 
     //solhint-disable-next-line
@@ -301,9 +334,7 @@ contract PlasmaVaultMock {
     }
 
     function enterMidasRequestSupply(MidasRequestSupplyFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(
-            abi.encodeWithSignature("enter((address,address,uint256,address))", data)
-        );
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address,address,uint256,address))", data));
     }
 
     function exitMidasSupply(MidasSupplyFuseExitData memory data) external {
@@ -313,9 +344,7 @@ contract PlasmaVaultMock {
     }
 
     function exitMidasRequestSupply(MidasRequestSupplyFuseExitData memory data) external {
-        address(fuse).functionDelegateCall(
-            abi.encodeWithSignature("exit((address,uint256,address,address))", data)
-        );
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256,address,address))", data));
     }
 
     function cleanupMidasPendingDeposits(address depositVault_, uint256 maxIterations_) external {
@@ -331,15 +360,11 @@ contract PlasmaVaultMock {
     }
 
     function enterMidasClaimFromExecutor(MidasClaimFromExecutorFuseEnterData memory data) external {
-        address(fuse).functionDelegateCall(
-            abi.encodeWithSignature("enter((address))", data)
-        );
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("enter((address))", data));
     }
 
     function deployMidasExecutor() external {
-        address(fuse).functionDelegateCall(
-            abi.encodeWithSignature("deployExecutor()")
-        );
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("deployExecutor()"));
     }
 
     function execute(address fuse_, bytes calldata data_) external {
