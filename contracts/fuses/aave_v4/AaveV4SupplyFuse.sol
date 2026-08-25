@@ -10,14 +10,14 @@ import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
-import {AaveV4SubstrateLib} from "./AaveV4SubstrateLib.sol";
+import {AaveV4SubstrateLib, AaveV4ReserveGrant} from "./AaveV4SubstrateLib.sol";
 import {IAaveV4Spoke} from "./ext/IAaveV4Spoke.sol";
 
 /// @dev Data structure for entering (supply) the Aave V4 protocol
 struct AaveV4SupplyFuseEnterData {
     /// @notice Aave V4 Spoke contract address
     address spoke;
-    /// @notice ERC20 token address to supply
+    /// @notice ERC20 token address to supply (cross-checked against the reserve's underlying)
     address asset;
     /// @notice Aave V4 reserve identifier within the Spoke
     uint256 reserveId;
@@ -31,7 +31,7 @@ struct AaveV4SupplyFuseEnterData {
 struct AaveV4SupplyFuseExitData {
     /// @notice Aave V4 Spoke contract address
     address spoke;
-    /// @notice ERC20 token address to withdraw
+    /// @notice ERC20 token address to withdraw (cross-checked against the reserve's underlying)
     address asset;
     /// @notice Aave V4 reserve identifier within the Spoke
     uint256 reserveId;
@@ -45,7 +45,12 @@ struct AaveV4SupplyFuseExitData {
 /// @author IPOR Labs
 /// @notice Fuse for Aave V4 protocol responsible for supplying and withdrawing assets via Spoke contracts
 /// @dev Executes in PlasmaVault storage context via delegatecall. MUST NOT contain storage variables.
-///      Substrates are validated as both Asset and Spoke types using AaveV4SubstrateLib encoding.
+///      Permissions come from Reserve substrates (spoke, reserveId, flags) encoded with AaveV4SubstrateLib:
+///      - enter/exit require any granted substrate for the (spoke, reserveId) pair,
+///      - instantWithdraw additionally requires that no granted variant of the pair has isCollateral and that
+///        the reserve is not currently enabled as collateral on the Spoke, so user withdrawals can never lower
+///        the health factor of a leveraged position.
+///      Supplying does not enable the reserve as collateral in Aave V4 - see AaveV4CollateralFuse.
 contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     using SafeERC20 for ERC20;
 
@@ -76,13 +81,7 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param asset The address of the asset
     /// @param reserveId The reserve identifier
     /// @param amount The amount that was attempted to withdraw
-    event AaveV4SupplyFuseExitFailed(
-        address version,
-        address spoke,
-        address asset,
-        uint256 reserveId,
-        uint256 amount
-    );
+    event AaveV4SupplyFuseExitFailed(address version, address spoke, address asset, uint256 reserveId, uint256 amount);
 
     /// @notice Thrown when market ID is zero or invalid
     /// @custom:error AaveV4SupplyFuseInvalidMarketId
@@ -100,10 +99,20 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @custom:error AaveV4SupplyFuseInsufficientAmount
     error AaveV4SupplyFuseInsufficientAmount(uint256 withdrawnAmount, uint256 minAmount);
 
-    /// @notice Thrown when a substrate (asset or spoke) is not authorized for this market
+    /// @notice Thrown when the (spoke, reserveId) pair is not granted for this market
     /// @param action The action being performed ("enter" or "exit")
-    /// @param substrate The unauthorized substrate bytes32 value
-    error AaveV4SupplyFuseUnsupportedSubstrate(string action, bytes32 substrate);
+    /// @param spoke The Spoke contract address
+    /// @param reserveId The reserve identifier
+    error AaveV4SupplyFuseUnsupportedSubstrate(string action, address spoke, uint256 reserveId);
+
+    /// @notice Thrown when instant withdraw is attempted on a reserve that may be, or currently is, collateral
+    /// @param spoke The Spoke contract address
+    /// @param reserveId The reserve identifier
+    error AaveV4SupplyFuseInstantWithdrawNotAllowed(address spoke, uint256 reserveId);
+
+    /// @notice Thrown when instant withdraw params are malformed
+    /// @custom:error AaveV4SupplyFuseInvalidParams
+    error AaveV4SupplyFuseInvalidParams();
 
     /// @notice Thrown when the reserve's underlying asset does not match the expected asset
     /// @param reserveId The reserve ID that was queried
@@ -125,13 +134,17 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param data_ Enter data containing spoke, asset, reserveId, amount, and minShares
     /// @return asset The address of the supplied asset
     /// @return amount The amount of assets supplied
+    /// @custom:revert AaveV4SupplyFuseUnsupportedSubstrate When (spoke, reserveId) is not granted
+    /// @custom:revert AaveV4SupplyFuseReserveAssetMismatch When the reserve underlying differs from asset
     /// @custom:revert AaveV4SupplyFuseInsufficientShares When received shares are below minShares
     function enter(AaveV4SupplyFuseEnterData memory data_) public returns (address asset, uint256 amount) {
         if (data_.amount == 0) {
             return (data_.asset, 0);
         }
 
-        _validateSubstrates("enter", data_.asset, data_.spoke);
+        if (!AaveV4SubstrateLib.canSupply(MARKET_ID, data_.spoke, data_.reserveId)) {
+            revert AaveV4SupplyFuseUnsupportedSubstrate("enter", data_.spoke, data_.reserveId);
+        }
         _validateReserveAsset(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
 
         uint256 finalAmount = IporMath.min(ERC20(data_.asset).balanceOf(address(this)), data_.amount);
@@ -203,15 +216,25 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     /// @notice Performs instant withdrawal from Aave V4 protocol with exception handling
-    /// @param params_ Array of parameters: [0] amount, [1] asset address, [2] spoke address, [3] reserveId, [4] minAmount
+    /// @dev Only reserves that are neither granted as collateral nor currently enabled as collateral are eligible.
+    ///      Aave V4 withdrawals have no slippage (the Spoke returns exactly min(amount, supplied)), so params_[4] is
+    ///      reserved and NOT enforced on this path: the requested amount is dynamic (set by the vault per withdrawal)
+    ///      and a static minimum would revert every user withdrawal smaller than it.
+    /// @param params_ Array of parameters: [0] amount, [1] asset address, [2] spoke address, [3] reserveId, [4] reserved (0)
+    /// @custom:revert AaveV4SupplyFuseInvalidParams When fewer than 5 params are provided
+    /// @custom:revert AaveV4SupplyFuseInstantWithdrawNotAllowed When the reserve may be, or currently is, collateral
     function instantWithdraw(bytes32[] calldata params_) external override {
+        if (params_.length < 5) {
+            revert AaveV4SupplyFuseInvalidParams();
+        }
+
         _exit(
             AaveV4SupplyFuseExitData({
                 spoke: PlasmaVaultConfigLib.bytes32ToAddress(params_[2]),
                 asset: PlasmaVaultConfigLib.bytes32ToAddress(params_[1]),
                 reserveId: uint256(params_[3]),
                 amount: uint256(params_[0]),
-                minAmount: uint256(params_[4])
+                minAmount: 0
             }),
             true
         );
@@ -219,7 +242,7 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     /// @notice Internal function to exit (withdraw) assets from Aave V4 protocol
     /// @param data_ Exit data containing spoke, asset, reserveId, and amount
-    /// @param catchExceptions_ Whether to catch exceptions during withdrawal
+    /// @param catchExceptions_ Whether to catch exceptions during withdrawal (instant withdraw path)
     /// @return asset The address of the withdrawn asset
     /// @return amount The amount of assets withdrawn
     function _exit(
@@ -230,7 +253,16 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return (data_.asset, 0);
         }
 
-        _validateSubstrates("exit", data_.asset, data_.spoke);
+        AaveV4ReserveGrant memory grant = AaveV4SubstrateLib.getReserveGrant(MARKET_ID, data_.spoke, data_.reserveId);
+
+        if (!grant.granted) {
+            revert AaveV4SupplyFuseUnsupportedSubstrate("exit", data_.spoke, data_.reserveId);
+        }
+
+        if (catchExceptions_) {
+            _validateInstantWithdrawAllowed(grant, data_.spoke, data_.reserveId);
+        }
+
         _validateReserveAsset(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
 
         uint256 supplyAssets = IAaveV4Spoke(data_.spoke).getUserSuppliedAssets(data_.reserveId, address(this));
@@ -246,13 +278,12 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
 
         if (catchExceptions_) {
+            /// @dev no minAmount check on the instant path: a revert here would not be caught and would block
+            ///      every user withdrawal that needs market liquidity (see instantWithdraw)
             try IAaveV4Spoke(data_.spoke).withdraw(data_.reserveId, finalAmount, address(this)) returns (
                 uint256,
                 uint256 withdrawnAmount
             ) {
-                if (withdrawnAmount < data_.minAmount) {
-                    revert AaveV4SupplyFuseInsufficientAmount(withdrawnAmount, data_.minAmount);
-                }
                 emit AaveV4SupplyFuseExit(VERSION, data_.spoke, data_.asset, data_.reserveId, withdrawnAmount);
                 return (data_.asset, withdrawnAmount);
             } catch {
@@ -260,7 +291,11 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 return (data_.asset, 0);
             }
         } else {
-            (, uint256 withdrawnAmount) = IAaveV4Spoke(data_.spoke).withdraw(data_.reserveId, finalAmount, address(this));
+            (, uint256 withdrawnAmount) = IAaveV4Spoke(data_.spoke).withdraw(
+                data_.reserveId,
+                finalAmount,
+                address(this)
+            );
             if (withdrawnAmount < data_.minAmount) {
                 revert AaveV4SupplyFuseInsufficientAmount(withdrawnAmount, data_.minAmount);
             }
@@ -269,24 +304,30 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
     }
 
-    /// @notice Validates that both asset and spoke substrates are granted for this market
-    /// @param action_ The action being performed (for error message)
-    /// @param asset_ The asset address to validate
-    /// @param spoke_ The spoke address to validate
-    function _validateSubstrates(string memory action_, address asset_, address spoke_) internal view {
-        bytes32 assetSubstrate = AaveV4SubstrateLib.encodeAsset(asset_);
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, assetSubstrate)) {
-            revert AaveV4SupplyFuseUnsupportedSubstrate(action_, assetSubstrate);
+    /// @notice Validates that a reserve may serve user withdrawals
+    /// @dev Two independent guards: the grant must not allow collateral (configuration intent) and the reserve
+    ///      must not currently be enabled as collateral on the Spoke (on-chain truth, e.g. enabled before the grant
+    ///      was downgraded). Either one failing means a user withdrawal could touch the vault's collateral.
+    /// @param grant_ The effective grant of the reserve
+    /// @param spoke_ The Aave V4 Spoke contract address
+    /// @param reserveId_ The reserve identifier
+    function _validateInstantWithdrawAllowed(
+        AaveV4ReserveGrant memory grant_,
+        address spoke_,
+        uint256 reserveId_
+    ) internal view {
+        if (grant_.isCollateral) {
+            revert AaveV4SupplyFuseInstantWithdrawNotAllowed(spoke_, reserveId_);
         }
 
-        bytes32 spokeSubstrate = AaveV4SubstrateLib.encodeSpoke(spoke_);
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, spokeSubstrate)) {
-            revert AaveV4SupplyFuseUnsupportedSubstrate(action_, spokeSubstrate);
+        (bool usingAsCollateral, ) = IAaveV4Spoke(spoke_).getUserReserveStatus(reserveId_, address(this));
+        if (usingAsCollateral) {
+            revert AaveV4SupplyFuseInstantWithdrawNotAllowed(spoke_, reserveId_);
         }
     }
 
     /// @notice Validates that the reserve's underlying asset matches the expected asset
-    /// @dev Protects against reserve index shifts caused by Aave governance changes
+    /// @dev Defense-in-depth cross-check of the alpha-provided asset against the granted reserve
     /// @param spoke_ The Aave V4 Spoke contract
     /// @param reserveId_ The reserve ID to validate
     /// @param expectedAsset_ The asset address that the caller expects at this reserveId

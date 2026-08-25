@@ -16,7 +16,7 @@ import {IAaveV4Spoke} from "./ext/IAaveV4Spoke.sol";
 struct AaveV4BorrowFuseEnterData {
     /// @notice Aave V4 Spoke contract address
     address spoke;
-    /// @notice ERC20 token address to borrow
+    /// @notice ERC20 token address to borrow (cross-checked against the reserve's underlying)
     address asset;
     /// @notice Aave V4 reserve identifier within the Spoke
     uint256 reserveId;
@@ -30,11 +30,11 @@ struct AaveV4BorrowFuseEnterData {
 struct AaveV4BorrowFuseExitData {
     /// @notice Aave V4 Spoke contract address
     address spoke;
-    /// @notice ERC20 token address to repay
+    /// @notice ERC20 token address to repay (cross-checked against the reserve's underlying)
     address asset;
     /// @notice Aave V4 reserve identifier within the Spoke
     uint256 reserveId;
-    /// @notice Amount of tokens to repay
+    /// @notice Amount of tokens to repay (capped at the vault balance and, by the Spoke, at the total debt)
     uint256 amount;
     /// @notice Minimum number of borrow shares to repay
     uint256 minSharesRepaid;
@@ -44,7 +44,12 @@ struct AaveV4BorrowFuseExitData {
 /// @author IPOR Labs
 /// @notice Fuse for Aave V4 protocol responsible for borrowing and repaying assets via Spoke contracts
 /// @dev Executes in PlasmaVault storage context via delegatecall. MUST NOT contain storage variables.
-///      Substrates are validated as both Asset and Spoke types using AaveV4SubstrateLib encoding.
+///      Permissions come from Reserve substrates (spoke, reserveId, flags) encoded with AaveV4SubstrateLib:
+///      - enter (borrow) requires a granted substrate for the (spoke, reserveId) pair with canBorrow,
+///      - exit (repay) requires any granted substrate for the pair, so debt can always be repaid even
+///        after the canBorrow flag has been revoked.
+///      Borrowing requires collateral enabled via AaveV4CollateralFuse, otherwise the Spoke reverts with
+///      HealthFactorBelowThreshold.
 contract AaveV4BorrowFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
@@ -85,10 +90,11 @@ contract AaveV4BorrowFuse is IFuseCommon {
         uint256 shares
     );
 
-    /// @notice Thrown when a substrate (asset or spoke) is not authorized for this market
-    /// @param action The action being performed ("enter" or "exit")
-    /// @param substrate The unauthorized substrate bytes32 value
-    error AaveV4BorrowFuseUnsupportedSubstrate(string action, bytes32 substrate);
+    /// @notice Thrown when the (spoke, reserveId) pair is not granted for the action
+    /// @param action The action being performed ("enter" requires canBorrow, "exit" requires any grant)
+    /// @param spoke The Spoke contract address
+    /// @param reserveId The reserve identifier
+    error AaveV4BorrowFuseUnsupportedSubstrate(string action, address spoke, uint256 reserveId);
 
     /// @notice Thrown when market ID is zero or invalid
     /// @custom:error AaveV4BorrowFuseInvalidMarketId
@@ -126,12 +132,17 @@ contract AaveV4BorrowFuse is IFuseCommon {
     /// @param data_ Enter data containing spoke, asset, reserveId, and amount to borrow
     /// @return asset The address of the borrowed asset
     /// @return amount The amount of assets borrowed
+    /// @custom:revert AaveV4BorrowFuseUnsupportedSubstrate When (spoke, reserveId) is not granted with canBorrow
+    /// @custom:revert AaveV4BorrowFuseReserveAssetMismatch When the reserve underlying differs from asset
+    /// @custom:revert AaveV4BorrowFuseInsufficientShares When received shares are below minShares
     function enter(AaveV4BorrowFuseEnterData memory data_) public returns (address asset, uint256 amount) {
         if (data_.amount == 0) {
             return (data_.asset, 0);
         }
 
-        _validateSubstrates("enter", data_.asset, data_.spoke);
+        if (!AaveV4SubstrateLib.canBorrow(MARKET_ID, data_.spoke, data_.reserveId)) {
+            revert AaveV4BorrowFuseUnsupportedSubstrate("enter", data_.spoke, data_.reserveId);
+        }
         _validateReserveAsset(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
 
         (uint256 shares, ) = IAaveV4Spoke(data_.spoke).borrow(data_.reserveId, data_.amount, address(this));
@@ -166,15 +177,22 @@ contract AaveV4BorrowFuse is IFuseCommon {
     }
 
     /// @notice Exits (repays) assets to Aave V4 protocol via a Spoke contract
+    /// @dev Repayment is capped at the vault balance; the Spoke caps it at the total debt (drawn + premium)
+    ///      and never pulls more than the approved amount. Pass amount >= getUserTotalDebt() for a full repay.
     /// @param data_ Exit data containing spoke, asset, reserveId, and amount to repay
     /// @return asset The address of the repaid asset
     /// @return amount The amount of assets repaid
+    /// @custom:revert AaveV4BorrowFuseUnsupportedSubstrate When (spoke, reserveId) is not granted
+    /// @custom:revert AaveV4BorrowFuseReserveAssetMismatch When the reserve underlying differs from asset
+    /// @custom:revert AaveV4BorrowFuseInsufficientSharesRepaid When repaid shares are below minSharesRepaid
     function exit(AaveV4BorrowFuseExitData memory data_) public returns (address asset, uint256 amount) {
         if (data_.amount == 0) {
             return (data_.asset, 0);
         }
 
-        _validateSubstrates("exit", data_.asset, data_.spoke);
+        if (!AaveV4SubstrateLib.canSupply(MARKET_ID, data_.spoke, data_.reserveId)) {
+            revert AaveV4BorrowFuseUnsupportedSubstrate("exit", data_.spoke, data_.reserveId);
+        }
         _validateReserveAsset(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
 
         uint256 balance = ERC20(data_.asset).balanceOf(address(this));
@@ -186,7 +204,11 @@ contract AaveV4BorrowFuse is IFuseCommon {
 
         ERC20(data_.asset).forceApprove(data_.spoke, repayAmount);
 
-        (uint256 sharesRepaid, uint256 repaid) = IAaveV4Spoke(data_.spoke).repay(data_.reserveId, repayAmount, address(this));
+        (uint256 sharesRepaid, uint256 repaid) = IAaveV4Spoke(data_.spoke).repay(
+            data_.reserveId,
+            repayAmount,
+            address(this)
+        );
 
         if (sharesRepaid < data_.minSharesRepaid) {
             revert AaveV4BorrowFuseInsufficientSharesRepaid(sharesRepaid, data_.minSharesRepaid);
@@ -217,24 +239,8 @@ contract AaveV4BorrowFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
-    /// @notice Validates that both asset and spoke substrates are granted for this market
-    /// @param action_ The action being performed (for error message)
-    /// @param asset_ The asset address to validate
-    /// @param spoke_ The spoke address to validate
-    function _validateSubstrates(string memory action_, address asset_, address spoke_) internal view {
-        bytes32 assetSubstrate = AaveV4SubstrateLib.encodeAsset(asset_);
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, assetSubstrate)) {
-            revert AaveV4BorrowFuseUnsupportedSubstrate(action_, assetSubstrate);
-        }
-
-        bytes32 spokeSubstrate = AaveV4SubstrateLib.encodeSpoke(spoke_);
-        if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, spokeSubstrate)) {
-            revert AaveV4BorrowFuseUnsupportedSubstrate(action_, spokeSubstrate);
-        }
-    }
-
     /// @notice Validates that the reserve's underlying asset matches the expected asset
-    /// @dev Protects against reserve index shifts caused by Aave governance changes
+    /// @dev Defense-in-depth cross-check of the alpha-provided asset against the granted reserve
     /// @param spoke_ The Aave V4 Spoke contract
     /// @param reserveId_ The reserve ID to validate
     /// @param expectedAsset_ The asset address that the caller expects at this reserveId

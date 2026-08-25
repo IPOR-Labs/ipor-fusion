@@ -10,19 +10,20 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {AaveV4SubstrateLib} from "./AaveV4SubstrateLib.sol";
+import {AaveV4SubstrateLib, AaveV4Substrate} from "./AaveV4SubstrateLib.sol";
 import {IAaveV4Spoke} from "./ext/IAaveV4Spoke.sol";
 
 /// @title AaveV4BalanceFuse
 /// @author IPOR Labs
 /// @notice Fuse for Aave V4 protocol responsible for calculating the balance of the Plasma Vault in USD
-/// @dev Iterates over Spoke substrates and calculates the net value of all positions (supply - debt) in USD.
-///      Uses getUserSuppliedAssets() and getUserTotalDebt() to get position values in asset units.
-///      Prices are obtained from PlasmaVault's PriceOracleMiddleware.
-///      Final balance is normalized to WAD (18 decimals).
-///      Gas optimization: for each reserve, checks if the underlying asset is a granted Asset substrate
-///      before querying position data. Since Supply/Borrow fuses validate asset substrates on enter/exit,
-///      reserves with non-granted assets cannot have positions and are skipped.
+/// @dev Iterates over the granted Reserve substrates (spoke, reserveId) and sums the net value
+///      (supplied - total debt) of every reserve. Debt is always queried, regardless of the canBorrow flag,
+///      so revoking a borrow permission can never hide existing debt.
+///      Substrates that decode to the same (spoke, reserveId) pair (e.g. two flag variants) are counted once;
+///      non-canonical words and reserve ids not listed on the Spoke are skipped.
+///      Prices are obtained from PlasmaVault's PriceOracleMiddleware. Final balance is normalized to WAD.
+///      Positions on reserves whose grant was removed entirely are not visible until the reserve is re-granted
+///      (grant changes are not validated against open positions - see the README for the atomist rules).
 contract AaveV4BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
 
@@ -52,7 +53,7 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
     }
 
     /// @notice Calculates the total balance of the Plasma Vault in Aave V4 protocol
-    /// @dev Iterates over Spoke substrates, queries positions in each reserve,
+    /// @dev Iterates over granted Reserve substrates, queries supplied assets and total debt of each reserve,
     ///      prices via PriceOracleMiddleware, and returns the total net USD value in 18 decimals.
     ///      Reverts if total debt exceeds total supply value (negative balance).
     /// @return The total balance in USD, normalized to WAD (18 decimals)
@@ -67,14 +68,26 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
 
         int256 balanceTemp;
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
+        address plasmaVault = address(this);
+        AaveV4Substrate memory substrate;
 
         for (uint256 i; i < len; ++i) {
-            if (AaveV4SubstrateLib.isSpokeSubstrate(substrates[i])) {
-                balanceTemp += _calculateSpokeBalance(
-                    IAaveV4Spoke(AaveV4SubstrateLib.decodeAddress(substrates[i])),
-                    priceOracleMiddleware
-                );
+            if (!AaveV4SubstrateLib.isReserveSubstrate(substrates[i])) {
+                continue;
             }
+
+            substrate = AaveV4SubstrateLib.decode(substrates[i]);
+
+            if (_isDuplicate(substrates, i, substrate.spoke, substrate.reserveId)) {
+                continue;
+            }
+
+            balanceTemp += _calculateReserveBalance(
+                IAaveV4Spoke(substrate.spoke),
+                substrate.reserveId,
+                plasmaVault,
+                priceOracleMiddleware
+            );
         }
 
         if (balanceTemp < 0) {
@@ -84,56 +97,51 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
         return balanceTemp.toUint256();
     }
 
-    /// @notice Calculates the balance for all reserves in a single Spoke
-    /// @dev Gas optimization: fetches reserve metadata first and skips reserves whose underlying
-    ///      asset is not a granted Asset substrate. Since Supply/Borrow fuses validate asset substrates,
-    ///      non-granted assets cannot have positions, saving 2+ external calls per skipped reserve.
-    /// @param spoke_ The Aave V4 Spoke contract
-    /// @param priceOracleMiddleware_ The price oracle middleware address
-    /// @return The net balance in WAD for all reserves in the Spoke
-    function _calculateSpokeBalance(
-        IAaveV4Spoke spoke_,
-        address priceOracleMiddleware_
-    ) private view returns (int256) {
-        int256 spokeBalance;
-        uint256 reserveCount = spoke_.getReserveCount();
-        address plasmaVault = address(this);
+    /// @notice Checks whether an earlier substrate already covers the same (spoke, reserveId) pair
+    /// @param substrates_ All granted substrates of the market
+    /// @param index_ Index of the substrate being evaluated; only earlier indices are compared
+    /// @param spoke_ Spoke of the substrate being evaluated
+    /// @param reserveId_ Reserve id of the substrate being evaluated
+    /// @return True if a substrate with a lower index decodes to the same pair
+    function _isDuplicate(
+        bytes32[] memory substrates_,
+        uint256 index_,
+        address spoke_,
+        uint32 reserveId_
+    ) private pure returns (bool) {
+        AaveV4Substrate memory other;
 
-        IAaveV4Spoke.Reserve memory reserve;
-        bytes32 assetSubstrate;
-
-        // Reserves are indexed sequentially from 0 in Aave V4
-        for (uint256 r; r < reserveCount; ++r) {
-            reserve = spoke_.getReserve(r);
-
-            // Skip reserves whose underlying asset is not a granted substrate.
-            // Supply/Borrow fuses enforce asset substrate validation, so the vault
-            // cannot hold positions in reserves with non-granted assets.
-            assetSubstrate = AaveV4SubstrateLib.encodeAsset(reserve.underlying);
-            if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, assetSubstrate)) {
+        for (uint256 j; j < index_; ++j) {
+            if (!AaveV4SubstrateLib.isReserveSubstrate(substrates_[j])) {
                 continue;
             }
-
-            spokeBalance += _calculateReserveBalance(spoke_, r, reserve.underlying, plasmaVault, priceOracleMiddleware_);
+            other = AaveV4SubstrateLib.decode(substrates_[j]);
+            if (other.spoke == spoke_ && other.reserveId == reserveId_) {
+                return true;
+            }
         }
 
-        return spokeBalance;
+        return false;
     }
 
-    /// @notice Calculates the balance for a single reserve in a Spoke
+    /// @notice Calculates the net balance of a single reserve
     /// @param spoke_ The Aave V4 Spoke contract
-    /// @param reserveId_ The reserve ID (sequential index starting from 0)
-    /// @param underlying_ The underlying asset address (already fetched by caller)
+    /// @param reserveId_ The reserve identifier within the Spoke
     /// @param plasmaVault_ The PlasmaVault address
     /// @param priceOracleMiddleware_ The price oracle middleware address
-    /// @return The net balance in WAD for the reserve (supply - debt)
+    /// @return The net balance in WAD for the reserve (supplied - total debt); 0 when the reserve id is not listed
+    ///         on the Spoke yet (a pre-granted id must not block balance updates of the whole vault)
+    /// @custom:revert Errors.UnsupportedQuoteCurrencyFromOracle When the oracle returns a zero price
     function _calculateReserveBalance(
         IAaveV4Spoke spoke_,
         uint256 reserveId_,
-        address underlying_,
         address plasmaVault_,
         address priceOracleMiddleware_
     ) private view returns (int256) {
+        if (reserveId_ >= spoke_.getReserveCount()) {
+            return 0;
+        }
+
         uint256 supplyAssets = spoke_.getUserSuppliedAssets(reserveId_, plasmaVault_);
         uint256 debtAssets = spoke_.getUserTotalDebt(reserveId_, plasmaVault_);
 
@@ -141,13 +149,18 @@ contract AaveV4BalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(underlying_);
+        address underlying = spoke_.getReserve(reserveId_).underlying;
+
+        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
+            underlying
+        );
         if (price == 0) {
             revert Errors.UnsupportedQuoteCurrencyFromOracle();
         }
 
         int256 netAmount = int256(supplyAssets) - int256(debtAssets);
 
-        return IporMath.convertToWadInt(netAmount * int256(price), IERC20Metadata(underlying_).decimals() + priceDecimals);
+        return
+            IporMath.convertToWadInt(netAmount * int256(price), IERC20Metadata(underlying).decimals() + priceDecimals);
     }
 }

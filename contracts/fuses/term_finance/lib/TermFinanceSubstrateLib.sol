@@ -33,7 +33,7 @@ enum TermFinanceSubstrateType {
 ///      COLLATERAL_TOKEN: data = keccak256(abi.encode(servicer, collateralToken))
 ///                        truncated to 248 bits.
 ///
-///      Layout mirrors `AaveV4SubstrateLib._FLAG_SHIFT = 248` exactly.
+///      Layout mirrors `AaveV4SubstrateLib._TYPE_SHIFT = 248` exactly.
 library TermFinanceSubstrateLib {
     /// @notice Bit position of the type flag byte (top byte of the bytes32 substrate).
     uint256 internal constant _FLAG_SHIFT = 248;

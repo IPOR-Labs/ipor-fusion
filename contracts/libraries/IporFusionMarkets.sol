@@ -230,11 +230,17 @@ library IporFusionMarkets {
     /// @dev Substrates: none
     uint256 public constant LITE_PSM = 48;
 
-    /// @dev Aave V4 Hub & Spoke market
-    /// @dev Substrate type: AaveV4SubstrateType (Asset or Spoke)
-    /// @dev Substrate values: Encoded combination of type flag and address
-    ///      - Asset: AaveV4SubstrateLib.encodeAsset(tokenAddress) - ERC20 token address with flag 0x01
-    ///      - Spoke: AaveV4SubstrateLib.encodeSpoke(spokeAddress) - Aave V4 Spoke contract address with flag 0x02
+    /// @dev Aave V4 Hub & Spoke market (one market for every Spoke; no E-Mode in Aave V4)
+    /// @dev Substrate type: AaveV4SubstrateType.Reserve - one substrate per Aave V4 reserve the vault may use
+    /// @dev Substrate value: AaveV4SubstrateLib.encodeReserve(spoke, reserveId, isCollateral, canBorrow)
+    ///      bytes32 layout: [255..248] type = 0x01 | [247..88] spoke address | [87..56] reserveId (uint32)
+    ///                      | [55..48] flags (bit0 isCollateral, bit1 canBorrow) | [47..0] zero
+    ///      - any grant for (spoke, reserveId): supply, withdraw, repay, disable collateral
+    ///      - isCollateral: reserve may be enabled as collateral (AaveV4CollateralFuse)
+    ///      - canBorrow: reserve may be borrowed (AaveV4BorrowFuse)
+    ///      - instant withdraw only from reserves granted without isCollateral
+    ///      The same underlying can be listed twice on one Spoke (e.g. USDC via Prime and Core hubs on Bluechip),
+    ///      which is why the reserve id - not the asset - identifies the market.
     uint256 public constant AAVE_V4 = 49;
 
     /// @dev External State market — generic integration family for off-chain strategies
@@ -307,7 +313,6 @@ library IporFusionMarkets {
     ///        price-oracle valuation and asset distribution protection
     /// @dev Native-currency pools (currency0 == address(0)) are not supported; use WETH pools
     uint256 public constant UNISWAP_V4 = 53;
-
 
     /// @dev Polygon sPOL unstake market (Ethereum mainnet) — values POL pending in the sPOLController
     ///      unstake cooldown queue (~80 checkpoints / ~3 days, driven by the Polygon StakeManager).
