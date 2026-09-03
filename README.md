@@ -74,6 +74,8 @@ This repository includes several GitHub Actions workflows located in `.github/wo
 - **CI Workflow** (`ci.yml`): Runs continuous integration tasks.
 - **CD Workflow** (`cd.yml`): Manages continuous deployment processes.
 
+Both delegate to the reusable `smart-contracts-build.yml`. CI runs on `pull_request_target`, so workflow definitions are always taken from `main`, not from the PR branch.
+
 ## License
 
 For more details, see the [LICENSE](./LICENSE) file.
