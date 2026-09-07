@@ -33,6 +33,8 @@ import {UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/Unisw
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
+import {IPoolAddressesProvider} from "../../../contracts/fuses/aave_v3/ext/IPoolAddressesProvider.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
@@ -60,6 +62,10 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
     address private constant _WST_ETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
     address private constant _MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
+
+    /// @dev Aave V3 Lido market tokens (Ethereum mainnet)
+    address private constant _A_ETH_LIDO_WST_ETH = 0xC035a7cf15375cE2706766804551791aD035E0C2;
+    address private constant _VARIABLE_DEBT_ETH_LIDO_WETH = 0x91b7d78BF92db564221f6B5AeE744D1727d1Dd1e;
 
     address private constant _PRICE_ORACLE_MIDDLEWARE = 0xB7018C15279E0f5990613cc00A91b6032066f2f7;
     address private constant _UNIVERSAL_ROUTER_UNISWAP = 0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B;
@@ -501,7 +507,7 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
         assertApproxEqAbs(wethBalanceBefore, 0, _ERROR_TOLERANCE, "wethBalanceBefore");
         assertApproxEqAbs(wethBalanceAfter, 0, _ERROR_TOLERANCE, "wethBalanceAfter");
 
-        uint256 debtToken = ERC20(0x91b7d78BF92db564221f6B5AeE744D1727d1Dd1e).balanceOf(_plasmaVault); // dWETH
+        uint256 debtToken = ERC20(_VARIABLE_DEBT_ETH_LIDO_WETH).balanceOf(_plasmaVault); // dWETH
 
         assertApproxEqAbs(debtToken, 11e18, _ERROR_TOLERANCE, "debtToken");
     }
@@ -591,16 +597,16 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
         // Second part - repay debt and withdraw using flash loan
         // Create repay actions
 
-        uint256 debtTokenBalanceBefore = ERC20(0x91b7d78BF92db564221f6B5AeE744D1727d1Dd1e).balanceOf(_plasmaVault); // dWETH
+        uint256 debtTokenBalanceBefore = ERC20(_VARIABLE_DEBT_ETH_LIDO_WETH).balanceOf(_plasmaVault); // dWETH
 
         AaveV3BorrowFuseExitData memory repayData = AaveV3BorrowFuseExitData({
             asset: _WETH,
             amount: debtTokenBalanceBefore
         });
 
-        uint256 totalCollateralAssetsBefore = PlasmaVault(0xC035a7cf15375cE2706766804551791aD035E0C2).balanceOf(
-            _plasmaVault
-        ); //aWST_ETH
+        uint256 totalCollateralAssetsBefore = ERC20(_A_ETH_LIDO_WST_ETH).balanceOf(_plasmaVault); // aEthLidowstETH
+
+        assertGt(totalCollateralAssetsBefore, 0, "totalCollateralAssetsBefore");
 
         AaveV3SupplyFuseExitData memory withdrawData = AaveV3SupplyFuseExitData({
             asset: _WST_ETH,
@@ -648,16 +654,25 @@ contract LoopingBorrowSupplyAaveLidoFlashLoanMorphoTest is Test {
         vm.stopPrank();
 
         // then
-        uint256 totalCollateralAssetsAfter = PlasmaVault(0x5Ee5bf7ae06D1Be5997A1A72006FE6C607eC6DE8).balanceOf(
-            _plasmaVault
-        ); //aWST_ETH
+        uint256 totalCollateralAssetsAfter = ERC20(_A_ETH_LIDO_WST_ETH).balanceOf(_plasmaVault); // aEthLidowstETH
 
-        uint256 debtTokenBalanceAfter = ERC20(0x91b7d78BF92db564221f6B5AeE744D1727d1Dd1e).balanceOf(_plasmaVault); // dWETH
+        uint256 debtTokenBalanceAfter = ERC20(_VARIABLE_DEBT_ETH_LIDO_WETH).balanceOf(_plasmaVault); // dWETH
         assertApproxEqAbs(debtTokenBalanceAfter, 0, _ERROR_TOLERANCE, "debtTokenBalanceAfter");
         assertApproxEqAbs(totalCollateralAssetsAfter, 0, _ERROR_TOLERANCE, "totalCollateralAssetsAfter");
         assertApproxEqAbs(debtTokenBalanceBefore, 11e18, _ERROR_TOLERANCE, "debtTokenBalanceBefore");
 
         assertApproxEqAbs(PlasmaVault(_plasmaVault).totalAssets(), 26965848915, _ERROR_TOLERANCE, "totalAssetsAfter");
         assertApproxEqAbs(totalAssetsBefore, 26989314656, _ERROR_TOLERANCE, "totalAssetsBefore");
+    }
+
+    function testShouldHaveCorrectAaveV3LidoReserveTokenAddresses() external view {
+        address poolDataProvider = IPoolAddressesProvider(ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER)
+            .getPoolDataProvider();
+
+        (address aTokenWstEth, , ) = IAavePoolDataProvider(poolDataProvider).getReserveTokensAddresses(_WST_ETH);
+        (, , address variableDebtTokenWeth) = IAavePoolDataProvider(poolDataProvider).getReserveTokensAddresses(_WETH);
+
+        assertEq(aTokenWstEth, _A_ETH_LIDO_WST_ETH, "aEthLidowstETH");
+        assertEq(variableDebtTokenWeth, _VARIABLE_DEBT_ETH_LIDO_WETH, "variableDebtEthLidoWETH");
     }
 }
