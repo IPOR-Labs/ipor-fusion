@@ -1,0 +1,6 @@
+docs(agents): split readiness plan into atomic tasks
+
+Add agent-readiness/ with the AI-agent readiness plan (PLAN.md, tasks
+T00-T52), a task status table (STATUS.md), verified environment facts
+(ENVIRONMENT.md) and the readiness-task skill with LOG/COMMIT templates
+used to execute one task per commit. No source, config or CI changes.
