@@ -6,7 +6,7 @@ krok 0 i 5) oraz Pete po commicie.
 
 | ID | Zadanie | Prio | Zależności | Status | Data | Uwagi |
 | --- | --- | --- | --- | --- | --- | --- |
-| T00 | Pomiar bazowy | P0 | — | todo | | nie blokuje T01–T47; można zrobić później |
+| T00 | Pomiar bazowy | P0 | — | partial | 2026-09-07 | `evals/agent-readiness/` gotowe (tasks.json + baseline.md); brak przebiegu 1 — wymaga sesji bez prywatnej pamięci |
 | T01 | Selektywne wersjonowanie dokumentacji | P0 | T00 | todo | | proponowany start (zależność od T00 do pominięcia za zgodą Pete'a) |
 | T02 | Przykład konfiguracji RPC | P0 | T01 | todo | | |
 | T03 | Instalacja zgodna z lockfile | P0 | T02 | todo | | |

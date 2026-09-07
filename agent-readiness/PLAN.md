@@ -253,6 +253,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 - **Zakres:** zdefiniować osiem zadań z sekcji 10 w `evals/agent-readiness/tasks.json`; zapisać warunki i pierwszy wynik w `evals/agent-readiness/baseline.md`. Nie budować jeszcze runnera.
 - **Odbiór:** wynik podaje commit, model, narzędzia, limit pracy, rezultaty i braki dostępu. Dla porównania samego repo używać sesji bez prywatnej pamięci; nie nazywać tego pomiarem sprzed konfiguracji pamięci.
 - **Commit:** `docs(agents): T00 record readiness baseline`.
+- **Blokada:** brak pierwszego wyniku — pomiar musi zostać uruchomiony w sesjach bez prywatnej pamięci (`claude --bare` wymaga `ANTHROPIC_API_KEY`/`apiKeyHelper`, nieustawionego w tym środowisku). Definicja zadań i warunki są gotowe w `evals/agent-readiness/`.
 
 #### T01 — Selektywne wersjonowanie dokumentacji
 
