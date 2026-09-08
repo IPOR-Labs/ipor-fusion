@@ -6,6 +6,8 @@ IPOR Fusion is a yield optimization framework for automated execution of smart a
 time and effort. It is an unopinionated and customizable infrastructure fund managers can use to deploy assets on-chain
 while implementing custom algorithms off-chain.
 
+Repository guidance for contributors and coding agents is in [AGENTS.md](./AGENTS.md).
+
 ## Technical Overview
 
 More technical information can be found

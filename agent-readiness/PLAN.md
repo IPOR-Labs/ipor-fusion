@@ -308,7 +308,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T08 — Wspólny punkt wejścia do repo
 
-- [ ] **P0 · S · Zależności: T01, T04, T05.**
+- [x] **P0 · S · Zależności: T01, T04, T05.**
 - **Zakres:** dodać główny `AGENTS.md` i cienki projektowy `CLAUDE.md` wskazujący wspólne instrukcje, z odpowiednim wyjątkiem `.gitignore`. Dodać link z README.
 - **Odbiór:** dokument podaje tylko istniejące komendy i pliki; zawiera reguły projektu, w tym zakaz `via_ir`, bez danych z prywatnej pamięci. Każdy używany klient potrafi odnaleźć wspólne instrukcje.
 - **Commit:** `docs(agents): T08 add shared repository instructions`.

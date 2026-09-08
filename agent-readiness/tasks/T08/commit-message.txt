@@ -1,0 +1,8 @@
+docs(agents): T08 add shared repository instructions
+
+Add a root AGENTS.md with the repository map, verified setup and test commands,
+Solidity safety rules, evidence boundaries, and change hygiene. Add a thin
+tracked CLAUDE.md adapter and link the shared instructions from README.
+
+Verified every local documentation link plus the documented local and Ethereum
+fork factory test commands with 74 passing tests.

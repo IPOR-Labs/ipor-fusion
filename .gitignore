@@ -28,6 +28,8 @@ TODO.MD
 GEMINI.md
 .claude/
 CLAUDE.md
+# Track only the root adapter to the shared repository instructions.
+!/CLAUDE.md
 reports/
 research/
 temp/
