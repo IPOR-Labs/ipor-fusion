@@ -336,7 +336,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T12 — Instrukcje pracy nad fuse'ami
 
-- [ ] **P1 · S · Zależności: T08, T09.**
+- [x] **P1 · S · Zależności: T08, T09.**
 - **Zakres:** `contracts/fuses/AGENTS.md`: wybór istniejącej integracji jako wzorca, substrates, balance fuse, wyceny i testy. Bez refaktoryzacji fuse'ów.
 - **Odbiór:** jedna istniejąca integracja pozwala przejść instrukcję od źródła do właściwego testu.
 - **Commit:** `docs(fuses): T12 add fuse development guidance`.
