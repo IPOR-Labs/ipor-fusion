@@ -1,0 +1,16 @@
+test(catalog): T13 classify factory pilot suites
+
+Add config/test-suites.json with the seven factory pilot suites, its JSON schema,
+a dependency-free validator behind npm run validate:test-suites, scoped
+instructions in test/AGENTS.md and the first version of docs/testing.md.
+
+Each entry records the provider variable name, pinned block, profile, actual FFI
+use, fixture type and what setUp() deploys and mutates. Everything else under
+test/ stays explicitly unclassified.
+
+Both fork suites are classified as fork-fresh-deployment: they deploy their own
+factory and bases and only read the mainnet proxy for configuration, so no suite
+in the repository currently proves that a deployed factory is usable.
+
+Verified with 129 local tests, 10 fork tests at block 23831825, and eight bad
+catalog entries that each fail validation with a named cause.

@@ -43,3 +43,4 @@ docs/*
 !docs/architecture.md
 !docs/roles-and-permissions.md
 !docs/factories.md
+!docs/testing.md

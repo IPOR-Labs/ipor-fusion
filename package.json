@@ -18,7 +18,8 @@
         "prettier:contracts": "./node_modules/.bin/prettier --write 'contracts/**/*.sol'",
         "prettier:test": "./node_modules/.bin/prettier --write 'test/**/*.sol'",
         "prettier:all": "npm-run-all --parallel prettier:contracts prettier:test",
-        "format:check": "./node_modules/.bin/prettier --check 'contracts/**/*.sol' 'test/**/*.sol'"
+        "format:check": "./node_modules/.bin/prettier --check 'contracts/**/*.sol' 'test/**/*.sol'",
+        "validate:test-suites": "node tools/validate-test-suites.mjs"
     },
     "dependencies": {
         "@chainlink/contracts": "1.2.0",

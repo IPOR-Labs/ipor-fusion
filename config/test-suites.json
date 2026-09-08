@@ -1,0 +1,216 @@
+{
+    "schemaVersion": 1,
+    "scope": {
+        "classified": [
+            "test/factory/*.t.sol — the suites needed for the factory pilot, at the top level of the directory only"
+        ],
+        "unclassified": "Everything else under test/, including test/factory/price_feed/, is deliberately not classified yet. An unlisted suite carries no claim in either direction: read its setUp() before quoting a result, and do not treat its absence here as evidence that it is local, that it forks, or that it is unnecessary. Suites are added one area at a time, each with the run that produced its numbers."
+    },
+    "suites": [
+        {
+            "id": "factory-fusion-factory",
+            "path": "test/factory/FusionFactory.t.sol",
+            "contracts": ["FusionFactoryTest"],
+            "fixture": "local-deployment",
+            "profile": "default",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 66,
+            "setUp": {
+                "deploys": [
+                    "MockERC20 underlying token",
+                    "all seven component factories in FusionFactoryStorageLib.FactoryAddresses",
+                    "PlasmaVaultBase",
+                    "BurnRequestFeeFuse and ZeroBalanceFuse on IporFusionMarkets.ZERO_BALANCE_MARKET",
+                    "PriceOracleMiddleware behind an ERC1967Proxy",
+                    "FusionFactory implementation behind an ERC1967Proxy"
+                ],
+                "mutations": [
+                    "prank as owner to grant DAO_FEE_MANAGER_ROLE and MAINTENANCE_MANAGER_ROLE on the factory it just deployed"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "The checked-out FusionFactory source composes a complete vault from freshly deployed components, and its access control and validation behave as written.",
+            "doesNotProve": "Nothing about any deployed factory, its live configuration, or the components a real network holds."
+        },
+        {
+            "id": "factory-business-client-fee-packages",
+            "path": "test/factory/FusionFactoryBusinessClientFeePackagesTest.t.sol",
+            "contracts": ["FusionFactoryBusinessClientFeePackagesTest"],
+            "fixture": "local-deployment",
+            "profile": "default",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 18,
+            "setUp": {
+                "deploys": [
+                    "MockERC20 underlying token",
+                    "all seven component factories",
+                    "PlasmaVaultBase",
+                    "BurnRequestFeeFuse and ZeroBalanceFuse on IporFusionMarkets.ZERO_BALANCE_MARKET",
+                    "PriceOracleMiddleware behind an ERC1967Proxy",
+                    "FusionFactory implementation behind an ERC1967Proxy"
+                ],
+                "mutations": ["prank as owner to grant DAO_FEE_MANAGER_ROLE and MAINTENANCE_MANAGER_ROLE"],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "Caller-keyed fee-package selection in the checked-out source: which package a given direct caller resolves to, and how an unset or invalid index is rejected.",
+            "doesNotProve": "Which fee packages any deployed factory currently holds, or which caller they are keyed to on a live network."
+        },
+        {
+            "id": "factory-fuse-manager-timelock-cancel",
+            "path": "test/factory/FuseManagerTimelockCancelTest.t.sol",
+            "contracts": ["FuseManagerTimelockCancelTest"],
+            "fixture": "local-deployment",
+            "profile": "default",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 3,
+            "setUp": {
+                "deploys": [
+                    "MockERC20 underlying token",
+                    "all seven component factories",
+                    "PlasmaVaultBase",
+                    "BurnRequestFeeFuse and ZeroBalanceFuse on IporFusionMarkets.ZERO_BALANCE_MARKET",
+                    "PriceOracleMiddleware behind an ERC1967Proxy",
+                    "FusionFactory implementation behind an ERC1967Proxy"
+                ],
+                "mutations": ["labelled EOAs via makeAddr; role grants on the freshly created vault's access manager"],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "That a scheduled fuse-manager operation on a vault created by this source can be cancelled, and who may cancel it.",
+            "doesNotProve": "The delays configured on any deployed vault; this fixture sets its own."
+        },
+        {
+            "id": "factory-wrapped-plasma-vault",
+            "path": "test/factory/WrappedPlasmaVaultFactory.t.sol",
+            "contracts": ["WrappedPlasmaVaultFactoryTest"],
+            "fixture": "local-deployment",
+            "profile": "default",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 21,
+            "setUp": {
+                "deploys": [
+                    "MockERC20 underlying token",
+                    "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
+                    "WrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
+                ],
+                "mutations": ["labelled EOAs via makeAddr"],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "Wrapper creation, initialization and ownership rules of the wrapper factory itself.",
+            "doesNotProve": "Any interaction with a real PlasmaVault: the wrapped vault here is a mock exposing only asset() and maxWithdraw()."
+        },
+        {
+            "id": "factory-whitelist-wrapped-plasma-vault",
+            "path": "test/factory/WhitelistWrappedPlasmaVaultFactory.t.sol",
+            "contracts": ["WhitelistWrappedPlasmaVaultFactoryTest"],
+            "fixture": "local-deployment",
+            "profile": "default",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 21,
+            "setUp": {
+                "deploys": [
+                    "MockERC20 underlying token",
+                    "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
+                    "WhitelistWrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
+                ],
+                "mutations": ["labelled EOAs via makeAddr"],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "Whitelist-variant wrapper creation and the access restrictions specific to that variant.",
+            "doesNotProve": "Behaviour of the plain wrapper variant, or any interaction with a real PlasmaVault."
+        },
+        {
+            "id": "factory-dao-fee-packages-fork",
+            "path": "test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol",
+            "contracts": ["FusionFactoryDaoFeePackagesForkTest"],
+            "fixture": "fork-fresh-deployment",
+            "profile": "default",
+            "rpc": "ETHEREUM_PROVIDER_URL",
+            "block": 23831825,
+            "ffi": false,
+            "tests": 8,
+            "setUp": {
+                "deploys": [
+                    "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
+                    "PlasmaVaultBase",
+                    "PlasmaVault, used as the new plasmaVaultCoreBase for cloning",
+                    "a FusionFactory implementation behind a new ERC1967Proxy"
+                ],
+                "mutations": [
+                    "reads configuration from the existing mainnet proxy and copies it into the new one",
+                    "prank as owner to grant DAO_FEE_MANAGER_ROLE and MAINTENANCE_MANAGER_ROLE",
+                    "updateBaseAddresses on the new factory with a freshly deployed core base",
+                    "prank as a USDC holder to transfer 100,000 USDC to the atomist"
+                ],
+                "externalAddresses": [
+                    {
+                        "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+                        "role": "existing FusionFactory proxy on Ethereum mainnet, read as a configuration source only"
+                    },
+                    { "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "role": "USDC" },
+                    {
+                        "address": "0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341",
+                        "role": "USDC holder impersonated to fund the test atomist"
+                    }
+                ],
+                "helpers": []
+            },
+            "proves": "That the checked-out FusionFactory source applies DAO fee packages correctly when it runs against real mainnet state at the pinned block.",
+            "doesNotProve": "That the deployed factory at 0xcd05909C… can do this. The fixture deploys its own factory, its own bases and its own component factories, precisely because the deployed ones do not accept the current PlasmaVaultInitData shape. A pass here says nothing about the live deployment."
+        },
+        {
+            "id": "factory-business-client-fee-packages-fork",
+            "path": "test/factory/FusionFactoryBusinessClientFeePackagesForkTest.t.sol",
+            "contracts": ["FusionFactoryBusinessClientFeePackagesForkTest"],
+            "fixture": "fork-fresh-deployment",
+            "profile": "default",
+            "rpc": "ETHEREUM_PROVIDER_URL",
+            "block": 23831825,
+            "ffi": false,
+            "tests": 2,
+            "setUp": {
+                "deploys": [
+                    "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
+                    "PlasmaVaultBase",
+                    "PlasmaVault, used as the new plasmaVaultCoreBase for cloning",
+                    "a FusionFactory implementation behind a new ERC1967Proxy"
+                ],
+                "mutations": [
+                    "reads configuration from the existing mainnet proxy and copies it into the new one",
+                    "prank as owner to grant DAO_FEE_MANAGER_ROLE and MAINTENANCE_MANAGER_ROLE",
+                    "updateBaseAddresses on the new factory with a freshly deployed core base",
+                    "sets up both DAO and business-client fee packages",
+                    "prank as a USDC holder to transfer 100,000 USDC to the business client"
+                ],
+                "externalAddresses": [
+                    {
+                        "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+                        "role": "existing FusionFactory proxy on Ethereum mainnet, read as a configuration source only"
+                    },
+                    { "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "role": "USDC" },
+                    {
+                        "address": "0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341",
+                        "role": "USDC holder impersonated to fund the test business client"
+                    }
+                ],
+                "helpers": []
+            },
+            "proves": "That business-client fee packages resolve by direct caller against real mainnet state at the pinned block, using the checked-out source.",
+            "doesNotProve": "That the deployed factory at 0xcd05909C… offers these packages, or that the pilot caller would resolve to one. Same fresh-deployment caveat as the DAO fork suite."
+        }
+    ]
+}

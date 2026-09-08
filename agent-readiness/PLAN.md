@@ -345,7 +345,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T13 — Katalog testów dla pilotażu fabryki
 
-- [ ] **P0 · M · Zależności: T04, T11.**
+- [x] **P0 · M · Zależności: T04, T11.**
 - **Zakres:** `config/test-suites.json`, jego schemat, `test/AGENTS.md` i początek `docs/testing.md`. Sklasyfikować wyłącznie testy potrzebne do pilotażu fabryki; reszta pozostaje jawnie niesklasyfikowana.
 - **Odbiór:** wpisy określają RPC, blok, profil, FFI i typ fixture'a; sprawdzone również helpery w `setUp()`. Błędny wpis nie przechodzi walidacji.
 - **Commit:** `test(catalog): T13 classify factory pilot suites`.

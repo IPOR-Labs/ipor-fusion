@@ -1,0 +1,23 @@
+# Uruchomienia zaliczające T13 — 2026-09-08T10:02:49Z UTC
+
+## Walidator (pozytywny)
+valid: /Users/piotrrzonsowski/repos/ipor-fusion/config/test-suites.json (7 suite(s) classified)
+exit=0
+
+## Suity lokalne (bez RPC — provider ustawiony na adres nieosiągalny)
+### FusionFactory
+Suite result: ok. 66 passed; 0 failed; 0 skipped; finished in 14.05ms (65.87ms CPU time)
+### FusionFactoryBusinessClientFeePackagesTest
+Suite result: ok. 18 passed; 0 failed; 0 skipped; finished in 4.53ms (5.65ms CPU time)
+### FuseManagerTimelockCancelTest
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 4.83ms (4.60ms CPU time)
+### WrappedPlasmaVaultFactory
+Suite result: ok. 21 passed; 0 failed; 0 skipped; finished in 2.06ms (3.34ms CPU time)
+### WhitelistWrappedPlasmaVaultFactory
+Suite result: ok. 21 passed; 0 failed; 0 skipped; finished in 2.08ms (3.49ms CPU time)
+
+## Suity forkowe (ETHEREUM_PROVIDER_URL, blok 23831825)
+### FusionFactoryDaoFeePackagesForkTest
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 161.02ms (50.28ms CPU time)
+### FusionFactoryBusinessClientFeePackagesForkTest
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 148.20ms (8.85ms CPU time)

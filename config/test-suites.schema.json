@@ -1,0 +1,154 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/IPOR-Labs/ipor-fusion/config/test-suites.schema.json",
+    "title": "Test suite catalog",
+    "description": "Classification of Forge test suites: what each one needs to run and what its fixture actually proves. Only suites listed in the catalog are classified; everything else in test/ is explicitly unclassified.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["schemaVersion", "scope", "suites"],
+    "properties": {
+        "schemaVersion": {
+            "description": "Incremented when a change to this schema breaks existing readers.",
+            "type": "integer",
+            "enum": [1]
+        },
+        "scope": {
+            "description": "What this catalog covers and what it deliberately does not.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["classified", "unclassified"],
+            "properties": {
+                "classified": {
+                    "description": "Human-readable list of the areas that are classified.",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string", "minLength": 1 }
+                },
+                "unclassified": {
+                    "description": "Statement of what is left unclassified and how to treat it.",
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "suites": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/suite" }
+        }
+    },
+    "$defs": {
+        "suite": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "id",
+                "path",
+                "contracts",
+                "fixture",
+                "profile",
+                "rpc",
+                "block",
+                "ffi",
+                "tests",
+                "setUp",
+                "proves",
+                "doesNotProve"
+            ],
+            "properties": {
+                "id": {
+                    "description": "Stable identifier, unique within the catalog.",
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                },
+                "path": {
+                    "description": "Repository-relative path of the test file; must exist.",
+                    "type": "string",
+                    "pattern": "^test/.+\\.t\\.sol$"
+                },
+                "contracts": {
+                    "description": "Test contracts defined in the file.",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+                },
+                "fixture": {
+                    "description": "What the fixture builds, and therefore what a pass is evidence for. local-deployment: everything deployed in the test. fork-fresh-deployment: fork state, but the contract under test is deployed by the fixture. fork-upgrade: an existing proxy on a fork is deliberately upgraded or reconfigured. deployed-usage: an existing deployment is used unchanged, without upgrade, code replacement or self-granted roles.",
+                    "type": "string",
+                    "enum": ["local-deployment", "fork-fresh-deployment", "fork-upgrade", "deployed-usage"]
+                },
+                "profile": {
+                    "description": "Foundry profile the suite is run under.",
+                    "type": "string",
+                    "enum": ["default", "arbitrum"]
+                },
+                "rpc": {
+                    "description": "Name of the provider environment variable the suite reads, or null when it needs no RPC. Never a URL.",
+                    "type": ["string", "null"],
+                    "pattern": "^[A-Z0-9_]+_PROVIDER_URL$"
+                },
+                "block": {
+                    "description": "Pinned fork block, or null when the suite does not fork.",
+                    "type": ["integer", "null"],
+                    "minimum": 1
+                },
+                "ffi": {
+                    "description": "Whether the suite calls vm.ffi. The default profile enables ffi repository-wide, so this records actual use, not availability.",
+                    "type": "boolean"
+                },
+                "tests": {
+                    "description": "Number of test functions the suite ran when it was last classified.",
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "setUp": {
+                    "$ref": "#/$defs/setUp"
+                },
+                "proves": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "doesNotProve": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "setUp": {
+            "description": "What setUp() and its helpers build before the first test runs.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["deploys", "mutations", "externalAddresses", "helpers"],
+            "properties": {
+                "deploys": {
+                    "description": "Contracts the fixture deploys itself.",
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                },
+                "mutations": {
+                    "description": "Cheatcode-driven changes to state the fixture did not create: pranks, role grants, dealt balances, upgrades.",
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                },
+                "externalAddresses": {
+                    "description": "Hardcoded on-chain addresses the fixture reads or impersonates, with the role each plays.",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["address", "role"],
+                        "properties": {
+                            "address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+                            "role": { "type": "string", "minLength": 1 }
+                        }
+                    }
+                },
+                "helpers": {
+                    "description": "Shared helper libraries or base contracts the fixture pulls in.",
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                }
+            }
+        }
+    }
+}
