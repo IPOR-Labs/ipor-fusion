@@ -37,13 +37,22 @@ forge build
 To run smart contract tests, you need to set up a `.env` file with the required environment variables.
 
 ### Environment Variables
-An example `.env` file is in [.env.example](./.env.example). Copy this file to `.env` and fill in the required values.
+
+Copy the tracked [.env.example](./.env.example) file to `.env` and fill in the required values:
+
+```bash
+cp .env.example .env
+```
 
 - `ETHEREUM_PROVIDER_URL` - Ethereum provider URL
 - `ARBITRUM_PROVIDER_URL` - Arbitrum provider URL
 - `BASE_PROVIDER_URL` - Base provider URL
 - `TAC_PROVIDER_URL` - TAC provider URL
 - `INK_PROVIDER_URL` - Ink provider URL
+
+Fork tests select pinned historical blocks. Each provider must therefore support archive state for the blocks used by the
+tests; an endpoint that serves only recent state can be reachable and still fail a fork test. Keep credentials in the
+ignored `.env` file and never commit them.
 
 Test smart contracts using:
 

@@ -1,0 +1,8 @@
+docs(setup): T02 add RPC environment template
+
+Add an empty template for the five RPC provider variables used by the test
+suite. Document how to create the ignored local .env file and why fork tests
+need providers with historical archive state.
+
+Verified that the names match every vm.envString use, all values are empty,
+the README link and copy command work, and the edited Markdown is prettier-clean.

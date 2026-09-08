@@ -264,7 +264,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T02 — Działający przykład konfiguracji RPC
 
-- [ ] **P0 · S · Zależności: T01.**
+- [x] **P0 · S · Zależności: T01.**
 - **Zakres:** dodać `.env.example` z pięcioma pustymi zmiennymi RPC i uzupełnić odpowiedni fragment README o archive state.
 - **Odbiór:** wszystkie nazwy odpowiadają testom; brak wartości sekretów i kluczy do podpisywania; link w README działa.
 - **Commit:** `docs(setup): T02 add RPC environment template`.
