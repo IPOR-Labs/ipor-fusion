@@ -9,7 +9,8 @@ IPOR Fusion is a Solidity framework for modular, upgradeable ERC-4626 vaults. Ch
 control, and assets managed on-chain, so prefer evidence from code and tests over assumptions.
 
 - Start with [README.md](README.md) for installation and [docs/README.md](docs/README.md) for the documentation index.
-- The existing vault overview is [contracts/vaults/README.md](contracts/vaults/README.md). Verify examples against code.
+- Use [docs/architecture.md](docs/architecture.md) for the current vault map; the more detailed
+  [contracts/vaults/README.md](contracts/vaults/README.md) is supplementary and may describe historical components.
 - Treat source code, tests, and tracked artifacts as repository truth. Private notes or agent memory are not required.
 - No deployment registry, versioned ABI directory, vault config, or factory recipe is tracked yet. Their rollout is
   planned in [agent-readiness/PLAN.md](agent-readiness/PLAN.md); do not invent missing addresses, ABIs, or status.

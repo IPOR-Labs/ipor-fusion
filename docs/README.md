@@ -13,12 +13,14 @@ one by one:
 ```gitignore
 docs/*
 !docs/README.md
+!docs/architecture.md
 ```
 
-Only this index is tracked today. Every further document is added together with
-its own exception line, in the same commit as the document, so that adding a file
-to `docs/` never publishes anything by accident. Local material — for example a
-private `docs/<my-notes>/` directory — remains ignored without any extra step.
+Only the curated files listed in this index are tracked. Every further document
+is added together with its own exception line, in the same commit as the document,
+so that adding a file to `docs/` never publishes anything by accident. Local
+material — for example a private `docs/<my-notes>/` directory — remains ignored
+without any extra step.
 
 Verify the rule at any time:
 
@@ -47,12 +49,13 @@ source it was read from.
 Documentation currently lives next to the code it describes. Until a document in
 this directory replaces one of these, the source below is the reference.
 
-| Topic                                                                | Where                                                                                      |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Project overview, installation, build, tests, pre-commit hooks       | [`../README.md`](../README.md)                                                             |
-| Vault architecture: PlasmaVault, base, plugins, governance, managers | [`../contracts/vaults/README.md`](../contracts/vaults/README.md)                           |
-| Per-integration fuse notes (substrates, markets, enter/exit data)    | one `README.md` per integration under [`../contracts/fuses/`](../contracts/fuses/)         |
-| Reward fuse notes                                                    | [`../contracts/rewards_fuses/euler/README.md`](../contracts/rewards_fuses/euler/README.md) |
+| Topic                                                               | Where                                                                                      |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Project overview, installation, build, tests, pre-commit hooks      | [`../README.md`](../README.md)                                                             |
+| Current vault architecture, routing, storage, managers, call traces | [`architecture.md`](architecture.md)                                                       |
+| Detailed vault component background and historical design notes     | [`../contracts/vaults/README.md`](../contracts/vaults/README.md)                           |
+| Per-integration fuse notes (substrates, markets, enter/exit data)   | one `README.md` per integration under [`../contracts/fuses/`](../contracts/fuses/)         |
+| Reward fuse notes                                                   | [`../contracts/rewards_fuses/euler/README.md`](../contracts/rewards_fuses/euler/README.md) |
 
 List the integration documents that exist in the current checkout:
 

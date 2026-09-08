@@ -315,7 +315,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T09 — Mapa architektury vaulta
 
-- [ ] **P1 · S · Zależności: T08.**
+- [x] **P1 · S · Zależności: T08.**
 - **Zakres:** `docs/architecture.md` z punktami wejścia, routingiem `delegatecall`, storage i managerami; odwołania do istniejącego opisu vaultów.
 - **Odbiór:** reprezentatywne ścieżki deposit, execute i fallback są sprawdzone względem kodu; linki wskazują istniejące symbole/pliki.
 - **Commit:** `docs(architecture): T09 map vault execution and storage`.

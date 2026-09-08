@@ -1,5 +1,10 @@
 # PlasmaVault Architecture
 
+> For the routing implemented in the current checkout, use
+> [`../../docs/architecture.md`](../../docs/architecture.md). This older component overview predates removal of the
+> separate `PlasmaVaultErc4626` view component; its diagram and fallback excerpt are retained as historical design
+> context and must not override the current source.
+
 ## Overview
 
 PlasmaVault uses a **modular delegatecall-based architecture** to achieve:

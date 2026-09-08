@@ -40,3 +40,4 @@ temp/
 # exception line below, in the same commit as the document itself.
 docs/*
 !docs/README.md
+!docs/architecture.md
