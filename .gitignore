@@ -28,7 +28,13 @@ TODO.MD
 GEMINI.md
 .claude/
 CLAUDE.md
-docs/
 reports/
 research/
 temp/
+
+### Documentation ###
+# Everything under docs/ is ignored by default, so local notes and drafts stay
+# private. Curated, team-facing documents are added one by one, each with its own
+# exception line below, in the same commit as the document itself.
+docs/*
+!docs/README.md

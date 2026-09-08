@@ -6,8 +6,8 @@ krok 0 i 5) oraz Pete po commicie.
 
 | ID | Zadanie | Prio | Zależności | Status | Data | Uwagi |
 | --- | --- | --- | --- | --- | --- | --- |
-| T00 | Pomiar bazowy | P0 | — | partial | 2026-09-07 | `evals/agent-readiness/` gotowe (tasks.json + baseline.md); brak przebiegu 1 — wymaga sesji bez prywatnej pamięci |
-| T01 | Selektywne wersjonowanie dokumentacji | P0 | T00 | todo | | proponowany start (zależność od T00 do pominięcia za zgodą Pete'a) |
+| T00 | Pomiar bazowy | P0 | — | partial `7d64650` | 2026-09-07 | `evals/agent-readiness/` gotowe (tasks.json + baseline.md); brak przebiegu 1 — decyzją Pete'a (2026-09-07) odłożony na koniec i na osobny branch; przepis na przebieg w `tasks/T01/LOG.md` (Follow-upy) |
+| T01 | Selektywne wersjonowanie dokumentacji | P0 | T00 | ready-for-commit | 2026-09-07 | `.gitignore`: `docs/*` + `!docs/README.md`; nowy indeks `docs/README.md`; zależność od T00 pominięta za zgodą Pete'a |
 | T02 | Przykład konfiguracji RPC | P0 | T01 | todo | | |
 | T03 | Instalacja zgodna z lockfile | P0 | T02 | todo | | |
 | T04 | Przypięcie wersji Foundry | P0 | T03 | todo | | lokalnie 1.7.1, CI `stable` — wybrać wersję |

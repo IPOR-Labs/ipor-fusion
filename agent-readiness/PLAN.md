@@ -257,7 +257,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T01 — Selektywne wersjonowanie dokumentacji
 
-- [ ] **P0 · S · Zależności: T00.**
+- [x] **P0 · S · Zależności: T00.**
 - **Zakres:** poprawić `.gitignore` i dodać `docs/README.md` jako indeks. Dopuścić tylko uzgodnione pliki/katalogi dokumentacji; istniejące prywatne materiały w `docs/` pozostają ignorowane.
 - **Odbiór:** `git check-ignore` i `git status` potwierdzają, że indeks można dodać, a lokalne notatki i `.env` nie zostały ujawnione. Kolejne zadania dodają potrzebne wyjątki razem z dokumentem.
 - **Commit:** `docs(agents): T01 track curated project documentation`.
