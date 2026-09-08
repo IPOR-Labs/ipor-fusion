@@ -12,8 +12,8 @@ krok 0 i 5) oraz Pete po commicie.
 | T03 | Instalacja zgodna z lockfile | P0 | T02 | committed `89f30eb` | 2026-09-08 | README i CI używają `npm ci`; README inicjalizuje przypięte submoduły rekurencyjnie i opisuje odzyskanie brakujących |
 | T04 | Przypięcie wersji Foundry | P0 | T03 | committed `7364631` | 2026-09-08 | Foundry `v1.7.1` w README i CI; build i lokalny test `FusionFactory` przeszły |
 | T05 | Kontrola formatowania bez zapisu | P0 | T03 | committed `024509c` | 2026-09-08 | `npm run format:check` sprawdza kontrakty i testy bez zapisu; zastane odchylenia są raportowane |
-| T06 | Spójne formatowanie w pre-commit | P1 | T05 | ready-for-commit | 2026-09-08 | Pre-commit używa Prettier `3.8.1` i pluginu Solidity `2.2.1`, zgodnie z `package.json` |
-| T07 | Usunięcie martwej komendy coverage | P1 | T03 | todo | | |
+| T06 | Spójne formatowanie w pre-commit | P1 | T05 | committed `f1a3be2` | 2026-09-08 | Pre-commit używa Prettier `3.8.1` i pluginu Solidity `2.2.1`, zgodnie z `package.json` |
+| T07 | Usunięcie martwej komendy coverage | P1 | T03 | ready-for-commit | 2026-09-08 | Usunięto `coverage:file`, które wskazywało nieistniejący `tools/check_coverage.sh` |
 | T08 | Wspólny punkt wejścia (AGENTS.md) | P0 | T01, T04, T05 | todo | | |
 | T09 | Mapa architektury | P1 | T08 | todo | | |
 | T10 | Mapa ról i wywołujących | P0 | T09 | todo | | |

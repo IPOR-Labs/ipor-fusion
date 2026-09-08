@@ -299,7 +299,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T07 — Usunięcie niedziałającej komendy coverage
 
-- [ ] **P1 · S · Zależności: T03.**
+- [x] **P1 · S · Zależności: T03.**
 - **Zakres:** potwierdzić brak `tools/check_coverage.sh`; jeżeli nadal go nie ma, usunąć martwy skrypt `coverage:file` i odwołania. Nie projektować systemu coverage w tym zadaniu.
 - **Odbiór:** żaden skrypt npm nie wskazuje tego brakującego pliku; ewentualnie odnaleziona, istniejąca implementacja jest poprawnie podłączona i sprawdzona.
 - **Commit:** `build(scripts): T07 fix the stale coverage command`.

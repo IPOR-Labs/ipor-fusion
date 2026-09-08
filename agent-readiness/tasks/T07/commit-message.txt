@@ -1,0 +1,8 @@
+build(scripts): T07 fix the stale coverage command
+
+Remove the coverage:file npm script because its tools/check_coverage.sh target
+does not exist anywhere in the repository. Keep the remaining scripts and
+lockfile unchanged instead of introducing a replacement coverage system.
+
+Verified the stale command previously failed with exit 127 and no active
+references to the missing script remain.
