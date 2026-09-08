@@ -285,7 +285,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T05 — Kontrola formatowania bez zapisu
 
-- [ ] **P0 · S · Zależności: T03.**
+- [x] **P0 · S · Zależności: T03.**
 - **Zakres:** dodać `format:check` w `package.json`, korzystając z obecnego Prettier. Pozostawić komendy formatujące jako osobne operacje; podłączenie do CI jest w T43.
 - **Odbiór:** poprawny plik przechodzi, celowo błędny plik testowy daje niezerowy exit code, żaden plik nie jest zmieniany. Zastane błędy formatowania są raportowane, nie masowo naprawiane.
 - **Commit:** `build(format): T05 add a non-mutating format check`.

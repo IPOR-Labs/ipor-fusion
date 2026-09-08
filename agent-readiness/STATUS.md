@@ -10,8 +10,8 @@ krok 0 i 5) oraz Pete po commicie.
 | T01 | Selektywne wersjonowanie dokumentacji | P0 | T00 | committed `87d86d8` | 2026-09-07 | `.gitignore`: `docs/*` + `!docs/README.md`; nowy indeks `docs/README.md`; zależność od T00 pominięta za zgodą Pete'a |
 | T02 | Przykład konfiguracji RPC | P0 | T01 | committed `6f0d8c8` | 2026-09-08 | `.env.example` zawiera pięć pustych URL-i RPC; README opisuje wymaganie archive state i bezpieczne użycie `.env` |
 | T03 | Instalacja zgodna z lockfile | P0 | T02 | committed `89f30eb` | 2026-09-08 | README i CI używają `npm ci`; README inicjalizuje przypięte submoduły rekurencyjnie i opisuje odzyskanie brakujących |
-| T04 | Przypięcie wersji Foundry | P0 | T03 | ready-for-commit | 2026-09-08 | Foundry `v1.7.1` w README i CI; build i lokalny test `FusionFactory` przeszły |
-| T05 | Kontrola formatowania bez zapisu | P0 | T03 | todo | | |
+| T04 | Przypięcie wersji Foundry | P0 | T03 | committed `7364631` | 2026-09-08 | Foundry `v1.7.1` w README i CI; build i lokalny test `FusionFactory` przeszły |
+| T05 | Kontrola formatowania bez zapisu | P0 | T03 | ready-for-commit | 2026-09-08 | `npm run format:check` sprawdza kontrakty i testy bez zapisu; zastane odchylenia są raportowane |
 | T06 | Spójne formatowanie w pre-commit | P1 | T05 | todo | | |
 | T07 | Usunięcie martwej komendy coverage | P1 | T03 | todo | | |
 | T08 | Wspólny punkt wejścia (AGENTS.md) | P0 | T01, T04, T05 | todo | | |

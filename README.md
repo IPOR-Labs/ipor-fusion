@@ -45,6 +45,16 @@ The version output should start with `forge Version: 1.7.1`. Use this pinned rel
 forge build
 ```
 
+### Formatting
+
+Check Solidity formatting without changing files:
+
+```bash
+npm run format:check
+```
+
+To apply formatting to Solidity contracts and tests as a separate operation, run `npm run prettier:all`.
+
 ## Testing
 
 To run smart contract tests, you need to set up a `.env` file with the required environment variables.
