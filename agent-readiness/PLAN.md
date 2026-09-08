@@ -278,7 +278,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T04 — Przypięcie wersji Foundry
 
-- [ ] **P0 · S · Zależności: T03.**
+- [x] **P0 · S · Zależności: T03.**
 - **Zakres:** zapisać sprawdzoną wersję Foundry i użyć jej w CI oraz instrukcji lokalnej. Bez zmiany parametrów kompilatora.
 - **Odbiór:** lokalnie i w CI wskazana jest ta sama wersja; build i reprezentatywny test fabryki przechodzą.
 - **Commit:** `build(foundry): T04 pin the validated toolchain`.

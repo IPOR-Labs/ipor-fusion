@@ -27,10 +27,19 @@ locked dependency versions.
 
 ## Smart Contract Development
 
-This project uses Foundry for Ethereum smart contract development. To get started with Foundry:
+This project uses Foundry `v1.7.1` for Ethereum smart contract development. To get started with Foundry:
 
 1. Install Foundry by following [Foundry's installation guide](https://getfoundry.sh/).
-2. Build the smart contracts using:
+2. Install the repository's validated Foundry release:
+
+```bash
+foundryup --install v1.7.1
+forge --version
+```
+
+The version output should start with `forge Version: 1.7.1`. Use this pinned release locally so builds and tests match CI.
+
+3. Build the smart contracts using:
 
 ```bash
 forge build

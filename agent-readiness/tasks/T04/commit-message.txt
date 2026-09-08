@@ -1,0 +1,8 @@
+build(foundry): T04 pin the validated toolchain
+
+Pin Foundry v1.7.1 in the local setup instructions and CI so agent and
+automation runs do not drift with the stable release channel. Keep the
+installer action pinned independently and leave compiler settings unchanged.
+
+Verified forge build and all 66 local FusionFactory tests with the pinned
+toolchain.
