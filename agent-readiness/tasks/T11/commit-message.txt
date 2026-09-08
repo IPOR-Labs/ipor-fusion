@@ -1,0 +1,7 @@
+docs(factory): T11 add factory development guidance
+
+Add scoped instructions for choosing and changing Fusion, component, wrapper,
+rewards-router and price-feed factories.
+
+Document the active composition version, the out-of-tree FeeManagerFactory,
+and the evidence difference between local, fork-upgrade and unchanged flows.

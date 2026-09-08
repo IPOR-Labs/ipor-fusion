@@ -15,6 +15,7 @@ docs/*
 !docs/README.md
 !docs/architecture.md
 !docs/roles-and-permissions.md
+!docs/factories.md
 ```
 
 Only the curated files listed in this index are tracked. Every further document
@@ -55,6 +56,7 @@ this directory replaces one of these, the source below is the reference.
 | Project overview, installation, build, tests, pre-commit hooks      | [`../README.md`](../README.md)                                                             |
 | Current vault architecture, routing, storage, managers, call traces | [`architecture.md`](architecture.md)                                                       |
 | Factory and vault roles, callers, administrators and delays         | [`roles-and-permissions.md`](roles-and-permissions.md)                                     |
+| Factory selection, composition, versions and test modes             | [`factories.md`](factories.md)                                                             |
 | Detailed vault component background and historical design notes     | [`../contracts/vaults/README.md`](../contracts/vaults/README.md)                           |
 | Per-integration fuse notes (substrates, markets, enter/exit data)   | one `README.md` per integration under [`../contracts/fuses/`](../contracts/fuses/)         |
 | Reward fuse notes                                                   | [`../contracts/rewards_fuses/euler/README.md`](../contracts/rewards_fuses/euler/README.md) |

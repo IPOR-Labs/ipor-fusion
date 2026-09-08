@@ -329,7 +329,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T11 — Instrukcje pracy nad fabrykami
 
-- [ ] **P0 · S · Zależności: T08, T10.**
+- [x] **P0 · S · Zależności: T08, T10.**
 - **Zakres:** `contracts/factory/AGENTS.md` oraz krótki `docs/factories.md` opisujący wybór rodzaju fabryki i wersji. Wskazać FeeManagerFactory spoza katalogu factory.
 - **Odbiór:** agent znajduje kod i testy tworzenia vaulta; instrukcja odróżnia lokalne wdrożenie, upgrade na forku i użycie istniejącej fabryki.
 - **Commit:** `docs(factory): T11 add factory development guidance`.

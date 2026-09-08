@@ -42,3 +42,4 @@ docs/*
 !docs/README.md
 !docs/architecture.md
 !docs/roles-and-permissions.md
+!docs/factories.md
