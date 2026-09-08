@@ -1,0 +1,7 @@
+docs(access): T10 explain factory and vault permissions
+
+Document the current factory and per-vault access models, separating the
+direct caller from the requested owner and both administrator domains.
+
+Explain caller-keyed fee packages, role administration, technical roles,
+execution timelocks and redemption delays without claiming live role holders.

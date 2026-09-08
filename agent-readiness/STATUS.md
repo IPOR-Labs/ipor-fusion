@@ -15,8 +15,8 @@ krok 0 i 5) oraz Pete po commicie.
 | T06 | Spójne formatowanie w pre-commit | P1 | T05 | committed `f1a3be2` | 2026-09-08 | Pre-commit używa Prettier `3.8.1` i pluginu Solidity `2.2.1`, zgodnie z `package.json` |
 | T07 | Usunięcie martwej komendy coverage | P1 | T03 | committed `e9e5c0c` | 2026-09-08 | Usunięto `coverage:file`, które wskazywało nieistniejący `tools/check_coverage.sh` |
 | T08 | Wspólny punkt wejścia (AGENTS.md) | P0 | T01, T04, T05 | committed `f3b624f` | 2026-09-08 | Root `AGENTS.md`, cienki `CLAUDE.md` i link z README; wspólne reguły bez prywatnego kontekstu |
-| T09 | Mapa architektury | P1 | T08 | ready-for-commit | 2026-09-08 | `docs/architecture.md`: clone/delegatecall, storage, managers oraz zweryfikowane trace'y deposit/execute/fallback |
-| T10 | Mapa ról i wywołujących | P0 | T09 | todo | | |
+| T09 | Mapa architektury | P1 | T08 | committed `1ea8233` | 2026-09-08 | `docs/architecture.md`: clone/delegatecall, storage, managers oraz zweryfikowane trace'y deposit/execute/fallback |
+| T10 | Mapa ról i wywołujących | P0 | T09 | ready-for-commit | 2026-09-08 | `docs/roles-and-permissions.md`: role fabryki i vaulta, caller/owner, administratorzy, fee packages oraz dwa rodzaje opóźnień |
 | T11 | Instrukcje pracy nad fabrykami | P0 | T08, T10 | todo | | |
 | T12 | Instrukcje pracy nad fuse'ami | P1 | T08, T09 | todo | | |
 | T13 | Katalog testów dla pilotażu | P0 | T04, T11 | todo | | |

@@ -322,7 +322,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T10 — Mapa ról i wywołujących
 
-- [ ] **P0 · S · Zależności: T09.**
+- [x] **P0 · S · Zależności: T09.**
 - **Zakres:** `docs/roles-and-permissions.md`: role fabryki i vaulta, caller kontra owner, administratorzy i opóźnienia. Bez deklarowania aktualnych posiadaczy ról on-chain.
 - **Odbiór:** każdy opis uprawnienia ma źródło w kodzie; wyjaśniony wpływ callera na pakiet opłat.
 - **Commit:** `docs(access): T10 explain factory and vault permissions`.
