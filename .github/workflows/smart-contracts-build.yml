@@ -113,7 +113,7 @@ jobs:
                   version: stable
 
             - name: Install
-              run: npm install
+              run: npm ci
 
             - name: Forge build
               if: inputs.build-enabled

@@ -13,13 +13,17 @@ here: [What is IPOR Fusion? A Technical Overview](https://blog.ipor.io/what-is-i
 
 ## Installation
 
-To install the dependencies for this project:
+Initialize the Git submodules at the commits recorded by this repository, then install the exact Node.js dependency tree
+from [package-lock.json](./package-lock.json):
 
 ```bash
-npm install
+git submodule update --init --recursive
+npm ci
 ```
 
-This will install all the required Node.js packages listed in [package.json](./package.json).
+Run the submodule command again if a checkout is missing `lib/forge-std`, `lib/foundry-random`, or one of their nested
+submodules. `npm ci` checks that [package.json](./package.json) and the lockfile agree and installs without updating the
+locked dependency versions.
 
 ## Smart Contract Development
 

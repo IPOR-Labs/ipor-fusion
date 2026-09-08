@@ -271,7 +271,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T03 — Instalacja zgodna z lockfile
 
-- [ ] **P0 · S · Zależności: T02.**
+- [x] **P0 · S · Zależności: T02.**
 - **Zakres:** ujednolicić README i instalację w CI wokół `npm ci` oraz przypiętych submodułów. Nie aktualizować zależności.
 - **Odbiór:** czysta instalacja odtwarza zależności bez zmian lockfile; brakujący submoduł ma opisaną procedurę uzupełnienia.
 - **Commit:** `build(deps): T03 use reproducible dependency installation`.
