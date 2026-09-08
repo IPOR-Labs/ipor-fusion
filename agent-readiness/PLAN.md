@@ -292,7 +292,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T06 — Spójne formatowanie w pre-commit
 
-- [ ] **P1 · S · Zależności: T05.**
+- [x] **P1 · S · Zależności: T05.**
 - **Zakres:** wyrównać wersje Prettier i pluginu Solidity w `.pre-commit-config.yaml` do `package.json`.
 - **Odbiór:** pre-commit i lokalny formatter dają ten sam wynik na tej samej próbce; bez formatowania całego repo.
 - **Commit:** `build(format): T06 align pre-commit formatter versions`.
