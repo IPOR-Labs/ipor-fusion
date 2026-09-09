@@ -7,7 +7,7 @@
             "id": "ethereum-fusion-factory-cd05909c",
             "chainId": 1,
             "kind": "fusion-factory",
-            "status": "candidate",
+            "status": "verified",
             "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
             "proxy": {
                 "type": "erc1967",
@@ -26,8 +26,8 @@
                 "confirmedBy": "IPOR Fusion SDK fusion_address_lookup 3.6.7"
             },
             "code": {
-                "proxyRuntimeCodeHash": null,
-                "implementationRuntimeCodeHash": null,
+                "proxyRuntimeCodeHash": "0x201c515279ef89b8de275d50b663541468ed73258d082d86abb7bd46a75539b0",
+                "implementationRuntimeCodeHash": "0xb49487fa6c5ffc095192f743324872bf77817c49a920c8823e60e1cc86c9926c",
                 "sourceCommit": null,
                 "compiler": {
                     "version": "v0.8.30+commit.73712a01",
@@ -41,17 +41,224 @@
                 "abiPath": "abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/FusionFactory.abi.json",
                 "abiSha256": "6d2da724f6c057439455b6a01cbc153c4b6e076cc72f6f7ef1b12ebd202c019f",
                 "adapter": null,
-                "reportedVersion": null,
-                "supportedOperations": ["clone(string,string,address,uint256,address,uint256)"]
+                "reportedVersion": "8",
+                "supportedOperations": [
+                    "clone(string,string,address,uint256,address,uint256)"
+                ]
             },
-            "dependencies": [],
+            "dependencies": [
+                {
+                    "id": "access-manager-factory",
+                    "kind": "factory",
+                    "address": "0x0d60285F0C37d977260d22e23dF7984A0800A740",
+                    "required": true
+                },
+                {
+                    "id": "plasma-vault-factory",
+                    "kind": "factory",
+                    "address": "0x5a7f49afFBD4d9b1fc3997086b13200c188c46d1",
+                    "required": true
+                },
+                {
+                    "id": "fee-manager-factory",
+                    "kind": "factory",
+                    "address": "0x061D41F63D37231a3c7a4Ed74C7b222E6AC88985",
+                    "required": true
+                },
+                {
+                    "id": "withdraw-manager-factory",
+                    "kind": "factory",
+                    "address": "0x86Ea413c729fde506A443c6a929F735a24b488aE",
+                    "required": true
+                },
+                {
+                    "id": "rewards-manager-factory",
+                    "kind": "factory",
+                    "address": "0x5d9f02e85cCcEC44450C4C9C5Bc71Fb09bC3c71a",
+                    "required": true
+                },
+                {
+                    "id": "context-manager-factory",
+                    "kind": "factory",
+                    "address": "0x9A5B39a667e3F80a3661271173b68340C59A9850",
+                    "required": true
+                },
+                {
+                    "id": "price-manager-factory",
+                    "kind": "factory",
+                    "address": "0x7D49C68cb11f6203178d13B4186D39C454e3fe82",
+                    "required": true
+                },
+                {
+                    "id": "plasma-vault-core-base",
+                    "kind": "base",
+                    "address": "0x967fE60231eA5133F2C6516a3a14aE341c115286",
+                    "required": true
+                },
+                {
+                    "id": "access-manager-base",
+                    "kind": "base",
+                    "address": "0x922350D9fF1217b2F2CE63A890bE0d377Deb1d42",
+                    "required": true
+                },
+                {
+                    "id": "price-manager-base",
+                    "kind": "base",
+                    "address": "0x45d0e14D946990c5fce42B95195B15F27974c115",
+                    "required": true
+                },
+                {
+                    "id": "withdraw-manager-base",
+                    "kind": "base",
+                    "address": "0x79f140Cf8ae51880fA00468c9621da125E79BBDb",
+                    "required": true
+                },
+                {
+                    "id": "rewards-manager-base",
+                    "kind": "base",
+                    "address": "0xD0e1705CE89B77452EA7184d300b7745E0937901",
+                    "required": true
+                },
+                {
+                    "id": "context-manager-base",
+                    "kind": "base",
+                    "address": "0xbA68398Feecb2FE95C1D0D66106aE1d432270317",
+                    "required": true
+                },
+                {
+                    "id": "price-oracle-middleware",
+                    "kind": "middleware",
+                    "address": "0xC9F32d65a278b012371858fD3cdE315B12d664c6",
+                    "required": true
+                },
+                {
+                    "id": "burn-request-fee-fuse",
+                    "kind": "fuse",
+                    "address": "0x79e8B115Bd41baee318c1940F42F1a2d94D29ab4",
+                    "required": true
+                },
+                {
+                    "id": "burn-request-fee-balance-fuse",
+                    "kind": "balance-fuse",
+                    "address": "0xbc2907d76964510a4232878e7aC6E2B18c474EFb",
+                    "required": true
+                }
+            ],
             "verification": {
-                "blockNumber": null,
-                "blockHash": null,
-                "checkedAt": null,
-                "inspectorVersion": null,
-                "reportPath": null,
-                "compatibilityTestPath": null
+                "blockNumber": 25937526,
+                "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+                "checkedAt": "2026-09-09T06:30:09Z",
+                "inspectorVersion": "tools/inspect-factory.mjs sha256:8d6a0bd38769203821dc200411a8c091f9663229643cbb00291f5c91452fe41a",
+                "reportPath": "deployments/reports/ethereum-fusion-factory-cd05909c-25937526.json",
+                "compatibilityTestPath": "test/deployed-factories/FusionFactoryEthereum.t.sol"
+            }
+        },
+        {
+            "id": "ethereum-erc4626-price-feed-factory-f58fcce9",
+            "chainId": 1,
+            "kind": "price-feed-factory",
+            "status": "verified",
+            "address": "0xf58Fcce9370aBa552032d3EA47baA486F70c0FdC",
+            "proxy": {
+                "type": "erc1967",
+                "implementation": "0xe08AfF4910Fb61AcC2EacB03b0a6132B01D1aa61",
+                "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+            },
+            "provenance": {
+                "addressSource": {
+                    "kind": "fusion-address-lookup",
+                    "reference": "IPOR Fusion SDK fusion_address_lookup, name query \"Erc4626\" on chain 1",
+                    "capturedAt": "2026-09-09"
+                },
+                "deploymentTransaction": null,
+                "deploymentBlock": null,
+                "explorerUrl": "https://etherscan.io/address/0xf58Fcce9370aBa552032d3EA47baA486F70c0FdC",
+                "confirmedBy": "IPOR Fusion SDK fusion_address_lookup 3.6.7 and a verified explorer ABI for the implementation"
+            },
+            "code": {
+                "proxyRuntimeCodeHash": "0xa76a49b530f622d74e88da3105c2ba168b4fda315bd90afbd8d460e08b212742",
+                "implementationRuntimeCodeHash": "0x3623e0eb271085e55e10a0e960ef5cc46c011804508c6f797458c674946286d7",
+                "sourceCommit": null,
+                "compiler": null
+            },
+            "interface": {
+                "abiPath": "abi/erc4626-price-feed-factory-ethereum-0xe08aff4910fb61acc2eacb03b0a6132b01d1aa61/ERC4626PriceFeedFactory.abi.json",
+                "abiSha256": "cc884bb616093591542ca4f30b37829e946a92716e7af8d51aed27957b0ea03d",
+                "adapter": null,
+                "reportedVersion": null,
+                "supportedOperations": [
+                    "create(address,address)"
+                ]
+            },
+            "dependencies": [
+                {
+                    "id": "price-oracle-middleware",
+                    "kind": "middleware",
+                    "address": "0xC9F32d65a278b012371858fD3cdE315B12d664c6",
+                    "required": true
+                }
+            ],
+            "verification": {
+                "blockNumber": 25937526,
+                "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+                "checkedAt": "2026-09-09T08:07:42Z",
+                "inspectorVersion": "cast 1.7.1 reads plus test/deployed-factories/Erc4626PriceFeedFactoryEthereum.t.sol",
+                "reportPath": "deployments/reports/ethereum-erc4626-price-feed-factory-f58fcce9-25937526.json",
+                "compatibilityTestPath": "test/deployed-factories/Erc4626PriceFeedFactoryEthereum.t.sol"
+            }
+        },
+        {
+            "id": "ethereum-wrapped-plasma-vault-factory-b17a9d70",
+            "chainId": 1,
+            "kind": "wrapped-vault-factory",
+            "status": "verified",
+            "address": "0xb17a9D70a73e0DcFfc12563Bcc0c1D68F3F353C8",
+            "proxy": {
+                "type": "erc1967",
+                "implementation": "0x3f68A6A4FcA2E6B85d041A53Eb4090f6aC3311f5",
+                "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+            },
+            "provenance": {
+                "addressSource": {
+                    "kind": "fusion-address-lookup",
+                    "reference": "IPOR Fusion SDK fusion_address_lookup, name query \"Wrapped\" on chain 1",
+                    "capturedAt": "2026-09-09"
+                },
+                "deploymentTransaction": null,
+                "deploymentBlock": null,
+                "explorerUrl": "https://etherscan.io/address/0xb17a9D70a73e0DcFfc12563Bcc0c1D68F3F353C8",
+                "confirmedBy": "IPOR Fusion SDK fusion_address_lookup 3.6.7; ABI generated from checkout 562fea3 and matched by selector against the deployed runtime code"
+            },
+            "code": {
+                "proxyRuntimeCodeHash": "0xa76a49b530f622d74e88da3105c2ba168b4fda315bd90afbd8d460e08b212742",
+                "implementationRuntimeCodeHash": "0xc7716f2f47fbacdd2228d09f61a792c43b2077e797b1a195bfe08d46685877fc",
+                "sourceCommit": null,
+                "compiler": null
+            },
+            "interface": {
+                "abiPath": "abi/wrapped-plasma-vault-factory-ethereum-0x3f68a6a4fca2e6b85d041a53eb4090f6ac3311f5/WrappedPlasmaVaultFactory.abi.json",
+                "abiSha256": "5520c66f420c6e86b2989b366893dd0553418f2baa46ac58586e5e05424770c0",
+                "adapter": null,
+                "reportedVersion": null,
+                "supportedOperations": [
+                    "create(string,string,address,address,address,uint256,address,uint256)"
+                ]
+            },
+            "dependencies": [
+                {
+                    "id": "fusion-factory",
+                    "kind": "factory",
+                    "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+                    "required": false
+                }
+            ],
+            "verification": {
+                "blockNumber": 25937526,
+                "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+                "checkedAt": "2026-09-09T08:20:00Z",
+                "inspectorVersion": "cast 1.7.1 reads plus test/deployed-factories/WrappedPlasmaVaultFactoryEthereum.t.sol",
+                "reportPath": "deployments/reports/ethereum-wrapped-plasma-vault-factory-b17a9d70-25937526.json",
+                "compatibilityTestPath": "test/deployed-factories/WrappedPlasmaVaultFactoryEthereum.t.sol"
             }
         }
     ]

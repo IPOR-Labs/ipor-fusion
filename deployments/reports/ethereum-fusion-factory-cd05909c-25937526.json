@@ -1,0 +1,203 @@
+{
+    "schemaVersion": 1,
+    "reportKind": "factory-verification",
+    "deploymentId": "ethereum-fusion-factory-cd05909c",
+    "chainId": 1,
+    "network": "ethereum",
+    "blockNumber": 25937526,
+    "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+    "checkedAt": "2026-09-09T06:30:09Z",
+    "verdict": "verified",
+    "manifestPath": "deployments/1/factories.json",
+    "toolchain": {
+        "forge": "1.7.1",
+        "cast": "1.7.1",
+        "foundryCommit": "4072e48705af9d93e3c0f6e29e93b5e9a40caed8",
+        "node": "v24.16.0",
+        "npm": "11.13.0",
+        "foundryProfile": "factory_ethereum",
+        "inspector": "tools/inspect-factory.mjs sha256:8d6a0bd38769203821dc200411a8c091f9663229643cbb00291f5c91452fe41a",
+        "providerVariable": "ETHEREUM_PROVIDER_URL"
+    },
+    "reproduce": {
+        "inspect": "npm run factory:inspect -- --chain 1 --deployment ethereum-fusion-factory-cd05909c --block 25937526 --caller 0x1111111111111111111111111111111111111111",
+        "compatibilityTest": "npm run test:fork -- --chain 1 --suite deployed-factory --block 25937526",
+        "manifest": "npm run validate:deployments",
+        "abi": "npm run validate:pilot-abi",
+        "componentCode": "cast code --rpc-url \"$ETHEREUM_PROVIDER_URL\" --block 25937526 <component-address>"
+    },
+    "identity": {
+        "proxy": {
+            "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+            "type": "erc1967",
+            "runtimeCodeHash": "0x201c515279ef89b8de275d50b663541468ed73258d082d86abb7bd46a75539b0"
+        },
+        "implementation": {
+            "address": "0xf19C1E9f6616F6056AF1e322A86fDaAaAf0263f5",
+            "slot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+            "runtimeCodeHash": "0xb49487fa6c5ffc095192f743324872bf77817c49a920c8823e60e1cc86c9926c",
+            "matchesManifest": true
+        },
+        "abi": {
+            "path": "abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/FusionFactory.abi.json",
+            "sha256": "6d2da724f6c057439455b6a01cbc153c4b6e076cc72f6f7ef1b12ebd202c019f",
+            "entries": 78,
+            "creationOperation": "clone(string,string,address,uint256,address,uint256)",
+            "creationSelector": "0x8697b10a"
+        },
+        "reportedFactoryVersion": 8
+    },
+    "reads": {
+        "source": "agent-readiness/tasks/T24/factory-inspection.json",
+        "reproducedAt": "2026-09-09T06:30:09Z",
+        "reproducedIdentically": true,
+        "caller": "0x1111111111111111111111111111111111111111",
+        "timing": {
+            "vestingPeriodSeconds": 604800,
+            "withdrawWindowSeconds": 86400
+        },
+        "feePackagesEffectiveForCaller": {
+            "isCustom": false,
+            "count": 3
+        },
+        "components": {
+            "count": 16,
+            "allHaveCode": true,
+            "entries": [
+                {
+                    "id": "access-manager-factory",
+                    "kind": "factory",
+                    "address": "0x0d60285F0C37d977260d22e23dF7984A0800A740",
+                    "runtimeCodeSize": 16881,
+                    "runtimeCodeHash": "0xf6930b31f1dfb1db7e2bed9ac9aa101b3e907b1c616fe8e4ea02b5ed8dd0025a"
+                },
+                {
+                    "id": "plasma-vault-factory",
+                    "kind": "factory",
+                    "address": "0x5a7f49afFBD4d9b1fc3997086b13200c188c46d1",
+                    "runtimeCodeSize": 1882,
+                    "runtimeCodeHash": "0x1df439dfae8d5aa681e87417050089b1f12dcaffda0e85c414df4a316a98d866"
+                },
+                {
+                    "id": "fee-manager-factory",
+                    "kind": "factory",
+                    "address": "0x061D41F63D37231a3c7a4Ed74C7b222E6AC88985",
+                    "runtimeCodeSize": 21131,
+                    "runtimeCodeHash": "0xd88e93ddaf16e887c2d5b7b9f30f5444051421821c51b8610738fd2587d49669"
+                },
+                {
+                    "id": "withdraw-manager-factory",
+                    "kind": "factory",
+                    "address": "0x86Ea413c729fde506A443c6a929F735a24b488aE",
+                    "runtimeCodeSize": 10442,
+                    "runtimeCodeHash": "0x1e11a24c23452a19734ad96620154406c847d33d76b08294c13252932540b12a"
+                },
+                {
+                    "id": "rewards-manager-factory",
+                    "kind": "factory",
+                    "address": "0x5d9f02e85cCcEC44450C4C9C5Bc71Fb09bC3c71a",
+                    "runtimeCodeSize": 12607,
+                    "runtimeCodeHash": "0x533bea3eb01133b0efbc557877561cb391d3673b0bdce2ed364c9eb6e9bdf420"
+                },
+                {
+                    "id": "context-manager-factory",
+                    "kind": "factory",
+                    "address": "0x9A5B39a667e3F80a3661271173b68340C59A9850",
+                    "runtimeCodeSize": 12730,
+                    "runtimeCodeHash": "0x45defad6c6c9a1e7138fd6e5cc939cfcb1d90d3e3acd96e14b7274be1f169e05"
+                },
+                {
+                    "id": "price-manager-factory",
+                    "kind": "factory",
+                    "address": "0x7D49C68cb11f6203178d13B4186D39C454e3fe82",
+                    "runtimeCodeSize": 15473,
+                    "runtimeCodeHash": "0x447b951fe6a772c18848aeca6f6a054d778804b4520f61f4c6cd3a70a8bf0438"
+                },
+                {
+                    "id": "plasma-vault-core-base",
+                    "kind": "base",
+                    "address": "0x967fE60231eA5133F2C6516a3a14aE341c115286",
+                    "runtimeCodeSize": 23888,
+                    "runtimeCodeHash": "0xfb57e74329fea08b0184519e531f47899099873f8055ecd2151139db01b757d4"
+                },
+                {
+                    "id": "access-manager-base",
+                    "kind": "base",
+                    "address": "0x922350D9fF1217b2F2CE63A890bE0d377Deb1d42",
+                    "runtimeCodeSize": 18539,
+                    "runtimeCodeHash": "0x3fd369cf9bccea87033886134ea4c623cce82a7b09199b71d8ec55e31dcf3447"
+                },
+                {
+                    "id": "price-manager-base",
+                    "kind": "base",
+                    "address": "0x45d0e14D946990c5fce42B95195B15F27974c115",
+                    "runtimeCodeSize": 13577,
+                    "runtimeCodeHash": "0xc2b3ff304f9427ff2814ba9bfdbe737c7b7085a27764704b850ad8f6b1a60cff"
+                },
+                {
+                    "id": "withdraw-manager-base",
+                    "kind": "base",
+                    "address": "0x79f140Cf8ae51880fA00468c9621da125E79BBDb",
+                    "runtimeCodeSize": 8872,
+                    "runtimeCodeHash": "0xd4f2a921e6ffed13c3c73b313188193b60b8e99b681c6fd7b1ce237409da092c"
+                },
+                {
+                    "id": "rewards-manager-base",
+                    "kind": "base",
+                    "address": "0xD0e1705CE89B77452EA7184d300b7745E0937901",
+                    "runtimeCodeSize": 10544,
+                    "runtimeCodeHash": "0xd5fc5877c17883670f5719db0f2621c717877f4549626641c332804144fa9b5b"
+                },
+                {
+                    "id": "context-manager-base",
+                    "kind": "base",
+                    "address": "0xbA68398Feecb2FE95C1D0D66106aE1d432270317",
+                    "runtimeCodeSize": 9940,
+                    "runtimeCodeHash": "0x39ef96c20dde6e281f38991b36ccd631e5031cfac3b83903458732f111869151"
+                },
+                {
+                    "id": "price-oracle-middleware",
+                    "kind": "middleware",
+                    "address": "0xC9F32d65a278b012371858fD3cdE315B12d664c6",
+                    "runtimeCodeSize": 176,
+                    "runtimeCodeHash": "0xa76a49b530f622d74e88da3105c2ba168b4fda315bd90afbd8d460e08b212742"
+                },
+                {
+                    "id": "burn-request-fee-fuse",
+                    "kind": "fuse",
+                    "address": "0x79e8B115Bd41baee318c1940F42F1a2d94D29ab4",
+                    "runtimeCodeSize": 3335,
+                    "runtimeCodeHash": "0x538dcfd3286429a37d284e541fb925c77c4f6455beb63aaa56bdfd4ba8a83ff6"
+                },
+                {
+                    "id": "burn-request-fee-balance-fuse",
+                    "kind": "balance-fuse",
+                    "address": "0xbc2907d76964510a4232878e7aC6E2B18c474EFb",
+                    "runtimeCodeSize": 167,
+                    "runtimeCodeHash": "0x468eb8cc76e24efff283bb3fdbf1150b9a76bbacd4cde9fd3d2780ccd6cb3730"
+                }
+            ]
+        }
+    },
+    "compatibilityTest": {
+        "path": "test/deployed-factories/FusionFactoryEthereum.t.sol",
+        "sha256": "da249a6152ff4b190cccfdd3d6eed782247efb67347c75327ff6ca9240acda05",
+        "suite": "deployed-factory",
+        "fixture": "deployed-usage",
+        "test": "FusionFactoryEthereumDeployedUsageTest::testCreateVaultThroughUnchangedPilotFactory",
+        "result": "pass",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "gas": 8905074,
+        "usedUpgradeOrCodeReplacement": false,
+        "grantedRoles": false,
+        "broadcast": false
+    },
+    "warnings": [
+        "reads and fees are observations at block 25937526, not permanent constants",
+        "the compatibility test proves the permissionless clone path only; it is not a transaction receipt",
+        "re-read the implementation slot before preparing any operation; an upgrade invalidates this report",
+        "deployment transaction, deployment block and source commit remain unknown and stay null in the manifest"
+    ]
+}

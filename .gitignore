@@ -31,6 +31,11 @@ CLAUDE.md
 # Track only the root adapter to the shared repository instructions.
 !/CLAUDE.md
 reports/
+# Deployment verification reports are reviewable evidence for `verified`
+# manifest entries, so they are tracked.
+!deployments/reports/
+# Local execution journal: runtime state of prepared and sent transactions.
+.fusion/
 research/
 temp/
 
@@ -45,3 +50,12 @@ docs/*
 !docs/factories.md
 !docs/testing.md
 !docs/deployments.md
+!docs/vaults.md
+!docs/fuse-catalog.md
+!docs/invariants.md
+!docs/troubleshooting.md
+!docs/ci.md
+!docs/release.md
+!docs/mcp.md
+!docs/recipes/
+!docs/recipes/*.md

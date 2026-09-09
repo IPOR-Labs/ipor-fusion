@@ -14,7 +14,7 @@ evidence, not a deployment manifest and not permission to transact.
 | Proxy address           | `0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852`       |
 | Companion registry name | `IporFusionFactoryImpl`                            |
 | Implementation address  | `0xf19C1E9f6616F6056AF1e322A86fDaAaAf0263f5`       |
-| Status                  | **candidate — identity not yet verified on-chain** |
+| Status                  | **verified at Ethereum block `25937526`**          |
 
 The source is the `fusion_address_lookup` deployment lookup exposed by
 `ipor-fusion-dev`, running IPOR Fusion SDK `3.6.7`. On 2026-09-09
@@ -138,17 +138,128 @@ at least `CHAIN_MISMATCH`, `NO_CODE`, `IMPLEMENTATION_MISMATCH` and
 The captured T24 observation is
 [`../agent-readiness/tasks/T24/factory-inspection.json`](../agent-readiness/tasks/T24/factory-inspection.json).
 It is pinned to Ethereum block `25937526` and caller `0x1111…1111`. The report
-shows factory version 8 and the expected implementation, but intentionally does
-not mutate or promote the candidate manifest. Promotion requires the unchanged
-deployed-factory compatibility test in T25 and the reviewed evidence update in
-T26. An inspection at block `23831825` instead reports an implementation
+shows factory version 8 and the expected implementation, but the inspector
+itself never mutates or promotes a manifest entry; promotion is the separate,
+reviewed step recorded below. An inspection at block `23831825` instead reports an implementation
 mismatch because the proxy still pointed to an older implementation there.
 
-## Known gaps before registration
+The T25 deployed-usage test exercises the same identity without replacing or
+upgrading it:
+
+```bash
+npm run test:fork -- --chain 1 --suite deployed-factory --block 25937526
+```
+
+The test's creation exists only in ephemeral fork state. A pass is evidence for
+the permissionless clone path and its resulting owner/component/fee state at
+that block; it is not a transaction receipt and does not promote the manifest
+on its own.
+
+## Verification record
+
+The pilot entry is `verified`. The evidence is a secret-free report, not a
+sentence in this document:
+
+- [`../deployments/reports/ethereum-fusion-factory-cd05909c-25937526.json`](../deployments/reports/ethereum-fusion-factory-cd05909c-25937526.json)
+
+It pins block `25937526` and its hash, names the toolchain that produced it
+(Foundry `1.7.1`, Node `v24.16.0`, the inspector script with its SHA-256), and
+records four things that were actually observed at that block:
+
+1. proxy and implementation runtime code hashes, the ERC-1967 slot value and the
+   ABI hash bound to that implementation;
+2. reported factory version `8`, component addresses, timing and both fee
+   package sets, reproduced identically to the T24 capture;
+3. non-empty runtime code with its hash at all sixteen component addresses; and
+4. the deployed-usage compatibility test, its file hash and its passing result
+   without any upgrade, code replacement, role grant or broadcast.
+
+Every step is listed with its command under `reproduce` in the report. The
+provider is referenced by variable name only; no URL or key is stored.
+
+Re-verification is required, and the entry drops back to `candidate`, whenever
+the implementation slot, a component address or the ABI changes. The recorded
+values are observations at one block, not permanent constants: read them again
+before preparing any operation.
+
+## Second verified entry: the ERC4626 price feed factory
+
+`ethereum-erc4626-price-feed-factory-f58fcce9` follows the same rules as the
+FusionFactory entry and is `verified` at the same block:
+
+| Field                  | Value                                        |
+| ---------------------- | -------------------------------------------- |
+| Proxy                  | `0xf58Fcce9370aBa552032d3EA47baA486F70c0FdC` |
+| Implementation         | `0xe08AfF4910Fb61AcC2EacB03b0a6132B01D1aa61` |
+| Operation              | `create(address,address)` — `0x3e68680a`     |
+| Required dependency    | the price oracle middleware `0xC9F32d65…64c6` |
+| Evidence               | [`…-f58fcce9-25937526.json`](../deployments/reports/ethereum-erc4626-price-feed-factory-f58fcce9-25937526.json) |
+
+Two things about this factory are worth knowing before using it:
+
+- It has **no version getter**. Its identity is the implementation address, the
+  runtime code hash and the verified ABI — the manifest's `reportedVersion` is
+  `null` on purpose, and the drift job compares code rather than a version number.
+- The feed it creates asks **`msg.sender`** for the underlying asset's price
+  ([`ERC4626PriceFeed.sol`](../contracts/price_oracle/price_feed/ERC4626PriceFeed.sol)),
+  so `latestRoundData()` only answers meaningfully when the caller is a price
+  oracle middleware or its manager. Reading it from anywhere else is not a
+  smaller answer, it is a different question.
+
+The compatibility test creates a feed for Steakhouse USDC through the unchanged
+factory and checks the reading against a value recomputed from the same sources:
+
+```bash
+npm run test:fork -- --chain 1 --suite deployed-price-feed-factory --block 25937526
+```
+
+The implementation's own verified compiler metadata was not captured, so
+`code.compiler` is `null` here while the ABI is verified — an honest `null`
+rather than the proxy's settings borrowed for the implementation.
+
+## A second network: Base
+
+`deployments/8453/factories.json` registers the Base FusionFactory, verified at
+Base block `51000000`:
+
+| Field           | Value                                        |
+| --------------- | -------------------------------------------- |
+| Proxy           | `0x1455717668fA96534f675856347A973fA907e922` |
+| Implementation  | `0x610152A79BE7F2Aa3aA70520c9331c18fe8D33b7` |
+| Reported version| `8` — the same family as the Ethereum entry  |
+| Underlying used | Base USDC `0x833589fC…2913`                  |
+| Evidence        | [`base-fusion-factory-14557176-51000000.json`](../deployments/reports/base-fusion-factory-14557176-51000000.json) |
+
+Nothing is shared between the two networks except the ABI file and the reported
+version. Addresses, tokens, blocks, profiles and tests are separate, and the test
+asserts that the two factory addresses differ so that a copy-paste mistake fails
+rather than passes.
+
+```bash
+npm run test:fork -- --chain 8453 --suite deployed-factory --block 51000000
+npm run agent:doctor -- --rpc --chain 8453 --block 51000000
+```
+
+Two honest limits on this entry:
+
+- The Base implementation's **bytecode differs** from the Ethereum one (15 KB
+  against 22 KB) even though both report version 8. The ABI is reused on the
+  strength of the reported version and of reads that answered, not on a bytecode
+  match — `provenance.json` says exactly that.
+- A byte search for the ABI's function selectors found 42 of 43 in the Base
+  implementation. The missing one, `getVestingPeriodInSeconds()`, **answers when
+  called** (`604800`): a selector probe can miss a dispatch pattern, so its
+  absence from a search is not absence from the contract. The report records the
+  probe and its resolution rather than the probe alone.
+
+`factory:inspect` is not wired to this entry; it reads the Ethereum pilot's
+component set. Extending it to another network is a separate change, exactly as
+adding a network with a different ABI family would need its own adapter task.
+
+## Known gaps after verification
 
 The address lookup response did not include a deployment transaction, deployment
-block, proxy type, runtime hashes, ABI provenance or a verification block hash.
-Do not invent those values. The schema and candidate manifest preserve them as
-explicit nullable fields; T22 binds an ABI to the deployed code, and T24
-performs the direct on-chain identity/configuration read. Promotion to
-`verified` waits for T25 and T26.
+block or source commit, and verification did not establish them. Do not invent
+those values — they stay explicitly `null` in the manifest. `verified` here means
+that the identity, ABI, components and one real creation path were checked at a
+named block; it does not mean the entry's full history is known.
