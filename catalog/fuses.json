@@ -8384,6 +8384,542 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "arbitrum-ramses-market-18",
+            "protocol": "ramses",
+            "chainId": 42161,
+            "market": {
+                "id": 18,
+                "constant": "RAMSES_V2_POSITIONS",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol",
+                "balanceFuse": "contracts/fuses/ramses/RamsesV2Balance.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint256))",
+                    "selector": "0x451a057d",
+                    "struct": "RamsesV2NewPositionFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "token0",
+                            "type": "address",
+                            "meaning": "address of token0 of the pool; must be a granted substrate (asset) of the market"
+                        },
+                        {
+                            "name": "token1",
+                            "type": "address",
+                            "meaning": "address of token1 of the pool; must be a granted substrate (asset) of the market"
+                        },
+                        {
+                            "name": "fee",
+                            "type": "uint24",
+                            "meaning": "Ramses V2 pool fee tier in hundredths of a bip"
+                        },
+                        {
+                            "name": "tickLower",
+                            "type": "int24",
+                            "meaning": "lower tick of the position range"
+                        },
+                        {
+                            "name": "tickUpper",
+                            "type": "int24",
+                            "meaning": "upper tick of the position range"
+                        },
+                        {
+                            "name": "amount0Desired",
+                            "type": "uint256",
+                            "meaning": "token0 to spend, in token0's smallest unit"
+                        },
+                        {
+                            "name": "amount1Desired",
+                            "type": "uint256",
+                            "meaning": "token1 to spend, in token1's smallest unit"
+                        },
+                        {
+                            "name": "amount0Min",
+                            "type": "uint256",
+                            "meaning": "slippage floor on token0 actually spent, in token0's smallest unit"
+                        },
+                        {
+                            "name": "amount1Min",
+                            "type": "uint256",
+                            "meaning": "slippage floor on token1 actually spent, in token1's smallest unit"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds after which the position manager reverts"
+                        },
+                        {
+                            "name": "veRamTokenId",
+                            "type": "uint256",
+                            "meaning": "veRAM NFT id attached to the position for boosted rewards; 0 for none"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256[]))",
+                    "selector": "0x608c7500",
+                    "struct": "RamsesV2NewPositionFuseExitData",
+                    "fields": [
+                        {
+                            "name": "tokenIds",
+                            "type": "uint256[]",
+                            "meaning": "position NFT ids to burn; each must have zero liquidity and no uncollected tokens, ids not tracked in fuse storage are skipped"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:64",
+                    "sources": {
+                        "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol": "0x529f25d51bbea2d32db2d4de1cbdd42f190b5506f59d9d416f5dacb8c8710f62",
+                        "contracts/fuses/ramses/RamsesV2Balance.sol": "0xf1230cd4815b78c23f40d20e91096d1ba219317e585e196ddd5cd856e4f9ab54"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "RamsesV2NewPositionFuseEnterData",
+                            "signature": "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x451a057d",
+                            "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:14",
+                            "fields": [
+                                {
+                                    "name": "token0",
+                                    "type": "address",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:16"
+                                },
+                                {
+                                    "name": "token1",
+                                    "type": "address",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:18"
+                                },
+                                {
+                                    "name": "fee",
+                                    "type": "uint24",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:20"
+                                },
+                                {
+                                    "name": "tickLower",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:22"
+                                },
+                                {
+                                    "name": "tickUpper",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:24"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:26"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:28"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:30"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:32"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:34"
+                                },
+                                {
+                                    "name": "veRamTokenId",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:36"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "RamsesV2NewPositionFuseExitData",
+                            "signature": "exit((uint256[]))",
+                            "selector": "0x608c7500",
+                            "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:40",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/ramses/RamsesV2NewPositionFuse.sol:42"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol",
+                    "purpose": "increases (enter) or decreases (exit) liquidity of a tracked Ramses V2 position; a decrease only accrues owed tokens on the NFT, RamsesV2CollectFuse transfers them",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x7f61ea0b",
+                            "struct": "RamsesV2ModifyPositionFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "token0",
+                                    "type": "address",
+                                    "meaning": "token0 of the position's pool; must be a granted substrate"
+                                },
+                                {
+                                    "name": "token1",
+                                    "type": "address",
+                                    "meaning": "token1 of the position's pool; must be a granted substrate"
+                                },
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "position NFT id to add liquidity to"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "meaning": "token0 to spend, in token0's smallest unit"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "meaning": "token1 to spend, in token1's smallest unit"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 spent"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 spent"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((uint256,uint128,uint256,uint256,uint256))",
+                            "selector": "0x06ce4991",
+                            "struct": "RamsesV2ModifyPositionFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "position NFT id to remove liquidity from"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint128",
+                                    "meaning": "liquidity units to burn"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 accounted for the burned liquidity"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 accounted for the burned liquidity"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol": "0x7abe5752c974c756cab5818077f78c18c62f1e3f2620ebedcf98c4b3e9a4d017"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "RamsesV2ModifyPositionFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                                    "selector": "0x7f61ea0b",
+                                    "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:17",
+                                    "fields": [
+                                        {
+                                            "name": "token0",
+                                            "type": "address",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "token1",
+                                            "type": "address",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "amount0Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "amount1Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:29"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:31"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:33"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "RamsesV2ModifyPositionFuseExitData",
+                                    "signature": "exit((uint256,uint128,uint256,uint256,uint256))",
+                                    "selector": "0x06ce4991",
+                                    "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:37",
+                                    "fields": [
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:39"
+                                        },
+                                        {
+                                            "name": "liquidity",
+                                            "type": "uint128",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:41"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:43"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:45"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol:47"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ModifyPositionSwapFuseRamsesV2",
+                        "address": "0xD41501B46a68DeA06a460fD79a7bCda9e3b92674",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum-clearstar/addresses.json at a0089cf, captured 2026-09-09 (not in mainnet-arbitrum-fusion)",
+                        "observedAtBlock": 503330505,
+                        "runtimeCodeHash": "0x9ef90978c51be6c76ba9e4bf922ecb04413615631a0d4db2e187942de0dc6a53",
+                        "observedMarketId": 18,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 18 and VERSION() returned its own address",
+                            "runtime code contains enter 0x7f61ea0b and exit 0x06ce4991"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/ramses/RamsesV2CollectFuse.sol",
+                    "purpose": "collects owed tokens (fees and decreased principal) from Ramses V2 positions into the vault; enter only",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((uint256[]))",
+                            "selector": "0xdd15f123",
+                            "struct": "RamsesV2CollectFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "meaning": "position NFT ids to call collect on; owed fees and previously decreased principal are transferred to the vault"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/ramses/RamsesV2CollectFuse.sol": "0xb8a4a59303c9837f0e587393f04801168dc14a5185c9f0e8910bb96c1887cd44"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "RamsesV2CollectFuseEnterData",
+                                    "signature": "enter((uint256[]))",
+                                    "selector": "0xdd15f123",
+                                    "source": "contracts/fuses/ramses/RamsesV2CollectFuse.sol:12",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIds",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/ramses/RamsesV2CollectFuse.sol:14"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "CollectSwapFuseRamsesV2",
+                        "address": "0x859F5c9D5CB2800A9Ff72C56d79323EA01cB30b9",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum-clearstar/addresses.json at a0089cf, captured 2026-09-09 (not in mainnet-arbitrum-fusion)",
+                        "observedAtBlock": 503330505,
+                        "runtimeCodeHash": "0xad69f017349366d52bb003d96df752db09720f8a590abefadc80acfe03ff0b62",
+                        "observedMarketId": 18,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 18 and VERSION() returned its own address",
+                            "runtime code contains enter 0xdd15f123"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/rewards_fuses/ramses/RamsesClaimFuse.sol",
+                    "purpose": "reward fuse: claims gauge rewards (RAM and others) of position NFTs through NonfungiblePositionManager.getReward and forwards them to the RewardsClaimManager; registered there by FUSE_MANAGER_ROLE (300) and executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards, not PlasmaVault.execute; reverts when no RewardsClaimManager is set; it does not check substrates",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(uint256[],address[][])",
+                            "selector": "0xedd4318c",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "meaning": "position NFT ids to claim for; empty returns early"
+                                },
+                                {
+                                    "name": "tokenRewards",
+                                    "type": "address[][]",
+                                    "meaning": "per position, the reward token addresses to claim; length must equal tokenIds"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/ramses/RamsesClaimFuse.sol": "0x264aad520d03982f6285df9f717d20212511c46e6f7f06d8c94f859b0503af04"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(uint256[],address[][])",
+                                    "selector": "0xedd4318c",
+                                    "source": "contracts/rewards_fuses/ramses/RamsesClaimFuse.sol:45",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIds",
+                                            "type": "uint256[]",
+                                            "source": "contracts/rewards_fuses/ramses/RamsesClaimFuse.sol:45"
+                                        },
+                                        {
+                                            "name": "tokenRewards",
+                                            "type": "address[][]",
+                                            "source": "contracts/rewards_fuses/ramses/RamsesClaimFuse.sol:45"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsFuseRamsesV2",
+                        "address": "0x6F292d12a2966c9B796642cAFD67549bbbE3D066",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum-clearstar/addresses.json at a0089cf, captured 2026-09-09 (not in mainnet-arbitrum-fusion)",
+                        "observedAtBlock": 503330505,
+                        "runtimeCodeHash": "0xd983293ba445237863bed90945b7eb2a43b765f26523f7bef88bf4b85991c21b",
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "VERSION() returned its own address at the observed block; runtime code of 3159 bytes contains claim(uint256[],address[][]) 0xedd4318c",
+                            "MARKET_ID() reverted because neither the deployed code nor this checkout's RamsesClaimFuse.sol declares one; a reward fuse is registered in the RewardsClaimManager, not under a market",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "ERC20 token addresses the vault may hold Ramses V2 liquidity in. RamsesV2NewPositionFuse and RamsesV2ModifyPositionFuse check token0 and token1 on enter; the pool and fee tier are not substrates. Exit, collect, the claim fuse and the balance fuse do not check substrates: they work on the tokenIds tracked in FuseStorageLib.getRamsesV2TokenIds().",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "token0 and token1 of every tracked position NFT: principal at the pool's current price plus uncollected fees computed from fee growth, each converted with the token's price and decimals; gauge rewards are not valued here",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(), i.e. the vault's PriceOracleMiddlewareManager falling back to the PriceOracleMiddleware it points at; every pool token needs a price feed there",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/ramses/RamsesV2PositionFuseTest.t.sol",
+                "test/fuses/ramses/RamsesClaimFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "NewPositionSwapFuseRamsesV2",
+                    "address": "0xb025CC5e73e2966e12e4d859360B51c1D0F45EA3",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum-clearstar/addresses.json at a0089cf, captured 2026-09-09 (not in mainnet-arbitrum-fusion)",
+                    "observedAtBlock": 503330505,
+                    "runtimeCodeHash": "0x5734e425d775307fa5e437301204bb13bbcb645787a7fe3670f13d5b53f1b72c",
+                    "observedMarketId": 18,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 18 and VERSION() returned its own address at the observed block",
+                        "runtime code contains enter 0x451a057d (the 11-field struct with veRamTokenId) and exit 0x608c7500; the Uniswap V3 10-field enter 0x6a3e6101 is absent, as expected"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseSwapPositionsRamsesV2",
+                    "address": "0xD9fd7D42848A97F946f42c62eC3150D24C0a3835",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum-clearstar/addresses.json at a0089cf, captured 2026-09-09 (not in mainnet-arbitrum-fusion)",
+                    "observedAtBlock": 503330505,
+                    "runtimeCodeHash": "0xb475fe9067faf8e6dd3a4b47368e227ac0d6c5df97d41028f67927269fa4d572",
+                    "observedMarketId": 18,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 18; VERSION() reverted, consistent with this checkout's RamsesV2Balance.sol which declares no VERSION",
+                        "runtime code contains balanceOf() 0x722713f7"
+                    ]
+                }
+            }
         }
     ]
 }
