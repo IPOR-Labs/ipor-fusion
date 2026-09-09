@@ -1,0 +1,25 @@
+T25 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run test:fork -- --chain 1 --suite deployed-factory --block 25937526
+  fixture=deployed-usage
+  Ethereum chain 1, block 25937526
+  1 passed, 0 failed, 0 skipped
+  gas=8,905,074
+
+PASS FOUNDRY_PROFILE=factory_ethereum forge test --match-path test/deployed-factories/FusionFactoryEthereum.t.sol
+  cached compile; 1 passed, 0 failed, 0 skipped
+
+PASS npm run validate:test-suites
+  8 suites classified
+
+PASS npm run test:fork:runner
+  6 passed
+
+PASS npm run test:affected:runner
+  5 passed
+
+PASS scoped Prettier and git diff --check
+
+The fork test did not upgrade or replace existing code, grant a role, fund an
+impersonated account, sign or broadcast a transaction. Its new contracts exist
+only in the ephemeral fork state.

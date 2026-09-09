@@ -431,14 +431,14 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T25 — Test tworzenia przez niezmienioną fabrykę
 
-- [ ] **P0 · M · Zależności: T16, T24.**
+- [x] **P0 · M · Zależności: T16, T24.**
 - **Zakres:** jeden test w `test/deployed-factories/` tworzący vault przez pilotażową wersję z właściwym ABI i callerem; sprawdzenie podstawowych adresów, ownera i opłat.
 - **Odbiór:** test działa na przypiętym bloku bez upgrade'u, podmiany istniejących fabryk i nadawania sobie ich ról. Wpis `candidate` jest dopuszczony wyłącznie do tego testu zgodności.
 - **Commit:** `test(factory): T25 exercise the unchanged deployed factory`.
 
 #### T26 — Promocja pilotażu do verified
 
-- [ ] **P0 · S · Zależności: T24, T25.**
+- [x] **P0 · S · Zależności: T24, T25.**
 - **Zakres:** zapisać pozbawiony sekretów raport odczytów i testu, numer/hash bloku oraz wersję narzędzi; zmienić status jednego manifestu.
 - **Odbiór:** manifest `verified` odsyła do odtwarzalnego dowodu zgodności, a nie samego zapewnienia w dokumencie.
 - **Commit:** `chore(deployments): T26 verify the pilot factory manifest`.
@@ -447,42 +447,42 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T27 — Walidowana konfiguracja vaulta
 
-- [ ] **P0 · M · Zależności: T10, T26.**
+- [x] **P0 · M · Zależności: T10, T26.**
 - **Zakres:** schemat wejścia i przykład z sekcji 6.2, walidator nazw, adresów, jednostek, callera, ownera i oczekiwanych opłat. Tylko wariant obsługiwany przez pilotaż.
 - **Odbiór:** poprawny przykład przechodzi; błędne jednostki, niepełny pakiet opłat i niewspierany wariant są odrzucane. Pola wyboru użytkownika nie mają ukrytych domyślnych odbiorców.
 - **Commit:** `feat(vault): T27 validate vault creation configuration`.
 
 #### T28 — Plan jednej operacji utworzenia
 
-- [ ] **P0 · M · Zależności: T24, T27.**
+- [x] **P0 · M · Zależności: T24, T27.**
 - **Zakres:** `vault:plan` generuje calldata, adres docelowy, caller/value, oczekiwaną implementację i opłaty, blok odczytu oraz hash wejścia. Bez podpisywania i wysyłania.
 - **Odbiór:** calldata dekoduje się do danych wejściowych; manifest niezweryfikowany, niezgodność wersji i zły pakiet opłat zatrzymują planowanie.
 - **Commit:** `feat(vault): T28 build a verifiable creation plan`.
 
 #### T29 — Symulacja przygotowanego planu
 
-- [ ] **P0 · M · Zależności: T25, T28.**
+- [x] **P0 · M · Zależności: T25, T28.**
 - **Zakres:** `vault:simulate` wykonuje dokładnie przygotowane calldata na forku z przypiętym blokiem i właściwym callerem. Na początek jedna ścieżka EOA; inne zwracają jawny brak wsparcia.
 - **Odbiór:** raport podaje sukces/revert, gas, blok i hash planu; nie ma broadcastu ani automatycznej naprawy fabryki na forku.
 - **Commit:** `feat(vault): T29 simulate creation plans on a fork`.
 
 #### T30 — Sprawdzenie stanu utworzonego vaulta
 
-- [ ] **P0 · M · Zależności: T29.**
+- [x] **P0 · M · Zależności: T29.**
 - **Zakres:** wspólny verifier adresów komponentów, powiązań, ownera, ról, underlying, decimals, opłat, oracle i parametrów wypłat. Podłączyć do wyniku symulacji.
 - **Odbiór:** poprawny vault przechodzi, celowo błędne oczekiwania nie; test nie zalicza samego istnienia adresu jako dowodu poprawności całej konfiguracji.
 - **Commit:** `feat(vault): T30 verify created vault state`.
 
 #### T31 — Odtworzenie wyniku z receipt
 
-- [ ] **P0 · M · Zależności: T30.**
+- [x] **P0 · M · Zależności: T30.**
 - **Zakres:** `vault:verify -- --chain … --tx …` odczytuje receipt, filtruje emitenta, dekoduje eventy ABI właściwej wersji i uzupełnia adresy odczytami stanu.
 - **Odbiór:** transakcja testowa na Anvil/forku zwraca rzeczywiste adresy; revert, pending, brak finalności i obcy event są rozróżniane. Nie polegać na return value z testu Solidity.
 - **Commit:** `feat(vault): T31 resolve creation results from receipts`.
 
 #### T32 — Recepta utworzenia podstawowego vaulta
 
-- [ ] **P0 · S · Zależności: T26, T28, T29, T30, T31.**
+- [x] **P0 · S · Zależności: T26, T28, T29, T30, T31.**
 - **Zakres:** `docs/recipes/create-vault.md` łączy istniejące inspect → plan → simulate → verify, pokazuje wejście, rezultat i ograniczenia pilotażu.
 - **Odbiór:** przejście instrukcji w świeżym środowisku daje zweryfikowany vault na forku bez dodatkowych ustaleń poza dokumentacją i parametrami użytkownika.
 - **Commit:** `docs(vault): T32 add the deployed-factory creation recipe`.
@@ -491,42 +491,42 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T33 — Katalog danych jednej integracji ERC4626
 
-- [ ] **P1 · M · Zależności: T12, T20.**
+- [x] **P1 · M · Zależności: T12, T20.**
 - **Zakres:** schemat `catalog/fuses.json` i jedna pozycja pilotażowa: supply/balance fuse, market ID, substrates, ABI danych, oracle, role, testy i pochodzenie adresów.
 - **Odbiór:** pozycja jest zgodna z kodem oraz istniejącym rejestrem; pola niezweryfikowane nie są przedstawiane jako wdrożone i gotowe do użycia.
 - **Commit:** `feat(catalog): T33 describe the ERC4626 pilot integration`.
 
 #### T34 — Generowanie strukturalnej części katalogu
 
-- [ ] **P1 · M · Zależności: T33.**
+- [x] **P1 · M · Zależności: T33.**
 - **Zakres:** generator struktur/selektorów/odnośników do źródeł dla pilotażu; zachować oddzielnie ręczne opisy znaczenia parametrów i zweryfikowane adresy.
 - **Odbiór:** ponowne generowanie jest deterministyczne; zmiana odpowiedniej struktury Solidity zmienia wynik, a generator nie nadpisuje informacji redakcyjnych.
 - **Commit:** `feat(catalog): T34 generate pilot fuse interface metadata`.
 
 #### T35 — Plan konfiguracji jednej strategii ERC4626
 
-- [ ] **P1 · M · Zależności: T10, T30, T33.**
+- [x] **P1 · M · Zależności: T10, T30, T33.**
 - **Zakres:** skrypt/plan konfigurujący wymagane role, feeds, fuse'y, balance fuse'y, substrates i limity wyłącznie tej integracji. Ponownie użyć zweryfikowanych wdrożeń komponentów.
 - **Odbiór:** na forku właściwi operatorzy konfigurują vault; brak roli lub błędna konfiguracja daje czytelny błąd. Nie dodawać obsługi innych protokołów.
 - **Commit:** `feat(vault): T35 configure the ERC4626 pilot strategy`.
 
 #### T36 — Test pełnego cyklu środków i recepta
 
-- [ ] **P1 · M · Zależności: T32, T35.**
+- [x] **P1 · M · Zależności: T32, T35.**
 - **Zakres:** jeden scenariusz deposit → operacja strategii → wyjście → właściwy withdraw/request/redeem oraz `docs/recipes/erc4626-strategy.md`.
 - **Odbiór:** sprawdzone salda i tolerancje księgowe, respektowane role i opóźnienia; pomocnicze finansowanie i przyspieszanie czasu oznaczone jako wyłącznie testowe.
 - **Commit:** `test(vault): T36 cover the pilot strategy asset lifecycle`.
 
 #### T37 — Mapa niezmienników i ich testów
 
-- [ ] **P1 · S · Zależności: T09, T30, T36.**
+- [x] **P1 · S · Zależności: T09, T30, T36.**
 - **Zakres:** `docs/invariants.md` dla księgowania, opłat, wypłat i uprawnień pilotażu; odnośniki do testów, rounding i tolerancji.
 - **Odbiór:** każda własność ma oznaczenie „testowana” lub „postulowana”; luki w testach są jawne. Nowe testy większych braków stają się osobnymi zadaniami.
 - **Commit:** `docs(testing): T37 map pilot invariants to evidence`.
 
 #### T38 — Procedura diagnozowania najczęstszych błędów
 
-- [ ] **P1 · S · Zależności: T18, T24, T31, T36.**
+- [x] **P1 · S · Zależności: T18, T24, T31, T36.**
 - **Zakres:** `docs/troubleshooting.md`: konkretne błędy RPC, ABI, ról, opłat, substrates i oracle oraz komendy prowadzące do ich rozpoznania.
 - **Odbiór:** przykłady pochodzą z istniejących testów/raportów, a opis prowadzi od objawu do sprawdzenia przyczyny, bez zgadywania naprawy.
 - **Commit:** `docs(debugging): T38 add factory and vault troubleshooting`.
@@ -535,28 +535,28 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T39 — Walidacja planu bezpośrednio przed wykonaniem
 
-- [ ] **P1 · M · Zależności: T28, T29, T30.**
+- [x] **P1 · M · Zależności: T28, T29, T30.**
 - **Zakres:** preflight sprawdzający aktualny chain ID, implementację, komponenty, callera, opłaty i limity względem artefaktu. Ponowna symulacja aktualnego stanu; nadal bez signera.
 - **Odbiór:** zmiana implementacji, odbiorcy/opłat lub zakresu unieważnia plan; opisane pozostaje ryzyko zmiany stanu po symulacji, którego obecny kontrakt nie wymusza atomowo.
 - **Commit:** `feat(execution): T39 revalidate plans before execution`.
 
 #### T40 — Dziennik transakcji i bezpieczne wznowienie
 
-- [ ] **P1 · M · Zależności: T31, T39.**
+- [x] **P1 · M · Zależności: T31, T39.**
 - **Zakres:** trwałe stany przygotowana/pending/reverted/confirmed/unknown, identyfikacja planu, hash transakcji i nonce; odzyskiwanie po timeout. Bez integracji z produkcyjnym signerem.
 - **Odbiór:** zasymulowana utrata odpowiedzi po wysłaniu prowadzi do sprawdzenia poprzedniej transakcji; nie powoduje automatycznego kolejnego utworzenia vaulta.
 - **Commit:** `feat(execution): T40 persist transaction state and recovery`.
 
 #### T41 — Jeden adapter podpisywania i wykonania EOA
 
-- [ ] **P1 · M · Zależności: T39, T40.**
+- [x] **P1 · M · Zależności: T39, T40.**
 - **Zakres:** dodać jeden uzgodniony sposób podpisywania zewnętrznego względem promptu, wykorzystujący preflight i dziennik. Testy na Anvil/forku; bez rzeczywistej operacji na mainnecie.
 - **Odbiór:** wykonywane są wyłącznie dane zatwierdzonego planu w zadanym zakresie; klucz nie trafia do raportu, promptu ani argumentów widocznych w logach.
 - **Commit:** `feat(execution): T41 execute validated plans through an EOA signer`.
 
 #### T42 — Eksport dla Safe i właściwa ścieżka callera
 
-- [ ] **P1 · M · Zależności: T10, T28, T29, T39.**
+- [x] **P1 · M · Zależności: T10, T28, T29, T39.**
 - **Zakres:** eksport planu w formacie obsługiwanym przez wybrany Safe oraz symulacja wywołania przez Safe jako bezpośredniego callera fabryki. Bez publikowania propozycji transakcji do zewnętrznej usługi.
 - **Odbiór:** pakiet opłat i role są sprawdzane dla Safe; test wykrywa różnicę względem EOA właściciela. Nie wdrażać dodatkowego wrappera wywołania.
 - **Commit:** `feat(execution): T42 export and simulate Safe creation plans`.
@@ -565,42 +565,42 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T43 — Podstawowe CI bez sekretów
 
-- [ ] **P0 · M · Zależności: T04, T05, T15.**
+- [x] **P0 · M · Zależności: T04, T05, T15.**
 - **Zakres:** uruchamiać build, lint, format check i lokalne testy dla PR bez dostępu do sekretów. Oddzielić powiadomienia wymagające uprawnień od wykonania kodu PR.
 - **Odbiór:** przejrzana ścieżka PR z forka i uprawnienia jobów; brak wykonywania jego kodu z sekretami. Przy zastanych błędach wskazać baseline zamiast ukrywać błędy lub formatować repo w tym zadaniu.
 - **Commit:** `ci(agents): T43 run secret-free pull request checks`.
 
 #### T44 — Osobny zaufany job testów forkowych
 
-- [ ] **P1 · M · Zależności: T16, T18, T25, T43.**
+- [x] **P1 · M · Zależności: T16, T18, T25, T43.**
 - **Zakres:** dodać job pilotażowy z RPC i jawnymi zasadami dostępu do sekretów; zachować istniejące użyteczne kontrole podczas migracji workflow.
 - **Odbiór:** pozytywny przebieg na przypiętym bloku i czytelny błąd infrastruktury; nieznane ustawienia GitHub environments są wskazane do sprawdzenia. Bez automatycznej zmiany uprawnień organizacji.
 - **Commit:** `ci(factory): T44 add trusted pilot fork checks`.
 
 #### T45 — Kontrola aktualności dokumentów i artefaktów
 
-- [ ] **P1 · M · Zależności: T21, T26, T34, T43.**
+- [x] **P1 · M · Zależności: T21, T26, T34, T43.**
 - **Zakres:** job walidujący lokalne linki dokumentacji, schematy i referencje manifestów oraz brak różnic po generacji katalogu. Bez zależności od dostępności zewnętrznych stron.
 - **Odbiór:** celowo zerwany link, brak ABI i nieaktualny artefakt powodują błąd; prywatne, ignorowane dokumenty są poza zakresem.
 - **Commit:** `ci(docs): T45 validate documentation and generated metadata`.
 
 #### T46 — Wykrywanie zmian jednego wdrożenia
 
-- [ ] **P1 · M · Zależności: T24, T26, T44.**
+- [x] **P1 · M · Zależności: T24, T26, T44.**
 - **Zakres:** cykliczny odczyt pilotażowej fabryki i jej zależności na świeżym bloku finalnym; raport różnic implementacji/konfiguracji z ostatnim potwierdzonym stanem.
 - **Odbiór:** zmiana implementacji i awaria RPC są różnymi wynikami; raport nie promuje automatycznie nowej wersji i nie zmienia historycznych fixture'ów. Wynik publikowany jako artefakt/status CI.
 - **Commit:** `ci(deployments): T46 detect pilot factory drift`.
 
 #### T47 — Odpowiedzialność za rejestr i proces wydania
 
-- [ ] **P1 · S · Zależności: T26, T45.**
+- [x] **P1 · S · Zależności: T26, T45.**
 - **Zakres:** wskazać istniejących, właściwych właścicieli w `CODEOWNERS`; opisać aktualizację ABI, manifestów, historii i recept przy wydaniu.
 - **Odbiór:** checklistę da się przejść na pilotażowym przykładzie; właściciele nie są wymyślonymi kontami, a dokumenty nie sugerują, że monitoring zastępuje review.
 - **Commit:** `docs(release): T47 assign deployment documentation ownership`.
 
 #### T48 — Powtarzalny benchmark i porównanie z baseline
 
-- [ ] **P1 · M · Zależności: T00, T19, T32, T36, T38.**
+- [x] **P1 · M · Zależności: T00, T19, T32, T36, T38.**
 - **Zakres:** prosty runner lub udokumentowany protokół oceny ośmiu zadań, walidacja wyników oraz raport po zmianach w `evals/agent-readiness/`. Warunki zgodne z T00.
 - **Odbiór:** raport pokazuje skuteczność, interwencje, czas i koszt; odróżnia brak dostępu od porażki rozwiązania. Zmiana modelu, pamięci lub środowiska jest widoczna, a nie przypisana jakości repo.
 - **Commit:** `test(agents): T48 measure readiness against the baseline`.
@@ -611,28 +611,28 @@ Przed rozpoczęciem T49–T52 wpisujemy w wybranym zadaniu konkretny wariant/sie
 
 #### T49 — Jedna fabryka price feedu
 
-- [ ] **P2 · M · Zależności: T21, T24, T32, T33.**
+- [x] **P2 · M · Zależności: T21, T24, T32, T33.**
 - **Zakres:** jedna wskazana, istniejąca fabryka price feedu na sieci pilotażu: ABI, manifest, przykład użycia i test na forku. Bez projektowania nowego oracle.
 - **Odbiór:** feed utworzony przez istniejące wdrożenie ma poprawne źródła, jednostki i wynik odczytu; pochodzenie wersji jest potwierdzone.
 - **Commit:** `feat(price-feed): T49 support one deployed feed factory`.
 
 #### T50 — Jeden wariant wrappera
 
-- [ ] **P2 · M · Zależności: T21, T24, T32.**
+- [x] **P2 · M · Zależności: T21, T24, T32.**
 - **Zakres:** jedna istniejąca fabryka wrappera: ABI/manifest, recepta i test utworzenia dla pilotażowego vaulta. Whitelist i zwykły wrapper traktować jako różne warianty.
 - **Odbiór:** test sprawdza powiązanie z vaultem i uprawnienia/ograniczenia właściwe wybranemu wariantowi.
 - **Commit:** `feat(wrapper): T50 support one deployed wrapper variant`.
 
 #### T51 — Jedna dodatkowa sieć dla istniejącej wersji
 
-- [ ] **P2 · M · Zależności: T16, T24, T32, T44.**
+- [x] **P2 · M · Zależności: T16, T24, T32, T44.**
 - **Zakres:** dla tej samej obsługiwanej rodziny ABI dodać jedną sieć, manifest, profil wyboru testów i jeden test użycia wdrożenia. Nie zmieniać parametrów kompilacji bez osobnego uzgodnienia.
 - **Odbiór:** pełna recepta działa na drugiej sieci bez mieszania adresów/tokenów. Inne ABI wymaga osobnego zadania adaptera przed rozszerzeniem sieci.
 - **Commit:** `feat(deployments): T51 support one additional network`.
 
 #### T52 — Opcjonalny odczyt manifestów i inspekcja przez MCP
 
-- [ ] **P2 · M · Zależności: T24, T26, T46.**
+- [x] **P2 · M · Zależności: T24, T26, T46.**
 - **Zakres:** najpierw sprawdzić możliwości istniejącego MCP; jeśli brak dostępu do nowych dowodów zgodności, dodać tylko `list_deployments` i `inspect_factory`, współdzielące implementację CLI. Bez tworzenia drugiego rejestru.
 - **Odbiór:** te same dane wejściowe dają ten sam wynik CLI/MCP; brak możliwości wysyłania transakcji. Jeśli istniejący serwer wystarcza, rezultatem jest przetestowana recepta jego użycia, bez nowego serwera.
 - **Commit:** `feat(mcp): T52 expose verified deployment inspection`.

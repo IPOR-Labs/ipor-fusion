@@ -2,16 +2,19 @@
     "schemaVersion": 1,
     "scope": {
         "classified": [
-            "test/factory/*.t.sol — the suites needed for the factory pilot, at the top level of the directory only"
+            "test/factory/*.t.sol \u2014 the source-version suites needed for the factory pilot, at the top level of the directory only",
+            "test/deployed-factories/FusionFactoryEthereum.t.sol \u2014 unchanged deployed-usage coverage for the Ethereum pilot"
         ],
-        "unclassified": "Everything else under test/, including test/factory/price_feed/, is deliberately not classified yet. An unlisted suite carries no claim in either direction: read its setUp() before quoting a result, and do not treat its absence here as evidence that it is local, that it forks, or that it is unnecessary. Suites are added one area at a time, each with the run that produced its numbers."
+        "unclassified": "Everything else under test/, including test/factory/price_feed/ and any other file under test/deployed-factories/, is deliberately not classified yet. An unlisted suite carries no claim in either direction: read its setUp() before quoting a result, and do not treat its absence here as evidence that it is local, that it forks, or that it is unnecessary. Suites are added one area at a time, each with the run that produced its numbers."
     },
     "suites": [
         {
             "id": "factory-fusion-factory",
             "group": "factory",
             "path": "test/factory/FusionFactory.t.sol",
-            "contracts": ["FusionFactoryTest"],
+            "contracts": [
+                "FusionFactoryTest"
+            ],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -42,7 +45,9 @@
             "id": "factory-business-client-fee-packages",
             "group": "factory",
             "path": "test/factory/FusionFactoryBusinessClientFeePackagesTest.t.sol",
-            "contracts": ["FusionFactoryBusinessClientFeePackagesTest"],
+            "contracts": [
+                "FusionFactoryBusinessClientFeePackagesTest"
+            ],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -60,7 +65,9 @@
                     "PriceOracleMiddleware behind an ERC1967Proxy",
                     "FusionFactory implementation behind an ERC1967Proxy"
                 ],
-                "mutations": ["prank as owner to grant DAO_FEE_MANAGER_ROLE and MAINTENANCE_MANAGER_ROLE"],
+                "mutations": [
+                    "prank as owner to grant DAO_FEE_MANAGER_ROLE and MAINTENANCE_MANAGER_ROLE"
+                ],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -71,7 +78,9 @@
             "id": "factory-fuse-manager-timelock-cancel",
             "group": "factory",
             "path": "test/factory/FuseManagerTimelockCancelTest.t.sol",
-            "contracts": ["FuseManagerTimelockCancelTest"],
+            "contracts": [
+                "FuseManagerTimelockCancelTest"
+            ],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -89,7 +98,9 @@
                     "PriceOracleMiddleware behind an ERC1967Proxy",
                     "FusionFactory implementation behind an ERC1967Proxy"
                 ],
-                "mutations": ["labelled EOAs via makeAddr; role grants on the freshly created vault's access manager"],
+                "mutations": [
+                    "labelled EOAs via makeAddr; role grants on the freshly created vault's access manager"
+                ],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -100,7 +111,9 @@
             "id": "factory-wrapped-plasma-vault",
             "group": "factory",
             "path": "test/factory/WrappedPlasmaVaultFactory.t.sol",
-            "contracts": ["WrappedPlasmaVaultFactoryTest"],
+            "contracts": [
+                "WrappedPlasmaVaultFactoryTest"
+            ],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -112,10 +125,12 @@
             "setUp": {
                 "deploys": [
                     "MockERC20 underlying token",
-                    "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
+                    "MockPlasmaVault \u2014 a two-function stand-in defined in the test file, not a real PlasmaVault",
                     "WrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
                 ],
-                "mutations": ["labelled EOAs via makeAddr"],
+                "mutations": [
+                    "labelled EOAs via makeAddr"
+                ],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -126,7 +141,9 @@
             "id": "factory-whitelist-wrapped-plasma-vault",
             "group": "factory",
             "path": "test/factory/WhitelistWrappedPlasmaVaultFactory.t.sol",
-            "contracts": ["WhitelistWrappedPlasmaVaultFactoryTest"],
+            "contracts": [
+                "WhitelistWrappedPlasmaVaultFactoryTest"
+            ],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -138,10 +155,12 @@
             "setUp": {
                 "deploys": [
                     "MockERC20 underlying token",
-                    "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
+                    "MockPlasmaVault \u2014 a two-function stand-in defined in the test file, not a real PlasmaVault",
                     "WhitelistWrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
                 ],
-                "mutations": ["labelled EOAs via makeAddr"],
+                "mutations": [
+                    "labelled EOAs via makeAddr"
+                ],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -152,7 +171,9 @@
             "id": "factory-dao-fee-packages-fork",
             "group": "factory",
             "path": "test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol",
-            "contracts": ["FusionFactoryDaoFeePackagesForkTest"],
+            "contracts": [
+                "FusionFactoryDaoFeePackagesForkTest"
+            ],
             "fixture": "fork-fresh-deployment",
             "chainId": 1,
             "stateProbe": {
@@ -166,7 +187,7 @@
             "tests": 9,
             "setUp": {
                 "deploys": [
-                    "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
+                    "PlasmaVaultFactory and FeeManagerFactory \u2014 replacing the ones the existing factory points at",
                     "PlasmaVaultBase",
                     "PlasmaVault, used as the new plasmaVaultCoreBase for cloning",
                     "a FusionFactory implementation behind a new ERC1967Proxy"
@@ -182,7 +203,10 @@
                         "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
                         "role": "existing FusionFactory proxy on Ethereum mainnet, read as a configuration source only"
                     },
-                    { "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "role": "USDC" },
+                    {
+                        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                        "role": "USDC"
+                    },
                     {
                         "address": "0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341",
                         "role": "USDC holder impersonated to fund the test atomist"
@@ -191,13 +215,15 @@
                 "helpers": []
             },
             "proves": "That the checked-out FusionFactory source applies DAO fee packages correctly when it runs against real mainnet state at the pinned block.",
-            "doesNotProve": "That the deployed factory at 0xcd05909C… can do this. The fixture deploys its own factory, its own bases and its own component factories, precisely because the deployed ones do not accept the current PlasmaVaultInitData shape. A pass here says nothing about the live deployment."
+            "doesNotProve": "That the deployed factory at 0xcd05909C\u2026 can do this. The fixture deploys its own factory, its own bases and its own component factories, precisely because the deployed ones do not accept the current PlasmaVaultInitData shape. A pass here says nothing about the live deployment."
         },
         {
             "id": "factory-business-client-fee-packages-fork",
             "group": "factory",
             "path": "test/factory/FusionFactoryBusinessClientFeePackagesForkTest.t.sol",
-            "contracts": ["FusionFactoryBusinessClientFeePackagesForkTest"],
+            "contracts": [
+                "FusionFactoryBusinessClientFeePackagesForkTest"
+            ],
             "fixture": "fork-fresh-deployment",
             "chainId": 1,
             "stateProbe": {
@@ -211,7 +237,7 @@
             "tests": 3,
             "setUp": {
                 "deploys": [
-                    "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
+                    "PlasmaVaultFactory and FeeManagerFactory \u2014 replacing the ones the existing factory points at",
                     "PlasmaVaultBase",
                     "PlasmaVault, used as the new plasmaVaultCoreBase for cloning",
                     "a FusionFactory implementation behind a new ERC1967Proxy"
@@ -228,7 +254,10 @@
                         "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
                         "role": "existing FusionFactory proxy on Ethereum mainnet, read as a configuration source only"
                     },
-                    { "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "role": "USDC" },
+                    {
+                        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                        "role": "USDC"
+                    },
                     {
                         "address": "0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341",
                         "role": "USDC holder impersonated to fund the test business client"
@@ -237,7 +266,229 @@
                 "helpers": []
             },
             "proves": "That business-client fee packages resolve by direct caller against real mainnet state at the pinned block, using the checked-out source.",
-            "doesNotProve": "That the deployed factory at 0xcd05909C… offers these packages, or that the pilot caller would resolve to one. Same fresh-deployment caveat as the DAO fork suite."
+            "doesNotProve": "That the deployed factory at 0xcd05909C\u2026 offers these packages, or that the pilot caller would resolve to one. Same fresh-deployment caveat as the DAO fork suite."
+        },
+        {
+            "id": "deployed-factory-ethereum-fusion-factory",
+            "group": "deployed-factory",
+            "path": "test/deployed-factories/FusionFactoryEthereum.t.sol",
+            "contracts": [
+                "FusionFactoryEthereumDeployedUsageTest"
+            ],
+            "fixture": "deployed-usage",
+            "chainId": 1,
+            "stateProbe": {
+                "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+                "expect": "nonempty-code"
+            },
+            "profile": "factory_ethereum",
+            "rpc": "ETHEREUM_PROVIDER_URL",
+            "block": 25937526,
+            "ffi": false,
+            "tests": 1,
+            "setUp": {
+                "deploys": [],
+                "mutations": [
+                    "prank as an otherwise unprivileged caller for one permissionless clone transaction; all created contracts are new and exist only on the ephemeral fork"
+                ],
+                "externalAddresses": [
+                    {
+                        "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+                        "role": "unchanged Ethereum FusionFactory proxy under test"
+                    },
+                    {
+                        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                        "role": "USDC underlying token metadata and vault asset"
+                    }
+                ],
+                "helpers": []
+            },
+            "proves": "At Ethereum block 25937526, the unchanged candidate proxy can permissionlessly clone a complete USDC vault using fee package 0; returned components have code, the requested owner receives OWNER_ROLE and the deployed FeeManager matches the caller-effective package.",
+            "doesNotProve": "Current state after the pinned block, that another caller resolves to the same package, that the new private vault is configured as a strategy, or that any transaction should be broadcast."
+        },
+        {
+            "id": "deployed-factory-ethereum-erc4626-strategy",
+            "group": "deployed-factory",
+            "path": "test/deployed-factories/Erc4626StrategyLifecycleEthereum.t.sol",
+            "contracts": [
+                "Erc4626StrategyLifecycleEthereumTest"
+            ],
+            "fixture": "deployed-usage",
+            "chainId": 1,
+            "stateProbe": {
+                "address": "0x12FD0EE183c85940CAedd4877f5d3Fc637515870",
+                "expect": "nonempty-code"
+            },
+            "profile": "factory_ethereum",
+            "rpc": "ETHEREUM_PROVIDER_URL",
+            "block": 25937526,
+            "ffi": false,
+            "tests": 1,
+            "setUp": {
+                "deploys": [],
+                "mutations": [
+                    "prank as an unprivileged caller for one permissionless clone transaction on the unchanged factory",
+                    "prank as the new vault's own owner to grant roles and configure the market; the deployed factory and fuses are never upgraded, etched or granted anything",
+                    "deal USDC to the test depositor (test-only funding) and warp past the vault's own redemption delay before redeeming (test-only time travel)"
+                ],
+                "externalAddresses": [
+                    {
+                        "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+                        "role": "unchanged Ethereum FusionFactory proxy that creates the vault"
+                    },
+                    {
+                        "address": "0x12FD0EE183c85940CAedd4877f5d3Fc637515870",
+                        "role": "deployed ERC4626 supply fuse for market 100001, used unchanged"
+                    },
+                    {
+                        "address": "0x2C10C36028C430f445a4bA9f7Dd096a5DcC75d5e",
+                        "role": "deployed ERC4626 balance fuse for market 100001, used unchanged"
+                    },
+                    {
+                        "address": "0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB",
+                        "role": "Steakhouse USDC MetaMorpho vault, the market's only substrate"
+                    },
+                    {
+                        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                        "role": "USDC, the vault's underlying asset"
+                    }
+                ],
+                "helpers": []
+            },
+            "proves": "At Ethereum block 25937526, a vault created by the unchanged factory can be configured for the catalogued ERC4626 market with the deployed fuses and then carry a full asset cycle: deposit, supply into Steakhouse USDC through ALPHA_ROLE, exit back and redeem, with total assets preserved within 1 USDC on 100000 and the 50% market limit enforced.",
+            "doesNotProve": "That the current source's Erc4626SupplyFuse interface is deployed (it is not \u2014 the deployed fuse takes (vault, amount) without slippage bounds), that yield accrues over time, that any other substrate, market or protocol works, or that a transaction should be broadcast."
+        },
+        {
+            "id": "deployed-price-feed-factory-ethereum-erc4626",
+            "group": "deployed-price-feed-factory",
+            "path": "test/deployed-factories/Erc4626PriceFeedFactoryEthereum.t.sol",
+            "contracts": [
+                "Erc4626PriceFeedFactoryEthereumTest"
+            ],
+            "fixture": "deployed-usage",
+            "chainId": 1,
+            "stateProbe": {
+                "address": "0xf58Fcce9370aBa552032d3EA47baA486F70c0FdC",
+                "expect": "nonempty-code"
+            },
+            "profile": "factory_ethereum",
+            "rpc": "ETHEREUM_PROVIDER_URL",
+            "block": 25937526,
+            "ffi": false,
+            "tests": 2,
+            "setUp": {
+                "deploys": [],
+                "mutations": [
+                    "prank as an unprivileged caller for one permissionless create() on the unchanged price feed factory; the created feed exists only on the ephemeral fork",
+                    "prank as the price oracle middleware for one static read of the feed, because the feed asks msg.sender for the asset price"
+                ],
+                "externalAddresses": [
+                    {
+                        "address": "0xf58Fcce9370aBa552032d3EA47baA486F70c0FdC",
+                        "role": "unchanged ERC4626 price feed factory proxy under test"
+                    },
+                    {
+                        "address": "0xC9F32d65a278b012371858fD3cdE315B12d664c6",
+                        "role": "price oracle middleware the feed is created for and read as"
+                    },
+                    {
+                        "address": "0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB",
+                        "role": "Steakhouse USDC, the ERC4626 vault the feed prices"
+                    },
+                    {
+                        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                        "role": "USDC, the vault's asset and the priced token"
+                    }
+                ],
+                "helpers": []
+            },
+            "proves": "At Ethereum block 25937526, a permissionless caller can create an ERC4626 price feed through the unchanged deployed factory; the feed points at the requested vault, reports 18 decimals and returns a price that equals the value recomputed from convertToAssets and the middleware's USDC price to within 1 wei, while a non-ERC4626 address is rejected.",
+            "doesNotProve": "That the deployed implementation is the code in this checkout, that the feed behaves the same for other vaults or assets, that a feed registered in a vault's price manager is configured correctly, or that any transaction should be broadcast."
+        },
+        {
+            "id": "deployed-wrapped-vault-factory-ethereum",
+            "group": "deployed-wrapped-vault-factory",
+            "path": "test/deployed-factories/WrappedPlasmaVaultFactoryEthereum.t.sol",
+            "contracts": [
+                "WrappedPlasmaVaultFactoryEthereumTest"
+            ],
+            "fixture": "deployed-usage",
+            "chainId": 1,
+            "stateProbe": {
+                "address": "0xb17a9D70a73e0DcFfc12563Bcc0c1D68F3F353C8",
+                "expect": "nonempty-code"
+            },
+            "profile": "factory_ethereum",
+            "rpc": "ETHEREUM_PROVIDER_URL",
+            "block": 25937526,
+            "ffi": false,
+            "tests": 3,
+            "setUp": {
+                "deploys": [],
+                "mutations": [
+                    "prank as an unprivileged caller to clone a plasma vault through the unchanged FusionFactory and to create a wrapper through the unchanged wrapper factory",
+                    "prank as the wrapper's owner and as the wrapped vault's owner to check who may configure the wrapper; no role is granted anywhere"
+                ],
+                "externalAddresses": [
+                    {
+                        "address": "0xb17a9D70a73e0DcFfc12563Bcc0c1D68F3F353C8",
+                        "role": "unchanged WrappedPlasmaVaultFactory proxy under test (plain variant)"
+                    },
+                    {
+                        "address": "0x30378C767A5F2c444287bCbdbdB29a73AF125151",
+                        "role": "the whitelist variant, referenced only to assert it is a different deployment"
+                    },
+                    {
+                        "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+                        "role": "unchanged FusionFactory that creates the vault being wrapped"
+                    },
+                    {
+                        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                        "role": "USDC, the wrapped vault's asset"
+                    }
+                ],
+                "helpers": []
+            },
+            "proves": "At Ethereum block 25937526, the unchanged wrapper factory creates a wrapper bound to the requested plasma vault with the same asset, the requested name, symbol, owner, fee accounts and fee percentages; configuration is restricted to the wrapper's own owner, and a zero vault or a fee above 100% is refused.",
+            "doesNotProve": "Anything about the whitelist wrapper variant, that deposits or withdrawals through the wrapper accrue correctly over time, that the deployed implementation is the code in this checkout, or that any transaction should be broadcast."
+        },
+        {
+            "id": "deployed-factory-base-fusion-factory",
+            "group": "deployed-factory",
+            "path": "test/deployed-factories/FusionFactoryBase.t.sol",
+            "contracts": [
+                "FusionFactoryBaseDeployedUsageTest"
+            ],
+            "fixture": "deployed-usage",
+            "chainId": 8453,
+            "stateProbe": {
+                "address": "0x1455717668fA96534f675856347A973fA907e922",
+                "expect": "nonempty-code"
+            },
+            "profile": "factory_base",
+            "rpc": "BASE_PROVIDER_URL",
+            "block": 51000000,
+            "ffi": false,
+            "tests": 1,
+            "setUp": {
+                "deploys": [],
+                "mutations": [
+                    "prank as an otherwise unprivileged caller for one permissionless clone transaction on the unchanged Base factory; all created contracts exist only on the ephemeral fork"
+                ],
+                "externalAddresses": [
+                    {
+                        "address": "0x1455717668fA96534f675856347A973fA907e922",
+                        "role": "unchanged Base FusionFactory proxy under test"
+                    },
+                    {
+                        "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                        "role": "Base USDC, the vault's underlying token"
+                    }
+                ],
+                "helpers": []
+            },
+            "proves": "At Base block 51000000, the unchanged Base FusionFactory proxy reports version 8 and permissionlessly clones a complete Base USDC vault with fee package 0; the components have code, the requested owner receives OWNER_ROLE and the fee manager matches the caller-effective package.",
+            "doesNotProve": "Anything about the Ethereum deployment, that the two implementations share bytecode, that a strategy is configured on the Base vault, or that any transaction should be broadcast."
         }
     ]
 }

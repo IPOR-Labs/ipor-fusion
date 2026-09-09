@@ -30,32 +30,32 @@ krok 0 i 5) oraz Pete po commicie.
 | T21 | Schemat i walidator manifestów | P0 | T20 | committed `1d28609` | 2026-09-09 | Schema identity/provenance/proxy/code/ABI/dependencies/verification + walidator ścieżek/hashów/statusu; syntetyczny candidate; 7 testów, m.in. address/chain/ABI/verified proof |
 | T22 | ABI jednej wdrożonej wersji | P0 | T20, T21 | committed `4657eb6` | 2026-09-09 | Explorer source wiąże proxy z impl `0xf19c…63f5`; ABI impl (78 entries), SHA-256 i provenance; `clone(string,string,address,uint256,address,uint256)` selector/encode/decode sprawdzone |
 | T23 | Manifest pierwszego kandydata | P0 | T21, T22 | committed `c982350` | 2026-09-09 | `deployments/1/factories.json`: Ethereum FusionFactory `candidate`; lookup+ABI/compiler znane, tx/blok/hashes/dependencies/verification jawnie null/empty |
-| T24 | factory:inspect | P0 | T18, T23 | ready-for-commit | 2026-09-09 | Read-only inspect na bloku Ethereum `25937526`: proxy/impl/code, version 8, komponenty, timing i caller-effective fees; 4 nazwane ścieżki błędów, zapisany JSON, candidate bez promocji |
-| T25 | Test tworzenia przez niezmienioną fabrykę | P0 | T16, T24 | todo | | |
-| T26 | Promocja pilotażu do verified | P0 | T24, T25 | todo | | |
-| T27 | Walidowana konfiguracja vaulta | P0 | T10, T26 | todo | | |
-| T28 | vault:plan | P0 | T24, T27 | todo | | |
-| T29 | vault:simulate | P0 | T25, T28 | todo | | |
-| T30 | Verifier stanu vaulta | P0 | T29 | todo | | |
-| T31 | vault:verify z receipt | P0 | T30 | todo | | |
-| T32 | Recepta create-vault | P0 | T26, T28–T31 | todo | | |
-| T33 | Katalog jednej integracji ERC4626 | P1 | T12, T20 | todo | | |
-| T34 | Generator katalogu | P1 | T33 | todo | | |
-| T35 | Plan konfiguracji strategii ERC4626 | P1 | T10, T30, T33 | todo | | |
-| T36 | Test pełnego cyklu środków | P1 | T32, T35 | todo | | |
-| T37 | Mapa niezmienników | P1 | T09, T30, T36 | todo | | |
-| T38 | Troubleshooting | P1 | T18, T24, T31, T36 | todo | | |
-| T39 | Preflight przed wykonaniem | P1 | T28–T30 | todo | | |
-| T40 | Dziennik transakcji | P1 | T31, T39 | todo | | |
-| T41 | Adapter EOA | P1 | T39, T40 | todo | | |
-| T42 | Eksport Safe | P1 | T10, T28, T29, T39 | todo | | |
-| T43 | CI bez sekretów | P0 | T04, T05, T15 | todo | | ustawień GitHub environments nie sprawdzimy z VM |
-| T44 | Zaufany job forkowy | P1 | T16, T18, T25, T43 | todo | | |
-| T45 | Kontrola aktualności docs/artefaktów | P1 | T21, T26, T34, T43 | todo | | |
-| T46 | Drift pilotażowej fabryki | P1 | T24, T26, T44 | todo | | |
-| T47 | CODEOWNERS i proces wydania | P1 | T26, T45 | todo | | |
-| T48 | Benchmark vs baseline | P1 | T00, T19, T32, T36, T38 | todo | | |
-| T49 | Fabryka price feedu | P2 | T21, T24, T32, T33 | todo | | |
-| T50 | Wariant wrappera | P2 | T21, T24, T32 | todo | | |
-| T51 | Dodatkowa sieć | P2 | T16, T24, T32, T44 | todo | | |
-| T52 | MCP inspect | P2 | T24, T26, T46 | todo | | |
+| T24 | factory:inspect | P0 | T18, T23 | committed `562fea3` | 2026-09-09 | Read-only inspect na bloku Ethereum `25937526`: proxy/impl/code, version 8, komponenty, timing i caller-effective fees; 4 nazwane ścieżki błędów, zapisany JSON, candidate bez promocji |
+| T25 | Test tworzenia przez niezmienioną fabrykę | P0 | T16, T24 | ready-for-commit | 2026-09-09 | 1 deployed-usage test na Ethereum `25937526`: permissionless clone przez niezmienione proxy, 7 komponentów z kodem, OWNER_ROLE i caller-effective fee package 0 |
+| T26 | Promocja pilotażu do verified | P0 | T24, T25 | ready-for-commit | 2026-09-09 | `deployments/reports/…-25937526.json`: blok+hash, wersje narzędzi, hash inspektora i testu, kod pod 16 komponentami, przechodzący test deployed-usage; manifest `verified` + hashe/zależności; `!deployments/reports/` w `.gitignore` |
+| T27 | Walidowana konfiguracja vaulta | P0 | T10, T26 | ready-for-commit | 2026-09-09 | `config/vaults/` (schemat + przykład) i `validate:vault-config` bez RPC; jednostki w nazwach pól, pełny pakiet opłat z jawnym odbiorcą, wariant tylko z `supportedOperations`; 17 testów, `docs/vaults.md` |
+| T28 | vault:plan | P0 | T24, T27 | ready-for-commit | 2026-09-09 | `vault:plan --config --block`: calldata + zdekodowane argumenty, to/from/value 0, implementacja, wersja i pakiet opłat callera z bloku, hash bloku i SHA-256 wejścia; 14 testów na udawanym RPC, odmowy dla candidate/wersji/opłat |
+| T29 | vault:simulate | P0 | T25, T28 | ready-for-commit | 2026-09-09 | `vault:simulate --plan`: dokładne calldata na efemerycznym forku anvil, raport success/revert + gas + blok/hash + hash planu; adresy tylko przy zgodzie return value i eventu; caller z kodem, inna implementacja i brak providera to nazwane odmowy; 7 testów |
+| T30 | Verifier stanu vaulta | P0 | T29 | ready-for-commit | 2026-09-09 | `tools/lib/vault-state.mjs`: 29 kontroli (kod, tożsamość, powiązania, OWNER_ROLE/delay, redemption delay, pakiet DAO i konta opłat); odczyt oddzielony od reguł, symulacja daje `unverified` przy błędzie; 21 testów offline na realnych odczytach |
+| T31 | vault:verify z receipt | P0 | T30 | ready-for-commit | 2026-09-09 | `vault:verify --chain --tx`: event filtrowany po emitencie + odczyty stanu (bez return value); statusy success/unverified/reverted/pending/not-final, obcy event i nieznany hash jako odmowy; scenariusz na anvil forku |
+| T32 | Recepta create-vault | P0 | T26, T28–T31 | ready-for-commit | 2026-09-09 | `docs/recipes/create-vault.md`: doctor → inspect → input → plan → simulate → verify; recepta przejechana dosłownie na zmienionym wejściu (symulacja 29/29, `vault:verify` na forku 28/28) |
+| T33 | Katalog jednej integracji ERC4626 | P1 | T12, T20 | ready-for-commit | 2026-09-09 | `catalog/fuses.json` + schemat i `validate:catalog`: rynek 100001, ABI enter/exit ze znaczeniem pól, substrates = adres vaulta ERC4626, wycena, role, testy; oba fuse'y `observed` na bloku 25937526, balance fuse starszy niż źródło; 13 testów |
+| T34 | Generator katalogu | P1 | T33 | ready-for-commit | 2026-09-09 | `catalog:generate`/`catalog:check` piszą wyłącznie `interface.generated` (struktury, selektory, `plik:linia`, sha256 źródeł); deterministyczne, zmiana struktury łapana, treści redakcyjne nietknięte; 6 testów |
+| T35 | Plan konfiguracji strategii ERC4626 | P1 | T10, T30, T33 | ready-for-commit | 2026-09-09 | `vault:configure`: role → fuse'y → substrates → limity na forku, adresy tylko z katalogu (`observed`), odczyt konfiguracji z vaulta; `MISSING_ROLE`, `SUBSTRATE_ASSET_MISMATCH`, `PRICE_SOURCE_MISSING`, `NOT_A_FORK`; 3 testy |
+| T36 | Test pełnego cyklu środków | P1 | T32, T35 | ready-for-commit | 2026-09-09 | deployed-usage test: deposit 100k → supply 40k do Steakhouse USDC → exit → redeem, tolerancja 1 USDC; wykrył limit rynku w WAD (nie bps) i starsze ABI wdrożonego fuse'a `enter((address,uint256))`; recepta `docs/recipes/erc4626-strategy.md` |
+| T37 | Mapa niezmienników | P1 | T09, T30, T36 | ready-for-commit | 2026-09-09 | `docs/invariants.md`: 23 własności (księgowanie, opłaty, wypłaty, uprawnienia), 12 `tested` z asercją i tolerancją, 11 `postulated`, cztery luki wypisane jako osobne zadania |
+| T38 | Troubleshooting | P1 | T18, T24, T31, T36 | ready-for-commit | 2026-09-09 | `docs/troubleshooting.md`: 20 realnych objawów (RPC, implementacja/wersja, ABI wdrożonego fuse'a, role, opłaty, substrates/limity/oracle, wynik transakcji) z wykonanymi komendami diagnostycznymi |
+| T39 | Preflight przed wykonaniem | P1 | T28–T30 | ready-for-commit | 2026-09-09 | `vault:preflight`: 11 kontroli planu wobec bieżącego stanu + ponowna symulacja na odczytanym bloku; osiem podmienionych planów zatrzymuje się na własnej kontroli; `residualRisk` opisuje brak atomowego wymuszenia |
+| T40 | Dziennik transakcji | P1 | T31, T39 | ready-for-commit | 2026-09-09 | `vault:journal record/sent/sync/list`: stany prepared/pending/unknown/confirmed/reverted z hashem planu, nonce i historią; `DUPLICATE_IN_FLIGHT` blokuje drugie przygotowanie, `sync` po utracie odpowiedzi szuka transakcji po nonce zamiast wysyłać ponownie |
+| T41 | Adapter EOA | P1 | T39, T40 | ready-for-commit | 2026-09-09 | `vault:execute`: zakres z pliku → preflight → wpis w dzienniku → `cast send` calldata planu → `sync`; klucz tylko jako konto keystore, `--private-key`/`--mnemonic` odrzucane; 4 testy na forku, odmowy bez wpisu w dzienniku |
+| T42 | Eksport Safe | P1 | T10, T28, T29, T39 | ready-for-commit | 2026-09-09 | `vault:safe`: pakiet Safe Transaction Builder z calldata planu, opłaty rozstrzygane dla adresu Safe, `--compare-with` wykrywa różnicę wobec EOA, symulacja z `msg.sender` = Safe; bez publikacji i bez wrappera; 5 testów |
+| T43 | CI bez sekretów | P0 | T04, T05, T15 | ready-for-commit | 2026-09-09 | `pr-checks.yml`: `pull_request`, `contents: read`, zero sekretów; build, solhint, `format:check` jako raport (baseline 301 plików), `test:unit`, walidatory i testy narzędzi bez RPC — wszystkie przebiegnięte lokalnie; `docs/ci.md` wskazuje nieweryfikowalne ustawienia environments |
+| T44 | Zaufany job forkowy | P1 | T16, T18, T25, T43 | ready-for-commit | 2026-09-09 | `pilot-fork-checks.yml` (`workflow_call`, jeden sekret) za `authorize`: doctor RPC → suity `deployed-factory` na bloku 25937526 → porównanie z manifestem → artefakt; awarie RPC i braku historii rozróżnione; naprawiony `agent:doctor` dla wielu probe'ów |
+| T45 | Kontrola aktualności docs/artefaktów | P1 | T21, T26, T34, T43 | ready-for-commit | 2026-09-09 | `validate:docs` (213 lokalnych linków, kotwice nagłówków, zero pobrań) w jobie bez sekretów obok `validate:deployments`/`validate:catalog`/`catalog:check`; zerwany link, brak ABI i nieaktualny katalog to błąd; 7 testów |
+| T46 | Drift pilotażowej fabryki | P1 | T24, T26, T44 | ready-for-commit | 2026-09-09 | `deployments:drift` na bloku `finalized` vs raport weryfikacji (implementacja, hashe, wersja, komponenty); 0/1/2 to trzy różne wyniki, workflow dzienny z artefaktem i osobnymi błędami; 6 testów, realny przebieg `unchanged` |
+| T47 | CODEOWNERS i proces wydania | P1 | T26, T45 | ready-for-commit | 2026-09-09 | `CODEOWNERS` obejmuje `deployments/`, `abi/`, `catalog/`, `config/`, `docs/`, `tools/`, `.github/` istniejącymi właścicielami; `docs/release.md`: 10 kroków z komendami, tabela artefaktów pilotażu, zasady zachowania historii, monitoring ≠ review |
+| T48 | Benchmark vs baseline | P1 | T00, T19, T32, T36, T38 | ready-for-commit | 2026-09-09 | `results.schema.json` + `evals:report`: skuteczność (bez `blocked` w mianowniku), interwencje, koszt, czas, hard faile; porównanie odmawia przy zmianie warunków innej niż commit; 10 testów. Pomiaru nie wykonano — to otwarta część T00 |
+| T49 | Fabryka price feedu | P2 | T21, T24, T32, T33 | ready-for-commit | 2026-09-09 | ERC4626 Price Feed Factory `0xf58F…0FdC` jako drugi wpis `verified`: ABI (30 wpisów) + provenance, raport na bloku 25937526, 2 testy deployed-usage (feed dla Steakhouse USDC, 18 decimals, cena zgodna z przeliczeniem do 1 wei); brak gettera wersji zapisany jako null |
+| T50 | Wariant wrappera | P2 | T21, T24, T32 | ready-for-commit | 2026-09-09 | `WrappedPlasmaVaultFactory` (wariant zwykły) `0xb17a…53C8` jako trzeci wpis `verified`; 3 testy: powiązanie z vaultem i asset, nazwa/symbol/właściciel/opłaty, konfiguracja tylko dla właściciela wrappera, odrzucenia; whitelist jawnie poza zakresem; recepta `wrap-a-vault.md` |
+| T51 | Dodatkowa sieć | P2 | T16, T24, T32, T44 | ready-for-commit | 2026-09-09 | Base (8453): manifest, ABI ponownie użyte z uzasadnieniem, raport na bloku 51000000, profil `factory_base` i test tworzenia vaulta USDC; bytecode implementacji różny mimo wersji 8; Ethereum bez zmian |
+| T52 | MCP inspect | P2 | T24, T26, T46 | ready-for-commit | 2026-09-09 | Istniejący serwer (SDK 3.6.7) nie zna manifestów ani dowodów, więc dodano dwa narzędzia odczytu po stdio: `list_deployments` i `inspect_factory` na wspólnym kodzie z CLI; test `deepEqual` CLI vs MCP, brak jakiejkolwiek ścieżki wysyłania; `docs/mcp.md` |

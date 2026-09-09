@@ -40,11 +40,13 @@ non-zero and names the offending entry when a rule is broken.
 
 ### What is not classified
 
-Only `test/factory/*.t.sol` at the top level of that directory is classified.
-Everything else under `test/` — including `test/factory/price_feed/` — is
-deliberately unclassified. **An unlisted suite carries no claim in either
-direction.** Its absence is not evidence that it is local, that it forks, or
-that it is unnecessary. Read its `setUp()` before quoting its result.
+Only `test/factory/*.t.sol` at the top level of that directory and
+`test/deployed-factories/FusionFactoryEthereum.t.sol` are classified.
+Everything else under `test/` — including `test/factory/price_feed/` and any
+future unlisted deployed-factory file — is deliberately unclassified. **An
+unlisted suite carries no claim in either direction.** Its absence is not
+evidence that it is local, that it forks, or that it is unnecessary. Read its
+`setUp()` before quoting its result.
 
 ## The four fixture types
 
@@ -55,10 +57,8 @@ that it is unnecessary. Read its `setUp()` before quoting its result.
 | `fork-upgrade`          | An existing proxy is deliberately upgraded or reconfigured.                          | The new version would work if it were deployed.  |
 | `deployed-usage`        | Only the state the tested operation creates, plus explicit funding of test accounts. | The live deployment is usable as it stands.      |
 
-Only the last type supports a statement about a deployment. **No suite in this
-repository currently has that type**, so nothing here yet proves that a deployed
-factory can create a vault. Producing that evidence is separate planned work; see
-[`../agent-readiness/PLAN.md`](../agent-readiness/PLAN.md).
+Only the last type supports a statement about a deployment. The Ethereum pilot
+now has one such suite, limited to the named proxy and pinned block below.
 
 The trap is specific and worth stating plainly: both fork suites under
 `test/factory/` read the mainnet `FusionFactory` proxy, but only to copy its
@@ -120,6 +120,21 @@ For diagnosis, the equivalent individual commands are:
 FUSION_FORK_BLOCK=23831825 FOUNDRY_PROFILE=factory_ethereum forge test --match-path 'test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol'
 FUSION_FORK_BLOCK=23831825 FOUNDRY_PROFILE=factory_ethereum forge test --match-path 'test/factory/FusionFactoryBusinessClientFeePackagesForkTest.t.sol'
 ```
+
+The unchanged deployed-factory proof is one test at Ethereum block `25937526`:
+
+```bash
+npm run test:fork -- --chain 1 --suite deployed-factory --block 25937526
+```
+
+It calls the candidate proxy as an otherwise unprivileged caller and creates a
+new USDC vault only in ephemeral fork state. It does not upgrade, replace or
+reconfigure existing code, fund an impersonated account, or grant a role. The
+test checks all returned component addresses for code, the vault asset and
+metadata, `OWNER_ROLE` for a distinct requested owner, and the FeeManager
+values against package 0 as resolved specifically for the direct caller. Its
+pass proves this creation path at that block; it does not describe later state
+or authorize a broadcast.
 
 ## Providers, profiles and FFI
 

@@ -1,0 +1,8 @@
+test(factory): T25 exercise the unchanged deployed factory
+
+Add a deployed-usage fork test for the candidate Ethereum FusionFactory at the
+same block used by its inspection evidence. Create a USDC vault through the
+unchanged proxy as a distinct unprivileged caller.
+
+Verify returned component code, asset metadata, owner role and the effective
+fee package, and classify the suite separately from fork-fresh deployments.

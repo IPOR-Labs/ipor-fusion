@@ -9,8 +9,9 @@ These instructions supplement the repository root `AGENTS.md` for `test/`.
 - Read [`../config/test-suites.json`](../config/test-suites.json) before quoting
   a result from a classified suite. It records the provider variable, pinned
   block, profile, FFI use, fixture type and `setUp()` mutations of each one.
-- Only the factory pilot suites are classified so far. An unlisted suite carries
-  no claim in either direction — read its `setUp()` yourself.
+- Only the factory pilot suites and the Ethereum deployed-factory pilot are
+  classified so far. An unlisted suite carries no claim in either direction —
+  read its `setUp()` yourself.
 
 ## Layout
 
@@ -35,12 +36,12 @@ a pass is evidence for, and it is the single most common thing to get wrong.
 | `fork-upgrade`          | An existing proxy on a fork, deliberately upgraded or reconfigured.                             | The new version would work if it were deployed.  |
 | `deployed-usage`        | An existing deployment used unchanged — no upgrade, no code replacement, no self-granted roles. | That the live deployment is usable as it stands. |
 
-Only `deployed-usage` says anything about a live deployment. **No suite in this
-repository currently has that type.** In particular, both fork suites under
-`test/factory/` deploy their own `FusionFactory`, their own bases and their own
-component factories, reading the mainnet proxy only to copy configuration. They
-are `fork-fresh-deployment`, and a pass is not evidence that the deployed
-factory can create a vault.
+Only `deployed-usage` says anything about a live deployment. The single suite
+under `test/deployed-factories/` uses the candidate Ethereum factory unchanged
+at its pinned block. In contrast, both fork suites under `test/factory/` deploy
+their own `FusionFactory`, bases and component factories, reading the mainnet
+proxy only to copy configuration. They are `fork-fresh-deployment`, and their
+passes are not evidence that the deployed factory can create a vault.
 
 If you add or reclassify a suite, add its entry to `config/test-suites.json` in
 the same change and record the run that produced the numbers.
