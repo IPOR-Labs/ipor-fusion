@@ -3669,6 +3669,466 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-spark-market-15",
+            "protocol": "spark",
+            "chainId": 1,
+            "market": {
+                "id": 15,
+                "constant": "SPARK",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/chains/ethereum/spark/SparkBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((uint256))",
+                    "selector": "0x9988a9ca",
+                    "struct": "SparkSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of DAI to deposit into sDAI (Savings DAI), in DAI smallest units (18 decimals); 0 is a no-op; the fuse approves SDAI and calls ISavingsDai.deposit"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256))",
+                    "selector": "0xdbadc359",
+                    "struct": "SparkSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of DAI to withdraw from sDAI, in DAI smallest units; capped at ISavingsDai.maxWithdraw of the vault; 0 is a no-op"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:58",
+                    "sources": {
+                        "contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol": "0xfccc5856b78e68b402c68e77ef064d28a824ccac2a4dc71ada661d2a105d09b7",
+                        "contracts/fuses/chains/ethereum/spark/SparkBalanceFuse.sol": "0x991ecfc664fc2f19ce54286ea5405e18dc7dc2a69d63363ff5bd2553de2c1548"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "SparkSupplyFuseEnterData",
+                            "signature": "enter((uint256))",
+                            "selector": "0x9988a9ca",
+                            "source": "contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol:15",
+                            "fields": [
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol:17"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "SparkSupplyFuseExitData",
+                            "signature": "exit((uint256))",
+                            "selector": "0xdbadc359",
+                            "source": "contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol:21",
+                            "fields": [
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol:23"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "neither fuse reads the substrate list: SparkSupplyFuse hardcodes DAI 0x6B175474E89094C44Da98b954EedeAC495271d0F and sDAI 0x83F20F44975D03b1b09e64809B757c47f942BEeA and performs no isSubstrateAsAssetGranted check; SparkBalanceFuse prices the hardcoded sDAI balance and, despite its NatSpec, does not check that sDAI is granted. The test fixture still grants sDAI as the market's substrate.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket); not consulted by the fuses",
+                "checkFunction": "none in the fuses (no PlasmaVaultConfigLib call in SparkSupplyFuse.sol or SparkBalanceFuse.sol)",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the sDAI balance of the Plasma Vault, priced as the sDAI token itself (getAssetPrice(SDAI)); no convertToAssets, so the price source must quote sDAI, not DAI",
+                "priceSource": "the vault's PriceOracleMiddlewareManager, falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": ["test/fuses/spark/SparkSupplyFuseTest.t.sol"],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no SparkSupplyFuse / sDAI fuse in IPOR-Labs/ipor-abi at a0089cf on any *-fusion chain (queries 'Spark', 'Sdai'); the SparkLend* entries there belong to market 44",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no SparkBalanceFuse in IPOR-Labs/ipor-abi at a0089cf on any *-fusion chain (queries 'Spark', 'Sdai')",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
+        },
+        {
+            "id": "ethereum-spark-lend-market-44",
+            "protocol": "spark",
+            "chainId": 1,
+            "market": {
+                "id": 44,
+                "constant": "SPARK_LEND",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/aave_v3/AaveV3WithPriceOracleMiddlewareBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256))",
+                    "selector": "0x41b11ae7",
+                    "struct": "AaveV3SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "underlying reserve asset to supply to SparkLend; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to supply, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance"
+                        },
+                        {
+                            "name": "userEModeCategoryId",
+                            "type": "uint256",
+                            "meaning": "SparkLend eMode category to set for the vault; a value above 255 is ignored and no eMode is set"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "AaveV3SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "underlying reserve asset to withdraw; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to withdraw, in the asset's smallest unit; capped at the vault's aToken balance"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:213",
+                    "sources": {
+                        "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol": "0x74dc06e02ef45df27251b6dc6b7aad9ab9b797e3e50b252974b09f4cc797cba6",
+                        "contracts/fuses/aave_v3/AaveV3WithPriceOracleMiddlewareBalanceFuse.sol": "0xc98fa605e80d2c3cadf7ffc592181d6ac0c93a2faf5e38c6f8147d1722fe6116"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "AaveV3SupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:19",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:21"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:23"
+                                },
+                                {
+                                    "name": "userEModeCategoryId",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:25"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "AaveV3SupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:29",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:31"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:33"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol",
+                    "purpose": "borrow (enter) and repay (exit) a granted reserve asset on SparkLend through the pool from the fuse's PoolAddressesProvider",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "AaveV3BorrowFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "reserve asset to borrow; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to borrow, in the asset's smallest unit (variable rate)"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "struct": "AaveV3BorrowFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "borrowed asset to repay; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to repay, in the asset's smallest unit"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol": "0x5081483e8a99e8fb260045e29f0c63253fb03972fe65b2de7a1a702d613e3c0f"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AaveV3BorrowFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:16",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:20"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "AaveV3BorrowFuseExitData",
+                                    "signature": "exit((address,uint256))",
+                                    "selector": "0x92876ac8",
+                                    "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:24",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:28"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SparkLendBorrowFuse",
+                        "address": "0xE3aBaE104B259c523f022a880AD4a73ea8DE4c5e",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xeb8ccac48ced683d26d4351b704850379e52a1336e0d623d5627c22b366919d1",
+                        "observedMarketId": 44,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 44 and VERSION() returned its own address at Ethereum block 25939091",
+                            "enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8 are present in the runtime code; enterTransient() 0xadea8fa0 is absent, so the deployment predates the transient-storage entry points of this checkout",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol",
+                    "purpose": "enable (enter) or disable (exit) a granted reserve asset as collateral for the vault on SparkLend via setUserUseReserveAsCollateral",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter(address)",
+                            "selector": "0xd014c01f",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "assetAddress_",
+                                    "type": "address",
+                                    "meaning": "reserve asset to enable as collateral; it must be a granted substrate of this market"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit(address)",
+                            "selector": "0xb42652e9",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "assetAddress_",
+                                    "type": "address",
+                                    "meaning": "reserve asset to disable as collateral; it must be a granted substrate of this market"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol": "0xf771fdc830dddd98de23ef2644661435cc50b2384e807e2d47c98dfab582313c"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": null,
+                                    "signature": "enter(address)",
+                                    "selector": "0xd014c01f",
+                                    "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:54",
+                                    "fields": [
+                                        {
+                                            "name": "assetAddress_",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:54"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": null,
+                                    "signature": "exit(address)",
+                                    "selector": "0xb42652e9",
+                                    "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:83",
+                                    "fields": [
+                                        {
+                                            "name": "assetAddress_",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:83"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SparkLendCollateralFuse",
+                        "address": "0xACba93fAFc6886694583D20752D20Fb312d1cE46",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xf38610029e7296a0cea214e35799197588c72b9b1343da0a48bc447c9e4dfad9",
+                        "observedMarketId": 44,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 44 and VERSION() returned its own address at Ethereum block 25939091",
+                            "enter(address) 0xd014c01f and exit(address) 0xb42652e9 are present; enterTransient() 0xadea8fa0 is absent (older version than this checkout)",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "underlying ERC20 reserve assets of SparkLend (e.g. DAI, USDC, USDS, WETH, wstETH). AaveV3SupplyFuse, AaveV3BorrowFuse and AaveV3CollateralFuse check data.asset with isSubstrateAsAssetGranted on every call; the balance fuse iterates the same list. Which lending pool is meant is not a substrate: it is the PoolAddressesProvider given to each fuse's constructor (SparkLendPoolAddressesProvider 0x02C3eA4e34C0cBd694D2adFa2c690EECbC1793eE in the registry), so Aave V3 fuses pointed at Aave's provider share the source but are a different market (AAVE_V3 = 1).",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every granted reserve asset: aToken balance minus stable-debt and variable-debt token balances of the Plasma Vault (token addresses from the provider's PoolDataProvider), each priced through the middleware; a zero price reverts with AaveV3WithPriceOracleMiddlewareBalanceFuseZeroPrice, and a net negative total reverts on the int256 to uint256 cast",
+                "priceSource": "the vault's PriceOracleMiddlewareManager, falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/aave_v3/AaveV3SupplyFuseTest.t.sol",
+                "test/fuses/aave_v3/AaveV3WithPriceOracleMiddlewareBalanceFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SparkLendSupplyFuse",
+                    "address": "0x81DD10690E5690177F052b1b74c3070734831106",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x4ccf023b9704d1fe0f70fc9ff38361666b5470460118cceb5640d9f4b3b220e1",
+                    "observedMarketId": 44,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 44 and VERSION() returned its own address at Ethereum block 25939091",
+                        "enter((address,uint256,uint256)) 0x41b11ae7, exit((address,uint256)) 0x92876ac8 and instantWithdraw(bytes32[]) 0xbe1946da are present in the runtime code; enterTransient() 0xadea8fa0 is absent, so the deployment predates the transient-storage entry points of this checkout",
+                        "the PoolAddressesProvider it was constructed with was not read; the registry names it SparkLend"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "SparkLendWithPriceOracleMiddlewareBalanceFuse",
+                    "address": "0x05397aDb7A0B596DF88BCa2b06c0cbfB28e5222d",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x9777e1c81102fc5a0b5ca2255fa2f7803abd743d793b420470502d23119f9202",
+                    "observedMarketId": 44,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 44 at Ethereum block 25939091; balanceOf() 0x722713f7 is present",
+                        "VERSION() reverted, while this checkout's AaveV3WithPriceOracleMiddlewareBalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse"
+                    ]
+                }
+            }
         }
     ]
 }
