@@ -12041,6 +12041,456 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-silo-v2-market-35",
+            "protocol": "silo_v2",
+            "chainId": 1,
+            "market": {
+                "id": 35,
+                "constant": "SILO_V2",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/silo_v2/SiloV2SupplyBorrowableCollateralFuse.sol",
+                "balanceFuse": "contracts/fuses/silo_v2/SiloV2BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint8,uint256,uint256))",
+                    "selector": "0x5ded0a02",
+                    "struct": "SiloV2SupplyCollateralFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "siloConfig",
+                            "type": "address",
+                            "meaning": "the Silo V2 SiloConfig contract of the lending pair; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "siloIndex",
+                            "type": "SiloIndex",
+                            "meaning": "which silo of the pair to use: SILO0 or SILO1 (enum, uint8 in the ABI), resolved through ISiloConfig.getSilos()"
+                        },
+                        {
+                            "name": "siloAssetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of the silo's asset to deposit, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance"
+                        },
+                        {
+                            "name": "minSiloAssetAmount",
+                            "type": "uint256",
+                            "meaning": "floor on the amount actually deposited after the cap; below it the fuse reverts with SiloV2SupplyCollateralFuseInsufficientSiloAssetAmount"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint8,uint256,uint256))",
+                    "selector": "0xb4a0cd06",
+                    "struct": "SiloV2SupplyCollateralFuseExitData",
+                    "fields": [
+                        {
+                            "name": "siloConfig",
+                            "type": "address",
+                            "meaning": "the SiloConfig of the pair to redeem from; must be a granted substrate"
+                        },
+                        {
+                            "name": "siloIndex",
+                            "type": "SiloIndex",
+                            "meaning": "which silo of the pair: SILO0 or SILO1"
+                        },
+                        {
+                            "name": "siloShares",
+                            "type": "uint256",
+                            "meaning": "collateral shares to redeem, capped at ISilo.maxRedeem for that collateral type"
+                        },
+                        {
+                            "name": "minSiloShares",
+                            "type": "uint256",
+                            "meaning": "floor on the shares actually redeemed after the cap; below it the fuse reverts with SiloV2SupplyCollateralFuseInsufficientSiloShares"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:119",
+                    "sources": {
+                        "contracts/fuses/silo_v2/SiloV2SupplyBorrowableCollateralFuse.sol": "0xa39721938a2b24e040824909eb998869f6436196441e45ec1f915405c99409ff",
+                        "contracts/fuses/silo_v2/SiloV2BalanceFuse.sol": "0xefad67d64e6c28546a0b093b5176b512c37867f85de196c0b527e9a2536ee1fe"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "SiloV2SupplyCollateralFuseEnterData",
+                            "signature": "enter((address,uint8,uint256,uint256))",
+                            "selector": "0x5ded0a02",
+                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:15",
+                            "fields": [
+                                {
+                                    "name": "siloConfig",
+                                    "type": "address",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:17"
+                                },
+                                {
+                                    "name": "siloIndex",
+                                    "type": "SiloIndex",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:19"
+                                },
+                                {
+                                    "name": "siloAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:21"
+                                },
+                                {
+                                    "name": "minSiloAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:23"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "SiloV2SupplyCollateralFuseExitData",
+                            "signature": "exit((address,uint8,uint256,uint256))",
+                            "selector": "0xb4a0cd06",
+                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:26",
+                            "fields": [
+                                {
+                                    "name": "siloConfig",
+                                    "type": "address",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:28"
+                                },
+                                {
+                                    "name": "siloIndex",
+                                    "type": "SiloIndex",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:30"
+                                },
+                                {
+                                    "name": "siloShares",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:32"
+                                },
+                                {
+                                    "name": "minSiloShares",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:34"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/silo_v2/SiloV2SupplyNonBorrowableCollateralFuse.sol",
+                    "purpose": "same struct and checks as the primary fuse, but deposits as ISilo.CollateralType.Protected (non-borrowable collateral) instead of Collateral",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint8,uint256,uint256))",
+                            "selector": "0x5ded0a02",
+                            "struct": "SiloV2SupplyCollateralFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "siloConfig",
+                                    "type": "address",
+                                    "meaning": "the Silo V2 SiloConfig contract of the lending pair; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "siloIndex",
+                                    "type": "SiloIndex",
+                                    "meaning": "which silo of the pair to use: SILO0 or SILO1 (enum, uint8 in the ABI), resolved through ISiloConfig.getSilos()"
+                                },
+                                {
+                                    "name": "siloAssetAmount",
+                                    "type": "uint256",
+                                    "meaning": "amount of the silo's asset to deposit, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance"
+                                },
+                                {
+                                    "name": "minSiloAssetAmount",
+                                    "type": "uint256",
+                                    "meaning": "floor on the amount actually deposited after the cap; below it the fuse reverts with SiloV2SupplyCollateralFuseInsufficientSiloAssetAmount"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint8,uint256,uint256))",
+                            "selector": "0xb4a0cd06",
+                            "struct": "SiloV2SupplyCollateralFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "siloConfig",
+                                    "type": "address",
+                                    "meaning": "the SiloConfig of the pair to redeem from; must be a granted substrate"
+                                },
+                                {
+                                    "name": "siloIndex",
+                                    "type": "SiloIndex",
+                                    "meaning": "which silo of the pair: SILO0 or SILO1"
+                                },
+                                {
+                                    "name": "siloShares",
+                                    "type": "uint256",
+                                    "meaning": "collateral shares to redeem, capped at ISilo.maxRedeem for that collateral type"
+                                },
+                                {
+                                    "name": "minSiloShares",
+                                    "type": "uint256",
+                                    "meaning": "floor on the shares actually redeemed after the cap; below it the fuse reverts with SiloV2SupplyCollateralFuseInsufficientSiloShares"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/silo_v2/SiloV2SupplyNonBorrowableCollateralFuse.sol": "0x93796dc58bfd4d31372d90e2815221ebb64277f63dd37ffb47d591a2bc104229"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "SiloV2SupplyCollateralFuseEnterData",
+                                    "signature": "enter((address,uint8,uint256,uint256))",
+                                    "selector": "0x5ded0a02",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:15",
+                                    "fields": [
+                                        {
+                                            "name": "siloConfig",
+                                            "type": "address",
+                                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:17"
+                                        },
+                                        {
+                                            "name": "siloIndex",
+                                            "type": "SiloIndex",
+                                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:19"
+                                        },
+                                        {
+                                            "name": "siloAssetAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:21"
+                                        },
+                                        {
+                                            "name": "minSiloAssetAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:23"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "SiloV2SupplyCollateralFuseExitData",
+                                    "signature": "exit((address,uint8,uint256,uint256))",
+                                    "selector": "0xb4a0cd06",
+                                    "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:26",
+                                    "fields": [
+                                        {
+                                            "name": "siloConfig",
+                                            "type": "address",
+                                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:28"
+                                        },
+                                        {
+                                            "name": "siloIndex",
+                                            "type": "SiloIndex",
+                                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:30"
+                                        },
+                                        {
+                                            "name": "siloShares",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:32"
+                                        },
+                                        {
+                                            "name": "minSiloShares",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol:34"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SiloV2SupplyNonBorrowableCollateralFuse",
+                        "address": "0x897d96A7C91e2F1B8213f240CaD031f9acdEfA56",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x3ff3c797b06142a6d7b7e62d470cdd5493e8fee60ab767a180f18cdb8160d3f9",
+                        "observedMarketId": 35,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 35 and VERSION() returned its own address at the observed block",
+                            "enter((address,uint8,uint256,uint256)) 0x5ded0a02 and exit((address,uint8,uint256,uint256)) 0xb4a0cd06 are present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol",
+                    "purpose": "borrows the silo asset against the vault's collateral on enter and repays it on exit; both check the SiloConfig substrate, neither has a slippage guard",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint8,uint256))",
+                            "selector": "0x9c8d7561",
+                            "struct": "SiloV2BorrowFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "siloConfig",
+                                    "type": "address",
+                                    "meaning": "the SiloConfig of the pair to borrow from; must be a granted substrate"
+                                },
+                                {
+                                    "name": "siloIndex",
+                                    "type": "SiloIndex",
+                                    "meaning": "which silo of the pair supplies the borrowed asset"
+                                },
+                                {
+                                    "name": "siloAssetAmount",
+                                    "type": "uint256",
+                                    "meaning": "amount of the silo's asset to borrow, in its smallest unit; no slippage guard"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint8,uint256))",
+                            "selector": "0xd7655244",
+                            "struct": "SiloV2BorrowFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "siloConfig",
+                                    "type": "address",
+                                    "meaning": "the SiloConfig of the pair to repay; must be a granted substrate"
+                                },
+                                {
+                                    "name": "siloIndex",
+                                    "type": "SiloIndex",
+                                    "meaning": "which silo of the pair holds the debt"
+                                },
+                                {
+                                    "name": "siloAssetAmount",
+                                    "type": "uint256",
+                                    "meaning": "amount of the silo's asset to repay, in its smallest unit; no cap at the vault balance, ISilo.repay reverts if it is not available"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol": "0xb49348af5c1ec06c66eaed2d9848b1e6eb7cd7b210ae7f7e98c29c9133af60cf"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "SiloV2BorrowFuseEnterData",
+                                    "signature": "enter((address,uint8,uint256))",
+                                    "selector": "0x9c8d7561",
+                                    "source": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol:14",
+                                    "fields": [
+                                        {
+                                            "name": "siloConfig",
+                                            "type": "address",
+                                            "source": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol:16"
+                                        },
+                                        {
+                                            "name": "siloIndex",
+                                            "type": "SiloIndex",
+                                            "source": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "siloAssetAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol:20"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "SiloV2BorrowFuseExitData",
+                                    "signature": "exit((address,uint8,uint256))",
+                                    "selector": "0xd7655244",
+                                    "source": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol:23",
+                                    "fields": [
+                                        {
+                                            "name": "siloConfig",
+                                            "type": "address",
+                                            "source": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "siloIndex",
+                                            "type": "SiloIndex",
+                                            "source": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "siloAssetAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/silo_v2/SiloV2BorrowFuse.sol:29"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SiloV2BorrowFuse",
+                        "address": "0x1D24B8d16d87a570e8539c2849A23Bbc5F13005B",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x635a9cd62bbab1d8bcd17147f3acfaad93ec42020f1f2f55d90c8345589b1083",
+                        "observedMarketId": 35,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 35 and VERSION() returned its own address at the observed block",
+                            "enter((address,uint8,uint256)) 0x9c8d7561 and exit((address,uint8,uint256)) 0xd7655244 are present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Silo V2 SiloConfig addresses (one per lending pair) this market may use. Every action fuse checks data.siloConfig on enter and exit and derives silo0/silo1 from ISiloConfig.getSilos(); the balance fuse iterates the same list and values both silos of every pair.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for both silos of every granted SiloConfig: protected + collateral share balances converted with ISilo.convertToAssets, minus debt shares converted the same way, all in the silo's asset; a net negative position reduces the total and the market value floors at zero",
+                "priceSource": "PriceOracleMiddleware.getAssetPrice on each silo's asset, read from PlasmaVaultLib.getPriceOracleMiddleware()",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/silo_v2/SiloV2FuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SiloV2SupplyBorrowableCollateralFuse",
+                    "address": "0xb3d5c1b8D512bd41d845817f84E4Ea29bF038fb5",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x52469392637a2715593fb6d4792c213f4a93350931c3443fbc77b321bbd4f9c7",
+                    "observedMarketId": 35,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 35 and VERSION() returned its own address at the observed block",
+                        "enter((address,uint8,uint256,uint256)) 0x5ded0a02 and exit((address,uint8,uint256,uint256)) 0xb4a0cd06 are present in the runtime code",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "SiloV2BalanceFuse",
+                    "address": "0x086acA94AA413932C6ac5e09b863AC2Cbe17998f",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x8a6273981fc08418bb91929bdb88324fecdd35f2abbb43d4b3305492fe6e236e",
+                    "observedMarketId": 35,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 35 at the observed block",
+                        "VERSION() reverted, while this checkout's SiloV2BalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse",
+                        "balanceOf() 0x722713f7 is present in the runtime code"
+                    ]
+                }
+            }
         }
     ]
 }
