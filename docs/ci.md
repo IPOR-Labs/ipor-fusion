@@ -15,8 +15,8 @@ before review. It declares `permissions: contents: read`, passes no `secrets:`
 to anything, and every step works offline:
 
 - `forge build` and `npm run solhint:all`;
-- `npm run format:check`, which **reports** and does not gate (see the baseline
-  below);
+- `npm run format:check`, which gates: every `.sol` file under `contracts/` and
+  `test/` must already be in Prettier style;
 - `npm run test:unit` — the local contract suites, no RPC, no FFI;
 - schema and registry validation: test suites, deployment manifests, the pilot
   ABI, the vault configuration example, the integration catalog, and
@@ -48,15 +48,20 @@ Together with `validate:deployments` (manifest paths and ABI hashes) and
 `catalog:check` (generated metadata still matching the sources), a broken link, a
 missing ABI and a stale generated artifact each fail the job.
 
-### The formatting baseline
+### Formatting
 
-`npm run format:check` currently reports style deviations in **301 files**. They
-predate this workflow. Reformatting the repository is a separate change with its
-own review, so the job runs the check, prints a notice and continues. Treat a new
-deviation in files your change touches as something to fix; do not reformat
-unrelated files to make the check quiet.
+`npm run format:check` gates. The pre-existing baseline (303 `.sol` files that
+were not in Prettier style when the job was added) was closed by one
+formatting-only commit, verified by building the tree before and after it with
+CBOR metadata disabled and comparing every creation and runtime bytecode: they
+were identical. Since then the check is expected to be clean on `main`.
 
-`solhint` passes today — it reports warnings, not errors — so it does gate.
+If the check fails on your pull request, run `npm run prettier:all` (or the
+pre-commit hook, which uses the same Prettier and plugin versions) and commit the
+result together with your change. Keep formatting of files outside your scope in
+a separate commit so that the review diff stays readable.
+
+`solhint` reports warnings, not errors, and gates as well.
 
 ## The privileged workflow
 

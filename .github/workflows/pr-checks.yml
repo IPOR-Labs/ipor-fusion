@@ -59,12 +59,7 @@ jobs:
             - name: Solhint
               run: npm run solhint:all
 
-            # The repository has a large pre-existing formatting baseline (301 files
-            # at the time this job was added). Reformatting it is a separate change,
-            # so the check reports and does not gate.
-            - name: Prettier check (reports the existing baseline)
-              id: format
-              continue-on-error: true
+            - name: Prettier check
               run: npm run format:check
 
             - name: Local contract tests without RPC
@@ -99,8 +94,3 @@ jobs:
                   npm run factory:inspect:test
                   npm run vault:plan:test
                   npm run vault:state:test
-
-            - name: Formatting baseline reminder
-              if: steps.format.outcome == 'failure'
-              run: |
-                  echo "::notice title=Formatting baseline::npm run format:check reports pre-existing style deviations in this repository. This job does not gate on them; see docs/ci.md."

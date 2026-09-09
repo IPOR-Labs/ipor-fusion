@@ -82,8 +82,8 @@ For a branch-wide conservative selection of classified suites:
 npm run test:affected -- --base origin/main
 ```
 
-If `format:check` reports pre-existing drift, do not run the writing command across the repository merely to make an
-unrelated change pass; format only files in scope and report inherited failures.
+`format:check` is expected to pass on `main` and gates in CI. Format only files in scope; if the check reports files you
+did not touch, report that instead of reformatting them inside an unrelated change.
 
 ## Choosing and writing tests
 
