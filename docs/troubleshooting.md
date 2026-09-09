@@ -96,11 +96,55 @@ npm run validate:deployments
 npm run validate:pilot-abi
 ```
 
+### Naming a revert
+
+Every custom error the contracts under `contracts/` can revert with is listed by
+selector in [`../catalog/errors.json`](../catalog/errors.json) (generated from the
+forge artifacts by `npm run errors:generate`; `npm run errors:check` fails in CI
+when a contract change left it stale). Decode raw revert data, or replay a mined
+transaction at its parent block and decode what it reverts with:
+
+```bash
+npm run revert:decode -- --data 0x8f56989d…
+npm run revert:decode -- --tx <hash> --chain 1
+npm run revert:decode -- --tx <hash> --chain 1 --rpc-url http://127.0.0.1:8545 --json
+```
+
+One line comes back, with the arguments named as the source names them and the
+files that declare the error:
+
+```
+MarketLimitExceeded(marketId: 100001, balanceInMarket: 59999999999, limit: 49999999999) [contracts/libraries/AssetDistributionProtectionLib.sol]
+DaoFeePackageIndexOutOfBounds(index: 99, length: 3) [contracts/factory/lib/FusionFactoryLib.sol, contracts/factory/lib/FusionFactoryLogicLib.sol]
+```
+
+`vault:simulate` and `vault:verify` do the same for a reverted creation and put
+the result in `result.revertReason` / `revertReason`. What the decoder says is
+exactly what the data supports: `Error(string)` and `Panic(code)` are named,
+an unknown selector is reported as not belonging to this repository, and empty
+data is reported as "reverted without data" — an out-of-gas, a `require` without
+a message, or a delegatecall that reverted without data (that is what the pilot
+factory does when the underlying token has no code).
+
+The errors an agent meets first on the pilot path, all read from real runs:
+
+| Error                                                   | Raised by                        | Meaning                                                                                                                            |
+| ------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `AccessManagedUnauthorized(caller)`                     | every restricted vault function  | the caller lacks the role the function is bound to (execute needs `ALPHA_ROLE`, deposit on a private vault needs `WHITELIST_ROLE`) |
+| `AccountIsLocked(unlockTime)`                           | `redeem` / `withdraw`            | the depositor's redemption delay has not passed; `unlockTime` is when it does                                                      |
+| `MarketLimitExceeded(marketId, balanceInMarket, limit)` | `execute`, after the fuse ran    | the action would leave more in the market than its configured share; values are in the vault's asset decimals                      |
+| `Erc4626SupplyFuseUnsupportedVault("enter", vault)`     | the deployed ERC4626 supply fuse | the vault named in the action is not a granted substrate of the market                                                             |
+| `FailedInnerCall()`                                     | `PlasmaVault.execute`            | the fuse delegatecall reverted without data — see the next entry                                                                   |
+| `DaoFeePackageIndexOutOfBounds(index, length)`          | `FusionFactory.clone`            | the fee package index is not one of the factory's `length` packages                                                                |
+| `UnsupportedAsset()`                                    | `PriceOracleMiddleware`          | no price source for the asset, and the Chainlink registry has none either                                                          |
+| `WithdrawManagerNotSet()`                               | vault initializer                | the initialization data names no withdraw manager                                                                                  |
+
 ### `FailedInnerCall()` from `PlasmaVault.execute`
 
-A fuse delegatecall reverted. The most common cause on the pilot is encoding the
-**source's** interface against an **older deployed** fuse. Probe the deployed
-selectors:
+A fuse delegatecall reverted without data. The most common cause on the pilot
+is encoding the **source's** interface against an **older deployed** fuse (the
+selector is unknown to the deployed code, so nothing runs and nothing is
+returned). Probe the deployed selectors:
 
 ```bash
 CODE=$(cast code --rpc-url "$ETHEREUM_PROVIDER_URL" --block 25937526 \
@@ -251,10 +295,12 @@ cast nonce <sender> --rpc-url "$ETHEREUM_PROVIDER_URL" --block pending
 
 ### `status: "reverted"` from `vault:verify`
 
-The transaction was mined and failed; no vault exists. Replay it locally at the
-block before it to see the revert:
+The transaction was mined and failed; no vault exists. The report's
+`revertReason` names what the call reverts with when replayed at the parent
+block (see [Naming a revert](#naming-a-revert)); to trace it step by step:
 
 ```bash
+npm run revert:decode -- --tx <hash> --chain 1
 cast run <hash> --rpc-url "$ETHEREUM_PROVIDER_URL"
 ```
 

@@ -13,9 +13,10 @@
 // emitter, and are then completed with state reads.
 
 import { relative, resolve } from "node:path";
-import { ChainError, cast, checksum, providerUrl, rpc } from "./lib/chain.mjs";
+import { ChainError, cast, checksum, providerUrl, revertDataOf, rpc, rpcRaw } from "./lib/chain.mjs";
 import { selectCreationLog } from "./lib/creation-log.mjs";
 import { InputError, checkVaultConfig, manifestPathFor, readJsonOrThrow, repoRoot } from "./lib/vault-config.mjs";
+import { decodeRevert, loadErrorMap } from "./lib/revert-decoder.mjs";
 import { readVaultState, checkVaultState } from "./lib/vault-state.mjs";
 
 const creationEvent =
@@ -41,7 +42,10 @@ function parseArgs(argv) {
         const flag = rest[index];
         const value = rest[index + 1];
         if (!value || !flags.includes(flag)) {
-            die("INVALID_ARGUMENT", "expected --chain <id> --tx <hash> [--rpc-url <url>] [--min-confirmations <n>] [--config <file>] [--json]");
+            die(
+                "INVALID_ARGUMENT",
+                "expected --chain <id> --tx <hash> [--rpc-url <url>] [--min-confirmations <n>] [--config <file>] [--json]",
+            );
         }
         if (Object.hasOwn(values, flag)) die("INVALID_ARGUMENT", `duplicate ${flag}`);
         values[flag] = value;
@@ -69,6 +73,12 @@ const input = parseArgs(process.argv.slice(2));
 const report = await (async () => {
     const manifestPath = manifestPathFor(input.chainId);
     const manifest = readJsonOrThrow(manifestPath, "MANIFEST_UNREADABLE");
+    let errorMap = {};
+    try {
+        errorMap = loadErrorMap();
+    } catch {
+        // Without catalog/errors.json a revert is still reported, only not named.
+    }
 
     let config = null;
     if (input.configPath) {
@@ -76,7 +86,10 @@ const report = await (async () => {
         const { findings } = checkVaultConfig(config);
         if (findings.length > 0) {
             const first = findings[0];
-            throw new InputError(first.code, `${relative(repoRoot, input.configPath)} ${first.where}: ${first.message}`);
+            throw new InputError(
+                first.code,
+                `${relative(repoRoot, input.configPath)} ${first.where}: ${first.message}`,
+            );
         }
     }
 
@@ -139,9 +152,26 @@ const report = await (async () => {
     };
 
     if (receipt.status !== "0x1") {
+        // Replayed at the parent block, the same call usually reverts with the same
+        // data, which the repository's error map can name. A replay that succeeds
+        // means the revert depended on state inside the block or on gas.
+        const parent = `0x${(blockNumber - 1).toString(16)}`;
+        const replay = await rpcRaw(provider.url, "eth_call", [
+            { from: transaction.from, to: transaction.to, data: transaction.input, value: transaction.value },
+            parent,
+        ]);
+        const revertData = replay.error ? revertDataOf(replay.error) : null;
         return {
             ...base,
             status: "reverted",
+            revertReason: replay.error
+                ? { data: revertData, replayedAtBlock: blockNumber - 1, ...decodeRevert(revertData ?? "0x", errorMap) }
+                : {
+                      data: null,
+                      replayedAtBlock: blockNumber - 1,
+                      kind: "did-not-revert",
+                      text: "the call succeeds when replayed at the parent block; the revert depended on state inside the block or on gas",
+                  },
             warnings: ["the creation reverted; no vault exists and the transaction must not be retried blindly"],
         };
     }
@@ -164,10 +194,16 @@ const report = await (async () => {
     const topic = cast(["keccak", creationEvent]);
     const selection = selectCreationLog(receipt.logs, deployment.address, topic);
     if (selection.status === "absent") {
-        throw new ChainError("CREATION_EVENT_ABSENT", "the receipt carries no creation event from the registered factory");
+        throw new ChainError(
+            "CREATION_EVENT_ABSENT",
+            "the receipt carries no creation event from the registered factory",
+        );
     }
     if (selection.status === "ambiguous") {
-        throw new ChainError("CREATION_EVENT_AMBIGUOUS", `the receipt carries ${selection.count} creation events from the factory`);
+        throw new ChainError(
+            "CREATION_EVENT_AMBIGUOUS",
+            `the receipt carries ${selection.count} creation events from the factory`,
+        );
     }
     if (selection.status === "foreign-only") {
         throw new ChainError(
@@ -205,7 +241,13 @@ const report = await (async () => {
     for (const candidate of emitters) {
         if (candidate.toLowerCase() === plasmaVault.toLowerCase()) continue;
         try {
-            const owner = cast(["call", "--rpc-url", provider.url, candidate, "getPlasmaVaultAddress()(address)"]).trim();
+            const owner = cast([
+                "call",
+                "--rpc-url",
+                provider.url,
+                candidate,
+                "getPlasmaVaultAddress()(address)",
+            ]).trim();
             if (owner.toLowerCase() === plasmaVault.toLowerCase()) {
                 instance.withdrawManager = candidate;
                 break;
@@ -218,16 +260,20 @@ const report = await (async () => {
     let verification = null;
     if (config) {
         const readings = await readVaultState(provider.url, instance, deployment.address);
-        verification = checkVaultState(readings, {
-            name: config.vault.name,
-            symbol: config.vault.symbol,
-            underlying: config.vault.underlying.address,
-            underlyingDecimals: String(config.vault.underlying.decimals),
-            redemptionDelaySeconds: String(config.vault.redemptionDelaySeconds),
-            managementFeeBps: config.fees.expected.managementFeeBps,
-            performanceFeeBps: config.fees.expected.performanceFeeBps,
-            feeRecipient: config.fees.expected.feeRecipient,
-        }, instance);
+        verification = checkVaultState(
+            readings,
+            {
+                name: config.vault.name,
+                symbol: config.vault.symbol,
+                underlying: config.vault.underlying.address,
+                underlyingDecimals: String(config.vault.underlying.decimals),
+                redemptionDelaySeconds: String(config.vault.redemptionDelaySeconds),
+                managementFeeBps: config.fees.expected.managementFeeBps,
+                performanceFeeBps: config.fees.expected.performanceFeeBps,
+                feeRecipient: config.fees.expected.feeRecipient,
+            },
+            instance,
+        );
     }
 
     return {
@@ -235,7 +281,8 @@ const report = await (async () => {
         status: verification && !verification.ok ? "unverified" : "success",
         result: {
             instance,
-            unresolved: verification?.unresolved ?? ["withdrawManager", "contextManager"].filter((key) => !instance[key]),
+            unresolved:
+                verification?.unresolved ?? ["withdrawManager", "contextManager"].filter((key) => !instance[key]),
             foreignEventsIgnored: selection.foreign.length,
             verification: verification ? { ok: verification.ok, checks: verification.checks } : null,
         },
@@ -256,12 +303,17 @@ if (input.asJson) {
     if (report.result) {
         console.log(`  vault      ${report.result.instance.plasmaVault}`);
         console.log(`  owner      ${report.result.instance.initialOwner}`);
-        console.log(`  underlying ${report.result.instance.underlyingToken} (${report.result.instance.underlyingTokenSymbol})`);
+        console.log(
+            `  underlying ${report.result.instance.underlyingToken} (${report.result.instance.underlyingTokenSymbol})`,
+        );
         console.log(`  unresolved ${report.result.unresolved.join(", ") || "none"}`);
         if (report.result.verification) {
             const failed = report.result.verification.checks.filter((check) => !check.ok);
-            console.log(`  checks     ${report.result.verification.checks.length - failed.length}/${report.result.verification.checks.length} passed`);
-            for (const check of failed) console.log(`  FAILED     ${check.id}: observed ${check.observed}, expected ${check.expected}`);
+            console.log(
+                `  checks     ${report.result.verification.checks.length - failed.length}/${report.result.verification.checks.length} passed`,
+            );
+            for (const check of failed)
+                console.log(`  FAILED     ${check.id}: observed ${check.observed}, expected ${check.expected}`);
         }
     }
 }

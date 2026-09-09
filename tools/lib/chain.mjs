@@ -64,6 +64,40 @@ export async function rpc(url, method, params) {
     }
 }
 
+/// JSON-RPC that keeps the provider's error object: revert data of a failed
+/// eth_call travels in error.data. Returns { result } or { error: { code, message, data } }.
+export async function rpcRaw(url, method, params) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+            signal: controller.signal,
+        });
+        if (!response.ok) return { error: { code: null, message: `HTTP ${response.status}`, data: null } };
+        const body = await response.json();
+        if (body.error) return { error: body.error };
+        return { result: body.result };
+    } catch (error) {
+        return { error: { code: null, message: String(error.message ?? error), data: null } };
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+/// Revert data carried by a JSON-RPC error, wherever the provider puts it
+/// (anvil: error.data; some providers: error.data.data or error.data.originalError.data).
+export function revertDataOf(error) {
+    if (!error) return null;
+    const candidates = [error.data, error.data?.data, error.data?.originalError?.data];
+    for (const candidate of candidates) {
+        if (typeof candidate === "string" && /^0x[0-9a-fA-F]*$/.test(candidate)) return candidate;
+    }
+    return null;
+}
+
 export function cast(args) {
     const result = spawnSync("cast", args, { cwd: repoRoot, encoding: "utf8" });
     if (result.error || result.status !== 0) throw new ChainError("CAST_FAILED", `cast ${args[0]} failed`);

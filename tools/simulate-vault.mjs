@@ -16,9 +16,10 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { ChainError, cast, checksum, providerUrl, rpc } from "./lib/chain.mjs";
+import { ChainError, cast, checksum, providerUrl, revertDataOf, rpc, rpcRaw } from "./lib/chain.mjs";
 import { forkRpc, startFork } from "./lib/fork.mjs";
 import { InputError, readJsonOrThrow, repoRoot } from "./lib/vault-config.mjs";
+import { decodeRevert, loadErrorMap } from "./lib/revert-decoder.mjs";
 import { verifyVaultState } from "./lib/vault-state.mjs";
 
 // The deployed ABI does not carry the factory's creation event (it is emitted
@@ -91,6 +92,13 @@ if (plan.kind !== "vault-creation" || plan.status !== "planned") {
     die("INVALID_PLAN", `${relative(repoRoot, input.planPath)} is not a planned vault creation`);
 }
 
+let errorMap = {};
+try {
+    errorMap = loadErrorMap();
+} catch {
+    // Without catalog/errors.json a revert is still reported, only not named.
+}
+
 const blockNumber = input.blockNumber ?? plan.readBlock?.number;
 if (!Number.isInteger(blockNumber)) die("INVALID_PLAN", "the plan has no read block and none was given");
 
@@ -127,13 +135,18 @@ const report = await (async () => {
 
     // The return value is read first, from the same state, because a receipt
     // does not carry it. It is a prediction until the logs confirm it.
-    const predicted = await rpc(fork.url, "eth_call", [{ from, to, data, value: "0x0" }, "latest"]);
+    const predicted = await rpcRaw(fork.url, "eth_call", [{ from, to, data, value: "0x0" }, "latest"]);
 
     await forkRpc(fork.url, "anvil_impersonateAccount", [from], "IMPERSONATION_FAILED");
     // Explicit, fork-only funding: the caller pays gas in the simulation.
     await forkRpc(fork.url, "anvil_setBalance", [from, "0xde0b6b3a7640000"], "IMPERSONATION_FAILED");
 
-    const txHash = await forkRpc(fork.url, "eth_sendTransaction", [{ from, to, data, value: "0x0" }], "SIMULATION_FAILED");
+    const txHash = await forkRpc(
+        fork.url,
+        "eth_sendTransaction",
+        [{ from, to, data, value: "0x0" }],
+        "SIMULATION_FAILED",
+    );
     let receipt = null;
     for (let attempt = 0; attempt < 40 && receipt === null; attempt += 1) {
         receipt = await forkRpc(fork.url, "eth_getTransactionReceipt", [txHash], "SIMULATION_FAILED");
@@ -205,9 +218,18 @@ const report = await (async () => {
         );
     }
 
+    // A reverted call is named through the repository's error map (catalog/errors.json);
+    // an unknown selector or empty data is reported as such, never guessed.
     let revert = null;
     if (!succeeded) {
-        revert = predicted.error ? "the call reverted; the provider returned no decodable reason" : null;
+        const revertData = predicted.error ? revertDataOf(predicted.error) : null;
+        revert = {
+            data: revertData,
+            ...decodeRevert(revertData ?? "0x", errorMap),
+            note: predicted.error
+                ? null
+                : "eth_call succeeded but the sent transaction reverted; the state changed between the two or the fork rejected the transaction",
+        };
     }
 
     return {
@@ -258,7 +280,9 @@ fork?.stop();
 const serialized = `${JSON.stringify(report, null, 4)}\n`;
 if (input.outPath) {
     writeFileSync(input.outPath, serialized);
-    console.log(`vault:simulate: ${report.status} (gas ${report.result.gasUsed}), wrote ${relative(repoRoot, input.outPath)}`);
+    console.log(
+        `vault:simulate: ${report.status} (gas ${report.result.gasUsed}), wrote ${relative(repoRoot, input.outPath)}`,
+    );
 } else {
     process.stdout.write(serialized);
 }

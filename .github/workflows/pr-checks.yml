@@ -74,6 +74,7 @@ jobs:
                   npm run validate:vault-config
                   npm run validate:catalog
                   npm run catalog:check
+                  npm run errors:check
 
             - name: Tooling tests without RPC
               env:
@@ -88,6 +89,7 @@ jobs:
                   npm run validate:vault-config:test
                   npm run validate:catalog:test
                   npm run keccak:test
+                  npm run revert:decode:test
                   npm run validate:docs:test
                   npm run evals:report:test
                   npm run mcp:deployments:test

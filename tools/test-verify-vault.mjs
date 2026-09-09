@@ -97,10 +97,14 @@ test("a receipt resolves the real addresses, and pending, revert and finality st
         // 1. a successful creation
         const hash = await send(fork.url, calldata("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"));
         const ok = await run(verifier, [
-            "--chain", "1",
-            "--tx", hash,
-            "--rpc-url", fork.url,
-            "--config", example,
+            "--chain",
+            "1",
+            "--tx",
+            hash,
+            "--rpc-url",
+            fork.url,
+            "--config",
+            example,
             "--json",
         ]);
         assert.equal(ok.status, 0, ok.stderr);
@@ -112,14 +116,22 @@ test("a receipt resolves the real addresses, and pending, revert and finality st
         assert.equal(report.result.instance.underlyingTokenSymbol, "USDC");
         assert.ok(report.result.instance.withdrawManager, "the withdraw manager was not resolved from the receipt");
         assert.deepEqual(report.result.unresolved, ["contextManager"]);
-        assert.equal(report.result.verification.ok, true, JSON.stringify(report.result.verification.checks.filter((c) => !c.ok)));
+        assert.equal(
+            report.result.verification.ok,
+            true,
+            JSON.stringify(report.result.verification.checks.filter((c) => !c.ok)),
+        );
 
         // 2. the same receipt without enough confirmations
         const notFinal = await run(verifier, [
-            "--chain", "1",
-            "--tx", hash,
-            "--rpc-url", fork.url,
-            "--min-confirmations", "50",
+            "--chain",
+            "1",
+            "--tx",
+            hash,
+            "--rpc-url",
+            fork.url,
+            "--min-confirmations",
+            "50",
             "--json",
         ]);
         assert.equal(notFinal.status, 0, notFinal.stderr);
@@ -129,7 +141,11 @@ test("a receipt resolves the real addresses, and pending, revert and finality st
         const revertHash = await send(fork.url, calldata("0x4444444444444444444444444444444444444444"));
         const reverted = await run(verifier, ["--chain", "1", "--tx", revertHash, "--rpc-url", fork.url, "--json"]);
         assert.equal(reverted.status, 0, reverted.stderr);
-        assert.equal(JSON.parse(reverted.stdout).status, "reverted");
+        const revertedReport = JSON.parse(reverted.stdout);
+        assert.equal(revertedReport.status, "reverted");
+        // Replayed at the parent block, the codeless-token creation reverts without data.
+        assert.equal(revertedReport.revertReason.kind, "empty");
+        assert.equal(revertedReport.revertReason.replayedAtBlock, revertedReport.transaction.blockNumber - 1);
 
         // 4. a transaction that is known but not yet mined
         await rpc(fork.url, "evm_setAutomine", [false]);
@@ -139,11 +155,7 @@ test("a receipt resolves the real addresses, and pending, revert and finality st
         assert.equal(JSON.parse(pending.stdout).status, "pending");
 
         // 5. a transaction the endpoint has never seen
-        const unknown = await run(verifier, [
-            "--chain", "1",
-            "--tx", `0x${"ab".repeat(32)}`,
-            "--rpc-url", fork.url,
-        ]);
+        const unknown = await run(verifier, ["--chain", "1", "--tx", `0x${"ab".repeat(32)}`, "--rpc-url", fork.url]);
         assert.equal(unknown.status, 1);
         assert.match(unknown.stderr, /TRANSACTION_UNKNOWN/);
     } finally {

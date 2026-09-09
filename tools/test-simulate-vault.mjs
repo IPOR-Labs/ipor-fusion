@@ -120,7 +120,11 @@ test("the planned calldata runs on a fork and reports gas, block and created add
         assert.equal(report.result.created.underlyingTokenSymbol, "USDC");
 
         // The state of the created vault is verified, not assumed from the addresses.
-        assert.equal(report.result.verification.ok, true, JSON.stringify(report.result.verification.checks.filter((c) => !c.ok)));
+        assert.equal(
+            report.result.verification.ok,
+            true,
+            JSON.stringify(report.result.verification.checks.filter((c) => !c.ok)),
+        );
         assert.ok(report.result.verification.checks.length >= 25);
 
         assert.doesNotMatch(result.stdout + result.stderr, new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -188,6 +192,11 @@ test("a reverting creation is reported as reverted, not as a failure of the tool
         assert.equal(report.status, "reverted");
         assert.equal(report.result.succeeded, false);
         assert.equal(report.result.created, null);
+        // The reason is decoded, never guessed: a codeless token makes the factory
+        // revert without data, and that is what the report says.
+        assert.equal(report.result.revertReason.kind, "empty");
+        assert.equal(report.result.revertReason.data, "0x");
+        assert.match(report.result.revertReason.text, /reverted without data/);
     } finally {
         rmSync(directory, { recursive: true, force: true });
     }

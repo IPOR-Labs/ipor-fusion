@@ -142,6 +142,9 @@ operation and its scope in the task. Simulation is not authorization to execute.
 - Inspect `git status` before editing. Preserve user changes and keep unrelated formatting or generated files out.
 - Never commit `.env`, RPC URLs, keys, mnemonics, signer material, or copied production calldata containing secrets.
 - Keep changes atomic. Do not use destructive Git commands to clean a shared worktree.
+- A contract change that adds, renames or removes a custom error must be followed by `npm run errors:generate`
+  (`catalog/errors.json`; CI runs `errors:check`). Name a revert with `npm run revert:decode -- --data 0x…` or
+  `--tx <hash> --chain <id>` instead of guessing from the selector; see `docs/troubleshooting.md`.
 - For a bug fix: reproduce, identify the cause, add a focused regression test, implement, run narrow tests, then expand
   based on risk.
 - In the handoff, list changed files, commands run, pass/fail counts, inherited failures, fork network/block if used, and

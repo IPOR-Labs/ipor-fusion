@@ -7,8 +7,7 @@
 // contract-typed fields and fixed or dynamic arrays of those — and stops with
 // a named error on anything else rather than guessing a selector.
 
-import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 
 export class SolidityReadError extends Error {
@@ -134,6 +133,21 @@ function importsOf(repoRoot, source, path) {
     return files;
 }
 
+/// Every .sol file under the given directories, repository-relative, sorted.
+export function solidityFiles(repoRoot, directories) {
+    const files = [];
+    const walk = (directory) => {
+        if (!existsSync(directory)) return;
+        for (const entry of readdirSync(directory).sort()) {
+            const path = resolve(directory, entry);
+            if (statSync(path).isDirectory()) walk(path);
+            else if (entry.endsWith(".sol")) files.push(relative(repoRoot, path));
+        }
+    };
+    for (const directory of directories) walk(resolve(repoRoot, directory));
+    return files;
+}
+
 const declarationKinds = "struct|enum|contract|interface|library|abstract\\s+contract|type";
 
 function declarationIn(source, name) {
@@ -163,14 +177,11 @@ function findDeclaration(repoRoot, preferredSource, preferredPath, name, searchR
     if (!searchRepository) {
         throw new SolidityReadError("STRUCT_NOT_FOUND", `${name} is not declared in ${preferredPath} or its imports`);
     }
-    const result = spawnSync(
-        "rg",
-        ["-l", "--glob", "*.sol", "-e", `^\\s*(${declarationKinds})\\s+${name}\\b`, "contracts", "lib"],
-        { cwd: repoRoot, encoding: "utf8" },
-    );
+    const pattern = new RegExp(`^\\s*(${declarationKinds})\\s+${name}\\b`, "m");
     const hits = [];
-    for (const file of (result.stdout ?? "").split("\n").filter(Boolean).sort()) {
+    for (const file of solidityFiles(repoRoot, ["contracts", "lib"])) {
         const source = readFileSync(resolve(repoRoot, file), "utf8");
+        if (!pattern.test(source)) continue;
         const declaration = declarationIn(source, name);
         if (declaration) hits.push({ ...declaration, path: file, source });
     }
