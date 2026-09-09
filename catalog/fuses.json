@@ -18818,6 +18818,97 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-erc20-vault-balance-market-7",
+            "protocol": "erc20",
+            "chainId": 1,
+            "market": {
+                "id": 7,
+                "constant": "ERC20_VAULT_BALANCE",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/erc20/Erc20BalanceFuse.sol",
+                "balanceFuse": "contracts/fuses/erc20/Erc20BalanceFuse.sol"
+            },
+            "interface": {
+                "balanceOf": {
+                    "signature": "balanceOf()",
+                    "selector": "0x722713f7",
+                    "struct": null,
+                    "fields": []
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:22",
+                    "sources": {
+                        "contracts/fuses/erc20/Erc20BalanceFuse.sol": "0xfe0f2cbaa4063b1ac71b006ccfaf5e53b89e9ca68733d0f940881e87cbebfdf1"
+                    },
+                    "operations": {
+                        "balanceOf": {
+                            "struct": null,
+                            "signature": "balanceOf()",
+                            "selector": "0x722713f7",
+                            "source": "contracts/fuses/erc20/Erc20BalanceFuse.sol:58",
+                            "fields": []
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "ERC20 token addresses whose idle balance on the Plasma Vault is valued (e.g. reward or intermediate tokens held between operations). This market has no action fuse: nothing enters or exits it, the balance fuse only iterates the list and skips the vault's own underlying asset to avoid double counting. Other markets (Morpho flash loan, swappers, Pendle, Napier) declare a dependency on it so idle balances are refreshed after their actions.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "none: the balance fuse reads PlasmaVaultConfigLib.getMarketSubstrates and converts each bytes32 to an address; no grant check is performed because nothing is executed",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "IERC20.balanceOf(vault) of every substrate token except the vault's underlying asset, each converted with the token's decimals",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice per token",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "none: the market has no action fuse; balances are refreshed by PlasmaVault.updateMarketsBalances (UPDATE_MARKETS_BALANCES_ROLE 1000, or after any execute through the dependency graph)",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the balance fuse (addBalanceFuse); there is no action fuse to register",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/erc20/Erc20BalanceArbitrum.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseErc20",
+                    "address": "0x6cEBf3e3392D0860Ed174402884b941DCBB30654",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xf270b6b5ded0c3230797c7018f557d4914d2ba6a4f319653fb270ce5fef69d13",
+                    "observedMarketId": 7,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "this is the balance fuse deployment repeated: the market has no action fuse and the catalog schema requires one, so the balance fuse is listed as the primary with its balanceOf() entry point",
+                        "MARKET_ID() returned 7 at the observed block; VERSION() reverted, while this checkout's Erc20BalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse",
+                        "balanceOf() 0x722713f7 is present in the deployed runtime code"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseErc20",
+                    "address": "0x6cEBf3e3392D0860Ed174402884b941DCBB30654",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xf270b6b5ded0c3230797c7018f557d4914d2ba6a4f319653fb270ce5fef69d13",
+                    "observedMarketId": 7,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 7 at the observed block",
+                        "VERSION() reverted, while this checkout's Erc20BalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse"
+                    ]
+                }
+            }
         }
     ]
 }
