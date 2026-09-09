@@ -1,0 +1,24 @@
+T37 verification — 2026-09-09 (Europe/Warsaw)
+
+Every referenced path exists in this checkout:
+  test/deployed-factories/Erc4626StrategyLifecycleEthereum.t.sol
+  test/deployed-factories/FusionFactoryEthereum.t.sol
+  test/vaults/PlasmaVaultErc4626ComplianceTest.t.sol
+  test/vaults/PlasmaVaultFee.t.sol
+  test/vaults/PlasmaVaultScheduledWithdraw.t.sol
+  test/roles/IporPlasmaVaultRolesTest.t.sol
+  tools/lib/vault-state.mjs, tools/test-vault-state.mjs, tools/test-configure-strategy.mjs
+  contracts/fuses/erc4626/Erc4626SupplyFuse.sol, Erc4626BalanceFuse.sol
+  docs/recipes/create-vault.md, docs/recipes/erc4626-strategy.md
+
+Every referenced test name exists:
+  testShouldExitFromTwoMarketsAaveV3SupplyAndCompoundV3SupplyAndCalculatePerformanceFee  (1 match)
+  testPreviewDepositMustNotRevert                                                        (1 match)
+  Erc4626SupplyFuseUnsupportedVault                                                      (3 matches in the fuse)
+
+Labels were assigned from runs made in T25–T36, not from reading intentions:
+  tested      12 properties, each with the assertion and tolerance named
+  postulated  11 properties, including four listed as gaps to close
+
+The document deliberately does not run the contract suite: it is documentation of
+evidence that already exists, and every claim points at the file that carries it.
