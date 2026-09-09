@@ -6176,6 +6176,589 @@
                     "notes": []
                 }
             }
+        },
+        {
+            "id": "arbitrum-dolomite-market-47",
+            "protocol": "dolomite",
+            "chainId": 42161,
+            "market": {
+                "id": 47,
+                "constant": "DOLOMITE",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/dolomite/DolomiteBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256,uint8,uint256))",
+                    "selector": "0x1aa86026",
+                    "struct": "DolomiteSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the token to deposit into Dolomite; asset + subAccountId must be a granted substrate (with or without the canBorrow flag)"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to deposit, in the token's smallest unit; capped at the Plasma Vault's balance"
+                        },
+                        {
+                            "name": "minBalanceIncrease",
+                            "type": "uint256",
+                            "meaning": "slippage floor on the growth of the Dolomite account balance (Wei units); 0 disables the check, otherwise a smaller increase reverts with DolomiteSupplyFuseBalanceIncreaseTooSmall"
+                        },
+                        {
+                            "name": "subAccountId",
+                            "type": "uint8",
+                            "meaning": "Dolomite sub-account number under the Plasma Vault's owner address"
+                        },
+                        {
+                            "name": "isolationModeMarketId",
+                            "type": "uint256",
+                            "meaning": "Dolomite market id of an isolation-mode vault to route through the DepositWithdrawalRouter; 0 for a normal asset"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,uint256,uint8,uint256))",
+                    "selector": "0xebefc48e",
+                    "struct": "DolomiteSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the token to withdraw; asset + subAccountId must be a granted substrate"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to withdraw, in the token's smallest unit; capped at the account's Dolomite balance"
+                        },
+                        {
+                            "name": "minAmountOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokens actually received; 0 disables the check, otherwise reverts with DolomiteSupplyFuseWithdrawAmountTooSmall"
+                        },
+                        {
+                            "name": "subAccountId",
+                            "type": "uint8",
+                            "meaning": "Dolomite sub-account number to withdraw from"
+                        },
+                        {
+                            "name": "isolationModeMarketId",
+                            "type": "uint256",
+                            "meaning": "isolation-mode market id routed through the DepositWithdrawalRouter; 0 for a normal asset"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:226",
+                    "sources": {
+                        "contracts/fuses/dolomite/DolomiteSupplyFuse.sol": "0xd7202350ff446b55da88db0a648ec171c5854f92354c5fabb6a9b0c8d4a58a52",
+                        "contracts/fuses/dolomite/DolomiteBalanceFuse.sol": "0xe3f1fb754b17878af8245a7b65f11afa2dbd34daa2dbe3b391bf1d85b59eab89"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "DolomiteSupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256,uint8,uint256))",
+                            "selector": "0x1aa86026",
+                            "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:16",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:18"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:20"
+                                },
+                                {
+                                    "name": "minBalanceIncrease",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:22"
+                                },
+                                {
+                                    "name": "subAccountId",
+                                    "type": "uint8",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:24"
+                                },
+                                {
+                                    "name": "isolationModeMarketId",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:26"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "DolomiteSupplyFuseExitData",
+                            "signature": "exit((address,uint256,uint256,uint8,uint256))",
+                            "selector": "0xebefc48e",
+                            "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:30",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:32"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:34"
+                                },
+                                {
+                                    "name": "minAmountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:36"
+                                },
+                                {
+                                    "name": "subAccountId",
+                                    "type": "uint8",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:38"
+                                },
+                                {
+                                    "name": "isolationModeMarketId",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/dolomite/DolomiteSupplyFuse.sol:40"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol",
+                    "purpose": "borrows an asset into a Dolomite sub-account on enter (substrate must carry canBorrow) and repays on exit",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256,uint8))",
+                            "selector": "0x30143dd3",
+                            "struct": "DolomiteBorrowFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "the token to borrow; asset + subAccountId must be a granted substrate with canBorrow = true"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to borrow, in the token's smallest unit"
+                                },
+                                {
+                                    "name": "minAmountOut",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on tokens actually received; below it reverts with DolomiteBorrowFuseSlippageExceeded"
+                                },
+                                {
+                                    "name": "subAccountId",
+                                    "type": "uint8",
+                                    "meaning": "Dolomite sub-account that takes the debt"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256,uint8))",
+                            "selector": "0x7e597ed6",
+                            "struct": "DolomiteBorrowFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "the token to repay; asset + subAccountId must be granted for supply or borrow"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to repay, in the token's smallest unit; capped at the outstanding debt and the vault balance"
+                                },
+                                {
+                                    "name": "minDebtReduction",
+                                    "type": "uint256",
+                                    "meaning": "floor on the debt actually reduced; below it reverts with DolomiteBorrowFuseDebtReductionTooSmall"
+                                },
+                                {
+                                    "name": "subAccountId",
+                                    "type": "uint8",
+                                    "meaning": "Dolomite sub-account whose debt is repaid"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/dolomite/DolomiteBorrowFuse.sol": "0xd6a9c84619d422dff3fc43f62e580ecc34d9b1134c8a9956571920dc85ccf7a2"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "DolomiteBorrowFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256,uint8))",
+                                    "selector": "0x30143dd3",
+                                    "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:13",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:15"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:17"
+                                        },
+                                        {
+                                            "name": "minAmountOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "subAccountId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:21"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "DolomiteBorrowFuseExitData",
+                                    "signature": "exit((address,uint256,uint256,uint8))",
+                                    "selector": "0x7e597ed6",
+                                    "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:25",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:29"
+                                        },
+                                        {
+                                            "name": "minDebtReduction",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:31"
+                                        },
+                                        {
+                                            "name": "subAccountId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteBorrowFuse.sol:33"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf (all mainnet-*-fusion and partner addresses.json) for \"Dolomite\": no fuse of this integration is registered on any chain; not read on chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol",
+                    "purpose": "moves an asset between two Dolomite sub-accounts of the vault (enter: from → to as collateral, exit: back); both sub-accounts must be granted",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256,uint8,uint8))",
+                            "selector": "0xd3f5688c",
+                            "struct": "DolomiteCollateralFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "the token moved between sub-accounts; both source and destination (asset + subAccountId) must be granted substrates"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to move, in the token's smallest unit; capped at the source sub-account balance"
+                                },
+                                {
+                                    "name": "minSharesOut",
+                                    "type": "uint256",
+                                    "meaning": "floor on the amount actually moved after the cap; below it reverts with DolomiteCollateralFuseSlippageExceeded"
+                                },
+                                {
+                                    "name": "fromSubAccountId",
+                                    "type": "uint8",
+                                    "meaning": "source Dolomite sub-account"
+                                },
+                                {
+                                    "name": "toSubAccountId",
+                                    "type": "uint8",
+                                    "meaning": "destination Dolomite sub-account (the one used as collateral)"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256,uint8,uint8))",
+                            "selector": "0x7b9e1304",
+                            "struct": "DolomiteCollateralFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "the token moved back; both sub-accounts must be granted substrates"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to move, in the token's smallest unit; capped at the source sub-account balance"
+                                },
+                                {
+                                    "name": "minCollateralOut",
+                                    "type": "uint256",
+                                    "meaning": "floor on the amount actually moved; below it reverts with DolomiteCollateralFuseSlippageExceeded"
+                                },
+                                {
+                                    "name": "fromSubAccountId",
+                                    "type": "uint8",
+                                    "meaning": "source Dolomite sub-account"
+                                },
+                                {
+                                    "name": "toSubAccountId",
+                                    "type": "uint8",
+                                    "meaning": "destination Dolomite sub-account"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/dolomite/DolomiteCollateralFuse.sol": "0x8d937ae523598ece29229b02bde8b53e280cbaa07a3305df698f59363d208970"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "DolomiteCollateralFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256,uint8,uint8))",
+                                    "selector": "0xd3f5688c",
+                                    "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:11",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:13"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:15"
+                                        },
+                                        {
+                                            "name": "minSharesOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:17"
+                                        },
+                                        {
+                                            "name": "fromSubAccountId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "toSubAccountId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:21"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "DolomiteCollateralFuseExitData",
+                                    "signature": "exit((address,uint256,uint256,uint8,uint8))",
+                                    "selector": "0x7b9e1304",
+                                    "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:25",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:29"
+                                        },
+                                        {
+                                            "name": "minCollateralOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:31"
+                                        },
+                                        {
+                                            "name": "fromSubAccountId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:33"
+                                        },
+                                        {
+                                            "name": "toSubAccountId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteCollateralFuse.sol:35"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf (all mainnet-*-fusion and partner addresses.json) for \"Dolomite\": no fuse of this integration is registered on any chain; not read on chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/dolomite/DolomiteEModeFuse.sol",
+                    "purpose": "enables (enter) or disables (exit) a Dolomite E-mode category on a sub-account through the DolomiteAccountRegistry; no substrate check, the sub-account id is trusted",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((uint8,uint8))",
+                            "selector": "0x13bcb2ff",
+                            "struct": "DolomiteEModeFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "subAccountId",
+                                    "type": "uint8",
+                                    "meaning": "Dolomite sub-account to enable E-mode for"
+                                },
+                                {
+                                    "name": "categoryId",
+                                    "type": "uint8",
+                                    "meaning": "E-mode category id; 0 is rejected on enter, an already-set category reverts with DolomiteEModeFuseAlreadyInMode"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((uint8))",
+                            "selector": "0x14cf95b8",
+                            "struct": "DolomiteEModeFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "subAccountId",
+                                    "type": "uint8",
+                                    "meaning": "Dolomite sub-account whose E-mode is disabled; reverts with DolomiteEModeFuseNotInEMode when none is set"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/dolomite/DolomiteEModeFuse.sol": "0x9a5aa2c8154c9ad3aee01a820c9975426f30d03c6fa35c30e2c90df77e1fbe7d"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "DolomiteEModeFuseEnterData",
+                                    "signature": "enter((uint8,uint8))",
+                                    "selector": "0x13bcb2ff",
+                                    "source": "contracts/fuses/dolomite/DolomiteEModeFuse.sol:8",
+                                    "fields": [
+                                        {
+                                            "name": "subAccountId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteEModeFuse.sol:10"
+                                        },
+                                        {
+                                            "name": "categoryId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteEModeFuse.sol:12"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "DolomiteEModeFuseExitData",
+                                    "signature": "exit((uint8))",
+                                    "selector": "0x14cf95b8",
+                                    "source": "contracts/fuses/dolomite/DolomiteEModeFuse.sol:16",
+                                    "fields": [
+                                        {
+                                            "name": "subAccountId",
+                                            "type": "uint8",
+                                            "source": "contracts/fuses/dolomite/DolomiteEModeFuse.sol:18"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf (all mainnet-*-fusion and partner addresses.json) for \"Dolomite\": no fuse of this integration is registered on any chain; not read on chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "DolomiteSubstrate {asset, subAccountId, canBorrow} packed into bytes32 by DolomiteFuseLib.substrateToBytes32 (asset << 96 | subAccountId << 88 | canBorrow << 80). Supply, withdraw and collateral moves need the (asset, subAccountId) pair granted with either flag; borrowing needs canBorrow = true; instant withdraw needs canBorrow = false. The balance fuse values every granted (asset, subAccountId) pair.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with values from DolomiteFuseLib.substrateToBytes32",
+                "checkFunction": "DolomiteFuseLib.canSupply / canBorrow / canInstantWithdraw (linear scan of PlasmaVaultConfigLib.getMarketSubstrates)",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every granted (asset, subAccountId): the signed Dolomite account balance from IDolomiteMargin.getAccountWei (positive supply, negative debt) in the asset's smallest unit; the total floors at zero",
+                "priceSource": "PriceOracleMiddleware.getAssetPrice on each substrate asset, read from PlasmaVaultLib.getPriceOracleMiddleware()",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/dolomite/DolomiteIntegrationTest.sol",
+                "test/fuses/dolomite/DolomiteExtendedTest.sol",
+                "test/fuses/dolomite/DolomiteFuseCoverageTest.sol",
+                "test/fuses/dolomite/DolomiteEModeTest.sol",
+                "test/fuses/dolomite/DolomiteVaultBalanceTest.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf (all mainnet-*-fusion and partner addresses.json) for \"Dolomite\": no fuse of this integration is registered on any chain; not read on chain",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf (all mainnet-*-fusion and partner addresses.json) for \"Dolomite\": no fuse of this integration is registered on any chain; not read on chain",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
         }
     ]
 }

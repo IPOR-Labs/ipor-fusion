@@ -114,6 +114,7 @@ chain; the entry itself carries the block, code hash and notes.
 | `ethereum-aave-v4-market-49`                     | Ethereum | 49 `AAVE_V4`                     | `AaveV4SupplyFuse`                      | `AaveV4BorrowFuse`, `AaveV4CollateralFuse`                                                                                                                                               | observed / observed                   |
 | `ethereum-aave-v2-market-1`                      | Ethereum | 1 (constructor, no constant)     | `AaveV2SupplyFuse`                      | –                                                                                                                                                                                        | unknown / unknown                     |
 | `ethereum-compound-v2-market-1`                  | Ethereum | 1 (constructor, no constant)     | `CompoundV2SupplyFuse`                  | –                                                                                                                                                                                        | unknown / unknown                     |
+| `arbitrum-dolomite-market-47`                    | Arbitrum | 47 `DOLOMITE`                    | `DolomiteSupplyFuse`                    | DolomiteBorrowFuse, DolomiteCollateralFuse, DolomiteEModeFuse                                                                                                                            | unknown / unknown                     |
 
 ## The pilot entry
 
