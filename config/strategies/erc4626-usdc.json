@@ -1,0 +1,22 @@
+{
+    "schemaVersion": 1,
+    "chainId": 1,
+    "catalogId": "ethereum-erc4626-market-100001",
+    "operators": {
+        "owner": "0x2222222222222222222222222222222222222222",
+        "atomist": "0x2222222222222222222222222222222222222222",
+        "fuseManager": "0x2222222222222222222222222222222222222222",
+        "alpha": "0x3333333333333333333333333333333333333333"
+    },
+    "market": {
+        "id": 100001,
+        "limitInPercentageWad": "500000000000000000",
+        "substrates": [
+            {
+                "address": "0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB",
+                "label": "Steakhouse USDC (MetaMorpho ERC4626, asset USDC)"
+            }
+        ]
+    },
+    "pricedAssets": ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]
+}

@@ -1,0 +1,14 @@
+feat(vault): T35 configure the ERC4626 pilot strategy
+
+Add vault:configure, which applies one catalogued integration to one created
+vault on a development fork: it grants the operator roles, registers the action
+and balance fuse, grants exactly the listed ERC4626 substrates and sets and
+activates the market limit, then reads the configuration back from the vault.
+
+Wrong inputs are named refusals: an unknown catalog entry, another market, a fuse
+the catalog never observed, a substrate in another asset, an unpriceable asset, a
+missing role, or an endpoint that is not a fork.
+
+Verified on a fork: the configured operators configure a freshly created vault,
+a non-owner is refused with MISSING_ROLE and an sDAI substrate with
+SUBSTRATE_ASSET_MISMATCH.
