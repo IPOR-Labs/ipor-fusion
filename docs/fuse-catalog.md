@@ -121,6 +121,7 @@ chain; the entry itself carries the block, code hash and notes.
 | `ethereum-uniswap-market-10`                     | Ethereum | 10 `UNISWAP_SWAP_V3`             | `UniswapV3SwapFuse`                     | –                                                                                                                                                                                        | observed / observed (ZeroBalanceFuse) |
 | `ethereum-uniswap-market-53`                     | Ethereum | 53 `UNISWAP_V4`                  | `UniswapV4NewPositionFuse`              | `UniswapV4ModifyPositionFuse`, `UniswapV4CollectFuse`                                                                                                                                    | observed / observed                   |
 | `arbitrum-ramses-market-18`                      | Arbitrum | 18 `RAMSES_V2_POSITIONS`         | `RamsesV2NewPositionFuse`               | `RamsesV2ModifyPositionFuse`, `RamsesV2CollectFuse`, `RamsesClaimFuse`                                                                                                                   | observed / observed                   |
+| `base-aerodrome-market-30`                       | Base     | 30 `AERODROME`                   | `AerodromeLiquidityFuse`                | `AerodromeGaugeFuse`, `AerodromeClaimFeesFuse`, `AerodromeGaugeClaimFuse`                                                                                                                | observed / observed                   |
 
 ## The pilot entry
 

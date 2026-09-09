@@ -8920,6 +8920,475 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "base-aerodrome-market-30",
+            "protocol": "aerodrome",
+            "chainId": 8453,
+            "market": {
+                "id": 30,
+                "constant": "AERODROME",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol",
+                "balanceFuse": "contracts/fuses/aerodrome/AerodromeBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))",
+                    "selector": "0x41610b12",
+                    "struct": "AerodromeLiquidityFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenA",
+                            "type": "address",
+                            "meaning": "first token of the pair; the fuse resolves the pool with Router.poolFor(tokenA, tokenB, stable, factory 0) and that pool must be a granted Pool substrate"
+                        },
+                        {
+                            "name": "tokenB",
+                            "type": "address",
+                            "meaning": "second token of the pair"
+                        },
+                        {
+                            "name": "stable",
+                            "type": "bool",
+                            "meaning": "true for a stable pool, false for a volatile pool; part of the pool identity"
+                        },
+                        {
+                            "name": "amountADesired",
+                            "type": "uint256",
+                            "meaning": "amount of tokenA to add, in tokenA's smallest unit; approved to the router for this call only, zero for both amounts returns without acting"
+                        },
+                        {
+                            "name": "amountBDesired",
+                            "type": "uint256",
+                            "meaning": "amount of tokenB to add, in tokenB's smallest unit"
+                        },
+                        {
+                            "name": "amountAMin",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenA actually added, in tokenA's smallest unit; enforced by the router"
+                        },
+                        {
+                            "name": "amountBMin",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenB actually added, in tokenB's smallest unit"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds after which the router rejects the call"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,address,bool,uint256,uint256,uint256,uint256))",
+                    "selector": "0xf0b0f12e",
+                    "struct": "AerodromeLiquidityFuseExitData",
+                    "fields": [
+                        {
+                            "name": "tokenA",
+                            "type": "address",
+                            "meaning": "first token of the pair; the pool is resolved and checked the same way as on enter"
+                        },
+                        {
+                            "name": "tokenB",
+                            "type": "address",
+                            "meaning": "second token of the pair"
+                        },
+                        {
+                            "name": "stable",
+                            "type": "bool",
+                            "meaning": "true for a stable pool, false for a volatile pool"
+                        },
+                        {
+                            "name": "liquidity",
+                            "type": "uint256",
+                            "meaning": "LP tokens to burn, in LP token units (18 decimals); approved to the router for this call only"
+                        },
+                        {
+                            "name": "amountAMin",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenA received, in tokenA's smallest unit"
+                        },
+                        {
+                            "name": "amountBMin",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenB received, in tokenB's smallest unit"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds after which the router rejects the call"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:98",
+                    "sources": {
+                        "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol": "0x4aad2dc9b6aece3faad43539d4b9d9418664e6473a8b52e2a7998699146998c8",
+                        "contracts/fuses/aerodrome/AerodromeBalanceFuse.sol": "0x0858814b41507815a16abbfd95f1f43de90b9bb5333a21fecb95b6c71c848487"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "AerodromeLiquidityFuseEnterData",
+                            "signature": "enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x41610b12",
+                            "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:23",
+                            "fields": [
+                                {
+                                    "name": "tokenA",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:24"
+                                },
+                                {
+                                    "name": "tokenB",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:25"
+                                },
+                                {
+                                    "name": "stable",
+                                    "type": "bool",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:26"
+                                },
+                                {
+                                    "name": "amountADesired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:27"
+                                },
+                                {
+                                    "name": "amountBDesired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:28"
+                                },
+                                {
+                                    "name": "amountAMin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:29"
+                                },
+                                {
+                                    "name": "amountBMin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:30"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:31"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "AerodromeLiquidityFuseExitData",
+                            "signature": "exit((address,address,bool,uint256,uint256,uint256,uint256))",
+                            "selector": "0xf0b0f12e",
+                            "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:42",
+                            "fields": [
+                                {
+                                    "name": "tokenA",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:43"
+                                },
+                                {
+                                    "name": "tokenB",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:44"
+                                },
+                                {
+                                    "name": "stable",
+                                    "type": "bool",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:45"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:46"
+                                },
+                                {
+                                    "name": "amountAMin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:47"
+                                },
+                                {
+                                    "name": "amountBMin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:48"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol:49"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/aerodrome/AerodromeGaugeFuse.sol",
+                    "purpose": "stakes the vault's LP tokens of a granted Gauge substrate into that gauge (enter) and withdraws them (exit); amounts are capped at the available balance, so a larger amount stakes or unstakes everything",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "AerodromeGaugeFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the Aerodrome gauge; must be a granted Gauge substrate, its stakingToken() is the LP token deposited"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "LP tokens to stake, in LP token units; capped at the vault's LP balance, zero returns without acting"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "struct": "AerodromeGaugeFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the Aerodrome gauge; must be a granted Gauge substrate"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "LP tokens to unstake, in LP token units; capped at the vault's staked balance, zero returns without acting"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aerodrome/AerodromeGaugeFuse.sol": "0xd7559a1de190aa6f3b4e52a7b8f4484c7440f1519c836d7a5212b740e317f740"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AerodromeGaugeFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/aerodrome/AerodromeGaugeFuse.sol:16",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aerodrome/AerodromeGaugeFuse.sol:17"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome/AerodromeGaugeFuse.sol:18"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "AerodromeGaugeFuseExitData",
+                                    "signature": "exit((address,uint256))",
+                                    "selector": "0x92876ac8",
+                                    "source": "contracts/fuses/aerodrome/AerodromeGaugeFuse.sol:24",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aerodrome/AerodromeGaugeFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome/AerodromeGaugeFuse.sol:26"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "GaugeFuseAerodrome",
+                        "address": "0x4360119C77b464dea3E8f18D8274cadA8D8e04C8",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x26b1479a42191dac6b53f2b679417c4ef23b3728b9b7de2d8ad75907513cb31c",
+                        "observedMarketId": 30,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 30 and VERSION() returned its own address at the observed block",
+                            "enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8 are present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol",
+                    "purpose": "claims the accrued trading fees of unstaked LP positions from granted Pool substrates into the vault (Pool.claimFees); it has no exit",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address[]))",
+                            "selector": "0x5e047043",
+                            "struct": "AerodromeClaimFeesFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "pools",
+                                    "type": "address[]",
+                                    "meaning": "Aerodrome pools to call claimFees on; each must be a granted Pool substrate and non-zero"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol": "0x9d822e5648bd68035fe04e2ee0a3be7a77022e397bc860af634ed0ecbc5e64ca"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AerodromeClaimFeesFuseEnterData",
+                                    "signature": "enter((address[]))",
+                                    "selector": "0x5e047043",
+                                    "source": "contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol:13",
+                                    "fields": [
+                                        {
+                                            "name": "pools",
+                                            "type": "address[]",
+                                            "source": "contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol:14"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimFeesFuseAerodrome",
+                        "address": "0xF16899fC66c099481d9d140f4EC4bB8619e001dE",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0xd0fe6c8f5a5e812a6bc5c89d68e0d5af2cbff00f8364125f9fe7533795cded66",
+                        "observedMarketId": 30,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 30 and VERSION() returned its own address at the observed block",
+                            "enter((address[])) 0x5e047043 is present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/rewards_fuses/aerodrome/AerodromeGaugeClaimFuse.sol",
+                    "purpose": "reward fuse: claims AERO emissions from granted Gauge substrates (Gauge.getReward) and transfers them to the RewardsClaimManager; executed through RewardsClaimManager.claimRewards by CLAIM_REWARDS_ROLE (600), not through PlasmaVault.execute",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(address[])",
+                            "selector": "0x318d9e5d",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "gauges_",
+                                    "type": "address[]",
+                                    "meaning": "Aerodrome gauges to claim from; each must be a granted Gauge substrate, an empty list reverts"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/aerodrome/AerodromeGaugeClaimFuse.sol": "0xb40c4b2b4a45bdae18dc3dfc0a2264f69d398095f4ef9303569d89bba9e067b8"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(address[])",
+                                    "selector": "0x318d9e5d",
+                                    "source": "contracts/rewards_fuses/aerodrome/AerodromeGaugeClaimFuse.sol:46",
+                                    "fields": [
+                                        {
+                                            "name": "gauges_",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/aerodrome/AerodromeGaugeClaimFuse.sol:46"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsGaugeFuseAerodrome",
+                        "address": "0x91ad48aE378D70586703cD2E525e96563039825e",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x8ef9d9ef4584ae0d3a8cd66cbd7b63708e49092a920339fca3a659a3feb0f370",
+                        "observedMarketId": 30,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 30 and VERSION() returned its own address at the observed block",
+                            "claim(address[]) 0x318d9e5d is present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values packed by AerodromeSubstrateLib: the low 160 bits hold an address and bits 160+ hold AerodromeSubstrateType (1 = Gauge, 2 = Pool). Pool substrates are the Aerodrome pool addresses the liquidity and claim-fees fuses may act on (the liquidity fuse derives the pool from tokenA/tokenB/stable via the router and checks that); Gauge substrates are the gauges the gauge fuse and the gauge claim fuse may stake into and claim from. The balance fuse iterates the whole list and values both kinds.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with AerodromeSubstrateLib.substrateToBytes32(AerodromeSubstrate{substrateType, substrateAddress})",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted on the packed bytes32",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "token0 and token1 of every granted pool: the vault's share of the pool reserves for LP tokens held directly (Pool substrate) and for LP tokens staked in a gauge (Gauge substrate, via gauge.stakingToken()), plus the claimable trading fees of directly held LP positions (claimable0/1 and the index delta since the vault's last supplyIndex). AERO emissions from gauges are not valued here; they go through the RewardsClaimManager.",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(), i.e. the PriceOracleMiddleware the vault points at, getAssetPrice per token",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse; the gauge claim fuse is added to RewardsClaimManager with addRewardFuses by the same role",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for token0 and token1 of every granted pool"
+            },
+            "tests": [
+                "test/fuses/aerodrome/AerodromeFuseTests.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "LiquidityFuseAerodrome",
+                    "address": "0x277fFc9D4905Ee60C447f9E7da944ebbbD36C275",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0xc335328ddc2a8a9f5338597291b95a3054093971e4ec99dab65c9751b9bc8782",
+                    "observedMarketId": 30,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 30 and VERSION() returned its own address at the observed block",
+                        "enter((address,address,bool,uint256,uint256,uint256,uint256,uint256)) 0x41610b12 and exit((address,address,bool,uint256,uint256,uint256,uint256)) 0xf0b0f12e are present in the runtime code",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseAerodrome",
+                    "address": "0xDBBE09c09FCE1B841fE46Ac6b06e2a4F8128c838",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x11c087a20cc1067e3dfb5d8810ac9d4bd4ddd12e4d956c556583308a91efa5b9",
+                    "observedMarketId": 30,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 30 at the observed block",
+                        "VERSION() reverted, while this checkout's AerodromeBalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse",
+                        "balanceOf() 0x722713f7 is present in the runtime code"
+                    ]
+                }
+            }
         }
     ]
 }
