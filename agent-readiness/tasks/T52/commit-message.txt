@@ -1,0 +1,13 @@
+feat(mcp): T52 expose verified deployment inspection
+
+Add a stdio MCP server with exactly two read-only tools, list_deployments and
+inspect_factory, both reading the repository's own manifests and running the same
+inspector the CLI runs. There is no second registry and no second implementation.
+
+The existing ipor-fusion MCP server stays the discovery source; it does not serve
+this repository's manifests, verification reports or compatibility tests, which is
+what these two tools add.
+
+Nothing here can sign, send or write: a test asserts the tool list is exactly
+those two, and another asserts that the MCP call and the CLI return structurally
+identical JSON for the same chain, deployment, block and caller.
