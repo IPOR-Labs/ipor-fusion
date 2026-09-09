@@ -12491,6 +12491,595 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-ebisu-market-39",
+            "protocol": "ebisu",
+            "chainId": 1,
+            "market": {
+                "id": 39,
+                "constant": "EBISU",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol",
+                "balanceFuse": "contracts/fuses/ebisu/EbisuZapperBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256))",
+                    "selector": "0x72276458",
+                    "struct": "EbisuZapperCreateFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "zapper",
+                            "type": "address",
+                            "meaning": "the Ebisu LeverageZapper that opens the Trove; it must be granted as a ZAPPER substrate of this market, and at most one Trove may be open per zapper (FuseStorageLib.EbisuTroveIds)"
+                        },
+                        {
+                            "name": "registry",
+                            "type": "address",
+                            "meaning": "the Ebisu AddressesRegistry of the same branch as the zapper; it must be granted as a REGISTRY substrate and is read for activePool, MCR and the branch price feed"
+                        },
+                        {
+                            "name": "collAmount",
+                            "type": "uint256",
+                            "meaning": "collateral the Plasma Vault deposits itself, in the collateral token's smallest unit; it is transferred to the vault's WethEthAdapter before the zapper call"
+                        },
+                        {
+                            "name": "ebusdAmount",
+                            "type": "uint256",
+                            "meaning": "ebUSD debt to mint before fees, in ebUSD smallest units (18 decimals); debt plus the upfront fee must reach 2000e18 or the fuse reverts DebtBelowMin"
+                        },
+                        {
+                            "name": "upperHint",
+                            "type": "uint256",
+                            "meaning": "SortedTroves insertion hint (Trove id above the new position); a better hint saves gas, a wrong one is corrected on chain"
+                        },
+                        {
+                            "name": "lowerHint",
+                            "type": "uint256",
+                            "meaning": "SortedTroves insertion hint (Trove id below the new position)"
+                        },
+                        {
+                            "name": "flashLoanAmount",
+                            "type": "uint256",
+                            "meaning": "collateral the zapper flash-loans for leverage, in the collateral token's smallest unit; 0 means an unleveraged Trove"
+                        },
+                        {
+                            "name": "annualInterestRate",
+                            "type": "uint256",
+                            "meaning": "annual interest rate the Trove pays, WAD-scaled (1e18 = 100%); must lie in [0.5e16, 250e16] or the fuse reverts UpfrontFeeTooHigh"
+                        },
+                        {
+                            "name": "maxUpfrontFee",
+                            "type": "uint256",
+                            "meaning": "ceiling on the upfront fee (7 days of interest at the branch average rate), in ebUSD smallest units; a higher computed fee reverts UpfrontFeeTooHigh"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,bool,uint256,uint256))",
+                    "selector": "0x4c343307",
+                    "struct": "EbisuZapperCreateFuseExitData",
+                    "fields": [
+                        {
+                            "name": "zapper",
+                            "type": "address",
+                            "meaning": "the zapper whose Trove is closed; must be a granted ZAPPER substrate and have an open Trove recorded in FuseStorageLib"
+                        },
+                        {
+                            "name": "exitFromCollateral",
+                            "type": "bool",
+                            "meaning": "true: the zapper flash-loans collateral and swaps it for ebUSD to repay the debt; false: the Plasma Vault transfers its whole ebUSD balance to the adapter and repays directly"
+                        },
+                        {
+                            "name": "flashLoanAmount",
+                            "type": "uint256",
+                            "meaning": "collateral flash-loaned to close from collateral, in the collateral token's smallest unit; ignored when exitFromCollateral is false"
+                        },
+                        {
+                            "name": "minExpectedCollateral",
+                            "type": "uint256",
+                            "meaning": "slippage floor on the collateral returned after closing from collateral, in the collateral token's smallest unit; ignored when exitFromCollateral is false"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:152",
+                    "sources": {
+                        "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol": "0x8198f851eac38c6a63b6d162836a01d3ed2cad03078f0a348b4656e760c54c81",
+                        "contracts/fuses/ebisu/EbisuZapperBalanceFuse.sol": "0x11238f6c20ee83494873ee71fc831360ce1f0640b49092580058b795ebfd8e31"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "EbisuZapperCreateFuseEnterData",
+                            "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x72276458",
+                            "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:30",
+                            "fields": [
+                                {
+                                    "name": "zapper",
+                                    "type": "address",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:32"
+                                },
+                                {
+                                    "name": "registry",
+                                    "type": "address",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:34"
+                                },
+                                {
+                                    "name": "collAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:36"
+                                },
+                                {
+                                    "name": "ebusdAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:38"
+                                },
+                                {
+                                    "name": "upperHint",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:40"
+                                },
+                                {
+                                    "name": "lowerHint",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:42"
+                                },
+                                {
+                                    "name": "flashLoanAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:44"
+                                },
+                                {
+                                    "name": "annualInterestRate",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:46"
+                                },
+                                {
+                                    "name": "maxUpfrontFee",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:48"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "EbisuZapperCreateFuseExitData",
+                            "signature": "exit((address,bool,uint256,uint256))",
+                            "selector": "0x4c343307",
+                            "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:55",
+                            "fields": [
+                                {
+                                    "name": "zapper",
+                                    "type": "address",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:57"
+                                },
+                                {
+                                    "name": "exitFromCollateral",
+                                    "type": "bool",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:61"
+                                },
+                                {
+                                    "name": "flashLoanAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:64"
+                                },
+                                {
+                                    "name": "minExpectedCollateral",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperCreateFuse.sol:67"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol",
+                    "purpose": "levers an open Trove up (enter: flash-loan collateral, mint more ebUSD) or down (exit: flash-loan collateral, swap to ebUSD, repay) through the zapper; the Trove id is read from FuseStorageLib for the given zapper.",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256,uint256))",
+                            "selector": "0x7b3445a5",
+                            "struct": "EbisuZapperLeverModifyFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "zapper",
+                                    "type": "address",
+                                    "meaning": "the zapper of the Trove to lever up; must be a granted ZAPPER substrate"
+                                },
+                                {
+                                    "name": "flashLoanAmount",
+                                    "type": "uint256",
+                                    "meaning": "collateral flash-loaned and added to the Trove, in the collateral token's smallest unit"
+                                },
+                                {
+                                    "name": "ebusdAmount",
+                                    "type": "uint256",
+                                    "meaning": "additional ebUSD debt minted and swapped to repay the flash loan, in ebUSD smallest units"
+                                },
+                                {
+                                    "name": "maxUpfrontFee",
+                                    "type": "uint256",
+                                    "meaning": "ceiling on the upfront fee charged on the new debt, in ebUSD smallest units"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "struct": "EbisuZapperLeverModifyFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "zapper",
+                                    "type": "address",
+                                    "meaning": "the zapper of the Trove to lever down; must be a granted ZAPPER substrate"
+                                },
+                                {
+                                    "name": "flashLoanAmount",
+                                    "type": "uint256",
+                                    "meaning": "collateral flash-loaned, swapped to ebUSD and used to repay debt, in the collateral token's smallest unit"
+                                },
+                                {
+                                    "name": "minBoldAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on the ebUSD obtained from the collateral swap, in ebUSD smallest units"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol": "0x0705ade8a9b598612155447b53cea7f3e36d86bc7cf663cc62c609dd48123932"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EbisuZapperLeverModifyFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256,uint256))",
+                                    "selector": "0x7b3445a5",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:20",
+                                    "fields": [
+                                        {
+                                            "name": "zapper",
+                                            "type": "address",
+                                            "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "flashLoanAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "ebusdAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:28"
+                                        },
+                                        {
+                                            "name": "maxUpfrontFee",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:31"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "EbisuZapperLeverModifyFuseExitData",
+                                    "signature": "exit((address,uint256,uint256))",
+                                    "selector": "0x8467bd30",
+                                    "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:38",
+                                    "fields": [
+                                        {
+                                            "name": "zapper",
+                                            "type": "address",
+                                            "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:40"
+                                        },
+                                        {
+                                            "name": "flashLoanAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:43"
+                                        },
+                                        {
+                                            "name": "minBoldAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol:46"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "EbisuZapperLeverModifyFuse",
+                        "address": "0xA3BabE2e9A1fdA1350B76EB77C40Dd394c836102",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x7ae3230f29c1a71df500911259c75e7059d88215997879e3a481553416538893",
+                        "observedMarketId": 39,
+                        "matchesCurrentSource": false,
+                        "notes": [
+                            "MARKET_ID() returned 39 at the observed block",
+                            "enter((address,uint256,uint256,uint256)) 0x7b3445a5 and exit((address,uint256,uint256)) 0x8467bd30 are present in the runtime code",
+                            "VERSION() reverted and enterTransient()/exitTransient() are absent, while this checkout's source has all three; the deployed contract is an older version without transient-storage support"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol",
+                    "purpose": "adjusts collateral and debt of the open Trove directly through BorrowerOperations.adjustTrove using the Plasma Vault's own funds (no flash loan); enter only.",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256,bool,bool,uint256))",
+                            "selector": "0x330a1455",
+                            "struct": "EbisuAdjustTroveFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "zapper",
+                                    "type": "address",
+                                    "meaning": "the zapper whose Trove is adjusted (granted ZAPPER substrate, open Trove required)"
+                                },
+                                {
+                                    "name": "registry",
+                                    "type": "address",
+                                    "meaning": "the branch AddressesRegistry (granted REGISTRY substrate) that resolves borrowerOperations, boldToken and collToken"
+                                },
+                                {
+                                    "name": "collChange",
+                                    "type": "uint256",
+                                    "meaning": "collateral added or removed, in the collateral token's smallest unit; approved to BorrowerOperations only when increasing"
+                                },
+                                {
+                                    "name": "debtChange",
+                                    "type": "uint256",
+                                    "meaning": "ebUSD debt added or repaid, in ebUSD smallest units; approved to BorrowerOperations only when repaying"
+                                },
+                                {
+                                    "name": "isCollIncrease",
+                                    "type": "bool",
+                                    "meaning": "true adds collateral from the Plasma Vault, false withdraws it to the Plasma Vault"
+                                },
+                                {
+                                    "name": "isDebtIncrease",
+                                    "type": "bool",
+                                    "meaning": "true mints more ebUSD to the Plasma Vault, false burns ebUSD from it"
+                                },
+                                {
+                                    "name": "maxUpfrontFee",
+                                    "type": "uint256",
+                                    "meaning": "ceiling on the upfront fee charged by Liquity on a debt increase, in ebUSD smallest units"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol": "0x07968757d04cfab2f6746cf54dec4e2a5de9314bada41f7ad5f9bba5e1615a1b"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EbisuAdjustTroveFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256,bool,bool,uint256))",
+                                    "selector": "0x330a1455",
+                                    "source": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol:41",
+                                    "fields": [
+                                        {
+                                            "name": "zapper",
+                                            "type": "address",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol:42"
+                                        },
+                                        {
+                                            "name": "registry",
+                                            "type": "address",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol:43"
+                                        },
+                                        {
+                                            "name": "collChange",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol:44"
+                                        },
+                                        {
+                                            "name": "debtChange",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol:45"
+                                        },
+                                        {
+                                            "name": "isCollIncrease",
+                                            "type": "bool",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol:46"
+                                        },
+                                        {
+                                            "name": "isDebtIncrease",
+                                            "type": "bool",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol:47"
+                                        },
+                                        {
+                                            "name": "maxUpfrontFee",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol:48"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "EbisuAdjustTroveFuse",
+                        "address": "0xE30B07bb32181d1ffB76E1e1f88B6107A97CC9E8",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x4082fdf2ed55fadd0480cba6102155d67cb5887aef7f0d98a11cb18287673808",
+                        "observedMarketId": 39,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 39 at the observed block; VERSION() reverted, consistent with the source, which declares no VERSION",
+                            "enter((address,address,uint256,uint256,bool,bool,uint256)) 0x330a1455 is present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol",
+                    "purpose": "changes the annual interest rate of the open Trove through BorrowerOperations.adjustTroveInterestRate; enter only.",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256,uint256,uint256))",
+                            "selector": "0x43a6cb48",
+                            "struct": "EbisuAdjustInterestRateFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "zapper",
+                                    "type": "address",
+                                    "meaning": "the zapper whose Trove is re-priced (granted ZAPPER substrate, open Trove required)"
+                                },
+                                {
+                                    "name": "registry",
+                                    "type": "address",
+                                    "meaning": "the branch AddressesRegistry (granted REGISTRY substrate) that resolves borrowerOperations"
+                                },
+                                {
+                                    "name": "newAnnualInterestRate",
+                                    "type": "uint256",
+                                    "meaning": "the new annual interest rate, WAD-scaled (1e18 = 100%); bounds are enforced by Liquity, not by this fuse"
+                                },
+                                {
+                                    "name": "maxUpfrontFee",
+                                    "type": "uint256",
+                                    "meaning": "ceiling on the upfront fee Liquity charges for a premature rate change, in ebUSD smallest units"
+                                },
+                                {
+                                    "name": "upperHint",
+                                    "type": "uint256",
+                                    "meaning": "SortedTroves re-insertion hint (Trove id above)"
+                                },
+                                {
+                                    "name": "lowerHint",
+                                    "type": "uint256",
+                                    "meaning": "SortedTroves re-insertion hint (Trove id below)"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol": "0xc5844ec407274e0312e06b39bf665497bdd056bf2077d163acc1982f0951bb44"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EbisuAdjustInterestRateFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256,uint256,uint256))",
+                                    "selector": "0x43a6cb48",
+                                    "source": "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol:32",
+                                    "fields": [
+                                        {
+                                            "name": "zapper",
+                                            "type": "address",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol:33"
+                                        },
+                                        {
+                                            "name": "registry",
+                                            "type": "address",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "newAnnualInterestRate",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol:35"
+                                        },
+                                        {
+                                            "name": "maxUpfrontFee",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "upperHint",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol:37"
+                                        },
+                                        {
+                                            "name": "lowerHint",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol:38"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "EbisuAdjustInterestRateFuse",
+                        "address": "0xf82a5730AdcE3e30c41d057928E1edF4606C67f9",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x9fd229266363f83632ad6b8805a9096cecdc3fec6f01ca9f2f66654c00d4dbc5",
+                        "observedMarketId": 39,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 39 at the observed block; VERSION() reverted, consistent with the source, which declares no VERSION",
+                            "enter((address,address,uint256,uint256,uint256,uint256)) 0x43a6cb48 is present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values packed by EbisuZapperSubstrateLib: an EbisuZapperSubstrateType in bits 160+ (1 = ZAPPER, 2 = REGISTRY) and an address in the low 160 bits. Action fuses require the zapper (all) and the registry (create, adjust) to be granted with the matching type; the balance fuse iterates only ZAPPER entries and looks up the Trove id recorded for each zapper in FuseStorageLib.EbisuTroveIds. The zapper and registry must belong to the same Ebisu branch.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with bytes32 values from EbisuZapperSubstrateLib.substrateToBytes32",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted on the packed bytes32",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every ZAPPER substrate with an open Trove: the Trove's entireColl in the branch collateral token minus its entireDebt in ebUSD (boldToken of the zapper), read from TroveManager.getLatestTroveData; the sum is floored at zero, so a Trove under water contributes nothing rather than a negative value. ebUSD idle in the Plasma Vault is not counted here (ERC20_VAULT_BALANCE market).",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware) for the collateral token of each zapper and for ebUSD",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the four action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's ZAPPER and REGISTRY substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each collateral token and for ebUSD"
+            },
+            "tests": [
+                "test/fuses/ebisu/EbisuZapperTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "EbisuZapperCreateFuse",
+                    "address": "0x1Aba4764dDE4Ae6D29C97aE3A20A95267a37069e",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x7f47a417804cad4413b555d56724dfd9cd48b43e00d5bdb83f365ea75e32fc4b",
+                    "observedMarketId": 39,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 39 at the observed block; VERSION() reverted although this checkout's source declares it",
+                        "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256)) 0x72276458 is present in the runtime code",
+                        "the deployed contract exposes exit((address,uint256,uint256,bool)) 0x07abfe89, not this checkout's exit((address,bool,uint256,uint256)) 0x4c343307: the field order is zapper, flashLoanAmount, minExpectedCollateral, exitFromCollateral, the same order this checkout's exitTransient reads its inputs in; callers must encode the deployed layout",
+                        "enterTransient()/exitTransient() are absent from the runtime code; the deployed contract predates transient-storage support"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "EbisuZapperBalanceFuse",
+                    "address": "0xb3a7F15034d664fA295B472732BFfC6953eEFb33",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x0ae24dd0702fe88d0accc7f07df8c1d0a853ac99600471349df7da9bfa9beb43",
+                    "observedMarketId": 39,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 39 at the observed block; VERSION() reverted, consistent with the source, which declares no VERSION",
+                        "balanceOf() 0x722713f7 is present in the runtime code; bytecode equivalence with this checkout was not established"
+                    ]
+                }
+            }
         }
     ]
 }
