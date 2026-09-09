@@ -13080,6 +13080,182 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-yield-basis-market-37",
+            "protocol": "yield_basis",
+            "chainId": 1,
+            "market": {
+                "id": 37,
+                "constant": "YIELD_BASIS_LT",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/yield_basis/YieldBasisLtBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256,uint256))",
+                    "selector": "0x7b3445a5",
+                    "struct": "YieldBasisLtSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "ltAddress",
+                            "type": "address",
+                            "meaning": "the Yield Basis Leveraged Liquidity Token (LT) vault to deposit into; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "ltAssetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of the LT's ASSET_TOKEN to supply, in that token's smallest unit; 0 is a no-op"
+                        },
+                        {
+                            "name": "debt",
+                            "type": "uint256",
+                            "meaning": "debt the LT's AMM takes against the deposit (about ltAssetAmount times the asset price), in USD with 18 decimals"
+                        },
+                        {
+                            "name": "minSharesToReceive",
+                            "type": "uint256",
+                            "meaning": "slippage floor on LT shares minted; the LT reverts below it"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,uint256))",
+                    "selector": "0x8467bd30",
+                    "struct": "YieldBasisLtSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "ltAddress",
+                            "type": "address",
+                            "meaning": "the LT vault to withdraw from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "ltSharesAmount",
+                            "type": "uint256",
+                            "meaning": "LT shares to burn, in the LT's smallest unit; 0 is a no-op"
+                        },
+                        {
+                            "name": "minLtAssetAmountToReceive",
+                            "type": "uint256",
+                            "meaning": "slippage floor on the ASSET_TOKEN returned, in its smallest unit; instantWithdraw passes 0 here"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:130",
+                    "sources": {
+                        "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol": "0x63990ce0caf45414ce7532aede5e5621baf23df8fbd877ad49afea94b6fdb4af",
+                        "contracts/fuses/yield_basis/YieldBasisLtBalanceFuse.sol": "0xf46c9c1d66f09807ade7fb8ea30a1790943c42c07f912237cc4de29e6974967c"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "YieldBasisLtSupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256,uint256))",
+                            "selector": "0x7b3445a5",
+                            "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:17",
+                            "fields": [
+                                {
+                                    "name": "ltAddress",
+                                    "type": "address",
+                                    "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:19"
+                                },
+                                {
+                                    "name": "ltAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:21"
+                                },
+                                {
+                                    "name": "debt",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:23"
+                                },
+                                {
+                                    "name": "minSharesToReceive",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:25"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "YieldBasisLtSupplyFuseExitData",
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:29",
+                            "fields": [
+                                {
+                                    "name": "ltAddress",
+                                    "type": "address",
+                                    "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:31"
+                                },
+                                {
+                                    "name": "ltSharesAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:33"
+                                },
+                                {
+                                    "name": "minLtAssetAmountToReceive",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol:35"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Yield Basis LT vault addresses this market may deposit into and withdraw from. The action fuse checks data.ltAddress on enter and exit (and reads the LT from params[1] on instantWithdraw without a substrate check); the balance fuse iterates the same list.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every LT in the substrate list: the Plasma Vault's LT share balance times the LT's pricePerShare (WAD), expressed in the LT's ASSET_TOKEN and then priced; the LT is not ERC4626 and its own debt is already netted in pricePerShare",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware) for each LT's ASSET_TOKEN",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each LT's ASSET_TOKEN"
+            },
+            "tests": [
+                "test/fuses/yield_basis/YieldBasisFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no entry containing \"YieldBasis\" or \"Yield\" in any mainnet-*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (searched 2026-09-09)",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "absence from the registry is not proof that the fuse is not deployed"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no entry containing \"YieldBasis\" or \"Yield\" in any mainnet-*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (searched 2026-09-09)",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "absence from the registry is not proof that the fuse is not deployed"
+                    ]
+                }
+            }
         }
     ]
 }
