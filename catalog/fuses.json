@@ -16915,6 +16915,136 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-lido-steth-wrapper-market-7",
+            "protocol": "lido",
+            "chainId": 1,
+            "market": {
+                "id": 7,
+                "constant": "ERC20_VAULT_BALANCE",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/chains/ethereum/lido/StEthWrapperFuse.sol",
+                "balanceFuse": "contracts/fuses/erc20/Erc20BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter(uint256)",
+                    "selector": "0xa59f3e0c",
+                    "struct": null,
+                    "fields": [
+                        {
+                            "name": "stEthAmount",
+                            "type": "uint256",
+                            "meaning": "stETH to wrap into wstETH, in wei (18 decimals); capped at the Plasma Vault's stETH balance; 0 is a no-op; the fuse returns (stEth wrapped, wstETH received)"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit(uint256)",
+                    "selector": "0x7f8661a1",
+                    "struct": null,
+                    "fields": [
+                        {
+                            "name": "wstEthAmount",
+                            "type": "uint256",
+                            "meaning": "wstETH to unwrap into stETH, in wei; capped at the Plasma Vault's wstETH balance; 0 is a no-op; the fuse returns (wstETH unwrapped, stETH received)"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:22",
+                    "sources": {
+                        "contracts/fuses/chains/ethereum/lido/StEthWrapperFuse.sol": "0xf9db20ba85de461c2bcab58b104915a3c89cdb122614f347b3cec4e1ba0f0f2f",
+                        "contracts/fuses/erc20/Erc20BalanceFuse.sol": "0xfe0f2cbaa4063b1ac71b006ccfaf5e53b89e9ca68733d0f940881e87cbebfdf1"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": null,
+                            "signature": "enter(uint256)",
+                            "selector": "0xa59f3e0c",
+                            "source": "contracts/fuses/chains/ethereum/lido/StEthWrapperFuse.sol:66",
+                            "fields": [
+                                {
+                                    "name": "stEthAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/lido/StEthWrapperFuse.sol:66"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": null,
+                            "signature": "exit(uint256)",
+                            "selector": "0x7f8661a1",
+                            "source": "contracts/fuses/chains/ethereum/lido/StEthWrapperFuse.sol:106",
+                            "fields": [
+                                {
+                                    "name": "wstEthAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/lido/StEthWrapperFuse.sol:106"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "stETH 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84 and wstETH 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0 (hard-coded in the fuse): on enter and exit the fuse requires each of the two tokens that is not the vault's own underlying asset to be a granted substrate of this market, so that the Erc20BalanceFuse of the same market keeps pricing whichever side the vault holds. The fuse has no constant of its own; the value 7 is a constructor argument, and both the deployed fuse and the test use ERC20_VAULT_BALANCE so the wrapped and unwrapped balances stay on one market",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the Plasma Vault's balance of every ERC20 granted on market 7, here stETH and wstETH, as read by Erc20BalanceFuse; the wrapper itself holds nothing",
+                "priceSource": "the vault's PriceOracleMiddleware, getAssetPrice per token (a wstETH feed must exist next to the stETH one)",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/chains/ethereum/lido/StEthWrapperFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "StEthWrapperFuse",
+                    "address": "0x176F645b837663F4aF2579f37059bdC22EE69584",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x9e4820e2fc053d1d0aa2813bcb4fa3256618644838799c00bb1185ad611b091a",
+                    "observedMarketId": 7,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 7 (= ERC20_VAULT_BALANCE) and VERSION() returned its own address at the observed block",
+                        "the deployed runtime code contains enter(uint256) 0xa59f3e0c and exit(uint256) 0x7f8661a1, the same signatures as this checkout",
+                        "enterTransient() 0xadea8fa0 and exitTransient() 0x1db205df are absent, while this checkout's StEthWrapperFuse.sol exposes them; the deployed contract is therefore an older version without the transient entry points"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseErc20",
+                    "address": "0x6cEBf3e3392D0860Ed174402884b941DCBB30654",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xf270b6b5ded0c3230797c7018f557d4914d2ba6a4f319653fb270ce5fef69d13",
+                    "observedMarketId": 7,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 7 at the observed block; balanceOf() 0x722713f7 present",
+                        "VERSION() reverted, while this checkout's Erc20BalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse",
+                        "the same address is listed in mainnet-ethereum-fortunafi and mainnet-ethereum-tesseract"
+                    ]
+                }
+            }
         }
     ]
 }
