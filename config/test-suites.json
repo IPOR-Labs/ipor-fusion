@@ -4,7 +4,7 @@
         "classified": [
             "test/factory/*.t.sol — the source-version suites needed for the factory pilot, at the top level of the directory only",
             "test/deployed-factories/FusionFactoryEthereum.t.sol — unchanged deployed-usage coverage for the Ethereum pilot",
-            "test/fuses/<integration>/ and test/unitTest/fuses/<integration>/ local suites of the catalogued integrations (group fuses-local): Aave V4, Agua, async action, Euler V2, external state, Midas, Term Finance, transient storage, universal token swapper, update balances, burn request fee and the fuse whitelist — every file that deploys everything itself and reads no RPC; run 2026-09-09, 57 suites, 1476 tests, all passing under factory_local"
+            "test/fuses/<integration>/ and test/unitTest/fuses/<integration>/ local suites of the catalogued integrations (group fuses-local): Aave V4, Agua, async action, Euler V2, external state, Midas, Term Finance, transient storage, universal token swapper, update balances, burn request fee and the fuse whitelist — every file that deploys everything itself and reads no RPC; run 2026-09-09, 56 files, 57 test contracts, 1522 tests, all passing under factory_local"
         ],
         "unclassified": "Everything else under test/, including test/factory/price_feed/, any other file under test/deployed-factories/ and every fork suite of the integrations listed above, is deliberately not classified yet. An unlisted suite carries no claim in either direction: read its setUp() before quoting a result, and do not treat its absence here as evidence that it is local, that it forks, or that it is unnecessary. Suites are added one area at a time, each with the run that produced its numbers."
     },
@@ -13,9 +13,7 @@
             "id": "factory-fusion-factory",
             "group": "factory",
             "path": "test/factory/FusionFactory.t.sol",
-            "contracts": [
-                "FusionFactoryTest"
-            ],
+            "contracts": ["FusionFactoryTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -46,9 +44,7 @@
             "id": "factory-business-client-fee-packages",
             "group": "factory",
             "path": "test/factory/FusionFactoryBusinessClientFeePackagesTest.t.sol",
-            "contracts": [
-                "FusionFactoryBusinessClientFeePackagesTest"
-            ],
+            "contracts": ["FusionFactoryBusinessClientFeePackagesTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -66,9 +62,7 @@
                     "PriceOracleMiddleware behind an ERC1967Proxy",
                     "FusionFactory implementation behind an ERC1967Proxy"
                 ],
-                "mutations": [
-                    "prank as owner to grant DAO_FEE_MANAGER_ROLE and MAINTENANCE_MANAGER_ROLE"
-                ],
+                "mutations": ["prank as owner to grant DAO_FEE_MANAGER_ROLE and MAINTENANCE_MANAGER_ROLE"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -79,9 +73,7 @@
             "id": "factory-fuse-manager-timelock-cancel",
             "group": "factory",
             "path": "test/factory/FuseManagerTimelockCancelTest.t.sol",
-            "contracts": [
-                "FuseManagerTimelockCancelTest"
-            ],
+            "contracts": ["FuseManagerTimelockCancelTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -99,9 +91,7 @@
                     "PriceOracleMiddleware behind an ERC1967Proxy",
                     "FusionFactory implementation behind an ERC1967Proxy"
                 ],
-                "mutations": [
-                    "labelled EOAs via makeAddr; role grants on the freshly created vault's access manager"
-                ],
+                "mutations": ["labelled EOAs via makeAddr; role grants on the freshly created vault's access manager"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -112,9 +102,7 @@
             "id": "factory-wrapped-plasma-vault",
             "group": "factory",
             "path": "test/factory/WrappedPlasmaVaultFactory.t.sol",
-            "contracts": [
-                "WrappedPlasmaVaultFactoryTest"
-            ],
+            "contracts": ["WrappedPlasmaVaultFactoryTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -129,9 +117,7 @@
                     "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
                     "WrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
                 ],
-                "mutations": [
-                    "labelled EOAs via makeAddr"
-                ],
+                "mutations": ["labelled EOAs via makeAddr"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -142,9 +128,7 @@
             "id": "factory-whitelist-wrapped-plasma-vault",
             "group": "factory",
             "path": "test/factory/WhitelistWrappedPlasmaVaultFactory.t.sol",
-            "contracts": [
-                "WhitelistWrappedPlasmaVaultFactoryTest"
-            ],
+            "contracts": ["WhitelistWrappedPlasmaVaultFactoryTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -159,9 +143,7 @@
                     "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
                     "WhitelistWrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
                 ],
-                "mutations": [
-                    "labelled EOAs via makeAddr"
-                ],
+                "mutations": ["labelled EOAs via makeAddr"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -172,9 +154,7 @@
             "id": "factory-dao-fee-packages-fork",
             "group": "factory",
             "path": "test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol",
-            "contracts": [
-                "FusionFactoryDaoFeePackagesForkTest"
-            ],
+            "contracts": ["FusionFactoryDaoFeePackagesForkTest"],
             "fixture": "fork-fresh-deployment",
             "chainId": 1,
             "stateProbe": {
@@ -222,9 +202,7 @@
             "id": "factory-business-client-fee-packages-fork",
             "group": "factory",
             "path": "test/factory/FusionFactoryBusinessClientFeePackagesForkTest.t.sol",
-            "contracts": [
-                "FusionFactoryBusinessClientFeePackagesForkTest"
-            ],
+            "contracts": ["FusionFactoryBusinessClientFeePackagesForkTest"],
             "fixture": "fork-fresh-deployment",
             "chainId": 1,
             "stateProbe": {
@@ -273,9 +251,7 @@
             "id": "deployed-factory-ethereum-fusion-factory",
             "group": "deployed-factory",
             "path": "test/deployed-factories/FusionFactoryEthereum.t.sol",
-            "contracts": [
-                "FusionFactoryEthereumDeployedUsageTest"
-            ],
+            "contracts": ["FusionFactoryEthereumDeployedUsageTest"],
             "fixture": "deployed-usage",
             "chainId": 1,
             "stateProbe": {
@@ -311,9 +287,7 @@
             "id": "deployed-factory-ethereum-erc4626-strategy",
             "group": "deployed-factory",
             "path": "test/deployed-factories/Erc4626StrategyLifecycleEthereum.t.sol",
-            "contracts": [
-                "Erc4626StrategyLifecycleEthereumTest"
-            ],
+            "contracts": ["Erc4626StrategyLifecycleEthereumTest"],
             "fixture": "deployed-usage",
             "chainId": 1,
             "stateProbe": {
@@ -363,9 +337,7 @@
             "id": "deployed-price-feed-factory-ethereum-erc4626",
             "group": "deployed-price-feed-factory",
             "path": "test/deployed-factories/Erc4626PriceFeedFactoryEthereum.t.sol",
-            "contracts": [
-                "Erc4626PriceFeedFactoryEthereumTest"
-            ],
+            "contracts": ["Erc4626PriceFeedFactoryEthereumTest"],
             "fixture": "deployed-usage",
             "chainId": 1,
             "stateProbe": {
@@ -410,9 +382,7 @@
             "id": "deployed-wrapped-vault-factory-ethereum",
             "group": "deployed-wrapped-vault-factory",
             "path": "test/deployed-factories/WrappedPlasmaVaultFactoryEthereum.t.sol",
-            "contracts": [
-                "WrappedPlasmaVaultFactoryEthereumTest"
-            ],
+            "contracts": ["WrappedPlasmaVaultFactoryEthereumTest"],
             "fixture": "deployed-usage",
             "chainId": 1,
             "stateProbe": {
@@ -457,9 +427,7 @@
             "id": "deployed-factory-base-fusion-factory",
             "group": "deployed-factory",
             "path": "test/deployed-factories/FusionFactoryBase.t.sol",
-            "contracts": [
-                "FusionFactoryBaseDeployedUsageTest"
-            ],
+            "contracts": ["FusionFactoryBaseDeployedUsageTest"],
             "fixture": "deployed-usage",
             "chainId": 8453,
             "stateProbe": {
@@ -495,9 +463,7 @@
             "id": "aave-v4-balance-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/aave_v4/AaveV4BalanceFuseTest.t.sol",
-            "contracts": [
-                "AaveV4BalanceFuseTest"
-            ],
+            "contracts": ["AaveV4BalanceFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -527,9 +493,7 @@
             "id": "aave-v4-borrow-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/aave_v4/AaveV4BorrowFuseTest.t.sol",
-            "contracts": [
-                "AaveV4BorrowFuseTest"
-            ],
+            "contracts": ["AaveV4BorrowFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -539,15 +503,8 @@
             "ffi": false,
             "tests": 28,
             "setUp": {
-                "deploys": [
-                    "AaveV4BorrowFuse",
-                    "ERC20Mock",
-                    "MockAaveV4Spoke",
-                    "PlasmaVaultMock"
-                ],
-                "mutations": [
-                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
-                ],
+                "deploys": ["AaveV4BorrowFuse", "ERC20Mock", "MockAaveV4Spoke", "PlasmaVaultMock"],
+                "mutations": ["vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -558,9 +515,7 @@
             "id": "aave-v4-collateral-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/aave_v4/AaveV4CollateralFuseTest.t.sol",
-            "contracts": [
-                "AaveV4CollateralFuseTest"
-            ],
+            "contracts": ["AaveV4CollateralFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -589,9 +544,7 @@
             "id": "aave-v4-substrate-lib-test",
             "group": "fuses-local",
             "path": "test/fuses/aave_v4/AaveV4SubstrateLibTest.t.sol",
-            "contracts": [
-                "AaveV4SubstrateLibTest"
-            ],
+            "contracts": ["AaveV4SubstrateLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -613,9 +566,7 @@
             "id": "aave-v4-supply-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/aave_v4/AaveV4SupplyFuseTest.t.sol",
-            "contracts": [
-                "AaveV4SupplyFuseTest"
-            ],
+            "contracts": ["AaveV4SupplyFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -643,9 +594,7 @@
             "id": "agua-dos-impossibility-test",
             "group": "fuses-local",
             "path": "test/fuses/agua/AguaDosImpossibilityTest.t.sol",
-            "contracts": [
-                "AguaDosImpossibilityTest"
-            ],
+            "contracts": ["AguaDosImpossibilityTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -672,9 +621,7 @@
             "id": "agua-substrate-lib-test",
             "group": "fuses-local",
             "path": "test/fuses/agua/AguaSubstrateLibTest.t.sol",
-            "contracts": [
-                "AguaSubstrateLibTest"
-            ],
+            "contracts": ["AguaSubstrateLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -696,9 +643,7 @@
             "id": "async-action-fuse-lib-test",
             "group": "fuses-local",
             "path": "test/fuses/async_action/AsyncActionFuseLibTest.t.sol",
-            "contracts": [
-                "AsyncActionFuseLibTest"
-            ],
+            "contracts": ["AsyncActionFuseLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -720,9 +665,7 @@
             "id": "async-action-async-executor-test",
             "group": "fuses-local",
             "path": "test/fuses/async_action/AsyncExecutorTest.t.sol",
-            "contracts": [
-                "AsyncExecutorTest"
-            ],
+            "contracts": ["AsyncExecutorTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -732,22 +675,13 @@
             "ffi": false,
             "tests": 26,
             "setUp": {
-                "deploys": [
-                    "AsyncExecutor",
-                    "MockERC20",
-                    "MockPlasmaVault",
-                    "MockPriceOracle",
-                    "MockTarget"
-                ],
+                "deploys": ["AsyncExecutor", "MockERC20", "MockPlasmaVault", "MockPriceOracle", "MockTarget"],
                 "mutations": [
                     "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
                     "vm.deal of test balances"
                 ],
                 "externalAddresses": [],
-                "helpers": [
-                    "test/test_helpers/MockERC20.sol",
-                    "test/test_helpers/MockErc4626.sol"
-                ]
+                "helpers": ["test/test_helpers/MockERC20.sol", "test/test_helpers/MockErc4626.sol"]
             },
             "proves": "the checked-out AsyncActionFuseLib encoding and the AsyncExecutor call, approval and slippage logic behave as written against mock targets, tokens and a mock vault",
             "doesNotProve": "anything about a live target protocol or a deployed executor; the fuse-through-PlasmaVault path is covered only by the Ethereum fork suite"
@@ -756,9 +690,7 @@
             "id": "euler-fuse-lib-can-instant-withdraw-test",
             "group": "fuses-local",
             "path": "test/fuses/euler/EulerFuseLibCanInstantWithdrawTest.t.sol",
-            "contracts": [
-                "EulerFuseLibCanInstantWithdrawTest"
-            ],
+            "contracts": ["EulerFuseLibCanInstantWithdrawTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -780,9 +712,7 @@
             "id": "euler-fuse-lib-test",
             "group": "fuses-local",
             "path": "test/fuses/euler/EulerFuseLibTest.t.sol",
-            "contracts": [
-                "EulerFuseLibTest"
-            ],
+            "contracts": ["EulerFuseLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -804,9 +734,7 @@
             "id": "euler-v2-supply-fuse-instant-withdraw-test",
             "group": "fuses-local",
             "path": "test/fuses/euler/EulerV2SupplyFuseInstantWithdrawTest.t.sol",
-            "contracts": [
-                "EulerV2SupplyFuseInstantWithdrawTest"
-            ],
+            "contracts": ["EulerV2SupplyFuseInstantWithdrawTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -816,10 +744,7 @@
             "ffi": false,
             "tests": 12,
             "setUp": {
-                "deploys": [
-                    "EulerV2SupplyFuse",
-                    "PlasmaVaultMock"
-                ],
+                "deploys": ["EulerV2SupplyFuse", "PlasmaVaultMock"],
                 "mutations": [
                     "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
                     "vm.mockCall / vm.mockCallRevert on mocked dependencies"
@@ -834,9 +759,7 @@
             "id": "euler-v2-supply-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/euler/EulerV2SupplyFuseTest.t.sol",
-            "contracts": [
-                "EulerV2SupplyFuseTest"
-            ],
+            "contracts": ["EulerV2SupplyFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -846,10 +769,7 @@
             "ffi": false,
             "tests": 15,
             "setUp": {
-                "deploys": [
-                    "EulerV2SupplyFuse",
-                    "MockToken"
-                ],
+                "deploys": ["EulerV2SupplyFuse", "MockToken"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -861,9 +781,7 @@
             "id": "euler-v2-swap-deploy-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/euler/EulerV2SwapDeployFuseTest.t.sol",
-            "contracts": [
-                "EulerV2SwapDeployFuseTest"
-            ],
+            "contracts": ["EulerV2SwapDeployFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -880,9 +798,7 @@
                     "MockEulerV2SwapFactory",
                     "MockEulerV2SwapPool"
                 ],
-                "mutations": [
-                    "vm.warp to move time"
-                ],
+                "mutations": ["vm.warp to move time"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -893,9 +809,7 @@
             "id": "euler-v2-swap-reconfigure-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/euler/EulerV2SwapReconfigureFuseTest.t.sol",
-            "contracts": [
-                "EulerV2SwapReconfigureFuseTest"
-            ],
+            "contracts": ["EulerV2SwapReconfigureFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -912,9 +826,7 @@
                     "MockEulerV2SwapFactory",
                     "MockEulerV2SwapPool"
                 ],
-                "mutations": [
-                    "vm.warp to move time"
-                ],
+                "mutations": ["vm.warp to move time"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -925,9 +837,7 @@
             "id": "euler-v2-swap-registry-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/euler/EulerV2SwapRegistryFuseTest.t.sol",
-            "contracts": [
-                "EulerV2SwapRegistryFuseTest"
-            ],
+            "contracts": ["EulerV2SwapRegistryFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -944,9 +854,7 @@
                     "MockEulerV2SwapPool",
                     "MockEulerV2SwapRegistry"
                 ],
-                "mutations": [
-                    "vm.deal of test balances"
-                ],
+                "mutations": ["vm.deal of test balances"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -957,9 +865,7 @@
             "id": "transient-storage-chain-reader-fuse",
             "group": "fuses-local",
             "path": "test/fuses/transient_storage/TransientStorageChainReaderFuse.t.sol",
-            "contracts": [
-                "TransientStorageChainReaderFuseTest"
-            ],
+            "contracts": ["TransientStorageChainReaderFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -987,9 +893,7 @@
             "id": "transient-storage-mapper-fuse",
             "group": "fuses-local",
             "path": "test/fuses/transient_storage/TransientStorageMapperFuse.t.sol",
-            "contracts": [
-                "TransientStorageMapperFuseTest"
-            ],
+            "contracts": ["TransientStorageMapperFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1015,9 +919,7 @@
             "id": "transient-storage-set-inputs-fuse",
             "group": "fuses-local",
             "path": "test/fuses/transient_storage/TransientStorageSetInputsFuse.t.sol",
-            "contracts": [
-                "TransientStorageSetInputsFuseTest"
-            ],
+            "contracts": ["TransientStorageSetInputsFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1027,10 +929,7 @@
             "ffi": false,
             "tests": 16,
             "setUp": {
-                "deploys": [
-                    "TransientStorageSetInputsFuse",
-                    "TransientStorageSetInputsFuseMock"
-                ],
+                "deploys": ["TransientStorageSetInputsFuse", "TransientStorageSetInputsFuseMock"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1042,9 +941,7 @@
             "id": "universal-token-swapper-swap-executor-test",
             "group": "fuses-local",
             "path": "test/fuses/universal_token_swapper/SwapExecutorTest.t.sol",
-            "contracts": [
-                "SwapExecutorTest"
-            ],
+            "contracts": ["SwapExecutorTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1054,13 +951,7 @@
             "ffi": false,
             "tests": 14,
             "setUp": {
-                "deploys": [
-                    "MockDex",
-                    "MockERC20",
-                    "ReentrancyAttacker",
-                    "SwapExecutor",
-                    "SwapExecutorRestricted"
-                ],
+                "deploys": ["MockDex", "MockERC20", "ReentrancyAttacker", "SwapExecutor", "SwapExecutorRestricted"],
                 "mutations": [
                     "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
                     "vm.deal of test balances"
@@ -1075,9 +966,7 @@
             "id": "universal-token-swapper-substrate-lib-test",
             "group": "fuses-local",
             "path": "test/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLibTest.t.sol",
-            "contracts": [
-                "UniversalTokenSwapperSubstrateLibTest"
-            ],
+            "contracts": ["UniversalTokenSwapperSubstrateLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1099,9 +988,7 @@
             "id": "universal-token-swapper-with-verification-fuse",
             "group": "fuses-local",
             "path": "test/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.t.sol",
-            "contracts": [
-                "UniversalTokenSwapperWithVerificationFuseTest"
-            ],
+            "contracts": ["UniversalTokenSwapperWithVerificationFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1111,9 +998,7 @@
             "ffi": false,
             "tests": 3,
             "setUp": {
-                "deploys": [
-                    "UniversalTokenSwapperWithVerificationFuse"
-                ],
+                "deploys": ["UniversalTokenSwapperWithVerificationFuse"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1125,9 +1010,7 @@
             "id": "update-balances-update-markets-balances-fuse-test",
             "group": "fuses-local",
             "path": "test/fuses/update_balances/UpdateMarketsBalancesFuseTest.t.sol",
-            "contracts": [
-                "UpdateMarketsBalancesFuseTest"
-            ],
+            "contracts": ["UpdateMarketsBalancesFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1137,9 +1020,7 @@
             "ffi": false,
             "tests": 5,
             "setUp": {
-                "deploys": [
-                    "UpdateMarketsBalancesFuse"
-                ],
+                "deploys": ["UpdateMarketsBalancesFuse"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1151,10 +1032,7 @@
             "id": "fuse-whitelist-test",
             "group": "fuses-local",
             "path": "test/fuses/whitelist/FuseWhitelistTest.t.sol",
-            "contracts": [
-                "FuseWhitelistLibRemoveFuseMetadataTest",
-                "FuseWhitelistTest"
-            ],
+            "contracts": ["FuseWhitelistLibRemoveFuseMetadataTest", "FuseWhitelistTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1164,19 +1042,10 @@
             "ffi": false,
             "tests": 87,
             "setUp": {
-                "deploys": [
-                    "ERC1967Proxy",
-                    "Erc4626SupplyFuse",
-                    "FuseWhitelist",
-                    "FuseWhitelistLibHarness"
-                ],
-                "mutations": [
-                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
-                ],
+                "deploys": ["ERC1967Proxy", "Erc4626SupplyFuse", "FuseWhitelist", "FuseWhitelistLibHarness"],
+                "mutations": ["vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"],
                 "externalAddresses": [],
-                "helpers": [
-                    "test/test_helpers/TestAddresses.sol"
-                ]
+                "helpers": ["test/test_helpers/TestAddresses.sol"]
             },
             "proves": "the checked-out FuseWhitelist registry behind a fresh ERC1967Proxy enforces its roles and metadata rules as written",
             "doesNotProve": "anything about the deployed IporFusionFuseWhitelistProxy or its live contents"
@@ -1185,9 +1054,7 @@
             "id": "external-state-balance-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/ExternalStateBalanceFuseTest.t.sol",
-            "contracts": [
-                "ExternalStateBalanceFuseTest"
-            ],
+            "contracts": ["ExternalStateBalanceFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1204,9 +1071,7 @@
                     "MockPlasmaVaultForExternalState",
                     "MockPriceOracleMiddleware"
                 ],
-                "mutations": [
-                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
-                ],
+                "mutations": ["vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -1217,9 +1082,7 @@
             "id": "external-state-executor-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/ExternalStateExecutorTest.t.sol",
-            "contracts": [
-                "ExternalStateExecutorTest"
-            ],
+            "contracts": ["ExternalStateExecutorTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1253,9 +1116,7 @@
             "id": "external-state-operation-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/ExternalStateOperationFuseTest.t.sol",
-            "contracts": [
-                "ExternalStateOperationFuseTest"
-            ],
+            "contracts": ["ExternalStateOperationFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1284,9 +1145,7 @@
             "id": "external-state-pause-pre-hook-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/ExternalStatePausePreHookTest.t.sol",
-            "contracts": [
-                "ExternalStatePausePreHookTest"
-            ],
+            "contracts": ["ExternalStatePausePreHookTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1296,11 +1155,7 @@
             "ffi": false,
             "tests": 10,
             "setUp": {
-                "deploys": [
-                    "ExternalStateExecutor",
-                    "ExternalStatePausePreHook",
-                    "MockPlasmaVaultForExternalState"
-                ],
+                "deploys": ["ExternalStateExecutor", "ExternalStatePausePreHook", "MockPlasmaVaultForExternalState"],
                 "mutations": [
                     "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
                     "vm.warp to move time"
@@ -1315,9 +1170,7 @@
             "id": "external-state-real-vault-execute-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/ExternalStateRealVaultExecuteTest.t.sol",
-            "contracts": [
-                "ExternalStateRealVaultExecuteTest"
-            ],
+            "contracts": ["ExternalStateRealVaultExecuteTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1341,13 +1194,9 @@
                     "PriceOracleMiddleware",
                     "WithdrawManager"
                 ],
-                "mutations": [
-                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
-                ],
+                "mutations": ["vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"],
                 "externalAddresses": [],
-                "helpers": [
-                    "test/test_helpers/FeeConfigHelper.sol"
-                ]
+                "helpers": ["test/test_helpers/FeeConfigHelper.sol"]
             },
             "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
             "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
@@ -1356,9 +1205,7 @@
             "id": "external-state-rescue-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/ExternalStateRescueFuseTest.t.sol",
-            "contracts": [
-                "ExternalStateRescueFuseTest"
-            ],
+            "contracts": ["ExternalStateRescueFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1374,9 +1221,7 @@
                     "MockERC20ForExternalState",
                     "MockPlasmaVaultForExternalState"
                 ],
-                "mutations": [
-                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
-                ],
+                "mutations": ["vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -1387,9 +1232,7 @@
             "id": "external-state-unpause-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/ExternalStateUnpauseFuseTest.t.sol",
-            "contracts": [
-                "ExternalStateUnpauseFuseTest"
-            ],
+            "contracts": ["ExternalStateUnpauseFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1419,9 +1262,7 @@
             "id": "external-state-executor-storage-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/lib/ExternalStateExecutorStorageLibTest.t.sol",
-            "contracts": [
-                "ExternalStateExecutorStorageLibTest"
-            ],
+            "contracts": ["ExternalStateExecutorStorageLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1431,9 +1272,7 @@
             "ffi": false,
             "tests": 13,
             "setUp": {
-                "deploys": [
-                    "ExternalStateExecutorStorageLibHarness"
-                ],
+                "deploys": ["ExternalStateExecutorStorageLibHarness"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1445,9 +1284,7 @@
             "id": "external-state-substrate-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/external_state/lib/ExternalStateSubstrateLibTest.t.sol",
-            "contracts": [
-                "ExternalStateSubstrateLibTest"
-            ],
+            "contracts": ["ExternalStateSubstrateLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1457,9 +1294,7 @@
             "ffi": false,
             "tests": 28,
             "setUp": {
-                "deploys": [
-                    "ExternalStateSubstrateLibHarness"
-                ],
+                "deploys": ["ExternalStateSubstrateLibHarness"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1471,9 +1306,7 @@
             "id": "midas-executor-storage-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/midas/lib/MidasExecutorStorageLibTest.t.sol",
-            "contracts": [
-                "MidasExecutorStorageLibTest"
-            ],
+            "contracts": ["MidasExecutorStorageLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1483,13 +1316,8 @@
             "ffi": false,
             "tests": 18,
             "setUp": {
-                "deploys": [
-                    "MidasExecutor",
-                    "MidasExecutorStorageLibHarness"
-                ],
-                "mutations": [
-                    "vm.store to seed storage slots directly"
-                ],
+                "deploys": ["MidasExecutor", "MidasExecutorStorageLibHarness"],
+                "mutations": ["vm.store to seed storage slots directly"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -1500,9 +1328,7 @@
             "id": "midas-pending-requests-storage-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/midas/lib/MidasPendingRequestsStorageLibTest.t.sol",
-            "contracts": [
-                "MidasPendingRequestsStorageLibTest"
-            ],
+            "contracts": ["MidasPendingRequestsStorageLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1512,9 +1338,7 @@
             "ffi": false,
             "tests": 61,
             "setUp": {
-                "deploys": [
-                    "MidasPendingRequestsStorageLibHarness"
-                ],
+                "deploys": ["MidasPendingRequestsStorageLibHarness"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1526,9 +1350,7 @@
             "id": "midas-substrate-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/midas/lib/MidasSubstrateLibTest.t.sol",
-            "contracts": [
-                "MidasSubstrateLibTest"
-            ],
+            "contracts": ["MidasSubstrateLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1538,9 +1360,7 @@
             "ffi": false,
             "tests": 46,
             "setUp": {
-                "deploys": [
-                    "MidasSubstrateLibHarness"
-                ],
+                "deploys": ["MidasSubstrateLibHarness"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1552,9 +1372,7 @@
             "id": "midas-balance-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/midas/MidasBalanceFuseTest.t.sol",
-            "contracts": [
-                "MidasBalanceFuseTest"
-            ],
+            "contracts": ["MidasBalanceFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1584,9 +1402,7 @@
             "id": "midas-claim-from-executor-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/midas/MidasClaimFromExecutorFuseTest.t.sol",
-            "contracts": [
-                "MidasClaimFromExecutorFuseTest"
-            ],
+            "contracts": ["MidasClaimFromExecutorFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1613,9 +1429,7 @@
             "id": "midas-executor-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/midas/MidasExecutorTest.t.sol",
-            "contracts": [
-                "MidasExecutorTest"
-            ],
+            "contracts": ["MidasExecutorTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1631,9 +1445,7 @@
                     "MockMidasDepositVault",
                     "MockMidasRedemptionVault"
                 ],
-                "mutations": [
-                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
-                ],
+                "mutations": ["vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -1644,9 +1456,7 @@
             "id": "midas-request-supply-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/midas/MidasRequestSupplyFuseTest.t.sol",
-            "contracts": [
-                "MidasRequestSupplyFuseTest"
-            ],
+            "contracts": ["MidasRequestSupplyFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1665,9 +1475,7 @@
                     "MockMidasExecutorForFuse",
                     "MockMidasRedemptionVaultFuse"
                 ],
-                "mutations": [
-                    "vm.mockCall / vm.mockCallRevert on mocked dependencies"
-                ],
+                "mutations": ["vm.mockCall / vm.mockCallRevert on mocked dependencies"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -1678,9 +1486,7 @@
             "id": "midas-supply-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/midas/MidasSupplyFuseTest.t.sol",
-            "contracts": [
-                "MidasSupplyFuseTest"
-            ],
+            "contracts": ["MidasSupplyFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1708,9 +1514,7 @@
             "id": "term-finance-pending-bids-storage-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/lib/TermFinancePendingBidsStorageLibTest.t.sol",
-            "contracts": [
-                "TermFinancePendingBidsStorageLibTest"
-            ],
+            "contracts": ["TermFinancePendingBidsStorageLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1720,9 +1524,7 @@
             "ffi": false,
             "tests": 24,
             "setUp": {
-                "deploys": [
-                    "TermFinancePendingBidsStorageLibHarness"
-                ],
+                "deploys": ["TermFinancePendingBidsStorageLibHarness"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1734,9 +1536,7 @@
             "id": "term-finance-pending-offers-storage-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/lib/TermFinancePendingOffersStorageLibTest.t.sol",
-            "contracts": [
-                "TermFinancePendingOffersStorageLibTest"
-            ],
+            "contracts": ["TermFinancePendingOffersStorageLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1746,9 +1546,7 @@
             "ffi": false,
             "tests": 17,
             "setUp": {
-                "deploys": [
-                    "TermFinancePendingOffersStorageLibHarness"
-                ],
+                "deploys": ["TermFinancePendingOffersStorageLibHarness"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1760,9 +1558,7 @@
             "id": "term-finance-present-value-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/lib/TermFinancePresentValueLibTest.t.sol",
-            "contracts": [
-                "TermFinancePresentValueLibTest"
-            ],
+            "contracts": ["TermFinancePresentValueLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1784,9 +1580,7 @@
             "id": "term-finance-substrate-lib-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/lib/TermFinanceSubstrateLibTest.t.sol",
-            "contracts": [
-                "TermFinanceSubstrateLibTest"
-            ],
+            "contracts": ["TermFinanceSubstrateLibTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1796,9 +1590,7 @@
             "ffi": false,
             "tests": 27,
             "setUp": {
-                "deploys": [
-                    "TermFinanceSubstrateLibHarness"
-                ],
+                "deploys": ["TermFinanceSubstrateLibHarness"],
                 "mutations": [],
                 "externalAddresses": [],
                 "helpers": []
@@ -1810,9 +1602,7 @@
             "id": "term-finance-balance-fuse-delegatecall-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceBalanceFuseDelegatecallTest.t.sol",
-            "contracts": [
-                "TermFinanceBalanceFuseDelegatecallTest"
-            ],
+            "contracts": ["TermFinanceBalanceFuseDelegatecallTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1847,9 +1637,7 @@
             "id": "term-finance-balance-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceBalanceFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceBalanceFuseTest"
-            ],
+            "contracts": ["TermFinanceBalanceFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1886,9 +1674,7 @@
             "id": "term-finance-bid-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceBidFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceBidFuseTest"
-            ],
+            "contracts": ["TermFinanceBidFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1920,9 +1706,7 @@
             "id": "term-finance-bid-reveal-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceBidRevealFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceBidRevealFuseTest"
-            ],
+            "contracts": ["TermFinanceBidRevealFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1938,10 +1722,7 @@
                     "MockTermRepoServicer",
                     "TermFinanceBidRevealFuseHarness"
                 ],
-                "mutations": [
-                    "vm.warp to move time",
-                    "vm.store to seed storage slots directly"
-                ],
+                "mutations": ["vm.warp to move time", "vm.store to seed storage slots directly"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -1952,9 +1733,7 @@
             "id": "term-finance-cleanup-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceCleanupFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceCleanupFuseTest"
-            ],
+            "contracts": ["TermFinanceCleanupFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -1964,14 +1743,8 @@
             "ffi": false,
             "tests": 35,
             "setUp": {
-                "deploys": [
-                    "MockTermAuctionBidLocker",
-                    "MockTermAuctionOfferLocker",
-                    "TermFinanceCleanupFuseHarness"
-                ],
-                "mutations": [
-                    "vm.store to seed storage slots directly"
-                ],
+                "deploys": ["MockTermAuctionBidLocker", "MockTermAuctionOfferLocker", "TermFinanceCleanupFuseHarness"],
+                "mutations": ["vm.store to seed storage slots directly"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -1982,9 +1755,7 @@
             "id": "term-finance-collateral-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceCollateralFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceCollateralFuseTest"
-            ],
+            "contracts": ["TermFinanceCollateralFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -2002,9 +1773,7 @@
                     "MockTermRepoServicer",
                     "TermFinanceCollateralFuseHarness"
                 ],
-                "mutations": [
-                    "vm.store to seed storage slots directly"
-                ],
+                "mutations": ["vm.store to seed storage slots directly"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -2015,9 +1784,7 @@
             "id": "term-finance-offer-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceOfferFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceOfferFuseTest"
-            ],
+            "contracts": ["TermFinanceOfferFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -2034,9 +1801,7 @@
                     "MockTermRepoServicer",
                     "TermFinanceOfferFuseHarness"
                 ],
-                "mutations": [
-                    "vm.store to seed storage slots directly"
-                ],
+                "mutations": ["vm.store to seed storage slots directly"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -2047,9 +1812,7 @@
             "id": "term-finance-offer-reveal-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceOfferRevealFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceOfferRevealFuseTest"
-            ],
+            "contracts": ["TermFinanceOfferRevealFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -2065,9 +1828,7 @@
                     "MockTermRepoServicer",
                     "TermFinanceOfferRevealFuseHarness"
                 ],
-                "mutations": [
-                    "vm.store to seed storage slots directly"
-                ],
+                "mutations": ["vm.store to seed storage slots directly"],
                 "externalAddresses": [],
                 "helpers": []
             },
@@ -2078,9 +1839,7 @@
             "id": "term-finance-redeem-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceRedeemFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceRedeemFuseTest"
-            ],
+            "contracts": ["TermFinanceRedeemFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -2112,9 +1871,7 @@
             "id": "term-finance-repurchase-fuse-test",
             "group": "fuses-local",
             "path": "test/unitTest/fuses/term_finance/TermFinanceRepurchaseFuseTest.t.sol",
-            "contracts": [
-                "TermFinanceRepurchaseFuseTest"
-            ],
+            "contracts": ["TermFinanceRepurchaseFuseTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -2146,9 +1903,7 @@
             "id": "burn-request-fee-voting-regression-test",
             "group": "fuses-local",
             "path": "test/vaults/BurnRequestFeeVotingRegressionTest.t.sol",
-            "contracts": [
-                "BurnRequestFeeVotingRegressionTest"
-            ],
+            "contracts": ["BurnRequestFeeVotingRegressionTest"],
             "fixture": "local-deployment",
             "chainId": null,
             "stateProbe": null,
@@ -2164,9 +1919,7 @@
                     "MockPlasmaVaultBase",
                     "VulnerableBurnRequestFeeFuse"
                 ],
-                "mutations": [
-                    "vm.store to seed storage slots directly"
-                ],
+                "mutations": ["vm.store to seed storage slots directly"],
                 "externalAddresses": [],
                 "helpers": []
             },
