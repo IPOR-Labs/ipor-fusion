@@ -10,6 +10,7 @@ do wykonywania zadań, status oraz dokumentację i przygotowane commity każdego
 | [PLAN.md](PLAN.md) | Plan: sekcje 1–8 projekt docelowy, sekcja 9 lista zadań `T00`–`T52`, sekcja 10 pomiar. |
 | [STATUS.md](STATUS.md) | Tabela statusów zadań. Jedyne miejsce, gdzie sprawdzasz, co jest zrobione. |
 | [ENVIRONMENT.md](ENVIRONMENT.md) | Zweryfikowane fakty o maszynie: read-only `.git` w VM, RPC, wersje narzędzi. |
+| [INTEGRATIONS-TODO.md](INTEGRATIONS-TODO.md) | Lista wszystkich integracji (fuse'y, reward fuse'y) do skatalogowania po T52, z priorytetami i definicją „zrobione”. |
 | [skill/SKILL.md](skill/SKILL.md) | Skill `readiness-task` (Claude Code) — procedura wykonania jednego zadania. |
 | [skill/templates/](skill/templates/) | Szablony `LOG.md` i `COMMIT.md`, obowiązkowe dla każdego zadania. |
 | `tasks/Txx/` | Dokumentacja wykonania zadania: `LOG.md` (kroki, weryfikacja), `COMMIT.md` + `commit-message.txt` (gotowy commit), dowody. |
