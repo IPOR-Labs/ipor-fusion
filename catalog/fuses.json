@@ -170,6 +170,198 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-curve-stableswap-ng-market-16",
+            "protocol": "curve_stableswap_ng",
+            "chainId": 1,
+            "market": {
+                "id": 16,
+                "constant": "CURVE_POOL",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint256,uint256))",
+                    "selector": "0x2242c270",
+                    "struct": "CurveStableswapNGSingleSideSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "curveStableswapNG",
+                            "type": "ICurveStableswapNG",
+                            "meaning": "the Curve StableSwap-NG pool (which is also its own LP token) to add liquidity to; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the pool coin to deposit single-sided; it must be one of the pool's coins() or the fuse reverts with CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset"
+                        },
+                        {
+                            "name": "assetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of that coin to deposit, in the coin's smallest unit; 0 is a no-op"
+                        },
+                        {
+                            "name": "minLpTokenAmountReceived",
+                            "type": "uint256",
+                            "meaning": "slippage floor on LP tokens minted (18 decimals), passed to add_liquidity"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,address,uint256))",
+                    "selector": "0xf753aa96",
+                    "struct": "CurveStableswapNGSingleSideSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "curveStableswapNG",
+                            "type": "ICurveStableswapNG",
+                            "meaning": "the Curve StableSwap-NG pool to remove liquidity from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "lpTokenAmount",
+                            "type": "uint256",
+                            "meaning": "amount of LP tokens to burn (18 decimals); 0 is a no-op"
+                        },
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the single pool coin to receive; must be one of the pool's coins()"
+                        },
+                        {
+                            "name": "minCoinAmountReceived",
+                            "type": "uint256",
+                            "meaning": "slippage floor on the coin received, in its smallest unit; a failing remove_liquidity_one_coin is caught and only emits CurveSupplyStableswapNGSingleSideSupplyFuseExitFailed"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:61",
+                    "sources": {
+                        "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol": "0xfb9577602ad69b4ec9e793b3d685a93e4fb90e7a2663a83c503e007c33fded4c",
+                        "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol": "0xfd00677041fd1abb9156feb9cc5fabc4d4023880515cb0fd2966ca7edba07268"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "CurveStableswapNGSingleSideSupplyFuseEnterData",
+                            "signature": "enter((address,address,uint256,uint256))",
+                            "selector": "0x2242c270",
+                            "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:13",
+                            "fields": [
+                                {
+                                    "name": "curveStableswapNG",
+                                    "type": "ICurveStableswapNG",
+                                    "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:15"
+                                },
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:17"
+                                },
+                                {
+                                    "name": "assetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:19"
+                                },
+                                {
+                                    "name": "minLpTokenAmountReceived",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:21"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "CurveStableswapNGSingleSideSupplyFuseExitData",
+                            "signature": "exit((address,uint256,address,uint256))",
+                            "selector": "0xf753aa96",
+                            "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:24",
+                            "fields": [
+                                {
+                                    "name": "curveStableswapNG",
+                                    "type": "ICurveStableswapNG",
+                                    "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:26"
+                                },
+                                {
+                                    "name": "lpTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:28"
+                                },
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:30"
+                                },
+                                {
+                                    "name": "minCoinAmountReceived",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol:32"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Curve StableSwap-NG pool addresses (each pool is its own LP token) this market may add liquidity to and remove from. The action fuse checks data.curveStableswapNG on enter and exit; the balance fuse iterates the same list and reads each pool's balances() and coins().",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "every coin of every substrate pool, pro rata: pool.balances(j) * lpBalance / totalSupply for each coin j, priced individually; rewards and gauge stakes are not included",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware) via getAssetPrice for each coin",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuseArbitrumTest.t.sol",
+                "test/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuseArbitrumTest.t.sol",
+                "test/integrationTest/curveGaugesArbitrum/CurveUSDMUSDCStakeLPGaugeArbitrum.t.sol",
+                "test/integrationTest/curveGaugesArbitrum/CurveUSDMUSDCClaimLPGaugeArbitrum.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "CurveStableswapNGSingleSideSupplyFuse",
+                    "address": "0xfCB0b631e82f80aF729aADE3ca3A58374A18293A",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xf593af35565bcb15a3e959a48ed0a42de50cffc66a9e263e060c924257c94460",
+                    "observedMarketId": 16,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 16 and VERSION() returned its own address at the observed block",
+                        "the runtime code (5775 bytes) contains both described selectors, enter((address,address,uint256,uint256)) 0x2242c270 and exit((address,uint256,address,uint256)) 0xf753aa96",
+                        "bytecode equivalence with this checkout's source was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "CurveStableswapNGSingleSideBalanceFuse",
+                    "address": "0x2Db6eE136c0532e8E04e60A25e81A680cF184F6b",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xd86d68b32b00272174f988dbc5c51c467c2d2511d124ef6986820e82abd7e3e5",
+                    "observedMarketId": 16,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 16 at the observed block; VERSION() reverted, which is consistent with this checkout's balance fuse having no VERSION",
+                        "bytecode equivalence with this checkout's source was not established"
+                    ]
+                }
+            }
         }
     ]
 }

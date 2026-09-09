@@ -89,9 +89,10 @@ One row per catalogued integration market. `Evidence` summarises the
 deployment status of the primary action fuse / balance fuse on the entry's
 chain; the entry itself carries the block, code hash and notes.
 
-| Entry id                         | Chain    | Market                | Primary fuse        | Additional fuses | Evidence            |
-| -------------------------------- | -------- | --------------------- | ------------------- | ---------------- | ------------------- |
-| `ethereum-erc4626-market-100001` | Ethereum | 100001 `ERC4626_0001` | `Erc4626SupplyFuse` | –                | observed / observed |
+| Entry id                                 | Chain    | Market                | Primary fuse                            | Additional fuses | Evidence            |
+| ---------------------------------------- | -------- | --------------------- | --------------------------------------- | ---------------- | ------------------- |
+| `ethereum-erc4626-market-100001`         | Ethereum | 100001 `ERC4626_0001` | `Erc4626SupplyFuse`                     | –                | observed / observed |
+| `ethereum-curve-stableswap-ng-market-16` | Ethereum | 16 `CURVE_POOL`       | `CurveStableswapNGSingleSideSupplyFuse` | –                | observed / observed |
 
 ## The pilot entry
 
