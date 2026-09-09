@@ -25,7 +25,7 @@ function mutate(change) {
 test("the pilot entry is valid against the checkout", () => {
     const result = run(catalog);
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /valid catalog: 1 integration\(s\) checked/);
+    assert.match(result.stdout, /valid catalog: \d+ integration\(s\) checked/);
 });
 
 for (const scenario of [
@@ -89,6 +89,66 @@ for (const scenario of [
             contract.matchesCurrentSource = true;
         },
         expected: /cannot match the current source without having been observed/,
+    },
+    {
+        name: "an unknown deployment that still names an address",
+        change: (value) => {
+            const contract = value.integrations[0].deployments.actionFuse;
+            contract.status = "unknown";
+            contract.observedAtBlock = null;
+            contract.runtimeCodeHash = null;
+            contract.observedMarketId = null;
+        },
+        expected: /status "unknown" cannot name an address/,
+    },
+    {
+        name: "a balance fuse deployment without a balance fuse source",
+        change: (value) => (value.integrations[0].source.balanceFuse = null),
+        expected: /cannot list a balance fuse deployment/,
+    },
+    {
+        name: "a market without a constant and without an origin",
+        change: (value) => {
+            value.integrations[0].market.constant = null;
+            value.integrations[0].market.constantSource = null;
+        },
+        expected: /market\.origin.*must state where its id comes from/,
+    },
+    {
+        name: "an additional fuse whose path does not exist",
+        change: (value) => {
+            value.integrations[0].additionalFuses = [
+                {
+                    path: "contracts/fuses/erc4626/Gone.sol",
+                    purpose: "test",
+                    interface: {
+                        exit: { signature: "exit()", selector: "0xe9fad8ee", struct: null, fields: [] },
+                        generated: null,
+                    },
+                    deployment: {
+                        status: "unknown",
+                        registryName: null,
+                        address: null,
+                        addressSource: "not searched",
+                        observedAtBlock: null,
+                        runtimeCodeHash: null,
+                        observedMarketId: null,
+                        matchesCurrentSource: null,
+                        notes: [],
+                    },
+                },
+            ];
+        },
+        expected: /additionalFuses\[0\]\.path.*does not exist/,
+    },
+    {
+        name: "an interface that describes no operation",
+        change: (value) => {
+            delete value.integrations[0].interface.enter;
+            delete value.integrations[0].interface.exit;
+            value.integrations[0].interface.generated = null;
+        },
+        expected: /interface: describes no operation/,
     },
     {
         name: "an unknown property",

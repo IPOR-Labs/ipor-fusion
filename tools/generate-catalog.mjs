@@ -7,14 +7,17 @@
 // Exit codes: 0 written (or up to date with --check), 1 out of date with
 // --check, 2 could not read or parse an input.
 //
-// It writes exactly one subtree per integration, `interface.generated`, and
-// nothing else. Field meanings, substrate semantics, roles and observed
-// deployments are editorial or evidence and are never touched here.
+// It writes exactly one subtree per fuse, `interface.generated` — on the
+// integration for its primary action fuse and on every entry of
+// `additionalFuses` — and nothing else. Field meanings, substrate semantics,
+// roles and observed deployments are editorial or evidence and are never
+// touched here.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
+import { canonicalType, parseFunctionParams, parseStruct, SolidityReadError } from "./lib/solidity-abi.mjs";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 
@@ -47,74 +50,96 @@ function cast(args_) {
     return result.stdout.trim();
 }
 
-/// Reads one struct declaration: field types, names and the line it starts on.
-function parseStruct(source, path, name) {
-    const lines = source.split("\n");
-    const start = lines.findIndex((line) => new RegExp(`^\\s*struct\\s+${name}\\s*\\{`).test(line));
-    if (start === -1) die("STRUCT_NOT_FOUND", `${name} is not declared in ${path}`);
-    const fields = [];
-    for (let index = start + 1; index < lines.length; index += 1) {
-        const line = lines[index].trim();
-        if (line.startsWith("}")) {
-            return { struct: name, declaredAtLine: start + 1, fields };
-        }
-        if (line === "" || line.startsWith("//") || line.startsWith("/*") || line.startsWith("*")) continue;
-        const match = /^([A-Za-z_][A-Za-z0-9_\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/.exec(line);
-        if (!match) die("STRUCT_UNPARSEABLE", `${path}:${index + 1} in ${name}: "${line}"`);
-        fields.push({ type: match[1], name: match[2], line: index + 1 });
+function guarded(fn) {
+    try {
+        return fn();
+    } catch (error) {
+        if (error instanceof SolidityReadError) die(error.code, error.message);
+        throw error;
     }
-    return die("STRUCT_UNPARSEABLE", `${name} in ${path} is not closed`);
+}
+
+/// Structural data of every operation a fuse's `interface` describes. An
+/// operation with a `struct` is read from that struct; one with `struct: null`
+/// is read from the function's own parameter list.
+function generateOperations(fusePath, fuseSource, iface) {
+    const operations = {};
+    for (const [operation, entry] of Object.entries(iface)) {
+        if (operation === "generated") continue;
+        const parsed = guarded(() =>
+            entry.struct === null
+                ? parseFunctionParams(fuseSource, fusePath, operation)
+                : parseStruct(fuseSource, fusePath, entry.struct),
+        );
+        const types = parsed.fields.map((field) =>
+            guarded(() => canonicalType(repoRoot, fuseSource, fusePath, field.type)),
+        );
+        const signature =
+            entry.struct === null ? `${operation}(${types.join(",")})` : `${operation}((${types.join(",")}))`;
+        operations[operation] = {
+            struct: entry.struct,
+            signature,
+            selector: cast(["sig", signature]),
+            source: `${fusePath}:${parsed.declaredAtLine}`,
+            fields: parsed.fields.map((field) => ({
+                name: field.name,
+                type: field.type,
+                source: `${fusePath}:${field.line}`,
+            })),
+        };
+    }
+    return operations;
 }
 
 function generateFor(integration) {
     const actionPath = integration.source.actionFuse;
     const balancePath = integration.source.balanceFuse;
     const actionSource = read(resolve(repoRoot, actionPath));
-    const balanceSource = read(resolve(repoRoot, balancePath));
-    const constantSourcePath = integration.market.constantSource;
-    const constantSource = read(resolve(repoRoot, constantSourcePath));
+    const balanceSource = balancePath === null ? null : read(resolve(repoRoot, balancePath));
 
-    const constantLine =
-        constantSource.split("\n").findIndex((line) =>
-            new RegExp(`constant\\s+${integration.market.constant}\\s*=`).test(line),
-        ) + 1;
-    if (constantLine === 0) die("CONSTANT_NOT_FOUND", `${integration.market.constant} in ${constantSourcePath}`);
-
-    const operations = {};
-    for (const [operation, entry] of Object.entries(integration.interface)) {
-        if (operation === "generated") continue;
-        const parsed = parseStruct(actionSource, actionPath, entry.struct);
-        const tuple = `(${parsed.fields.map((field) => field.type).join(",")})`;
-        const signature = `${operation}(${tuple})`;
-        operations[operation] = {
-            struct: parsed.struct,
-            signature,
-            selector: cast(["sig", signature]),
-            source: `${actionPath}:${parsed.declaredAtLine}`,
-            fields: parsed.fields.map((field) => ({
-                name: field.name,
-                type: field.type,
-                source: `${actionPath}:${field.line}`,
-            })),
-        };
+    let marketConstantSource = null;
+    if (integration.market.constant !== null) {
+        const constantSourcePath = integration.market.constantSource;
+        const constantSource = read(resolve(repoRoot, constantSourcePath));
+        const constantLine =
+            constantSource
+                .split("\n")
+                .findIndex((line) => new RegExp(`constant\\s+${integration.market.constant}\\s*=`).test(line)) + 1;
+        if (constantLine === 0) die("CONSTANT_NOT_FOUND", `${integration.market.constant} in ${constantSourcePath}`);
+        marketConstantSource = `${constantSourcePath}:${constantLine}`;
     }
 
-    return {
+    const sources = { [actionPath]: sha256(actionSource) };
+    if (balancePath !== null) sources[balancePath] = sha256(balanceSource);
+
+    const generated = {
         generator: "tools/generate-catalog.mjs",
-        marketConstantSource: `${constantSourcePath}:${constantLine}`,
-        sources: {
-            [actionPath]: sha256(actionSource),
-            [balancePath]: sha256(balanceSource),
-        },
-        operations,
+        marketConstantSource,
+        sources,
+        operations: generateOperations(actionPath, actionSource, integration.interface),
     };
+
+    const additional = (integration.additionalFuses ?? []).map((fuse) => {
+        const source = read(resolve(repoRoot, fuse.path));
+        return {
+            generator: "tools/generate-catalog.mjs",
+            sources: { [fuse.path]: sha256(source) },
+            operations: generateOperations(fuse.path, source, fuse.interface),
+        };
+    });
+
+    return { generated, additional };
 }
 
 let changed = false;
 for (const integration of catalog.integrations) {
-    const generated = generateFor(integration);
+    const { generated, additional } = generateFor(integration);
     if (JSON.stringify(integration.interface.generated) !== JSON.stringify(generated)) changed = true;
     integration.interface.generated = generated;
+    (integration.additionalFuses ?? []).forEach((fuse, index) => {
+        if (JSON.stringify(fuse.interface.generated) !== JSON.stringify(additional[index])) changed = true;
+        fuse.interface.generated = additional[index];
+    });
 }
 
 const serialized = `${JSON.stringify(catalog, null, 4)}\n`;

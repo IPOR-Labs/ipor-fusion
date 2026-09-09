@@ -15,33 +15,42 @@ were **observed** for a market and how strong that evidence is.
 
 ## What one entry holds
 
-| Group          | Content                                                                             |
-| -------------- | ------------------------------------------------------------------------------------ |
-| `market`       | Market ID and the Solidity constant it comes from.                                   |
-| `source`       | Action fuse and balance fuse in this checkout.                                       |
-| `interface`    | `enter`/`exit` signature, selector, struct name and the meaning of every field.      |
-| `substrates`   | Their shape, what they mean, how they are granted and checked, and which ones were verified on chain. |
-| `valuation`    | What the balance fuse prices, through which source, in which unit.                   |
-| `roles`        | Which role executes, registers fuses, grants substrates, sets limits and price sources. |
-| `tests`        | The suites that exercise the integration.                                            |
-| `deployments`  | Observed fuse deployments with their block, code hash and market ID.                 |
+| Group             | Content                                                                                                                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `market`          | Market ID and the Solidity constant it comes from, or `origin` when no constant exists and the id is a constructor argument.                                                                   |
+| `source`          | Primary action fuse and balance fuse in this checkout (`balanceFuse: null` when the integration has none).                                                                                     |
+| `interface`       | `enter`/`exit`/`claim` signature, selector, struct name and the meaning of every field of the primary action fuse. `struct: null` means the function takes plain parameters, listed as fields. |
+| `additionalFuses` | Every further fuse of the integration — other action fuses, reward claim fuses — each with its own `interface`, generated data and deployment evidence.                                        |
+| `substrates`      | Their shape, what they mean, how they are granted and checked, and which ones were verified on chain.                                                                                          |
+| `valuation`       | What the balance fuse prices, through which source, in which unit.                                                                                                                             |
+| `roles`           | Which role executes, registers fuses, grants substrates, sets limits and price sources.                                                                                                        |
+| `tests`           | The suites that exercise the integration.                                                                                                                                                      |
+| `deployments`     | Observed fuse deployments with their block, code hash and market ID.                                                                                                                           |
 
-Editorial text (what a field *means*) and observations (what was *read*) are kept
+Editorial text (what a field _means_) and observations (what was _read_) are kept
 apart on purpose, and so is the structure of the code itself.
 
 ## Generated structure
 
-`interface.generated` is produced from the Solidity sources and is the only part
-of an entry a tool writes:
+`interface.generated` — on the integration for its primary fuse and on every
+`additionalFuses` entry — is produced from the Solidity sources and is the only
+part of an entry a tool writes:
 
 ```bash
 npm run catalog:generate    # rewrite interface.generated from the sources
 npm run catalog:check       # fail if the catalog no longer matches them
 ```
 
-It carries, per integration: the struct name, tuple signature and selector of
-`enter` and `exit`, the `file:line` of the struct and of every field, the
-`file:line` of the market constant, and the SHA-256 of both fuse sources.
+It carries, per fuse: the struct name (or `null`), canonical signature and
+selector of every described operation, the `file:line` of the struct or
+function and of every field, the `file:line` of the market constant, and the
+SHA-256 of the fuse sources. Nested structs, enums, contract types and
+user-defined value types are resolved through the fuse's imports and the
+remappings in `foundry.toml`, so `PoolKey poolKey` becomes
+`(address,address,uint24,int24,address)` in the signature while the field
+keeps its declared type. When the compiler artifact of a fuse is present under
+`out/`, `validate:catalog` also requires each selector to be one the compiled
+contract emits.
 
 The generator writes that subtree and nothing else: field meanings, substrate
 semantics, valuation, roles, tests and observed deployments survive untouched.
@@ -61,9 +70,11 @@ Each deployment carries a `status`:
   and the `MARKET_ID()` it reported are recorded;
 - `unverified` — the address came from a source but was not read; it must not
   carry observation data;
+- `unknown` — no address was found; `addressSource` says which registry and
+  chain were searched, and `address` is `null`;
 - `absent` — known not to exist.
 
-`matchesCurrentSource` is separate again, and `null` means *not established*.
+`matchesCurrentSource` is separate again, and `null` means _not established_.
 Nothing in the catalog claims a deployment is the code in this checkout unless
 that was proven.
 
@@ -71,6 +82,16 @@ The validator enforces those rules: an `observed` entry needs its block, code
 hash and market ID, an entry cannot claim to match the current source without
 having been observed, the market constant must still hold the catalogued value,
 every path must exist, and each selector must be the hash of its own signature.
+
+## Entries
+
+One row per catalogued integration market. `Evidence` summarises the
+deployment status of the primary action fuse / balance fuse on the entry's
+chain; the entry itself carries the block, code hash and notes.
+
+| Entry id                         | Chain    | Market                | Primary fuse        | Additional fuses | Evidence            |
+| -------------------------------- | -------- | --------------------- | ------------------- | ---------------- | ------------------- |
+| `ethereum-erc4626-market-100001` | Ethereum | 100001 `ERC4626_0001` | `Erc4626SupplyFuse` | –                | observed / observed |
 
 ## The pilot entry
 

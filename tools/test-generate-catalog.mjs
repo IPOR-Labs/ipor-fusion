@@ -121,3 +121,78 @@ test("a struct the catalog names but Solidity does not declare is a named failur
         rmSync(directory, { recursive: true, force: true });
     }
 });
+
+/// A scratch catalog whose first integration gains additional fuses read from
+/// the real sources: one with plain parameters, one with an empty exit, one
+/// whose struct nests a struct imported through a remapping.
+function withAdditionalFuses() {
+    const directory = mkdtempSync(resolve(tmpdir(), "fusion-catalog-additional-"));
+    const value = JSON.parse(readFileSync(catalog, "utf8"));
+    const deployment = {
+        status: "unknown",
+        registryName: null,
+        address: null,
+        addressSource: "not searched in this test",
+        observedAtBlock: null,
+        runtimeCodeHash: null,
+        observedMarketId: null,
+        matchesCurrentSource: null,
+        notes: [],
+    };
+    const placeholder = { signature: "x()", selector: "0x00000000" };
+    value.integrations[0].additionalFuses = [
+        {
+            path: "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol",
+            purpose: "plain parameters",
+            interface: {
+                enter: {
+                    ...placeholder,
+                    struct: null,
+                    fields: [{ name: "assetAddress_", type: "address", meaning: "m" }],
+                },
+                generated: null,
+            },
+            deployment,
+        },
+        {
+            path: "contracts/fuses/euler/EulerV2BatchFuse.sol",
+            purpose: "empty exit",
+            interface: { exit: { ...placeholder, struct: null, fields: [] }, generated: null },
+            deployment,
+        },
+        {
+            path: "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol",
+            purpose: "nested imported struct",
+            interface: {
+                enter: { ...placeholder, struct: "UniswapV4NewPositionFuseEnterData", fields: [] },
+                generated: null,
+            },
+            deployment,
+        },
+    ];
+    const path = resolve(directory, "fuses.json");
+    writeFileSync(path, `${JSON.stringify(value, null, 4)}\n`);
+    return { directory, path };
+}
+
+test("additional fuses: plain parameters, an empty exit and a nested imported struct", () => {
+    const { directory, path } = withAdditionalFuses();
+    try {
+        const result = run(generator, [path]);
+        assert.equal(result.status, 0, result.stderr);
+        const [plain, empty, nested] = JSON.parse(readFileSync(path, "utf8")).integrations[0].additionalFuses;
+        assert.equal(plain.interface.generated.operations.enter.signature, "enter(address)");
+        assert.equal(plain.interface.generated.operations.enter.selector, "0xd014c01f");
+        assert.equal(empty.interface.generated.operations.exit.signature, "exit()");
+        assert.equal(empty.interface.generated.operations.exit.selector, "0xe9fad8ee");
+        assert.equal(
+            nested.interface.generated.operations.enter.signature,
+            "enter(((address,address,uint24,int24,address),int24,int24,uint256,uint256,uint256,uint256,bytes,uint256))",
+        );
+        // Selectors agree with what the compiler emits for those contracts.
+        assert.equal(nested.interface.generated.operations.enter.selector, "0xa73b3729");
+        assert.equal(nested.interface.generated.operations.enter.fields[0].type, "PoolKey");
+    } finally {
+        rmSync(directory, { recursive: true, force: true });
+    }
+});

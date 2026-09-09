@@ -63,7 +63,7 @@
                     "generator": "tools/generate-catalog.mjs",
                     "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:358",
                     "sources": {
-                        "contracts/fuses/erc4626/Erc4626SupplyFuse.sol": "0x6c4525fdeedd5898e2b63560872f21606cc3240a45fe2dc360805b6ae203bcf0",
+                        "contracts/fuses/erc4626/Erc4626SupplyFuse.sol": "0x07ba27f4965eca0dec68cbbf3fcda89c7a809cec88716d4f45fd79b77728aea4",
                         "contracts/fuses/erc4626/Erc4626BalanceFuse.sol": "0xf464cf33bbc430e8d4a3aa44c07c35dde38669ecaca8cfcb9883b02887e6c511"
                     },
                     "operations": {
