@@ -1,0 +1,106 @@
+# Secret-free checks for pull requests.
+#
+# This workflow runs the pull request's own code, so it must never have access to
+# a secret. It is triggered by `pull_request` (not `pull_request_target`), so a
+# fork's run gets a read-only token and no repository secrets, and it declares no
+# `secrets:` of its own. Everything here works offline: no RPC, no signing key.
+#
+# Anything that needs a secret — Slack notifications, fork tests with an RPC
+# provider — belongs in a separate, privileged workflow that does not execute the
+# pull request's code.
+name: PR checks
+
+on:
+    pull_request:
+        types: [opened, synchronize, reopened]
+        branches:
+            - "**"
+
+permissions:
+    contents: read
+
+concurrency:
+    group: pr-checks-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+
+jobs:
+    checks:
+        name: Build, lint and offline tests
+        runs-on: ubuntu-latest
+        env:
+            FOUNDRY_PROFILE: ci
+        steps:
+            - name: Checkout the pull request
+              # from tag: v4.2.2
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+              with:
+                  submodules: recursive
+
+            - name: Setup Node.js
+              # from tag: v4.2.0
+              uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
+              with:
+                  node-version: 20.17.0
+
+            - name: Setup Foundry
+              # from tag: v1.9.1
+              uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09
+              with:
+                  version: v1.7.1
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Forge build
+              run: |
+                  forge --version
+                  forge build
+
+            - name: Solhint
+              run: npm run solhint:all
+
+            # The repository has a large pre-existing formatting baseline (301 files
+            # at the time this job was added). Reformatting it is a separate change,
+            # so the check reports and does not gate.
+            - name: Prettier check (reports the existing baseline)
+              id: format
+              continue-on-error: true
+              run: npm run format:check
+
+            - name: Local contract tests without RPC
+              run: npm run test:unit
+
+            - name: Documentation, catalog and manifest validation
+              run: |
+                  npm run validate:docs
+                  npm run validate:test-suites
+                  npm run validate:deployments
+                  npm run validate:pilot-abi
+                  npm run validate:vault-config
+                  npm run validate:catalog
+                  npm run catalog:check
+
+            - name: Tooling tests without RPC
+              env:
+                  # No provider is configured here; the tools must fail or skip by
+                  # name rather than silently pass.
+                  FUSION_ENV_FILE: /dev/null
+              run: |
+                  npm run test:unit:runner
+                  npm run test:fork:runner
+                  npm run test:affected:runner
+                  npm run validate:deployments:test
+                  npm run validate:vault-config:test
+                  npm run validate:catalog:test
+                  npm run validate:docs:test
+                  npm run evals:report:test
+                  npm run mcp:deployments:test
+                  npm run catalog:generate:test
+                  npm run factory:inspect:test
+                  npm run vault:plan:test
+                  npm run vault:state:test
+
+            - name: Formatting baseline reminder
+              if: steps.format.outcome == 'failure'
+              run: |
+                  echo "::notice title=Formatting baseline::npm run format:check reports pre-existing style deviations in this repository. This job does not gate on them; see docs/ci.md."

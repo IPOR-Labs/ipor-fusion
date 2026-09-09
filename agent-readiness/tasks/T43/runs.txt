@@ -1,0 +1,48 @@
+T43 verification — 2026-09-09 (Europe/Warsaw)
+
+Workflow shape (parsed with PyYAML):
+  name        PR checks
+  trigger     pull_request only (never pull_request_target)
+  permissions contents: read
+  steps       11
+  the file contains no `secrets.` reference and passes no secrets to anything
+
+Every step of the job was executed locally with the provider variables removed
+and FUSION_ENV_FILE=/dev/null, i.e. exactly the environment the job has:
+
+  npm run validate:test-suites      PASS
+  npm run validate:deployments      PASS
+  npm run validate:pilot-abi        PASS
+  npm run validate:vault-config     PASS
+  npm run validate:catalog          PASS
+  npm run catalog:check             PASS
+  npm run test:unit                 PASS (5 suites, 129 tests)
+  npm run test:unit:runner          PASS
+  npm run test:fork:runner          PASS
+  npm run test:affected:runner      PASS
+  npm run validate:deployments:test PASS
+  npm run validate:vault-config:test PASS
+  npm run validate:catalog:test     PASS
+  npm run catalog:generate:test     PASS
+  npm run factory:inspect:test      PASS
+  npm run vault:plan:test           PASS
+  npm run vault:state:test          PASS
+
+Baselines measured, not hidden:
+  npm run solhint:all    exit 0 (warnings only) — the job gates on it
+  npm run format:check   FAILS: "Code style issues found in 301 files"
+      pre-existing, from before this workflow; the step is continue-on-error and
+      emits a notice pointing at docs/ci.md. The repository was not reformatted.
+
+Deliberately excluded from the secret-free job, with the reason recorded in
+docs/ci.md:
+  npm run agent:doctor:test  needs a provider for its RPC tests (fails without one)
+  npm run test:fork          needs an archive provider
+  every other tool test that reaches a network
+
+The fork pull request path was reviewed rather than assumed: ci.yml uses
+pull_request_target and its build workflow checks out refs/pull/<n>/merge with
+the RPC and Slack secrets, gated only by the `authorize` job's environment
+selection. Whether the `external` environment actually requires a review is a
+GitHub settings question that cannot be answered from this repository; docs/ci.md
+says so and names it as something the repository administrator must confirm.
