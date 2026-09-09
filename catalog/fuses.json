@@ -11631,6 +11631,267 @@
                     "notes": []
                 }
             }
+        },
+        {
+            "id": "ethereum-stake-dao-v2-market-34",
+            "protocol": "stake_dao_v2",
+            "chainId": 1,
+            "market": {
+                "id": 34,
+                "constant": "STAKE_DAO_V2",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/stake_dao_v2/StakeDaoV2BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256))",
+                    "selector": "0x41b11ae7",
+                    "struct": "StakeDaoV2SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "rewardVault",
+                            "type": "address",
+                            "meaning": "the Stake DAO V2 RewardVault (ERC4626 over the strategy LP token); it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "lpTokenUnderlyingAmount",
+                            "type": "uint256",
+                            "meaning": "amount of the LP token's underlying asset (rewardVault.asset().asset()) to deposit, in that asset's smallest unit; capped at the Plasma Vault's balance, 0 returns without acting"
+                        },
+                        {
+                            "name": "minLpTokenUnderlyingAmount",
+                            "type": "uint256",
+                            "meaning": "slippage floor on the capped underlying amount; below it reverts with StakeDaoV2SupplyFuseInsufficientLpTokenUnderlyingAmount"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,uint256))",
+                    "selector": "0x8467bd30",
+                    "struct": "StakeDaoV2SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "rewardVault",
+                            "type": "address",
+                            "meaning": "the Stake DAO V2 RewardVault (ERC4626 over the strategy LP token); it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "rewardVaultShares",
+                            "type": "uint256",
+                            "meaning": "amount of RewardVault shares to redeem (then the LP token is redeemed for its underlying); capped at the Plasma Vault's share balance, 0 returns without acting"
+                        },
+                        {
+                            "name": "minRewardVaultShares",
+                            "type": "uint256",
+                            "meaning": "slippage floor on the capped share amount; below it reverts with StakeDaoV2SupplyFuseInsufficientRewardVaultShares"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:114",
+                    "sources": {
+                        "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol": "0x1d0d286ec01d801e2ea6d22d1ae6eb22c7c7e32eaaa2723d13c89a3c18e56b61",
+                        "contracts/fuses/stake_dao_v2/StakeDaoV2BalanceFuse.sol": "0x54ce8cfbaeaf666d8786758a2a7cf19b0edcf5f80dc7789dfed1caa25c824cf8"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "StakeDaoV2SupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "source": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol:15",
+                            "fields": [
+                                {
+                                    "name": "rewardVault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol:18"
+                                },
+                                {
+                                    "name": "lpTokenUnderlyingAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol:21"
+                                },
+                                {
+                                    "name": "minLpTokenUnderlyingAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol:23"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "StakeDaoV2SupplyFuseExitData",
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "source": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol:26",
+                            "fields": [
+                                {
+                                    "name": "rewardVault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol:29"
+                                },
+                                {
+                                    "name": "rewardVaultShares",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol:31"
+                                },
+                                {
+                                    "name": "minRewardVaultShares",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol:33"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol",
+                    "purpose": "reward claim fuse run through RewardsClaimManager (CLAIM_REWARDS_ROLE 600 calls RewardsClaimManager.claimRewards; FUSE_MANAGER_ROLE 300 registers it there with addRewardFuses): claimMainRewards claims the strategy's main rewards through each RewardVault's Accountant for its gauge, claimExtraRewards claims the listed extra reward tokens from each RewardVault; rewards go to the RewardsClaimManager and every RewardVault must be a granted substrate",
+                    "interface": {
+                        "claimMainRewards": {
+                            "signature": "claimMainRewards(address[])",
+                            "selector": "0xa173a0e1",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "rewardVaults",
+                                    "type": "address[]",
+                                    "meaning": "the RewardVaults whose main rewards are claimed through their ACCOUNTANT() for their gauge(); each must be a granted substrate"
+                                }
+                            ]
+                        },
+                        "claimExtraRewards": {
+                            "signature": "claimExtraRewards(address[],address[][])",
+                            "selector": "0x2d674f28",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "rewardVaults",
+                                    "type": "address[]",
+                                    "meaning": "the RewardVaults to claim extra rewards from; each must be a granted substrate"
+                                },
+                                {
+                                    "name": "rewardVaultsTokens",
+                                    "type": "address[][]",
+                                    "meaning": "per RewardVault, the extra reward token addresses to claim"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol": "0xf2e1cd45dbfd2fb645f0044375bb03a4a7dd9ec4c587521f51a746d2769a543d"
+                            },
+                            "operations": {
+                                "claimMainRewards": {
+                                    "struct": null,
+                                    "signature": "claimMainRewards(address[])",
+                                    "selector": "0xa173a0e1",
+                                    "source": "contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol:41",
+                                    "fields": [
+                                        {
+                                            "name": "rewardVaults",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol:41"
+                                        }
+                                    ]
+                                },
+                                "claimExtraRewards": {
+                                    "struct": null,
+                                    "signature": "claimExtraRewards(address[],address[][])",
+                                    "selector": "0x2d674f28",
+                                    "source": "contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol:66",
+                                    "fields": [
+                                        {
+                                            "name": "rewardVaults",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol:66"
+                                        },
+                                        {
+                                            "name": "rewardVaultsTokens",
+                                            "type": "address[][]",
+                                            "source": "contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol:66"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "StakeDaoV2ClaimFuse",
+                        "address": "0x7ec22C4deFE53eC35F03f0B6468ec319c577DEFc",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xac48170c5f88ea21d1bd13f2cd537d98a4e5f286c0413c42e870daaa28a2dbd1",
+                        "observedMarketId": 34,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 34 and VERSION() returned its own address at the observed block",
+                            "runtime code (3305 bytes) contains claimMainRewards(address[]) 0xa173a0e1 and claimExtraRewards(address[],address[][]) 0x2d674f28, matching this checkout",
+                            "bytecode equivalence with this checkout's StakeDaoV2ClaimFuse.sol was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Stake DAO V2 RewardVault addresses (ERC4626 vaults over a strategy LP token that is itself ERC4626 over the underlying) this market may deposit into, redeem from and claim rewards on. The supply fuse checks data.rewardVault on enter and exit, the claim fuse checks every listed RewardVault, and the balance fuse iterates the list.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every RewardVault substrate, the underlying asset of its LP token: the Plasma Vault's RewardVault share balance is converted through IERC4626(lpToken).convertToAssets and priced as that underlying (the RewardVault-to-LP-token conversion is taken as 1:1)",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(), i.e. the vault's PriceOracleMiddlewareManager falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals) through IporMath.convertToWad over underlying decimals plus price decimals"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/stake_dao_v2/StakeDaoV2FuseTest.t.sol",
+                "test/fuses/stake_dao_v2/StakeDaoV2FInstantWithdrawTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "StakeDaoV2SupplyFuse",
+                    "address": "0x5Be6e757763A3b7106D211dF5017823366cE3C1e",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x05983e14b8707054cbd515bfa2eab96b04c3fe39d182e0f8a79877964b4cfff8",
+                    "observedMarketId": 34,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 34 and VERSION() returned its own address at the observed block",
+                        "runtime code (5796 bytes) contains enter((address,uint256,uint256)) 0x41b11ae7, exit((address,uint256,uint256)) 0x8467bd30 and instantWithdraw(bytes32[]) 0xbe1946da, matching this checkout's structs",
+                        "bytecode equivalence with this checkout's StakeDaoV2SupplyFuse.sol was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "StakeDaoV2BalanceFuse",
+                    "address": "0x0c59d9Cd3859673EDC70b0BcF66E2715831C3816",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xa07dc4da859ca802b631ad6261a41f3b085827fdd858fd3fb62fbe7bd4f19514",
+                    "observedMarketId": 34,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 34 and balanceOf() 0x722713f7 is present in the runtime code (2096 bytes)",
+                        "VERSION() reverted, while this checkout's StakeDaoV2BalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse"
+                    ]
+                }
+            }
         }
     ]
 }
