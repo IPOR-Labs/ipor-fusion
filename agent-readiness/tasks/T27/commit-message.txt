@@ -1,0 +1,13 @@
+feat(vault): T27 validate vault creation configuration
+
+Add config/vaults/vault-creation.schema.json with a worked example and
+validate:vault-config, which checks the input against the schema and against the
+deployment manifest it names, without reading any RPC.
+
+Units live in the field names (*Seconds, *Bps, decimals), the fee package must
+be stated in full including its recipient, and only a variant the deployment
+lists as supported is accepted; docs/vaults.md documents the input.
+
+Verified with 17 validator tests covering the example plus wrong units, an
+incomplete fee package, a zero recipient, unsupported and unknown variants, an
+unknown deployment and an unknown property.

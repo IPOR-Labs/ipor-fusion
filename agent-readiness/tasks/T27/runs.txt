@@ -1,0 +1,32 @@
+T27 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run validate:vault-config
+  valid vault creation configs: 1 checked
+
+PASS npm run validate:vault-config -- config/vaults/example.json --json
+  {"schemaVersion":1,"status":"ok", …}
+
+PASS npm run validate:vault-config:test
+  tests 17, pass 17, fail 0
+
+  Rejections proven by those tests (each with a real bad input, exit code 1):
+    redemptionDelaySeconds = "1 hour"        expected type integer, got string
+    redemptionDelaySeconds = 0.5             expected type integer, got number
+    managementFeeBps = 0.05                  expected type integer, got number
+    performanceFeeBps = 10001                above the maximum 10000
+    fees.expected without feeRecipient       missing required property
+    feeRecipient = 0x000…000                 zero address is not a usable participant
+    variant = supervised-clone               UNSUPPORTED_VARIANT (cloneSupervised not supported)
+    variant = create2-clone                  value is not one of [...]
+    unknown deploymentId                     UNKNOWN_DEPLOYMENT
+    chainId = 999999                         UNKNOWN_DEPLOYMENT (no manifest)
+    vault without owner                      missing required property
+    caller = 0x1111                          does not match address pattern
+    underlying.decimals = "6"                expected type integer, got string
+    extra key feeRecipientOverride           unknown property
+  Unreadable input exits 2 with CONFIG_UNREADABLE.
+
+PASS npm run validate:deployments        (2 manifests)
+PASS npm run validate:test-suites        (8 suites)
+
+No RPC call, no transaction, no secret value in any added file.

@@ -1,0 +1,74 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/IPOR-Labs/ipor-fusion/config/vaults/vault-creation.schema.json",
+    "title": "IPOR Fusion vault creation input",
+    "description": "Input for creating one vault through an already deployed, verified factory. Every unit is explicit: *Seconds is whole seconds, *Bps is basis points of 10000, and token amounts are decimal strings in the smallest unit.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["schemaVersion", "chainId", "deploymentId", "variant", "caller", "vault", "fees"],
+    "properties": {
+        "schemaVersion": { "type": "integer", "enum": [1] },
+        "chainId": { "type": "integer", "minimum": 1 },
+        "deploymentId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "variant": {
+            "type": "string",
+            "description": "permissionless-clone maps to clone(...). supervised-clone maps to cloneSupervised(...) and needs MAINTENANCE_MANAGER_ROLE, so a deployment only supports it for a caller that holds the role.",
+            "enum": ["permissionless-clone", "supervised-clone"]
+        },
+        "caller": {
+            "$ref": "#/$defs/address",
+            "description": "The address that sends the transaction to the factory. It selects the fee package set, so it is not interchangeable with the owner or the signer behind a Safe."
+        },
+        "vault": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "symbol", "owner", "underlying", "redemptionDelaySeconds"],
+            "properties": {
+                "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "symbol": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,16}$" },
+                "owner": {
+                    "$ref": "#/$defs/address",
+                    "description": "Receives OWNER_ROLE on the new vault. It does not have to be the caller."
+                },
+                "underlying": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["address", "symbol", "decimals"],
+                    "properties": {
+                        "address": { "$ref": "#/$defs/address" },
+                        "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+                        "decimals": { "type": "integer", "minimum": 0, "maximum": 36 }
+                    }
+                },
+                "redemptionDelaySeconds": { "type": "integer", "minimum": 0 }
+            }
+        },
+        "fees": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["packageIndex", "packageSource", "expected"],
+            "properties": {
+                "packageIndex": { "type": "integer", "minimum": 0 },
+                "packageSource": {
+                    "type": "string",
+                    "description": "Which list the index is read from for this caller: the global DAO list, or the caller's business-client list when one is configured.",
+                    "enum": ["dao-global", "business-client"]
+                },
+                "expected": {
+                    "type": "object",
+                    "description": "What the caller expects the selected package to be. There is no default: every field must be stated, including the recipient.",
+                    "additionalProperties": false,
+                    "required": ["managementFeeBps", "performanceFeeBps", "feeRecipient"],
+                    "properties": {
+                        "managementFeeBps": { "type": "integer", "minimum": 0, "maximum": 10000 },
+                        "performanceFeeBps": { "type": "integer", "minimum": 0, "maximum": 10000 },
+                        "feeRecipient": { "$ref": "#/$defs/address" }
+                    }
+                }
+            }
+        }
+    },
+    "$defs": {
+        "address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" }
+    }
+}

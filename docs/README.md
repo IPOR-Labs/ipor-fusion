@@ -18,6 +18,15 @@ docs/*
 !docs/factories.md
 !docs/testing.md
 !docs/deployments.md
+!docs/vaults.md
+!docs/fuse-catalog.md
+!docs/invariants.md
+!docs/troubleshooting.md
+!docs/ci.md
+!docs/release.md
+!docs/mcp.md
+!docs/recipes/
+!docs/recipes/*.md
 ```
 
 Only the curated files listed in this index are tracked. Every further document
@@ -61,6 +70,16 @@ this directory replaces one of these, the source below is the reference.
 | Factory selection, composition, versions and test modes             | [`factories.md`](factories.md)                                                             |
 | Deployment sources, evidence levels and selected factory pilot      | [`deployments.md`](deployments.md)                                                         |
 | Test suite selection, fixture types, providers, blocks and failures | [`testing.md`](testing.md)                                                                 |
+| Vault creation input, units, caller/owner roles and variants         | [`vaults.md`](vaults.md)                                                                   |
+| End-to-end recipe: create a vault through the deployed factory       | [`recipes/create-vault.md`](recipes/create-vault.md)                                       |
+| End-to-end recipe: run the ERC4626 pilot strategy                    | [`recipes/erc4626-strategy.md`](recipes/erc4626-strategy.md)                               |
+| Recipe: wrap a pilot vault with the deployed wrapper factory         | [`recipes/wrap-a-vault.md`](recipes/wrap-a-vault.md)                                       |
+| Integration catalog: markets, substrates, valuation, roles, evidence | [`fuse-catalog.md`](fuse-catalog.md)                                                       |
+| Pilot invariants and whether a test proves each of them              | [`invariants.md`](invariants.md)                                                           |
+| Symptom-to-cause troubleshooting for the factory and vault path      | [`troubleshooting.md`](troubleshooting.md)                                                 |
+| CI: the secret-free pull request job and the privileged workflow     | [`ci.md`](ci.md)                                                                           |
+| Release checklist for the deployment registry and its evidence       | [`release.md`](release.md)                                                                 |
+| Reading the deployment registry through MCP                          | [`mcp.md`](mcp.md)                                                                         |
 | Detailed vault component background and historical design notes     | [`../contracts/vaults/README.md`](../contracts/vaults/README.md)                           |
 | Per-integration fuse notes (substrates, markets, enter/exit data)   | one `README.md` per integration under [`../contracts/fuses/`](../contracts/fuses/)         |
 | Reward fuse notes                                                   | [`../contracts/rewards_fuses/euler/README.md`](../contracts/rewards_fuses/euler/README.md) |

@@ -1,0 +1,27 @@
+{
+    "schemaVersion": 1,
+    "chainId": 1,
+    "deploymentId": "ethereum-fusion-factory-cd05909c",
+    "variant": "permissionless-clone",
+    "caller": "0x1111111111111111111111111111111111111111",
+    "vault": {
+        "name": "Example USDC Vault",
+        "symbol": "exUSDC",
+        "owner": "0x2222222222222222222222222222222222222222",
+        "underlying": {
+            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "symbol": "USDC",
+            "decimals": 6
+        },
+        "redemptionDelaySeconds": 3600
+    },
+    "fees": {
+        "packageIndex": 0,
+        "packageSource": "dao-global",
+        "expected": {
+            "managementFeeBps": 5,
+            "performanceFeeBps": 1000,
+            "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+        }
+    }
+}
