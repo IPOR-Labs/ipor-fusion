@@ -1,0 +1,28 @@
+T14 verification — 2026-09-09 (Europe/Warsaw)
+
+Effective configuration (`forge config --json`, selected fields)
+
+default:          solc=0.8.30 optimizer=true optimizer_runs=10000000 evm=cancun isolate=false ffi=true  fs=read-write ./
+ci:               solc=0.8.30 optimizer=true optimizer_runs=10000000 evm=cancun isolate=false ffi=true  fs=read-write ./
+factory_local:    solc=0.8.30 optimizer=true optimizer_runs=10000000 evm=cancun isolate=false ffi=false fs=[]
+factory_ethereum: solc=0.8.30 optimizer=true optimizer_runs=10000000 evm=cancun isolate=false ffi=false fs=[]
+arbitrum:         solc=0.8.30 optimizer=true optimizer_runs=10000000 evm=paris  isolate=false ffi=true  fs=read-write ./
+
+PASS npm run validate:test-suites
+  valid: config/test-suites.json (7 suite(s) classified)
+
+PASS FOUNDRY_PROFILE=factory_local forge test --match-path <five local factory suites>
+  129 passed; 0 failed; 0 skipped
+
+PASS FOUNDRY_PROFILE=factory_ethereum forge test --match-path <two Ethereum factory fork suites>
+  Ethereum mainnet fork, pinned block 23831825
+  10 passed; 0 failed; 0 skipped
+
+PASS FOUNDRY_PROFILE=ci forge build
+  compilation skipped (cache current); exit 0; existing Forge lint warnings only
+
+PASS local Markdown link check
+  docs/testing.md and test/AGENTS.md: 0 broken repository-relative links
+
+PASS npx prettier --check <T14 JSON and Markdown files>
+  foundry.toml and commit-message.txt excluded because this Prettier setup has no parser for them

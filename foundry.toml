@@ -24,5 +24,22 @@ isolate = false
 ffi = true
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
+[profile.ci]
+# CI intentionally inherits the complete default profile. The reusable workflow still
+# runs unclassified suites, so restricting its FFI or filesystem access belongs to a
+# separate migration after those suites have been catalogued.
+
+[profile.factory_local]
+# The classified local factory pilot does not use vm.ffi or filesystem cheatcodes.
+ffi = false
+fs_permissions = []
+
+[profile.factory_ethereum]
+# The classified Ethereum factory pilot only reads chain state through its RPC URL.
+ffi = false
+fs_permissions = []
+
 [profile.arbitrum]
+# Arbitrum inherits the default compiler and optimizer configuration. Paris is the
+# only deliberate override for contracts deployed before the network enabled Cancun.
 evm_version = "paris"

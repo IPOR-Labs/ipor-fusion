@@ -80,7 +80,7 @@
                 "profile": {
                     "description": "Foundry profile the suite is run under.",
                     "type": "string",
-                    "enum": ["default", "arbitrum"]
+                    "enum": ["factory_local", "factory_ethereum", "arbitrum"]
                 },
                 "rpc": {
                     "description": "Name of the provider environment variable the suite reads, or null when it needs no RPC. Never a URL.",
@@ -93,7 +93,7 @@
                     "minimum": 1
                 },
                 "ffi": {
-                    "description": "Whether the suite calls vm.ffi. The default profile enables ffi repository-wide, so this records actual use, not availability.",
+                    "description": "Whether the suite calls vm.ffi. This records actual use; the selected pilot profiles deny FFI when it is false.",
                     "type": "boolean"
                 },
                 "tests": {

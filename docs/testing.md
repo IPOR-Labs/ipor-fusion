@@ -100,13 +100,34 @@ embed a key.
 Pinned blocks need archive state. An endpoint that serves only recent state will
 fail on a historical block; that is an infrastructure result, not a protocol one.
 
-All classified suites run under the `default` profile.
-[`../foundry.toml`](../foundry.toml) also defines an `arbitrum` profile, which
-differs only in `evm_version = "paris"`. Note two defaults that the repository
-sets deliberately: `ffi = true` is enabled repository-wide, and `isolate = false`
-is required because fuse tests write transient storage in one call and read it in
-another. The catalog's `ffi` field records actual use, not availability — no
-classified suite calls `vm.ffi`.
+The catalog selects a profile per suite. Pass it explicitly when invoking Forge:
+
+```bash
+FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/FusionFactory.t.sol'
+FOUNDRY_PROFILE=factory_ethereum forge test --match-path 'test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol'
+```
+
+The effective profile matrix is:
+
+| Profile            | Purpose                                     | EVM       | FFI     | Filesystem access     |
+| ------------------ | ------------------------------------------- | --------- | ------- | --------------------- |
+| `default`          | Backwards-compatible, unclassified test use | Cancun    | enabled | read-write repository |
+| `ci`               | Existing full reusable CI workflow          | Cancun    | enabled | read-write repository |
+| `factory_local`    | Classified RPC-free factory pilot           | Cancun    | denied  | none                  |
+| `factory_ethereum` | Classified Ethereum factory pilot           | Cancun    | denied  | none                  |
+| `arbitrum`         | Existing Arbitrum suites                    | **Paris** | enabled | read-write repository |
+
+Every named profile inherits `solc = "0.8.30"`, `optimizer_runs = 10000000`,
+`isolate = false`, remappings and all other settings from `default`. The `ci`
+table is now explicit but deliberately preserves the previous effective
+configuration because that workflow still runs unclassified suites. Likewise,
+`arbitrum` keeps its sole historical override, `evm_version = "paris"`.
+
+Only the two factory-pilot profiles narrow capabilities: both deny FFI and have
+an empty `fs_permissions` list. No classified suite calls `vm.ffi` or a
+filesystem cheatcode. The catalog's `ffi` field records actual use and the
+profile now enforces it. `isolate = false` remains unchanged because other test
+suites write transient storage in one call and read it in another.
 
 ## Choosing what to run for a change
 

@@ -352,7 +352,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T14 — Jawne profile uruchamiania testów
 
-- [ ] **P0 · S · Zależności: T13.**
+- [x] **P0 · S · Zależności: T13.**
 - **Zakres:** uporządkować dobór istniejących profili dla lokalnych testów, CI i Arbitrum; opisać efektywną konfigurację. Zawęzić FFI/fs permissions tylko dla pilotażowego zestawu, który ich nie potrzebuje.
 - **Odbiór:** wymagane zestawy nadal działają; kompilator, optimizer i wersje EVM pozostają zgodne z dotychczasowymi profilami. Potrzeba zmiany tych wartości oznacza osobną propozycję, nie obejście.
 - **Commit:** `test(config): T14 make test profiles explicit`.
