@@ -998,6 +998,873 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-morpho-market-14",
+            "protocol": "morpho",
+            "chainId": 1,
+            "market": {
+                "id": 14,
+                "constant": "MORPHO",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/morpho/MorphoSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/morpho/MorphoBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((bytes32,uint256))",
+                    "selector": "0x11802451",
+                    "struct": "MorphoSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "morphoMarketId",
+                            "type": "bytes32",
+                            "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of the market's loan token to supply, in the token's smallest unit; 0 is a no-op; the fuse approves exactly this amount and supplies it with shares = 0, so Morpho computes the shares"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((bytes32,uint256))",
+                    "selector": "0xbf1c77ee",
+                    "struct": "MorphoSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "morphoMarketId",
+                            "type": "bytes32",
+                            "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of loan token to withdraw, in the token's smallest unit; when it is at least the Plasma Vault's whole position (after accrueInterest) the fuse withdraws by shares instead, clearing the position; 0 is a no-op"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:55",
+                    "sources": {
+                        "contracts/fuses/morpho/MorphoSupplyFuse.sol": "0x5f2e4aef40deb955631aec904f2615c14cee7942d6fb300485f4687c66f5adb2",
+                        "contracts/fuses/morpho/MorphoBalanceFuse.sol": "0x5cabeb97ba1e0d036896e7ba86c73d8ccd5157170a8d7bb2413342469701de40"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "MorphoSupplyFuseEnterData",
+                            "signature": "enter((bytes32,uint256))",
+                            "selector": "0x11802451",
+                            "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:23",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:25"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:27"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "MorphoSupplyFuseExitData",
+                            "signature": "exit((bytes32,uint256))",
+                            "selector": "0xbf1c77ee",
+                            "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:33",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:35"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:37"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/morpho/MorphoBorrowFuse.sol",
+                    "purpose": "borrow the loan token of a granted Morpho market against the Plasma Vault's collateral (enter) and repay it (exit); repay approves the loan token to Morpho for type(uint256).max during the call and resets it to 0 afterwards",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((bytes32,uint256,uint256))",
+                            "selector": "0x6f761f69",
+                            "struct": "MorphoBorrowFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amountToBorrow",
+                                    "type": "uint256",
+                                    "meaning": "loan token amount to borrow, in the token's smallest unit; exactly one of amountToBorrow and sharesToBorrow must be non-zero (Morpho requirement); both zero is a no-op"
+                                },
+                                {
+                                    "name": "sharesToBorrow",
+                                    "type": "uint256",
+                                    "meaning": "borrow shares to mint instead of an asset amount, in Morpho's share units"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((bytes32,uint256,uint256))",
+                            "selector": "0xf25b9658",
+                            "struct": "MorphoBorrowFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amountToRepay",
+                                    "type": "uint256",
+                                    "meaning": "loan token amount to repay, in the token's smallest unit; exactly one of amountToRepay and sharesToRepay must be non-zero; both zero is a no-op"
+                                },
+                                {
+                                    "name": "sharesToRepay",
+                                    "type": "uint256",
+                                    "meaning": "borrow shares to repay, in Morpho's share units; use this to close a position exactly"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/morpho/MorphoBorrowFuse.sol": "0xcd04e1840790c2c23c9a31f45846d1d9e3d29304b92ee5b19e02667723127250"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "MorphoBorrowFuseEnterData",
+                                    "signature": "enter((bytes32,uint256,uint256))",
+                                    "selector": "0x6f761f69",
+                                    "source": "contracts/fuses/morpho/MorphoBorrowFuse.sol:15",
+                                    "fields": [
+                                        {
+                                            "name": "morphoMarketId",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/morpho/MorphoBorrowFuse.sol:17"
+                                        },
+                                        {
+                                            "name": "amountToBorrow",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/morpho/MorphoBorrowFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "sharesToBorrow",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/morpho/MorphoBorrowFuse.sol:21"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "MorphoBorrowFuseExitData",
+                                    "signature": "exit((bytes32,uint256,uint256))",
+                                    "selector": "0xf25b9658",
+                                    "source": "contracts/fuses/morpho/MorphoBorrowFuse.sol:25",
+                                    "fields": [
+                                        {
+                                            "name": "morphoMarketId",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/morpho/MorphoBorrowFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "amountToRepay",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/morpho/MorphoBorrowFuse.sol:29"
+                                        },
+                                        {
+                                            "name": "sharesToRepay",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/morpho/MorphoBorrowFuse.sol:31"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "BorrowFuseMorpho",
+                        "address": "0x9981e75b7254fD268C9182631Bf89C86101359d6",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x8ed7f9801daf9fcdaa31bd1100374794d2716db8f64bc6a89df4bf8296846ea6",
+                        "observedMarketId": 14,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 14 and VERSION() returned its own address at the observed block",
+                            "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/morpho/MorphoCollateralFuse.sol",
+                    "purpose": "supply the collateral token of a granted Morpho market (enter, capped at the Plasma Vault's balance) and withdraw it (exit, exact amount, reverts in Morpho if it breaks the position's health)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((bytes32,uint256))",
+                            "selector": "0x11802451",
+                            "struct": "MorphoCollateralFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "collateralAmount",
+                                    "type": "uint256",
+                                    "meaning": "collateral token amount to supply, in the token's smallest unit; the fuse caps it at the Plasma Vault's balance; 0 is a no-op"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((bytes32,uint256))",
+                            "selector": "0xbf1c77ee",
+                            "struct": "MorphoCollateralFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "collateralAmount",
+                                    "type": "uint256",
+                                    "meaning": "exact collateral token amount to withdraw, in the token's smallest unit; 0 is a no-op"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/morpho/MorphoCollateralFuse.sol": "0xfe3e5067c412ef7c8790b57b059e5459c16bf9b82a7277d73fe6508dc9e62944"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "MorphoCollateralFuseEnterData",
+                                    "signature": "enter((bytes32,uint256))",
+                                    "selector": "0x11802451",
+                                    "source": "contracts/fuses/morpho/MorphoCollateralFuse.sol:17",
+                                    "fields": [
+                                        {
+                                            "name": "morphoMarketId",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/morpho/MorphoCollateralFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "collateralAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/morpho/MorphoCollateralFuse.sol:21"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "MorphoCollateralFuseExitData",
+                                    "signature": "exit((bytes32,uint256))",
+                                    "selector": "0xbf1c77ee",
+                                    "source": "contracts/fuses/morpho/MorphoCollateralFuse.sol:27",
+                                    "fields": [
+                                        {
+                                            "name": "morphoMarketId",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/morpho/MorphoCollateralFuse.sol:29"
+                                        },
+                                        {
+                                            "name": "collateralAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/morpho/MorphoCollateralFuse.sol:31"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "CollateralFuseMorpho",
+                        "address": "0xE1aA89eb42C23f292cDa1544566F6EBeE3a67EED",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x8226611c43faf113fa83bec99276466d2b1608e2bee0b753652da93b7f8b47e6",
+                        "observedMarketId": 14,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 14 and VERSION() returned its own address at the observed block",
+                            "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol",
+                    "purpose": "supply with a Morpho callback: the encoded FuseAction[] in callbackFuseActionsData is executed by CallbackHandlerLib inside Morpho's onMorphoSupply before the loan token is pulled; exit is the same withdraw as MorphoSupplyFuse (except that a position whose assets round to 0 is left untouched instead of having its shares burned)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((bytes32,uint256,bytes))",
+                            "selector": "0xf0084170",
+                            "struct": "MorphoSupplyFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "maxTokenAmount",
+                                    "type": "uint256",
+                                    "meaning": "loan token amount to supply and to approve to Morpho, in the token's smallest unit; 0 is a no-op"
+                                },
+                                {
+                                    "name": "callbackFuseActionsData",
+                                    "type": "bytes",
+                                    "meaning": "abi-encoded FuseAction[] executed inside the Morpho supply callback through the vault's callback handler (CallbackHandlerMorpho must be registered for the vault)"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((bytes32,uint256))",
+                            "selector": "0xbf1c77ee",
+                            "struct": "MorphoSupplyFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount of loan token to withdraw, in the token's smallest unit; at least the whole position withdraws by shares; 0 is a no-op"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol": "0x75ac5c5c6aae626160220d3f57f6c3f8c246a817b3e791531f345427d31e099a"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "MorphoSupplyFuseEnterData",
+                                    "signature": "enter((bytes32,uint256,bytes))",
+                                    "selector": "0xf0084170",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol:25",
+                                    "fields": [
+                                        {
+                                            "name": "morphoMarketId",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "maxTokenAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol:29"
+                                        },
+                                        {
+                                            "name": "callbackFuseActionsData",
+                                            "type": "bytes",
+                                            "source": "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol:31"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "MorphoSupplyFuseExitData",
+                                    "signature": "exit((bytes32,uint256))",
+                                    "selector": "0xbf1c77ee",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol:37",
+                                    "fields": [
+                                        {
+                                            "name": "morphoMarketId",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol:39"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol:41"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "no name containing \"Morpho\" in IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09 resolves to this contract (14 matches read: supply, borrow, collateral, flashloan, claim, balance and liquidity-in-markets fuses, callback handler, price feed factory); not searched on other chains",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "Morpho Blue market ids (bytes32 Id) this market may use. All action fuses check data.morphoMarketId with isMarketSubstrateGranted, and the balance fuse iterates the list, reading idToMarketParams for the loan and collateral token of each. The value is the raw Morpho id, not an address.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (bytes32 values, via PlasmaVaultConfigLib.grantMarketSubstrates)",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "per granted Morpho market: the collateral token (position collateral read from Morpho storage via extSloads) plus the loan token net of debt (expectedSupplyAssets minus expectedBorrowAssets, signed); the sum over markets is clamped to a uint256, so a net-negative total reverts",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice per token",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/morpho/MorphoSupplyFuseTest.t.sol",
+                "test/fuses/morpho/MorphoCreditMarketTest.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyMorphoFlashLoanMorpho.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyAaveV3FlashLoanMorpho.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyAaveV3LidoFlashLoanMorpho.t.sol",
+                "test/looping/base/LoopingBorrowSupplyMorphoFlashLoanMorphoBaseTest.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseMorpho",
+                    "address": "0xD08Cb606CEe700628E55b0B0159Ad65421E6c8Df",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xe41f29ae15da8cfddefddd09972ffef59db611aa39ac262654b934a83bf38841",
+                    "observedMarketId": 14,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 14 and VERSION() returned its own address at the observed block",
+                        "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseMorpho",
+                    "address": "0x0aD1776B9319a03216A44AbA0242cC0Bc7e3CaC3",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x76afa7359bbce403f481dfcecc45fdf4de37ea00456f3d55cb3c44e92bf9d616",
+                    "observedMarketId": 14,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 14 at the observed block",
+                        "VERSION() reverted, while this checkout's MorphoBalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-morpho-flash-loan-market-19",
+            "protocol": "morpho",
+            "chainId": 1,
+            "market": {
+                "id": 19,
+                "constant": "MORPHO_FLASH_LOAN",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/morpho/MorphoFlashLoanFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,bytes))",
+                    "selector": "0xedc3c229",
+                    "struct": "MorphoFlashLoanFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "token",
+                            "type": "address",
+                            "meaning": "token to flash-borrow from Morpho Blue; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "tokenAmount",
+                            "type": "uint256",
+                            "meaning": "amount to borrow, in the token's smallest unit; 0 only emits the event; Morpho flash loans carry no fee, and the full amount must be back on the Plasma Vault when the callback returns"
+                        },
+                        {
+                            "name": "callbackFuseActionsData",
+                            "type": "bytes",
+                            "meaning": "abi-encoded FuseAction[] executed inside Morpho's onMorphoFlashLoan through the vault's callback handler (CallbackHandlerMorpho must be registered for the vault); the handler approves tokenAmount to Morpho for the repayment and the fuse resets the approval to 0 afterwards"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:67",
+                    "sources": {
+                        "contracts/fuses/morpho/MorphoFlashLoanFuse.sol": "0xdf9edae7ed7438cb5b0652111071ce254920e2e317e6d24142e0c4a8267ce2c4",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "MorphoFlashLoanFuseEnterData",
+                            "signature": "enter((address,uint256,bytes))",
+                            "selector": "0xedc3c229",
+                            "source": "contracts/fuses/morpho/MorphoFlashLoanFuse.sol:18",
+                            "fields": [
+                                {
+                                    "name": "token",
+                                    "type": "address",
+                                    "source": "contracts/fuses/morpho/MorphoFlashLoanFuse.sol:20"
+                                },
+                                {
+                                    "name": "tokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/morpho/MorphoFlashLoanFuse.sol:22"
+                                },
+                                {
+                                    "name": "callbackFuseActionsData",
+                                    "type": "bytes",
+                                    "source": "contracts/fuses/morpho/MorphoFlashLoanFuse.sol:24"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "the token addresses that may be flash-borrowed. The fuse checks data.token with isSubstrateAsAssetGranted; the ZeroBalanceFuse ignores substrates.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: a flash loan leaves no position, so the market is registered with ZeroBalanceFuse (always 0). The borrowed tokens sit on the vault only within the callback; IporFusionMarkets.sol notes the market needs a dependency-graph link to ERC20_VAULT_BALANCE so idle balances are refreshed after the loan",
+                "priceSource": "none",
+                "unit": "USD normalized to WAD (18 decimals), always 0"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/morpho/MorphoFlashLoanFuseTest.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyMorphoFlashLoanMorpho.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyAaveV3FlashLoanMorpho.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyAaveV3LidoFlashLoanMorpho.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyEulerFlashLoanMorpho.t.sol",
+                "test/looping/base/LoopingBorrowSupplyMorphoFlashLoanMorphoBaseTest.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "FlashloanFuseMorpho",
+                    "address": "0x9185033e24dB36407b9b1A1886Cb47B9533433DE",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x01a93d907072582812117f93d9a69e07743b1eb8f222a4ee417d27a4dac87b0e",
+                    "observedMarketId": 19,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 19 and VERSION() returned its own address at the observed block",
+                        "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseFlashLoanMorpho",
+                    "address": "0xB1B74e885349cd9D1F0efFb2E1ce0fB79959D7cf",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xd8c845b0f5c0e56741c53f1b18a6735df5d5aa4459b5478295816e2856edbc38",
+                    "observedMarketId": 19,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 19 at the observed block; VERSION() reverted, which ZeroBalanceFuse.sol does not expose either",
+                        "runtime code is 167 bytes, consistent with a ZeroBalanceFuse; bytecode equivalence with the checkout was not established"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-morpho-liquidity-in-markets-market-41",
+            "protocol": "morpho",
+            "chainId": 1,
+            "market": {
+                "id": 41,
+                "constant": "MORPHO_LIQUIDITY_IN_MARKETS",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/morpho/MorphoSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/morpho/MorphoOnlyLiquidityBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((bytes32,uint256))",
+                    "selector": "0x11802451",
+                    "struct": "MorphoSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "morphoMarketId",
+                            "type": "bytes32",
+                            "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of the market's loan token to supply, in the token's smallest unit; 0 is a no-op; the fuse approves exactly this amount and supplies it with shares = 0, so Morpho computes the shares"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((bytes32,uint256))",
+                    "selector": "0xbf1c77ee",
+                    "struct": "MorphoSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "morphoMarketId",
+                            "type": "bytes32",
+                            "meaning": "Morpho Blue market id (bytes32) as returned by MarketParamsLib.id; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of loan token to withdraw, in the token's smallest unit; when it is at least the Plasma Vault's whole position (after accrueInterest) the fuse withdraws by shares instead, clearing the position; 0 is a no-op"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:186",
+                    "sources": {
+                        "contracts/fuses/morpho/MorphoSupplyFuse.sol": "0x5f2e4aef40deb955631aec904f2615c14cee7942d6fb300485f4687c66f5adb2",
+                        "contracts/fuses/morpho/MorphoOnlyLiquidityBalanceFuse.sol": "0xb29cfe48441e2bd6086c3499fc30b42b33e113326644ea7040db78bed68efb5d"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "MorphoSupplyFuseEnterData",
+                            "signature": "enter((bytes32,uint256))",
+                            "selector": "0x11802451",
+                            "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:23",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:25"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:27"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "MorphoSupplyFuseExitData",
+                            "signature": "exit((bytes32,uint256))",
+                            "selector": "0xbf1c77ee",
+                            "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:33",
+                            "fields": [
+                                {
+                                    "name": "morphoMarketId",
+                                    "type": "bytes32",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:35"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/morpho/MorphoSupplyFuse.sol:37"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "structured",
+                "meaning": "Morpho Blue market ids (bytes32 Id) this market may supply liquidity to. MorphoSupplyFuse checks data.morphoMarketId with isMarketSubstrateGranted; MorphoOnlyLiquidityBalanceFuse iterates the list and skips ids whose loanToken is address(0).",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (bytes32 values, via PlasmaVaultConfigLib.grantMarketSubstrates)",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the loan token of every granted Morpho market, at expectedSupplyAssets of the Plasma Vault; collateral and debt are not read, so this market is meant for supply-only liquidity and must not be combined with borrowing on the same Morpho ids",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice per loan token",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": ["test/fuses/morpho/MorphoLiquidityInMarketsTest.t.sol"],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseMorphoLiquidityInMarkets",
+                    "address": "0x3a017de24585b2C8cAbfCca6ef8248c394DDb138",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xc9b0d28213823563a9c37061a2e9d284f8732c2270e31dbc70c5cbf9ba103a11",
+                    "observedMarketId": 41,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 41 and VERSION() returned its own address at the observed block",
+                        "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established",
+                        "the same MorphoSupplyFuse source deployed with marketId 41; the market-14 deployment is a separate contract"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseMorphoLiquidityInMarkets",
+                    "address": "0x9fb58405D628c702eF23fb1bD9cBB814A4850228",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xf243589a37dd81e6e7a1ee52c3b6dc598a178b388c333b1b932e9faadc91cb31",
+                    "observedMarketId": 41,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 41 and VERSION() returned its own address at the observed block; bytecode equivalence with the checkout was not established"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-morpho-rewards-market-22",
+            "protocol": "morpho",
+            "chainId": 1,
+            "market": {
+                "id": 22,
+                "constant": "MORPHO_REWARDS",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/rewards_fuses/morpho/MorphoClaimFuse.sol",
+                "balanceFuse": null
+            },
+            "interface": {
+                "claim": {
+                    "signature": "claim(address,address,uint256,bytes32[])",
+                    "selector": "0xfabed412",
+                    "struct": null,
+                    "fields": [
+                        {
+                            "name": "universalRewardsDistributor",
+                            "type": "address",
+                            "meaning": "Morpho UniversalRewardsDistributor to claim from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "rewardsToken",
+                            "type": "address",
+                            "meaning": "reward token to claim"
+                        },
+                        {
+                            "name": "claimable",
+                            "type": "uint256",
+                            "meaning": "total claimable amount for the Plasma Vault as published in the distributor's Merkle root, in the token's smallest unit; the distributor pays the difference to what was already claimed"
+                        },
+                        {
+                            "name": "proof",
+                            "type": "bytes32[]",
+                            "meaning": "Merkle proof for (account = Plasma Vault, reward, claimable)"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:76",
+                    "sources": {
+                        "contracts/rewards_fuses/morpho/MorphoClaimFuse.sol": "0x77f6b7c79b73daeaa92d321d1b9a17ae85e5732d9c3ef322844d76de1cad7bf8"
+                    },
+                    "operations": {
+                        "claim": {
+                            "struct": null,
+                            "signature": "claim(address,address,uint256,bytes32[])",
+                            "selector": "0xfabed412",
+                            "source": "contracts/rewards_fuses/morpho/MorphoClaimFuse.sol:74",
+                            "fields": [
+                                {
+                                    "name": "universalRewardsDistributor",
+                                    "type": "address",
+                                    "source": "contracts/rewards_fuses/morpho/MorphoClaimFuse.sol:74"
+                                },
+                                {
+                                    "name": "rewardsToken",
+                                    "type": "address",
+                                    "source": "contracts/rewards_fuses/morpho/MorphoClaimFuse.sol:74"
+                                },
+                                {
+                                    "name": "claimable",
+                                    "type": "uint256",
+                                    "source": "contracts/rewards_fuses/morpho/MorphoClaimFuse.sol:74"
+                                },
+                                {
+                                    "name": "proof",
+                                    "type": "bytes32[]",
+                                    "source": "contracts/rewards_fuses/morpho/MorphoClaimFuse.sol:74"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "UniversalRewardsDistributor addresses the claim fuse may call; checked with isSubstrateAsAssetGranted. No balance fuse reads them.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing in this market: claimed tokens are transferred to the RewardsClaimManager, which vests them into the vault; the market has no balance fuse in the source and a vault does not need one for it",
+                "priceSource": "none",
+                "unit": "not applicable"
+            },
+            "roles": {
+                "execute": "CLAIM_REWARDS_ROLE (600) calls RewardsClaimManager.claimRewards with the claim action; the manager (TECH_REWARDS_CLAIM_MANAGER_ROLE 601) calls PlasmaVault.claimRewards, which delegatecalls the fuse",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the claim fuse through RewardsClaimManager.addRewardFuses",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the distributor addresses as this market's substrates on the vault",
+                "configureLimits": "not applicable: no balance fuse, so no market limit is enforced for this market",
+                "configurePriceSources": "not applicable: nothing is priced in this market"
+            },
+            "tests": ["test/fuses/morpho/MorphoClaimFuseTest.t.sol"],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "ClaimRewardsFuseMorpho",
+                    "address": "0x6820dF665BA09FBbd3240aA303421928EF4C71a1",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xb73337baf857f493dd0f8734b9f16228e422c51ffcb2f6bc5ebed3d00ec5b059",
+                    "observedMarketId": 22,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 22 and VERSION() returned its own address at the observed block",
+                        "claim(address,address,uint256,bytes32[]) 0xfabed412 is present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                    ]
+                },
+                "balanceFuse": null
+            }
         }
     ]
 }

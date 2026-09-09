@@ -89,13 +89,17 @@ One row per catalogued integration market. `Evidence` summarises the
 deployment status of the primary action fuse / balance fuse on the entry's
 chain; the entry itself carries the block, code hash and notes.
 
-| Entry id                                 | Chain    | Market                | Primary fuse                            | Additional fuses    | Evidence            |
-| ---------------------------------------- | -------- | --------------------- | --------------------------------------- | ------------------- | ------------------- |
-| `ethereum-erc4626-market-100001`         | Ethereum | 100001 `ERC4626_0001` | `Erc4626SupplyFuse`                     | –                   | observed / observed |
-| `ethereum-curve-stableswap-ng-market-16` | Ethereum | 16 `CURVE_POOL`       | `CurveStableswapNGSingleSideSupplyFuse` | –                   | observed / observed |
-| `ethereum-compound-v3-market-2`          | Ethereum | 2 `COMPOUND_V3_USDC`  | `CompoundV3SupplyFuse`                  | CompoundV3ClaimFuse | observed / observed |
-| `ethereum-compound-v3-market-13`         | Ethereum | 13 `COMPOUND_V3_USDT` | `CompoundV3SupplyFuse`                  | CompoundV3ClaimFuse | observed / observed |
-| `base-compound-v3-market-26`             | Base     | 26 `COMPOUND_V3_WETH` | `CompoundV3SupplyFuse`                  | CompoundV3ClaimFuse | observed / observed |
+| Entry id                                         | Chain    | Market                           | Primary fuse                            | Additional fuses                                                         | Evidence                              |
+| ------------------------------------------------ | -------- | -------------------------------- | --------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------- |
+| `ethereum-erc4626-market-100001`                 | Ethereum | 100001 `ERC4626_0001`            | `Erc4626SupplyFuse`                     | –                                                                        | observed / observed                   |
+| `ethereum-curve-stableswap-ng-market-16`         | Ethereum | 16 `CURVE_POOL`                  | `CurveStableswapNGSingleSideSupplyFuse` | –                                                                        | observed / observed                   |
+| `ethereum-compound-v3-market-2`                  | Ethereum | 2 `COMPOUND_V3_USDC`             | `CompoundV3SupplyFuse`                  | CompoundV3ClaimFuse                                                      | observed / observed                   |
+| `ethereum-compound-v3-market-13`                 | Ethereum | 13 `COMPOUND_V3_USDT`            | `CompoundV3SupplyFuse`                  | CompoundV3ClaimFuse                                                      | observed / observed                   |
+| `base-compound-v3-market-26`                     | Base     | 26 `COMPOUND_V3_WETH`            | `CompoundV3SupplyFuse`                  | CompoundV3ClaimFuse                                                      | observed / observed                   |
+| `ethereum-morpho-market-14`                      | Ethereum | 14 `MORPHO`                      | `MorphoSupplyFuse`                      | MorphoBorrowFuse, MorphoCollateralFuse, MorphoSupplyWithCallBackDataFuse | observed / observed (older)           |
+| `ethereum-morpho-flash-loan-market-19`           | Ethereum | 19 `MORPHO_FLASH_LOAN`           | `MorphoFlashLoanFuse`                   | –                                                                        | observed / observed (ZeroBalanceFuse) |
+| `ethereum-morpho-liquidity-in-markets-market-41` | Ethereum | 41 `MORPHO_LIQUIDITY_IN_MARKETS` | `MorphoSupplyFuse`                      | –                                                                        | observed / observed                   |
+| `ethereum-morpho-rewards-market-22`              | Ethereum | 22 `MORPHO_REWARDS`              | `MorphoClaimFuse`                       | –                                                                        | observed / –                          |
 
 ## The pilot entry
 
