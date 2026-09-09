@@ -1,0 +1,23 @@
+T21 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run validate:deployments
+  valid deployment manifests: 1 checked (0 production, 1 fixture)
+
+PASS npm run validate:deployments:test
+  7 passed; 0 failed
+  - valid synthetic candidate
+  - malformed address rejected
+  - deployment/manifest chain mismatch rejected
+  - missing ABI reference rejected
+  - nonexistent ABI file rejected
+  - ABI SHA-256 mismatch rejected
+  - verified status without block/report/test evidence rejected
+
+PASS SHA-256 validation for test/fixtures/deployments/minimal-factory.abi.json
+PASS Node syntax checks for validator and tests
+PASS Prettier check for schema, fixtures, JavaScript and scoped Markdown
+PASS local Markdown links in docs/deployments.md and AGENTS.md
+PASS git diff --check
+
+No production factories.json exists yet; the default validator says so rather
+than presenting the synthetic fixture as a deployment.

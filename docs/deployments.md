@@ -55,11 +55,43 @@ reproducible verification report. It will not copy the whole upstream address
 database. The upstream lookup remains the discovery source and should be
 queried again when adding a network or deployment.
 
+## Manifest contract
+
+The machine-readable schema is
+[`../deployments/schema/factories.schema.json`](../deployments/schema/factories.schema.json).
+Production manifests use `deployments/<chain-id>/factories.json` and contain:
+
+- stable identity, chain, kind, status and callable address;
+- proxy type, implementation and implementation slot;
+- address provenance plus deployment transaction/block when known;
+- runtime hashes, source commit and compiler/linker settings;
+- a repository-relative ABI path with its SHA-256;
+- component dependencies; and
+- a block-specific verification record with inspect report and compatibility
+  test references.
+
+Validate the schema, references and cross-field rules with:
+
+```bash
+npm run validate:deployments
+```
+
+Until T23 adds the first production manifest, that command validates the
+synthetic candidate under `test/fixtures/deployments/` and reports
+`0 production`. Fixtures may reference fixture ABIs; production manifests must
+reference `abi/`.
+
+Schema validity is necessary but not sufficient. The validator checks file
+existence and ABI hashes, rejects chain/directory disagreement and refuses
+`verified` unless every proof field is populated. It cannot establish that
+those populated values are truthful; the referenced inspection and test are
+the reviewable evidence.
+
 ## Known gaps before registration
 
 The address lookup response did not include a deployment transaction, deployment
 block, proxy type, runtime hashes, ABI provenance or a verification block hash.
-Do not invent those values. T21 defines their schema, T22 binds an ABI to the
-deployed code, T23 creates a `candidate` manifest, and T24 performs the direct
-on-chain identity/configuration read. Promotion to `verified` waits for T25 and
-T26.
+Do not invent those values. The schema above preserves them as explicit
+nullable fields; T22 binds an ABI to the deployed code, T23 creates a
+`candidate` manifest, and T24 performs the direct on-chain
+identity/configuration read. Promotion to `verified` waits for T25 and T26.

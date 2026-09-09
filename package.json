@@ -27,7 +27,9 @@
         "agent:doctor": "node tools/agent-doctor.mjs",
         "agent:doctor:test": "node --test tools/test-agent-doctor.mjs",
         "test:affected": "node tools/run-affected-tests.mjs",
-        "test:affected:runner": "node --test tools/test-affected-tests.mjs"
+        "test:affected:runner": "node --test tools/test-affected-tests.mjs",
+        "validate:deployments": "node tools/validate-deployments.mjs",
+        "validate:deployments:test": "node --test tools/test-validate-deployments.mjs"
     },
     "dependencies": {
         "@chainlink/contracts": "1.2.0",

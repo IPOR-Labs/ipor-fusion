@@ -1,0 +1,207 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/IPOR-Labs/ipor-fusion/deployments/schema/factories.schema.json",
+    "title": "IPOR Fusion factory deployment manifest",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["schemaVersion", "chainId", "network", "deployments"],
+    "properties": {
+        "schemaVersion": { "type": "integer", "enum": [1] },
+        "chainId": { "type": "integer", "minimum": 1 },
+        "network": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "deployments": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/deployment" }
+        }
+    },
+    "$defs": {
+        "address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+        },
+        "bytes32": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+        },
+        "nullableAddress": {
+            "type": ["string", "null"],
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+        },
+        "nullableBytes32": {
+            "type": ["string", "null"],
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+        },
+        "deployment": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "id",
+                "chainId",
+                "kind",
+                "status",
+                "address",
+                "proxy",
+                "provenance",
+                "code",
+                "interface",
+                "dependencies",
+                "verification"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                },
+                "chainId": { "type": "integer", "minimum": 1 },
+                "kind": {
+                    "type": "string",
+                    "enum": ["fusion-factory", "price-feed-factory", "wrapped-vault-factory"]
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["candidate", "verified", "deprecated", "unsupported"]
+                },
+                "address": { "$ref": "#/$defs/address" },
+                "proxy": { "$ref": "#/$defs/proxy" },
+                "provenance": { "$ref": "#/$defs/provenance" },
+                "code": { "$ref": "#/$defs/code" },
+                "interface": { "$ref": "#/$defs/interface" },
+                "dependencies": {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/dependency" }
+                },
+                "verification": { "$ref": "#/$defs/verification" }
+            }
+        },
+        "proxy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "implementation", "implementationSlot"],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": ["none", "erc1967", "transparent", "uups", "unknown"]
+                },
+                "implementation": { "$ref": "#/$defs/nullableAddress" },
+                "implementationSlot": { "$ref": "#/$defs/nullableBytes32" }
+            }
+        },
+        "provenance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["addressSource", "deploymentTransaction", "deploymentBlock", "explorerUrl", "confirmedBy"],
+            "properties": {
+                "addressSource": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "reference", "capturedAt"],
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": ["fusion-address-lookup", "explorer", "onchain", "release", "other"]
+                        },
+                        "reference": { "type": "string", "minLength": 1 },
+                        "capturedAt": {
+                            "type": "string",
+                            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                        }
+                    }
+                },
+                "deploymentTransaction": { "$ref": "#/$defs/nullableBytes32" },
+                "deploymentBlock": { "type": ["integer", "null"], "minimum": 1 },
+                "explorerUrl": {
+                    "type": ["string", "null"],
+                    "pattern": "^https://"
+                },
+                "confirmedBy": { "type": "string", "minLength": 1 }
+            }
+        },
+        "code": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["proxyRuntimeCodeHash", "implementationRuntimeCodeHash", "sourceCommit", "compiler"],
+            "properties": {
+                "proxyRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+                "implementationRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+                "sourceCommit": {
+                    "type": ["string", "null"],
+                    "pattern": "^[0-9a-f]{7,40}$"
+                },
+                "compiler": {
+                    "type": ["object", "null"],
+                    "additionalProperties": false,
+                    "required": ["version", "optimizerEnabled", "optimizerRuns", "evmVersion", "libraries"],
+                    "properties": {
+                        "version": { "type": "string", "minLength": 1 },
+                        "optimizerEnabled": { "type": "boolean" },
+                        "optimizerRuns": { "type": "integer", "minimum": 0 },
+                        "evmVersion": { "type": ["string", "null"] },
+                        "libraries": {
+                            "type": "object",
+                            "additionalProperties": { "$ref": "#/$defs/address" }
+                        }
+                    }
+                }
+            }
+        },
+        "interface": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["abiPath", "abiSha256", "adapter", "reportedVersion", "supportedOperations"],
+            "properties": {
+                "abiPath": {
+                    "type": "string",
+                    "pattern": "^(?:abi|test/fixtures/deployments)/.+\\.json$"
+                },
+                "abiSha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                },
+                "adapter": { "type": ["string", "null"] },
+                "reportedVersion": { "type": ["string", "null"] },
+                "supportedOperations": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                }
+            }
+        },
+        "dependency": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "address", "required"],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                },
+                "kind": { "type": "string", "minLength": 1 },
+                "address": { "$ref": "#/$defs/address" },
+                "required": { "type": "boolean" }
+            }
+        },
+        "verification": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "blockNumber",
+                "blockHash",
+                "checkedAt",
+                "inspectorVersion",
+                "reportPath",
+                "compatibilityTestPath"
+            ],
+            "properties": {
+                "blockNumber": { "type": ["integer", "null"], "minimum": 1 },
+                "blockHash": { "$ref": "#/$defs/nullableBytes32" },
+                "checkedAt": {
+                    "type": ["string", "null"],
+                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+                },
+                "inspectorVersion": { "type": ["string", "null"] },
+                "reportPath": { "type": ["string", "null"], "pattern": "^deployments/reports/.+\\.json$" },
+                "compatibilityTestPath": { "type": ["string", "null"], "pattern": "^test/.+\\.t\\.sol$" }
+            }
+        }
+    }
+}

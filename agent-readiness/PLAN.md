@@ -403,7 +403,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T21 — Schemat i walidator manifestów
 
-- [ ] **P0 · M · Zależności: T20.**
+- [x] **P0 · M · Zależności: T20.**
 - **Zakres:** schemat z sekcji 5, walidator i syntetyczne fixtures poza katalogiem produkcyjnych wdrożeń. Ustalić strukturę referencji do ABI i raportów.
 - **Odbiór:** walidacja wykrywa m.in. zły adres, chain ID, brak ABI i niedozwolone oznaczenie `verified` bez referencji do dowodu.
 - **Commit:** `feat(deployments): T21 validate factory manifests`.

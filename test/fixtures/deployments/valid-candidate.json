@@ -1,0 +1,52 @@
+{
+    "schemaVersion": 1,
+    "chainId": 1,
+    "network": "ethereum",
+    "deployments": [
+        {
+            "id": "synthetic-fusion-factory-candidate",
+            "chainId": 1,
+            "kind": "fusion-factory",
+            "status": "candidate",
+            "address": "0x1111111111111111111111111111111111111111",
+            "proxy": {
+                "type": "unknown",
+                "implementation": null,
+                "implementationSlot": null
+            },
+            "provenance": {
+                "addressSource": {
+                    "kind": "other",
+                    "reference": "synthetic test fixture",
+                    "capturedAt": "2026-09-09"
+                },
+                "deploymentTransaction": null,
+                "deploymentBlock": null,
+                "explorerUrl": null,
+                "confirmedBy": "synthetic-fixture"
+            },
+            "code": {
+                "proxyRuntimeCodeHash": null,
+                "implementationRuntimeCodeHash": null,
+                "sourceCommit": null,
+                "compiler": null
+            },
+            "interface": {
+                "abiPath": "test/fixtures/deployments/minimal-factory.abi.json",
+                "abiSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+                "adapter": null,
+                "reportedVersion": null,
+                "supportedOperations": []
+            },
+            "dependencies": [],
+            "verification": {
+                "blockNumber": null,
+                "blockHash": null,
+                "checkedAt": null,
+                "inspectorVersion": null,
+                "reportPath": null,
+                "compatibilityTestPath": null
+            }
+        }
+    ]
+}

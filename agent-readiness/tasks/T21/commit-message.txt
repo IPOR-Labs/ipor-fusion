@@ -1,0 +1,9 @@
+feat(deployments): T21 validate factory manifests
+
+Add the factory deployment manifest schema for identity, provenance, proxy and
+code metadata, ABI hashes, dependencies and block-specific verification.
+Validate cross-field chain IDs, file references and production ABI placement.
+
+Exercise the validator on a synthetic candidate outside the production registry
+and reject malformed addresses, chain mismatch, absent or mismatched ABI data,
+and verified status without reproducible evidence.
