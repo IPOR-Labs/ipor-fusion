@@ -114,6 +114,20 @@ The pilot's deployed supply fuse answers `enter((address,uint256))` `0xd5ee7916`
 and does **not** carry the checkout's three-field struct — see
 [`fuse-catalog.md`](fuse-catalog.md).
 
+### Deployed fuses whose ABI differs from this checkout
+
+The catalog records every deployed fuse whose runtime code lacks a selector
+this checkout describes (`matchesCurrentSource: false` with a note). Known
+cases, all read at the blocks the catalog names:
+
+| Deployment                                              | Deployed signature                                    | This checkout                                               |
+| ------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------- |
+| Ethereum `SupplyFuseErc4626Market1` `0x12FD0EE1…`       | `enter((address,uint256))`, `exit((address,uint256))` | three-field structs with `minSharesOut` / `maxSharesBurned` |
+| Base `SupplyFuseFluidInstadappPoolFToken` `0x15A1e295…` | `enter((address,uint256))`, `exit((address,uint256))` | the same three-field `Erc4626SupplyFuse` structs            |
+
+Probe before encoding, as shown above, and read the entry's `deployments`
+notes in [`../catalog/fuses.json`](../catalog/fuses.json).
+
 ## Roles
 
 ### `MISSING_ROLE: 0x… does not hold OWNER_ROLE (1), required for step "grant-roles"`
@@ -137,7 +151,7 @@ The role numbers and who administers them are in
 The caller lacks the role for that specific function, not for the vault as a
 whole. Check the role of the function's guard in
 [`roles-and-permissions.md`](roles-and-permissions.md), then confirm with
-`hasRole` as above. A vault call that reverts for the *owner* usually means the
+`hasRole` as above. A vault call that reverts for the _owner_ usually means the
 owner never granted itself the operational role — ownership and operation are
 separate roles by design.
 

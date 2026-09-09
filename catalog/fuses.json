@@ -1717,7 +1717,9 @@
                 "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
                 "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
             },
-            "tests": ["test/fuses/morpho/MorphoLiquidityInMarketsTest.t.sol"],
+            "tests": [
+                "test/fuses/morpho/MorphoLiquidityInMarketsTest.t.sol"
+            ],
             "deployments": {
                 "actionFuse": {
                     "status": "observed",
@@ -1847,7 +1849,9 @@
                 "configureLimits": "not applicable: no balance fuse, so no market limit is enforced for this market",
                 "configurePriceSources": "not applicable: nothing is priced in this market"
             },
-            "tests": ["test/fuses/morpho/MorphoClaimFuseTest.t.sol"],
+            "tests": [
+                "test/fuses/morpho/MorphoClaimFuseTest.t.sol"
+            ],
             "deployments": {
                 "actionFuse": {
                     "status": "observed",
@@ -2654,7 +2658,9 @@
                 "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
                 "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
             },
-            "tests": ["test/looping/ethereum/LoopingBorrowSupplyAaveV3LidoFlashLoanMorpho.t.sol"],
+            "tests": [
+                "test/looping/ethereum/LoopingBorrowSupplyAaveV3LidoFlashLoanMorpho.t.sol"
+            ],
             "deployments": {
                 "actionFuse": {
                     "status": "observed",
@@ -3764,7 +3770,9 @@
                 "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
                 "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
             },
-            "tests": ["test/fuses/spark/SparkSupplyFuseTest.t.sol"],
+            "tests": [
+                "test/fuses/spark/SparkSupplyFuseTest.t.sol"
+            ],
             "deployments": {
                 "actionFuse": {
                     "status": "unknown",
@@ -4128,6 +4136,521 @@
                         "VERSION() reverted, while this checkout's AaveV3WithPriceOracleMiddlewareBalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse"
                     ]
                 }
+            }
+        },
+        {
+            "id": "base-fluid-instadapp-pool-market-5",
+            "protocol": "fluid_instadapp",
+            "chainId": 8453,
+            "market": {
+                "id": 5,
+                "constant": "FLUID_INSTADAPP_POOL",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/erc4626/Erc4626BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256))",
+                    "selector": "0x41b11ae7",
+                    "struct": "Erc4626SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "vault",
+                            "type": "address",
+                            "meaning": "the ERC4626 vault to deposit into; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "vaultAssetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of that vault's underlying asset to supply, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance"
+                        },
+                        {
+                            "name": "minSharesOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor: fewer shares than this reverts with Erc4626SupplyFuseInsufficientShares"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,uint256))",
+                    "selector": "0x8467bd30",
+                    "struct": "Erc4626SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "vault",
+                            "type": "address",
+                            "meaning": "the ERC4626 vault to withdraw from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "vaultAssetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of underlying asset to withdraw, in the asset's smallest unit"
+                        },
+                        {
+                            "name": "maxSharesBurned",
+                            "type": "uint256",
+                            "meaning": "slippage ceiling on burned shares; 0 means no limit, and burning more reverts with Erc4626SupplyFuseExcessiveSharesBurned"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:19",
+                    "sources": {
+                        "contracts/fuses/erc4626/Erc4626SupplyFuse.sol": "0x07ba27f4965eca0dec68cbbf3fcda89c7a809cec88716d4f45fd79b77728aea4",
+                        "contracts/fuses/erc4626/Erc4626BalanceFuse.sol": "0xf464cf33bbc430e8d4a3aa44c07c35dde38669ecaca8cfcb9883b02887e6c511"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "Erc4626SupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:16",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:18"
+                                },
+                                {
+                                    "name": "vaultAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:20"
+                                },
+                                {
+                                    "name": "minSharesOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:22"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "Erc4626SupplyFuseExitData",
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:26",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:28"
+                                },
+                                {
+                                    "name": "vaultAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:30"
+                                },
+                                {
+                                    "name": "maxSharesBurned",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:32"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "Fluid lending fToken addresses (ERC4626 vaults, e.g. fUSDC); the market has no fuse of its own and reuses the generic ERC4626 fuses, so the action fuse checks data.vault on enter and exit and the balance fuse iterates the list. Staking of the fToken is a separate market (FLUID_INSTADAPP_STAKING = 6) whose balance depends on this one.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the underlying asset of every fToken in the substrate list, after convertToAssets on the fToken shares the Plasma Vault holds (shares staked in market 6 are not held by the vault and are valued there)",
+                "priceSource": "the vault's PriceOracleMiddlewareManager, falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/integrationTest/fluidInstadappArbitrum/FluidInstadappUSDCArbitrum.t.sol",
+                "test/integrationTest/fluidInstadappArbitrum/FluidInstadappStakingUSDCArbitrum.t.sol",
+                "test/integrationTest/fluidInstadappArbitrum/FluidInstadappStakingUSDCBalanceArbitrum.t.sol",
+                "test/integrationTest/fluidInstadappArbitrum/FluidInstadappStakingUSDCClaimRewards.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseFluidInstadappPoolFToken",
+                    "address": "0x15A1e2950dA9Ec0DA69a704b8940F01BdDdE86Ab",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0xabd876463bfab4c17c1e349ebfc6a1f7c35b1fe347689324192831729529bcbd",
+                    "observedMarketId": 5,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 5 and VERSION() returned its own address at Base block 51079414",
+                        "the deployed contract exposes enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8, not this checkout's three-field structs with minSharesOut/maxSharesBurned (0x41b11ae7 / 0x8467bd30 absent); callers must encode the deployed signatures — the same older ERC4626 fuse as the Ethereum pilot"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseFluidInstadappPoolFToken",
+                    "address": "0xC80e5a95540d6ebFE4970A0743E71C639DF8C25e",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x22561caa17f6b26cceea3bb0fe3b1e8aae258c5c307e9a53f180b4bde8ac370a",
+                    "observedMarketId": 5,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 5 at Base block 51079414; balanceOf() present",
+                        "VERSION() reverted, while this checkout's Erc4626BalanceFuse.sol exposes it; the deployed contract is an older version"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "base-fluid-instadapp-staking-market-6",
+            "protocol": "fluid_instadapp",
+            "chainId": 8453,
+            "market": {
+                "id": 6,
+                "constant": "FLUID_INSTADAPP_STAKING",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((uint256,address))",
+                    "selector": "0xa63e3c73",
+                    "struct": "FluidInstadappStakingSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "fluidTokenAmount",
+                            "type": "uint256",
+                            "meaning": "maximum amount of the staking token (the fToken) to stake, in fToken share units; capped at the Plasma Vault's fToken balance; 0 is a no-op"
+                        },
+                        {
+                            "name": "stakingPool",
+                            "type": "address",
+                            "meaning": "FluidLendingStakingRewards pool to stake into; it must be a granted substrate of this market, otherwise FluidInstadappStakingSupplyFuseUnsupportedStakingPool"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256,address))",
+                    "selector": "0x537d3b27",
+                    "struct": "FluidInstadappStakingSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "fluidTokenAmount",
+                            "type": "uint256",
+                            "meaning": "amount of staked fToken to withdraw, in fToken share units; capped at the vault's staked balance"
+                        },
+                        {
+                            "name": "stakingPool",
+                            "type": "address",
+                            "meaning": "FluidLendingStakingRewards pool to withdraw from; it must be a granted substrate of this market"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:20",
+                    "sources": {
+                        "contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol": "0x633deb0febef175d7f6108b009d584a9f6f8d443dda8d97aa62c690cb9506168",
+                        "contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol": "0x150b178430928b53d1cb31eed218c501c9b242f5a7e27a064a38eb65562cd102"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "FluidInstadappStakingSupplyFuseEnterData",
+                            "signature": "enter((uint256,address))",
+                            "selector": "0xa63e3c73",
+                            "source": "contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol:17",
+                            "fields": [
+                                {
+                                    "name": "fluidTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol:19"
+                                },
+                                {
+                                    "name": "stakingPool",
+                                    "type": "address",
+                                    "source": "contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol:21"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "FluidInstadappStakingSupplyFuseExitData",
+                            "signature": "exit((uint256,address))",
+                            "selector": "0x537d3b27",
+                            "source": "contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol:25",
+                            "fields": [
+                                {
+                                    "name": "fluidTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol:27"
+                                },
+                                {
+                                    "name": "stakingPool",
+                                    "type": "address",
+                                    "source": "contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol:29"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/rewards_fuses/fluid_instadapp/FluidInstadappClaimFuse.sol",
+                    "purpose": "reward claim fuse: for every granted staking pool calls getReward() and transfers the earned rewards token to the RewardsClaimManager; registered in RewardsClaimManager by FUSE_MANAGER_ROLE (300) and executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim()",
+                            "selector": "0x4e71d92d",
+                            "struct": null,
+                            "fields": []
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/fluid_instadapp/FluidInstadappClaimFuse.sol": "0x0b4d939ab26e88836332db80e51859e18fc7cfeee4ee0fb3fb1638324384a1fb"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim()",
+                                    "selector": "0x4e71d92d",
+                                    "source": "contracts/rewards_fuses/fluid_instadapp/FluidInstadappClaimFuse.sol:33",
+                                    "fields": []
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsFuseFluidInstadapp",
+                        "address": "0x4E3139528EBA9B85addf1b7E5c36002b7bE8c9B2",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x52e5bb4dba0279e25eec7528901b395c7798ddcae143230aaba5be5eeb423052",
+                        "observedMarketId": 6,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 6 and VERSION() returned its own address at Base block 51079414; claim() 0x4e71d92d present",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "FluidLendingStakingRewards pool addresses (each wraps one fToken as its stakingToken). The action fuse checks data.stakingPool on enter and exit; the balance fuse and the claim fuse read the list — the balance fuse values ONLY the first substrate, so a market with several pools under-reports.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted (action fuse); the balance fuse reads getMarketSubstrates and takes index 0",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the staked fToken balance in the first granted pool, converted with the fToken's convertToAssets to its underlying asset and priced there; pending rewards are not counted",
+                "priceSource": "the vault's PriceOracleMiddlewareManager, falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/integrationTest/fluidInstadappArbitrum/FluidInstadappStakingUSDCArbitrum.t.sol",
+                "test/integrationTest/fluidInstadappArbitrum/FluidInstadappStakingUSDCBalanceArbitrum.t.sol",
+                "test/integrationTest/fluidInstadappArbitrum/FluidInstadappStakingUSDCClaimRewards.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseFluidInstadappStakingRewardsFToken",
+                    "address": "0x977e318676158A7695cCFeB00eC18a68c29BF0EF",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x997af6ed16a21b14b0ccf2d2def64d591f703ffaa030dae64ae9c8106c6b23f9",
+                    "observedMarketId": 6,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 6 and VERSION() returned its own address at Base block 51079414",
+                        "enter((uint256,address)) 0xa63e3c73, exit((uint256,address)) 0x537d3b27 and instantWithdraw(bytes32[]) present; enterTransient() 0xadea8fa0 absent, so the deployment predates the transient-storage entry points of this checkout",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseFluidInstadappStakingRewardsFToken",
+                    "address": "0x29d294d3d8Bb422ddDc925Cb95a903d34eEB208A",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x03f9b9c294fd917aea21d36d41b1e376986138bb62a50b6c8e03919da8b02ae5",
+                    "observedMarketId": 6,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 6 at Base block 51079414; balanceOf() present",
+                        "VERSION() reverted, while this checkout's FluidInstadappStakingBalanceFuse.sol exposes it; the deployed contract is an older version"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-fluid-rewards-market-24",
+            "protocol": "fluid_instadapp",
+            "chainId": 1,
+            "market": {
+                "id": 24,
+                "constant": "FLUID_REWARDS",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol",
+                "balanceFuse": null
+            },
+            "interface": {
+                "claim": {
+                    "signature": "claim(address,uint256,uint8,bytes32,uint256,bytes32[],bytes)",
+                    "selector": "0xbe5013dc",
+                    "struct": null,
+                    "fields": [
+                        {
+                            "name": "distributor_",
+                            "type": "address",
+                            "meaning": "Fluid MerkleDistributor to claim from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "cumulativeAmount_",
+                            "type": "uint256",
+                            "meaning": "cumulative claimable amount for the vault as published in the Merkle tree, in the reward token's smallest unit"
+                        },
+                        {
+                            "name": "positionType_",
+                            "type": "uint8",
+                            "meaning": "Fluid position type of the rewarded position"
+                        },
+                        {
+                            "name": "positionId_",
+                            "type": "bytes32",
+                            "meaning": "Fluid position identifier"
+                        },
+                        {
+                            "name": "cycle_",
+                            "type": "uint256",
+                            "meaning": "distribution cycle number"
+                        },
+                        {
+                            "name": "merkleProof_",
+                            "type": "bytes32[]",
+                            "meaning": "Merkle proof for (vault, cumulativeAmount, positionType, positionId, cycle)"
+                        },
+                        {
+                            "name": "metadata_",
+                            "type": "bytes",
+                            "meaning": "extra data forwarded to the distributor"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:82",
+                    "sources": {
+                        "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol": "0x6116abd24b725a805bd84b5a31abba16f774dfffbf8105323109b0fa981a7b93"
+                    },
+                    "operations": {
+                        "claim": {
+                            "struct": null,
+                            "signature": "claim(address,uint256,uint8,bytes32,uint256,bytes32[],bytes)",
+                            "selector": "0xbe5013dc",
+                            "source": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol:85",
+                            "fields": [
+                                {
+                                    "name": "distributor_",
+                                    "type": "address",
+                                    "source": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol:85"
+                                },
+                                {
+                                    "name": "cumulativeAmount_",
+                                    "type": "uint256",
+                                    "source": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol:85"
+                                },
+                                {
+                                    "name": "positionType_",
+                                    "type": "uint8",
+                                    "source": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol:85"
+                                },
+                                {
+                                    "name": "positionId_",
+                                    "type": "bytes32",
+                                    "source": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol:85"
+                                },
+                                {
+                                    "name": "cycle_",
+                                    "type": "uint256",
+                                    "source": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol:85"
+                                },
+                                {
+                                    "name": "merkleProof_",
+                                    "type": "bytes32[]",
+                                    "source": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol:85"
+                                },
+                                {
+                                    "name": "metadata_",
+                                    "type": "bytes",
+                                    "source": "contracts/rewards_fuses/fluid_instadapp/FluidProofClaimFuse.sol:85"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "Fluid MerkleDistributor addresses the claim fuse may call; checked with isSubstrateAsAssetGranted on every claim. The reward token is read from the distributor (TOKEN()) and the claimed delta is forwarded to the RewardsClaimManager.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: the market has no balance fuse in this checkout; claimed tokens land in the RewardsClaimManager and are valued by its vesting logic, not by a market balance",
+                "priceSource": "none (no balance fuse)",
+                "unit": "n/a"
+            },
+            "roles": {
+                "execute": "CLAIM_REWARDS_ROLE (600) calls RewardsClaimManager.claimRewards with the claim action; the fuse runs by delegatecall in the Plasma Vault context",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the claim fuse to the RewardsClaimManager (addRewardFuses)",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the distributor addresses as the market's substrates",
+                "configureLimits": "not applicable: no balance fuse, so no market limit is enforced for this market",
+                "configurePriceSources": "not applicable for the claim itself; the reward token needs a price source only if it is counted elsewhere"
+            },
+            "tests": [
+                "test/fuses/moonwell/FluidProofClaimFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "ClaimRewardsFuseFluidProof",
+                    "address": "0x30AdE01153CB697BB751cacb6392F49C22558fe0",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x62bef5208f18a9636d8e5920fadab09b74bfba0c281de43f7c852415ca058b2b",
+                    "observedMarketId": 24,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 24 and VERSION() returned its own address at Ethereum block 25939091; claim(address,uint256,uint8,bytes32,uint256,bytes32[],bytes) 0xbe5013dc present",
+                        "bytecode equivalence with this checkout was not established",
+                        "a Base deployment ClaimRewardsFuseFluidProof 0xB002337C59a4133e328D91ed82C5012472952c6f was also read (MARKET_ID 24, same selector present) and is not catalogued as a separate entry"
+                    ]
+                },
+                "balanceFuse": null
             }
         }
     ]
