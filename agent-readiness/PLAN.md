@@ -373,7 +373,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T17 — Diagnostyka lokalnego środowiska
 
-- [ ] **P0 · S · Zależności: T03, T04, T13.**
+- [x] **P0 · S · Zależności: T03, T04, T13.**
 - **Zakres:** `agent:doctor` sprawdza wersje, zależności, submoduły oraz obecność zmiennych; tryb tekstowy i JSON. Bez połączeń sieciowych.
 - **Odbiór:** brak zależności daje konkretną wskazówkę i kod błędu; raport nie wypisuje wartości zmiennych ani sekretów.
 - **Commit:** `feat(tooling): T17 add local environment diagnostics`.

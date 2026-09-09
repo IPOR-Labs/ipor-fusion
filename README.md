@@ -107,6 +107,18 @@ This requires `ETHEREUM_PROVIDER_URL` in the ignored `.env` file. The runner
 passes the requested block into each fixture; it does not silently use the
 fixture's former hardcoded value.
 
+Diagnose the local checkout without making network calls:
+
+```bash
+npm run agent:doctor
+npm run agent:doctor -- --json
+```
+
+The command checks tool versions, installed dependencies, submodule commits and
+which RPC variable names are present. Missing optional RPC variables are
+warnings in this offline mode. Values from the environment and `.env` are never
+printed.
+
 ## Pre-commit hooks
 
 ### requirements

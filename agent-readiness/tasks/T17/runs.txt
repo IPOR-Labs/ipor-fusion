@@ -1,0 +1,23 @@
+T17 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run agent:doctor:test
+  3 passed; 0 failed
+  - JSON is structured and an injected RPC secret is absent from stdout/stderr
+  - text mode reports an RPC variable name as set without reporting its value
+  - a temporary checkout without node_modules exits 1 with remediation "Run npm ci."
+
+PASS npm run agent:doctor -- --json
+  exit 0; schemaVersion=1; status=warning; networkChecks=false
+  OK package.json
+  WARNING Node.js 24.16.0 (declared 20.17.0)
+  WARNING npm 11.13.0 (declared 10.8.2)
+  OK Foundry 1.7.1
+  OK top-level Node dependencies
+  OK 10 recursive submodule checkouts
+  RPC results contain names and set/missing state only; no values
+
+PASS node --check tools/agent-doctor.mjs
+PASS node --check tools/test-agent-doctor.mjs
+PASS Prettier check for T17 JSON, JavaScript and Markdown
+PASS local Markdown link check for README.md and AGENTS.md
+PASS git diff --check

@@ -1,0 +1,9 @@
+feat(tooling): T17 add local environment diagnostics
+
+Add an offline agent:doctor command with text and JSON reports for tool versions,
+Node dependencies, recursive submodules and RPC variable presence. Keep optional
+RPCs and newer Node/npm versions as warnings while treating the pinned Foundry,
+missing dependencies and broken submodules as actionable errors.
+
+Never include environment values in either output mode, and test redaction plus
+the npm ci remediation for a checkout with missing dependencies.

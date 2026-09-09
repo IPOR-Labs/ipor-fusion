@@ -45,6 +45,7 @@ npm ci
 foundryup --install v1.7.1
 forge --version
 forge build
+npm run agent:doctor
 ```
 
 Run a local factory suite that does not require RPC credentials:
