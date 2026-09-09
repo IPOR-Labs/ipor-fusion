@@ -1,0 +1,13 @@
+feat(vault): T28 build a verifiable creation plan
+
+Add vault:plan, which turns a validated input and one historical block into a
+plan artifact: target, caller, zero value, calldata with its decoded arguments,
+the implementation and factory version read at that block, the fee package the
+factory resolves for that caller, the block hash and the input's SHA-256.
+
+Planning refuses an unverified manifest entry, an implementation or version
+other than the recorded one, and any difference between the resolved fee package
+and the expected one; nothing is signed or broadcast.
+
+Verified with 14 planner tests against a local fake provider, including a
+calldata round trip through cast decode-calldata, plus 18 config tests.

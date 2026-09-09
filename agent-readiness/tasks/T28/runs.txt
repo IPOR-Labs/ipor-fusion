@@ -1,0 +1,43 @@
+T28 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run vault:plan -- --config config/vaults/example.json --block 25937526
+  (real Ethereum provider, pinned block 25937526)
+  to        0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852
+  from      0x1111111111111111111111111111111111111111, value "0"
+  block     25937526 / 0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719
+  expected  implementation 0xf19C1E9f…63f5, factoryVersion "8",
+            dao-global package 0 = 5 bps / 1000 bps / 0xF6a9bd8F…5569
+  input     config/vaults/example.json sha256 0xc53f6275…4190
+
+PASS cast decode-calldata "clone(string,string,address,uint256,address,uint256)" <plan data>
+  "Example USDC Vault"
+  "exUSDC"
+  0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+  3600
+  0x2222222222222222222222222222222222222222
+  0
+
+PASS npm run vault:plan:test
+  tests 14, pass 14, fail 0 — against a local fake JSON-RPC server, no real RPC.
+  Refusals proven (each exit 1, no artifact written):
+    candidate manifest entry              UNVERIFIED_DEPLOYMENT (before any RPC call)
+    unknown deployment id                 UNKNOWN_DEPLOYMENT (before any RPC call)
+    incomplete fee package in the input   INVALID_CONFIG (before any RPC call)
+    factory reports version 9             UNSUPPORTED_FACTORY_VERSION
+    proxy points elsewhere                IMPLEMENTATION_MISMATCH
+    package 0 = 7 bps instead of 5        FEE_PACKAGE_MISMATCH (managementFeeBps)
+    package 0 pays another recipient      FEE_PACKAGE_MISMATCH (feeRecipient)
+    caller has business-client packages   FEE_PACKAGE_MISMATCH (dao-global vs business-client)
+    packageIndex 3 with a 1-item list     FEE_PACKAGE_MISMATCH (out of bounds)
+    provider on chain 2                   CHAIN_MISMATCH
+    block not served                      HISTORICAL_STATE_UNAVAILABLE
+    missing --block / --block latest      INVALID_ARGUMENT, exit 2
+
+PASS npm run validate:vault-config:test   (18 tests, incl. the new candidate case)
+PASS npm run validate:deployments         (2 manifests)
+
+The planner never writes or prints a provider URL: one test asserts the fake
+server's URL and token appear in neither stdout nor stderr, while the variable
+name ETHEREUM_PROVIDER_URL does.
+
+No transaction was signed or broadcast.
