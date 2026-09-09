@@ -362,6 +362,642 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-compound-v3-market-2",
+            "protocol": "compound_v3",
+            "chainId": 1,
+            "market": {
+                "id": 2,
+                "constant": "COMPOUND_V3_USDC",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "CompoundV3SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the token to supply to the Comet: its base token or one of its collateral assets; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to supply, in the token's smallest unit; 0 is a no-op"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "CompoundV3SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the token to withdraw from the Comet; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to withdraw, in the token's smallest unit; capped at the Plasma Vault's Comet balance (balanceOf for the base token, collateralBalanceOf otherwise)"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:11",
+                    "sources": {
+                        "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol": "0x727c60b6b862994ef3e33f707893ced12e95c8b564fa67834bc6a3b08f103de9",
+                        "contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol": "0xa093556e2a6d773e9af21a96b6daa8d59374c67129e042ef5d86d39107aaab65"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "CompoundV3SupplyFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:15",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:17"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:19"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "CompoundV3SupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:22",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:24"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:26"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol",
+                    "purpose": "claims COMP rewards for one Comet through CometRewards.claimTo into the RewardsClaimManager; registered there by FUSE_MANAGER_ROLE (300) and executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards, not through PlasmaVault.execute. It has no MARKET_ID: one deployment serves every Comet of the chain.",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(address)",
+                            "selector": "0x1e83409a",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "comet_",
+                                    "type": "address",
+                                    "meaning": "the Comet whose accrued rewards are claimed for the Plasma Vault"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol": "0x4a88b88d0d33ed506ea31c26f2b9d42ad6f90ce81538577297a63f6b19c3d4b0"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(address)",
+                                    "selector": "0x1e83409a",
+                                    "source": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol:33",
+                                    "fields": [
+                                        {
+                                            "name": "comet_",
+                                            "type": "address",
+                                            "source": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol:33"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsFuseCompoundV3",
+                        "address": "0x2B98080341D9469d8beAbf2db037dE8897c232cD",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xaf884532139c47db1f22fc37444e914e5c50b9661be535f2d1cebf72af282dce",
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "VERSION() returned its own address at the observed block; COMET_REWARDS() returned 0x1B0e765F6224C21223AeA2af16c1C46E38885a40 (CompoundV3CometRewards in the same registry); MARKET_ID() reverted because the fuse declares none",
+                            "the deployed runtime code contains claim(address) 0x1e83409a"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "token addresses the Comet accepts: its base token (USDC) and its collateral assets. The supply fuse checks data.asset on enter and exit; the balance fuse iterates the list and reads the Comet balance of each. The Comet itself is not a substrate: it is bound at construction (Comet cUSDCv3 0xc3d688B66703497DAA19211EEdff47f25384cdc3 for this deployment) and one fuse pair is deployed per Comet, which is why each Comet has its own market ID.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every substrate asset, the Plasma Vault's Comet balance (balanceOf for the base token, collateralBalanceOf for collateral), minus the Comet borrowBalanceOf in base token; a net negative value reverts on the int256 to uint256 cast",
+                "priceSource": "the Comet's own price feeds through Comet.getPrice (baseTokenPriceFeed for the base token, getAssetInfoByAddress(asset).priceFeed for collateral), 8 decimals; the vault's PriceOracleMiddleware is not consulted",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "none for the balance: prices come from the Comet's feeds, so no PriceOracleMiddleware source is needed for valuation; PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) still needs a source for any asset the vault holds idle"
+            },
+            "tests": [
+                "test/fuses/compound_v3/CompoundUsdcV3SupplyFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3BalanceFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundWethV3SupplyFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundWethV3BalanceFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3SupplyArbitrumFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3BalanceArbitrumFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundV3ClaimFuseTest.t.sol",
+                "test/integrationTest/compoundV3Arbitrum/CompoundV3Arbitrum.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseCompoundV3Usdc",
+                    "address": "0x00A220F09C1CF5f549C98Fa37C837aed54aBA26c",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xd7021db8067452f5dbfc658e46ab4d8de718537a00020f1bdf95f4199d060371",
+                    "observedMarketId": 2,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 2 and VERSION() returned its own address at the observed block; COMET() returned 0xc3d688B66703497DAA19211EEdff47f25384cdc3 (cUSDCv3)",
+                        "the deployed runtime code contains enter((address,uint256)) 0xd5ee7916, exit((address,uint256)) 0x92876ac8 and instantWithdraw(bytes32[]) 0xbe1946da, the same signatures as this checkout",
+                        "bytecode equivalence with this checkout's CompoundV3SupplyFuse.sol was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseCompoundV3Usdc",
+                    "address": "0x7070d0A706Bf79A1e6d12706b9a429b9D8099C8b",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xefd56d34376798047bc41bba9db4ebefbb03cf2d216c5eafe44021525dc30ab9",
+                    "observedMarketId": 2,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 2 at the observed block; COMET() returned 0xc3d688B66703497DAA19211EEdff47f25384cdc3 (cUSDCv3)",
+                        "VERSION() reverted, which is consistent with this checkout's CompoundV3BalanceFuse.sol, which declares no VERSION",
+                        "bytecode equivalence with this checkout's CompoundV3BalanceFuse.sol was not established"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-compound-v3-market-13",
+            "protocol": "compound_v3",
+            "chainId": 1,
+            "market": {
+                "id": 13,
+                "constant": "COMPOUND_V3_USDT",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "CompoundV3SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the token to supply to the Comet: its base token or one of its collateral assets; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to supply, in the token's smallest unit; 0 is a no-op"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "CompoundV3SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the token to withdraw from the Comet; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to withdraw, in the token's smallest unit; capped at the Plasma Vault's Comet balance (balanceOf for the base token, collateralBalanceOf otherwise)"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:52",
+                    "sources": {
+                        "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol": "0x727c60b6b862994ef3e33f707893ced12e95c8b564fa67834bc6a3b08f103de9",
+                        "contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol": "0xa093556e2a6d773e9af21a96b6daa8d59374c67129e042ef5d86d39107aaab65"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "CompoundV3SupplyFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:15",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:17"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:19"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "CompoundV3SupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:22",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:24"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:26"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol",
+                    "purpose": "claims COMP rewards for one Comet through CometRewards.claimTo into the RewardsClaimManager; registered there by FUSE_MANAGER_ROLE (300) and executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards, not through PlasmaVault.execute. It has no MARKET_ID: one deployment serves every Comet of the chain.",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(address)",
+                            "selector": "0x1e83409a",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "comet_",
+                                    "type": "address",
+                                    "meaning": "the Comet whose accrued rewards are claimed for the Plasma Vault"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol": "0x4a88b88d0d33ed506ea31c26f2b9d42ad6f90ce81538577297a63f6b19c3d4b0"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(address)",
+                                    "selector": "0x1e83409a",
+                                    "source": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol:33",
+                                    "fields": [
+                                        {
+                                            "name": "comet_",
+                                            "type": "address",
+                                            "source": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol:33"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsFuseCompoundV3",
+                        "address": "0x2B98080341D9469d8beAbf2db037dE8897c232cD",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xaf884532139c47db1f22fc37444e914e5c50b9661be535f2d1cebf72af282dce",
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "VERSION() returned its own address at the observed block; COMET_REWARDS() returned 0x1B0e765F6224C21223AeA2af16c1C46E38885a40 (CompoundV3CometRewards in the same registry); MARKET_ID() reverted because the fuse declares none",
+                            "the deployed runtime code contains claim(address) 0x1e83409a"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "token addresses the Comet accepts: its base token (USDT) and its collateral assets. The supply fuse checks data.asset on enter and exit; the balance fuse iterates the list and reads the Comet balance of each. The Comet itself is not a substrate: it is bound at construction (Comet cUSDTv3 0x3Afdc9BCA9213A35503b077a6072F3D0d5AB0840 for this deployment) and one fuse pair is deployed per Comet, which is why each Comet has its own market ID.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every substrate asset, the Plasma Vault's Comet balance (balanceOf for the base token, collateralBalanceOf for collateral), minus the Comet borrowBalanceOf in base token; a net negative value reverts on the int256 to uint256 cast",
+                "priceSource": "the Comet's own price feeds through Comet.getPrice (baseTokenPriceFeed for the base token, getAssetInfoByAddress(asset).priceFeed for collateral), 8 decimals; the vault's PriceOracleMiddleware is not consulted",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "none for the balance: prices come from the Comet's feeds, so no PriceOracleMiddleware source is needed for valuation; PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) still needs a source for any asset the vault holds idle"
+            },
+            "tests": [
+                "test/fuses/compound_v3/CompoundUsdcV3SupplyFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3BalanceFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundWethV3SupplyFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundWethV3BalanceFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3SupplyArbitrumFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3BalanceArbitrumFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundV3ClaimFuseTest.t.sol",
+                "test/integrationTest/compoundV3Arbitrum/CompoundV3Arbitrum.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseCompoundV3Usdt",
+                    "address": "0x4f35094b049e4aa0eA98CfA00fA55f30B12aaF29",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x5009e6f6231b8b4ed2e47196b6e1ffddc06c7cf68bd9160cd0d40c0ed82902f0",
+                    "observedMarketId": 13,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 13 and VERSION() returned its own address at the observed block; COMET() returned 0x3Afdc9BCA9213A35503b077a6072F3D0d5AB0840 (cUSDTv3)",
+                        "the deployed runtime code contains enter((address,uint256)) 0xd5ee7916, exit((address,uint256)) 0x92876ac8 and instantWithdraw(bytes32[]) 0xbe1946da, the same signatures as this checkout",
+                        "bytecode equivalence with this checkout's CompoundV3SupplyFuse.sol was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseCompoundV3Usdt",
+                    "address": "0x9eF773720BbF05353b1D5e800E529315325A4481",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xfc17a8c8a1c021b767d3de03f60e3d5abaccf5929fc4428cca423757be2a8043",
+                    "observedMarketId": 13,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 13 at the observed block; COMET() returned 0x3Afdc9BCA9213A35503b077a6072F3D0d5AB0840 (cUSDTv3)",
+                        "VERSION() reverted, which is consistent with this checkout's CompoundV3BalanceFuse.sol, which declares no VERSION",
+                        "bytecode equivalence with this checkout's CompoundV3BalanceFuse.sol was not established"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "base-compound-v3-market-26",
+            "protocol": "compound_v3",
+            "chainId": 8453,
+            "market": {
+                "id": 26,
+                "constant": "COMPOUND_V3_WETH",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "CompoundV3SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the token to supply to the Comet: its base token or one of its collateral assets; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to supply, in the token's smallest unit; 0 is a no-op"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "CompoundV3SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the token to withdraw from the Comet; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to withdraw, in the token's smallest unit; capped at the Plasma Vault's Comet balance (balanceOf for the base token, collateralBalanceOf otherwise)"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:88",
+                    "sources": {
+                        "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol": "0x727c60b6b862994ef3e33f707893ced12e95c8b564fa67834bc6a3b08f103de9",
+                        "contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol": "0xa093556e2a6d773e9af21a96b6daa8d59374c67129e042ef5d86d39107aaab65"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "CompoundV3SupplyFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:15",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:17"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:19"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "CompoundV3SupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:22",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:24"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol:26"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol",
+                    "purpose": "claims COMP rewards for one Comet through CometRewards.claimTo into the RewardsClaimManager; registered there by FUSE_MANAGER_ROLE (300) and executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards, not through PlasmaVault.execute. It has no MARKET_ID: one deployment serves every Comet of the chain.",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(address)",
+                            "selector": "0x1e83409a",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "comet_",
+                                    "type": "address",
+                                    "meaning": "the Comet whose accrued rewards are claimed for the Plasma Vault"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol": "0x4a88b88d0d33ed506ea31c26f2b9d42ad6f90ce81538577297a63f6b19c3d4b0"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(address)",
+                                    "selector": "0x1e83409a",
+                                    "source": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol:33",
+                                    "fields": [
+                                        {
+                                            "name": "comet_",
+                                            "type": "address",
+                                            "source": "contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol:33"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsFuseCompoundV3",
+                        "address": "0x10de4b8aa7c363999769F8a8295F4F091a77DF4F",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x83129c3c406645955055fb6e9fdacae30ac4396f22880c34801b65cddf056f38",
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "VERSION() returned its own address at the observed block; COMET_REWARDS() returned 0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1; MARKET_ID() reverted because the fuse declares none",
+                            "the deployed runtime code contains claim(address) 0x1e83409a"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "token addresses the Comet accepts: its base token (WETH) and its collateral assets. The supply fuse checks data.asset on enter and exit; the balance fuse iterates the list and reads the Comet balance of each. The Comet itself is not a substrate: it is bound at construction (Comet cWETHv3 on Base 0x46e6b214b524310239732D51387075E0e70970bf for this deployment) and one fuse pair is deployed per Comet, which is why each Comet has its own market ID.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every substrate asset, the Plasma Vault's Comet balance (balanceOf for the base token, collateralBalanceOf for collateral), minus the Comet borrowBalanceOf in base token; a net negative value reverts on the int256 to uint256 cast",
+                "priceSource": "the Comet's own price feeds through Comet.getPrice (baseTokenPriceFeed for the base token, getAssetInfoByAddress(asset).priceFeed for collateral), 8 decimals; the vault's PriceOracleMiddleware is not consulted",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "none for the balance: prices come from the Comet's feeds, so no PriceOracleMiddleware source is needed for valuation; PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) still needs a source for any asset the vault holds idle"
+            },
+            "tests": [
+                "test/fuses/compound_v3/CompoundUsdcV3SupplyFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3BalanceFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundWethV3SupplyFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundWethV3BalanceFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3SupplyArbitrumFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundUsdcV3BalanceArbitrumFuseTest.t.sol",
+                "test/fuses/compound_v3/CompoundV3ClaimFuseTest.t.sol",
+                "test/integrationTest/compoundV3Arbitrum/CompoundV3Arbitrum.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseCompoundV3WEth",
+                    "address": "0xD72Dd19C04362488a4143F43e407ec87A849b72b",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x411a95734defa4951d15b4bc7ac7061b09b10aa42c1571fff57fe69227cab281",
+                    "observedMarketId": 26,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 26 and VERSION() returned its own address at the observed block; COMET() returned 0x46e6b214b524310239732D51387075E0e70970bf (cWETHv3 on Base)",
+                        "the deployed runtime code contains enter((address,uint256)) 0xd5ee7916, exit((address,uint256)) 0x92876ac8 and instantWithdraw(bytes32[]) 0xbe1946da, the same signatures as this checkout",
+                        "bytecode equivalence with this checkout's CompoundV3SupplyFuse.sol was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseCompoundV3WEth",
+                    "address": "0x88810B5066A92d628A1Cb59A1902bc607eeb8C1B",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x38a36652d90dbdf3522b683edd8e7317a661108afe4625017ff7152e3b560c14",
+                    "observedMarketId": 26,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 26 at the observed block; COMET() returned 0x46e6b214b524310239732D51387075E0e70970bf (cWETHv3 on Base)",
+                        "VERSION() reverted, which is consistent with this checkout's CompoundV3BalanceFuse.sol, which declares no VERSION",
+                        "bytecode equivalence with this checkout's CompoundV3BalanceFuse.sol was not established"
+                    ]
+                }
+            }
         }
     ]
 }
