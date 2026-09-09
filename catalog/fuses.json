@@ -1,0 +1,175 @@
+{
+    "schemaVersion": 1,
+    "integrations": [
+        {
+            "id": "ethereum-erc4626-market-100001",
+            "protocol": "erc4626",
+            "chainId": 1,
+            "market": {
+                "id": 100001,
+                "constant": "ERC4626_0001",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/erc4626/Erc4626BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256))",
+                    "selector": "0x41b11ae7",
+                    "struct": "Erc4626SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "vault",
+                            "type": "address",
+                            "meaning": "the ERC4626 vault to deposit into; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "vaultAssetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of that vault's underlying asset to supply, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance"
+                        },
+                        {
+                            "name": "minSharesOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor: fewer shares than this reverts with Erc4626SupplyFuseInsufficientShares"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,uint256))",
+                    "selector": "0x8467bd30",
+                    "struct": "Erc4626SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "vault",
+                            "type": "address",
+                            "meaning": "the ERC4626 vault to withdraw from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "vaultAssetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of underlying asset to withdraw, in the asset's smallest unit"
+                        },
+                        {
+                            "name": "maxSharesBurned",
+                            "type": "uint256",
+                            "meaning": "slippage ceiling on burned shares; 0 means no limit, and burning more reverts with Erc4626SupplyFuseExcessiveSharesBurned"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:358",
+                    "sources": {
+                        "contracts/fuses/erc4626/Erc4626SupplyFuse.sol": "0x6c4525fdeedd5898e2b63560872f21606cc3240a45fe2dc360805b6ae203bcf0",
+                        "contracts/fuses/erc4626/Erc4626BalanceFuse.sol": "0xf464cf33bbc430e8d4a3aa44c07c35dde38669ecaca8cfcb9883b02887e6c511"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "Erc4626SupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:16",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:18"
+                                },
+                                {
+                                    "name": "vaultAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:20"
+                                },
+                                {
+                                    "name": "minSharesOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:22"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "Erc4626SupplyFuseExitData",
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:26",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:28"
+                                },
+                                {
+                                    "name": "vaultAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:30"
+                                },
+                                {
+                                    "name": "maxSharesBurned",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:32"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "the ERC4626 vault addresses this market may supply to and withdraw from. Both fuses read the same list: the action fuse checks data.vault on enter and exit, and the balance fuse iterates it. The action fuse's file comment calls them assets, but the value checked is the vault address.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the underlying asset of every ERC4626 vault in the substrate list, after convertToAssets on the shares the Plasma Vault holds",
+                "priceSource": "the vault's PriceOracleMiddlewareManager, falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/erc4626/ERC4626SupplyFuseTest.t.sol",
+                "test/fuses/erc4626/ERC4626BalanceFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseErc4626Market1",
+                    "address": "0x12FD0EE183c85940CAedd4877f5d3Fc637515870",
+                    "addressSource": "IPOR Fusion SDK fusion_address_lookup, name query \"Erc4626\" on chain 1, captured 2026-09-09",
+                    "observedAtBlock": 25937526,
+                    "runtimeCodeHash": "0x035857c50937cf19a6cdded274d724572498f3dd0d4844ca902e4c2551365b70",
+                    "observedMarketId": 100001,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 100001 and VERSION() returned its own address at the observed block",
+                        "the deployed contract exposes enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8, not this checkout's three-field structs with minSharesOut/maxSharesBurned; callers must encode the deployed signatures",
+                        "bytecode equivalence with this checkout's Erc4626SupplyFuse.sol was not established, and the differing selectors prove it is an older version"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseErc4626Market1",
+                    "address": "0x2C10C36028C430f445a4bA9f7Dd096a5DcC75d5e",
+                    "addressSource": "IPOR Fusion SDK fusion_address_lookup, name query \"Erc4626\" on chain 1, captured 2026-09-09",
+                    "observedAtBlock": 25937526,
+                    "runtimeCodeHash": "0xa6e5a17d7447e0dc2ee76fcc9a532ae174ce920d5d94b69c649933a3af0d6e4b",
+                    "observedMarketId": 100001,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 100001 at the observed block",
+                        "VERSION() reverted, while this checkout's Erc4626BalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse"
+                    ]
+                }
+            }
+        }
+    ]
+}

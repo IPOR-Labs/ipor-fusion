@@ -1,0 +1,165 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/IPOR-Labs/ipor-fusion/catalog/fuses.schema.json",
+    "title": "IPOR Fusion integration catalog",
+    "description": "One entry per integration: what the code is, what a market of it needs, and which addresses were actually observed on chain. Editorial fields describe meaning; observation fields carry evidence and a block.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["schemaVersion", "integrations"],
+    "properties": {
+        "schemaVersion": { "type": "integer", "enum": [1] },
+        "integrations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/integration" } }
+    },
+    "$defs": {
+        "address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+        "nullableBytes32": { "type": ["string", "null"], "pattern": "^0x[0-9a-fA-F]{64}$" },
+        "path": { "type": "string", "minLength": 1 },
+        "integration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "protocol", "chainId", "market", "source", "interface", "substrates", "valuation", "roles", "tests", "deployments"],
+            "properties": {
+                "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+                "protocol": { "type": "string", "minLength": 1 },
+                "chainId": { "type": "integer", "minimum": 1 },
+                "market": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["id", "constant", "constantSource"],
+                    "properties": {
+                        "id": { "type": "integer", "minimum": 1 },
+                        "constant": { "type": "string", "minLength": 1 },
+                        "constantSource": { "$ref": "#/$defs/path" }
+                    }
+                },
+                "source": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["actionFuse", "balanceFuse"],
+                    "properties": {
+                        "actionFuse": { "$ref": "#/$defs/path" },
+                        "balanceFuse": { "$ref": "#/$defs/path" }
+                    }
+                },
+                "interface": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["enter", "exit", "generated"],
+                    "properties": {
+                        "enter": { "$ref": "#/$defs/operation" },
+                        "exit": { "$ref": "#/$defs/operation" },
+                        "generated": {
+                            "type": ["object", "null"],
+                            "description": "Structural data produced from the Solidity sources. Null until a generator fills it; editorial fields are never written there.",
+                            "additionalProperties": true
+                        }
+                    }
+                },
+                "substrates": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["shape", "meaning", "grantFunction", "checkFunction", "verifiedEntries"],
+                    "properties": {
+                        "shape": { "type": "string", "enum": ["address", "structured"] },
+                        "meaning": { "type": "string", "minLength": 1 },
+                        "grantFunction": { "type": "string", "minLength": 1 },
+                        "checkFunction": { "type": "string", "minLength": 1 },
+                        "verifiedEntries": {
+                            "type": "array",
+                            "description": "Substrate values that were read on chain at a stated block. An empty list means none was verified, not that none exists.",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["value", "label", "observedAtBlock"],
+                                "properties": {
+                                    "value": { "type": "string", "minLength": 1 },
+                                    "label": { "type": "string", "minLength": 1 },
+                                    "observedAtBlock": { "type": "integer", "minimum": 1 }
+                                }
+                            }
+                        }
+                    }
+                },
+                "valuation": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["pricedAssets", "priceSource", "unit"],
+                    "properties": {
+                        "pricedAssets": { "type": "string", "minLength": 1 },
+                        "priceSource": { "type": "string", "minLength": 1 },
+                        "unit": { "type": "string", "minLength": 1 }
+                    }
+                },
+                "roles": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["execute", "registerFuses", "configureSubstrates", "configureLimits", "configurePriceSources"],
+                    "properties": {
+                        "execute": { "type": "string", "minLength": 1 },
+                        "registerFuses": { "type": "string", "minLength": 1 },
+                        "configureSubstrates": { "type": "string", "minLength": 1 },
+                        "configureLimits": { "type": "string", "minLength": 1 },
+                        "configurePriceSources": { "type": "string", "minLength": 1 }
+                    }
+                },
+                "tests": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/path" } },
+                "deployments": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["actionFuse", "balanceFuse"],
+                    "properties": {
+                        "actionFuse": { "$ref": "#/$defs/deployedContract" },
+                        "balanceFuse": { "$ref": "#/$defs/deployedContract" }
+                    }
+                }
+            }
+        },
+        "operation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["signature", "selector", "struct", "fields"],
+            "properties": {
+                "signature": { "type": "string", "minLength": 1 },
+                "selector": { "type": "string", "pattern": "^0x[0-9a-f]{8}$" },
+                "struct": { "type": "string", "minLength": 1 },
+                "fields": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["name", "type", "meaning"],
+                        "properties": {
+                            "name": { "type": "string", "minLength": 1 },
+                            "type": { "type": "string", "minLength": 1 },
+                            "meaning": { "type": "string", "minLength": 1 }
+                        }
+                    }
+                }
+            }
+        },
+        "deployedContract": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "registryName", "address", "addressSource", "observedAtBlock", "runtimeCodeHash", "observedMarketId", "matchesCurrentSource", "notes"],
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "observed: read on chain at the stated block. unverified: taken from a source but not read. absent: known not to exist.",
+                    "enum": ["observed", "unverified", "absent"]
+                },
+                "registryName": { "type": ["string", "null"] },
+                "address": { "$ref": "#/$defs/address" },
+                "addressSource": { "type": "string", "minLength": 1 },
+                "observedAtBlock": { "type": ["integer", "null"], "minimum": 1 },
+                "runtimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+                "observedMarketId": { "type": ["integer", "null"], "minimum": 1 },
+                "matchesCurrentSource": {
+                    "type": ["boolean", "null"],
+                    "description": "Whether the deployed bytecode was proven to come from the source in this checkout. Null means not established — never assume it did."
+                },
+                "notes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+            }
+        }
+    }
+}
