@@ -1,0 +1,83 @@
+{
+    "schemaVersion": 1,
+    "reportKind": "factory-verification",
+    "deploymentId": "ethereum-wrapped-plasma-vault-factory-b17a9d70",
+    "chainId": 1,
+    "network": "ethereum",
+    "blockNumber": 25937526,
+    "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+    "checkedAt": "2026-09-09T08:20:00Z",
+    "verdict": "verified",
+    "manifestPath": "deployments/1/factories.json",
+    "variant": {
+        "name": "wrapped-plasma-vault",
+        "alternative": "0x30378C767A5F2c444287bCbdbdB29a73AF125151 (WhitelistWrappedPlasmaVaultFactoryProxy)",
+        "note": "The whitelist variant has different access rules and is a separate deployment. It is not covered by this entry and must be verified on its own."
+    },
+    "toolchain": {
+        "forge": "1.7.1",
+        "cast": "1.7.1",
+        "foundryCommit": "4072e48705af9d93e3c0f6e29e93b5e9a40caed8",
+        "node": "v24.16.0",
+        "foundryProfile": "factory_ethereum",
+        "providerVariable": "ETHEREUM_PROVIDER_URL"
+    },
+    "reproduce": {
+        "compatibilityTest": "npm run test:fork -- --chain 1 --suite deployed-wrapped-vault-factory --block 25937526",
+        "implementationSlot": "cast storage --rpc-url \"$ETHEREUM_PROVIDER_URL\" --block 25937526 0xb17a9D70a73e0DcFfc12563Bcc0c1D68F3F353C8 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+        "selectorProbe": "cast code --rpc-url \"$ETHEREUM_PROVIDER_URL\" --block 25937526 0x3f68A6A4FcA2E6B85d041A53Eb4090f6aC3311f5 | grep -o 05b2bb5a",
+        "manifest": "npm run validate:deployments"
+    },
+    "identity": {
+        "proxy": {
+            "address": "0xb17a9D70a73e0DcFfc12563Bcc0c1D68F3F353C8",
+            "type": "erc1967",
+            "runtimeCodeHash": "0xa76a49b530f622d74e88da3105c2ba168b4fda315bd90afbd8d460e08b212742"
+        },
+        "implementation": {
+            "address": "0x3f68A6A4FcA2E6B85d041A53Eb4090f6aC3311f5",
+            "slot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+            "runtimeCodeHash": "0xc7716f2f47fbacdd2228d09f61a792c43b2077e797b1a195bfe08d46685877fc",
+            "runtimeCodeSize": 21580,
+            "matchesManifest": true
+        },
+        "abi": {
+            "path": "abi/wrapped-plasma-vault-factory-ethereum-0x3f68a6a4fca2e6b85d041a53eb4090f6ac3311f5/WrappedPlasmaVaultFactory.abi.json",
+            "sha256": "5520c66f420c6e86b2989b366893dd0553418f2baa46ac58586e5e05424770c0",
+            "entries": 28,
+            "origin": "generated from checkout 562fea3, not from a verified explorer source",
+            "creationOperation": "create(string,string,address,address,address,uint256,address,uint256)",
+            "creationSelector": "0x05b2bb5a",
+            "selectorPresentInDeployedCode": true
+        },
+        "reportedFactoryVersion": null,
+        "owner": "0xa9622a0f359EFf9c253F0Be861C480B03e610392"
+    },
+    "compatibilityTest": {
+        "path": "test/deployed-factories/WrappedPlasmaVaultFactoryEthereum.t.sol",
+        "sha256": "a8a30f2824b18588681fe3c73e4c2bd0568c67920a04a554a4bdd1d49861efe3",
+        "suite": "deployed-wrapped-vault-factory",
+        "fixture": "deployed-usage",
+        "test": "WrappedPlasmaVaultFactoryEthereumTest",
+        "result": "pass",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "gas": 2952276,
+        "usedUpgradeOrCodeReplacement": false,
+        "grantedRoles": false,
+        "broadcast": false,
+        "proves": [
+            "a wrapper created through the unchanged factory reports PLASMA_VAULT equal to the vault it was asked to wrap, and the same asset as that vault",
+            "its name, symbol, owner, both fee accounts and both fee percentages are the requested ones",
+            "wrapper configuration is restricted to the wrapper's own owner: the wrapped vault's owner is refused and the wrapper's owner succeeds",
+            "a zero vault address and a fee above 10000 (100%) are refused"
+        ]
+    },
+    "warnings": [
+        "the ABI comes from this checkout, matched to the deployment by selector and by a passing creation; it is not a verified explorer ABI",
+        "the implementation's verified compiler metadata was not captured",
+        "fee percentages here use 10000 = 100%, which is the wrapper's own unit",
+        "reads are observations at block 25937526; re-read the implementation slot before relying on this entry"
+    ]
+}

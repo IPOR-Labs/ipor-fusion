@@ -1,0 +1,49 @@
+{
+    "schemaVersion": 1,
+    "capturedAt": "2026-09-09",
+    "timezone": "Europe/Warsaw",
+    "chainId": 1,
+    "proxy": {
+        "address": "0xb17a9D70a73e0DcFfc12563Bcc0c1D68F3F353C8",
+        "contractName": "ERC1967Proxy",
+        "explorerProxyFlag": null,
+        "implementationReadFrom": "eth_getStorageAt on the ERC-1967 slot at block 25937526",
+        "explorerImplementation": "0x3f68a6a4fca2e6b85d041a53eb4090f6ac3311f5"
+    },
+    "implementation": {
+        "address": "0x3f68A6A4FcA2E6B85d041A53Eb4090f6aC3311f5",
+        "contractName": "WrappedPlasmaVaultFactory",
+        "compilerVersion": null,
+        "optimizerEnabled": null,
+        "optimizerRuns": null,
+        "evmVersion": null,
+        "explorerProxyFlag": false
+    },
+    "abi": {
+        "path": "abi/wrapped-plasma-vault-factory-ethereum-0x3f68a6a4fca2e6b85d041a53eb4090f6ac3311f5/WrappedPlasmaVaultFactory.abi.json",
+        "sha256": "5520c66f420c6e86b2989b366893dd0553418f2baa46ac58586e5e05424770c0",
+        "entries": 28,
+        "contractName": "WrappedPlasmaVaultFactory"
+    },
+    "source": {
+        "kind": "generated-from-checkout",
+        "command": "forge inspect contracts/factory/extensions/WrappedPlasmaVaultFactory.sol:WrappedPlasmaVaultFactory abi --json",
+        "commit": "562fea3",
+        "why": "Unlike the FusionFactory and the ERC4626 price feed factory, this ABI was generated from this checkout rather than fetched from a verified explorer source.",
+        "compatibilityEvidence": [
+            "the create(string,string,address,address,address,uint256,address,uint256) selector 0x05b2bb5a is present in the deployed implementation's runtime code at block 25937526",
+            "the deployed-usage test creates a wrapper through the unchanged proxy with exactly this ABI and reads the result back"
+        ],
+        "limits": "Selector presence and a passing creation prove the operation is callable and behaves as the test asserts. They do not prove the deployed bytecode was built from this checkout, and the implementation's verified compiler metadata was not captured."
+    },
+    "creationOperation": {
+        "signature": "create(string,string,address,address,address,uint256,address,uint256)",
+        "selector": "0x05b2bb5a",
+        "adapter": null,
+        "adapterReason": "The checkout's signature is present in the deployed runtime code; no adapter is needed for this operation."
+    },
+    "variant": {
+        "name": "wrapped-plasma-vault",
+        "note": "The whitelist variant is a different deployment (WhitelistWrappedPlasmaVaultFactoryProxy 0x30378C767A5F2c444287bCbdbdB29a73AF125151) with different access rules. It is deliberately not covered by this entry."
+    }
+}

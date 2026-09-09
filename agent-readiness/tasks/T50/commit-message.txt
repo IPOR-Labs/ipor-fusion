@@ -1,0 +1,14 @@
+feat(wrapper): T50 support one deployed wrapper variant
+
+Register the deployed Ethereum WrappedPlasmaVaultFactory — the plain variant —
+with its ABI and provenance, a manifest entry, a verification report at block
+25937526 and docs/recipes/wrap-a-vault.md.
+
+The deployed-usage test wraps a vault created by the pilot factory and checks the
+binding to that vault and its asset, the wrapper's own name, symbol, owner and
+both fee configurations, that only the wrapper's owner may reconfigure it — the
+wrapped vault's owner is refused — and that a zero vault or a fee above 100% is
+rejected.
+
+The whitelist variant is a different deployment and is deliberately left out,
+named in the manifest provenance, the report and the recipe.
