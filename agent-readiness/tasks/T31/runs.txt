@@ -1,0 +1,28 @@
+T31 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run vault:verify:test
+  tests 3, pass 3, fail 0 (the third one runs a whole anvil fork scenario)
+
+  1. successful creation on the fork
+       status success, deploymentId ethereum-fusion-factory-cd05909c
+       plasmaVault resolved from the factory's own event
+       owner 0x2222…2222, underlying USDC
+       withdrawManager resolved by probing the receipt's log emitters
+       unresolved: ["contextManager"]
+       verification.ok true (the 29 T30 checks against --config)
+  2. same receipt with --min-confirmations 50   → status not-final
+  3. creation with an underlying without code   → status reverted
+  4. transaction sent with automine disabled    → status pending
+  5. hash the endpoint never saw                → TRANSACTION_UNKNOWN, exit 1
+
+  Emitter filtering (pure unit test on selectCreationLog):
+    factory event + foreign event + other topic  → found, 1 foreign ignored
+    only a foreign emitter                       → foreign-only
+    only another topic / no logs                 → absent
+    two factory events                           → ambiguous
+
+  Argument errors: missing --tx and a short hash exit 2.
+
+No Solidity return value is used anywhere: addresses come from the event and
+from state reads. Nothing was broadcast; the whole scenario ran on a local anvil
+fork of Ethereum block 25937526.
