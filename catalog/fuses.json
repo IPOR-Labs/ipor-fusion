@@ -16653,6 +16653,268 @@
                 },
                 "balanceFuse": null
             }
+        },
+        {
+            "id": "tac-tac-staking-market-28",
+            "protocol": "tac",
+            "chainId": 239,
+            "market": {
+                "id": 28,
+                "constant": "TAC_STAKING",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/tac/TacStakingDelegateFuse.sol",
+                "balanceFuse": "contracts/fuses/tac/TacStakingBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((string[],uint256[]))",
+                    "selector": "0xf3edb63d",
+                    "struct": "TacStakingDelegateFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "validatorAddresses",
+                            "type": "string[]",
+                            "meaning": "validator operator address as a bech32 string (tacvaloper...); every validator named here must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "wTacAmounts",
+                            "type": "uint256[]",
+                            "meaning": "wTAC to delegate to the validator at the same index, in wei (18 decimals); the sum is transferred from the Plasma Vault to its TacStakingDelegator (created on first use), which unwraps it and delegates native TAC; a sum of 0 is a no-op, a sum above the vault's wTAC balance reverts"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((string[],uint256[]))",
+                    "selector": "0x1ef7018c",
+                    "struct": "TacStakingDelegateFuseExitData",
+                    "fields": [
+                        {
+                            "name": "validatorAddresses",
+                            "type": "string[]",
+                            "meaning": "validator operator address as a bech32 string (tacvaloper...); every validator named here must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "tacAmounts",
+                            "type": "uint256[]",
+                            "meaning": "native TAC to undelegate from the validator at the same index, in wei; the delegator starts the unbonding and the tokens return to it after the chain's unbonding period, from where instantWithdraw or the emergency fuse move them back to the vault"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:93",
+                    "sources": {
+                        "contracts/fuses/tac/TacStakingDelegateFuse.sol": "0x92d7716e93bbbf6d81f972b5e6e08569107c8bb452a0a59f3278c3236e784d94",
+                        "contracts/fuses/tac/TacStakingBalanceFuse.sol": "0x844195b406e046e104b37bbbf38d0b08824bab869d13d67b975304d5e23842d8"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "TacStakingDelegateFuseEnterData",
+                            "signature": "enter((string[],uint256[]))",
+                            "selector": "0xf3edb63d",
+                            "source": "contracts/fuses/tac/TacStakingDelegateFuse.sol:16",
+                            "fields": [
+                                {
+                                    "name": "validatorAddresses",
+                                    "type": "string[]",
+                                    "source": "contracts/fuses/tac/TacStakingDelegateFuse.sol:17"
+                                },
+                                {
+                                    "name": "wTacAmounts",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/tac/TacStakingDelegateFuse.sol:18"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "TacStakingDelegateFuseExitData",
+                            "signature": "exit((string[],uint256[]))",
+                            "selector": "0x1ef7018c",
+                            "source": "contracts/fuses/tac/TacStakingDelegateFuse.sol:24",
+                            "fields": [
+                                {
+                                    "name": "validatorAddresses",
+                                    "type": "string[]",
+                                    "source": "contracts/fuses/tac/TacStakingDelegateFuse.sol:25"
+                                },
+                                {
+                                    "name": "tacAmounts",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/tac/TacStakingDelegateFuse.sol:26"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/tac/TacStakingRedelegateFuse.sol",
+                    "purpose": "moves an existing delegation from source validators to destination validators through the vault's TacStakingDelegator (enter only); both sides must be granted substrates",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((string[],string[],uint256[]))",
+                            "selector": "0x9012597e",
+                            "struct": "TacStakingRedelegateFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "validatorSrcAddresses",
+                                    "type": "string[]",
+                                    "meaning": "validators to redelegate from (bech32 strings); each must be a granted substrate"
+                                },
+                                {
+                                    "name": "validatorDstAddresses",
+                                    "type": "string[]",
+                                    "meaning": "validators to redelegate to, one per source; each must be a granted substrate"
+                                },
+                                {
+                                    "name": "wTacAmounts",
+                                    "type": "uint256[]",
+                                    "meaning": "amount to move per pair, in wei (18 decimals), despite the name it is native TAC already delegated; an empty array is a no-op"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/tac/TacStakingRedelegateFuse.sol": "0xaa8f7bbdf68415e689397c1f7618c052639ca5ead7b508d4e7fc448d46d6c383"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "TacStakingRedelegateFuseEnterData",
+                                    "signature": "enter((string[],string[],uint256[]))",
+                                    "selector": "0x9012597e",
+                                    "source": "contracts/fuses/tac/TacStakingRedelegateFuse.sol:18",
+                                    "fields": [
+                                        {
+                                            "name": "validatorSrcAddresses",
+                                            "type": "string[]",
+                                            "source": "contracts/fuses/tac/TacStakingRedelegateFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "validatorDstAddresses",
+                                            "type": "string[]",
+                                            "source": "contracts/fuses/tac/TacStakingRedelegateFuse.sol:20"
+                                        },
+                                        {
+                                            "name": "wTacAmounts",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/tac/TacStakingRedelegateFuse.sol:21"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unverified",
+                        "registryName": "TacStakingRedelegateFuse",
+                        "address": "0x7b499CE3B1babc150bdbc6F31E52200D6Cdb02E9",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-tac-fusion/addresses.json at a0089cf, captured 2026-09-09; TAC (chain 239) has no RPC on this machine, so the address was not read on chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "not read on chain: no TAC RPC on this machine; MARKET_ID, VERSION and selectors unverified"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/tac/TacStakingEmergencyFuse.sol",
+                    "purpose": "pulls every wTAC and native TAC balance sitting on the vault's TacStakingDelegator back to the Plasma Vault (exit only, no parameters); it does not undelegate anything still bonded",
+                    "interface": {
+                        "exit": {
+                            "signature": "exit()",
+                            "selector": "0xe9fad8ee",
+                            "struct": null,
+                            "fields": []
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/tac/TacStakingEmergencyFuse.sol": "0xafc4912b8900d073663f89381158cdb6c21ae3fedb616da4fb0df3d2e9a3eb8e"
+                            },
+                            "operations": {
+                                "exit": {
+                                    "struct": null,
+                                    "signature": "exit()",
+                                    "selector": "0xe9fad8ee",
+                                    "source": "contracts/fuses/tac/TacStakingEmergencyFuse.sol:27",
+                                    "fields": []
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unverified",
+                        "registryName": "TacStakingEmergencyFuse",
+                        "address": "0xaBdFC4f716227946ACbCB6d9089Ab8c4BDEDB7C7",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-tac-fusion/addresses.json at a0089cf, captured 2026-09-09; TAC (chain 239) has no RPC on this machine, so the address was not read on chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "not read on chain: no TAC RPC on this machine; MARKET_ID, VERSION and selectors unverified"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "validator operator addresses as strings, each packed by TacValidatorAddressConverter.validatorAddressToBytes32 into TWO consecutive bytes32 slots (first byte of the first slot is the string length, then up to 63 bytes of the string); the delegate and redelegate fuses require both slots of a validator to be granted, and the balance fuse reads the list two slots at a time, so the granted list must have an even length in that order",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with the raw bytes32 pairs (no address helper applies)",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted on each of the two slots",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "native TAC held for the vault by its TacStakingDelegator: bonded delegation amounts and unbonding entries per granted validator (IStaking.delegation and unbondingDelegation on the staking precompile 0x...0800) plus the delegator's native balance, all in wei; wTAC left on the delegator is not counted, and a delegator that does not exist yet yields 0",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware) quoting the wTAC address, on the assumption that native TAC and wTAC are 1:1",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/tac/TacStakingFuseTest.sol",
+                "test/fuses/tac/TacValidatorAddressConverterTest.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unverified",
+                    "registryName": "TacStakingDelegateFuse",
+                    "address": "0x457C6981b48C60099B2218C196071Cc2c60d0638",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-tac-fusion/addresses.json at a0089cf, captured 2026-09-09; TAC (chain 239) has no RPC on this machine, so the address was not read on chain",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "not read on chain: no TAC RPC on this machine; MARKET_ID, VERSION and selectors unverified",
+                        "every TAC fuse source in this checkout carries the comment 'This contract is deprecated and should not be used'"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "unverified",
+                    "registryName": "TacStakingBalanceFuse",
+                    "address": "0x839C0475fd43690B61D935F0255C4f9B4a9e13f1",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-tac-fusion/addresses.json at a0089cf, captured 2026-09-09; TAC (chain 239) has no RPC on this machine, so the address was not read on chain",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "not read on chain: no TAC RPC on this machine"
+                    ]
+                }
+            }
         }
     ]
 }
