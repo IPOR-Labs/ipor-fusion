@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { canonicalType, parseFunctionParams, parseStruct, SolidityReadError } from "./lib/solidity-abi.mjs";
+import { canonicalType, findStruct, parseFunctionParams, SolidityReadError } from "./lib/solidity-abi.mjs";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 
@@ -68,11 +68,13 @@ function generateOperations(fusePath, fuseSource, iface) {
         if (operation === "generated") continue;
         const parsed = guarded(() =>
             entry.struct === null
-                ? parseFunctionParams(fuseSource, fusePath, operation)
-                : parseStruct(fuseSource, fusePath, entry.struct),
+                ? { path: fusePath, ...parseFunctionParams(fuseSource, fusePath, operation) }
+                : findStruct(repoRoot, fuseSource, fusePath, entry.struct),
         );
+        // Field types are resolved from the file that declares the struct, which may be an imported base.
+        const declaringSource = parsed.path === fusePath ? fuseSource : read(resolve(repoRoot, parsed.path));
         const types = parsed.fields.map((field) =>
-            guarded(() => canonicalType(repoRoot, fuseSource, fusePath, field.type)),
+            guarded(() => canonicalType(repoRoot, declaringSource, parsed.path, field.type)),
         );
         const signature =
             entry.struct === null ? `${operation}(${types.join(",")})` : `${operation}((${types.join(",")}))`;
@@ -80,11 +82,11 @@ function generateOperations(fusePath, fuseSource, iface) {
             struct: entry.struct,
             signature,
             selector: cast(["sig", signature]),
-            source: `${fusePath}:${parsed.declaredAtLine}`,
+            source: `${parsed.path}:${parsed.declaredAtLine}`,
             fields: parsed.fields.map((field) => ({
                 name: field.name,
                 type: field.type,
-                source: `${fusePath}:${field.line}`,
+                source: `${parsed.path}:${field.line}`,
             })),
         };
     }

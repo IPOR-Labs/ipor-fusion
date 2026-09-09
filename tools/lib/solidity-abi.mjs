@@ -146,7 +146,7 @@ function declarationIn(source, name) {
 /// library, user-defined value type) is declared: in the file the fuse is read
 /// from, then in the files it imports (transitively, imports first), and as a
 /// last resort anywhere under contracts/ or lib/ provided the hit is unique.
-function findDeclaration(repoRoot, preferredSource, preferredPath, name) {
+function findDeclaration(repoRoot, preferredSource, preferredPath, name, searchRepository = true) {
     const visited = new Set();
     const queue = [{ path: preferredPath, source: preferredSource }];
     while (queue.length > 0) {
@@ -160,6 +160,9 @@ function findDeclaration(repoRoot, preferredSource, preferredPath, name) {
         }
     }
 
+    if (!searchRepository) {
+        throw new SolidityReadError("STRUCT_NOT_FOUND", `${name} is not declared in ${preferredPath} or its imports`);
+    }
     const result = spawnSync(
         "rg",
         ["-l", "--glob", "*.sol", "-e", `^\\s*(${declarationKinds})\\s+${name}\\b`, "contracts", "lib"],
@@ -184,6 +187,23 @@ function findDeclaration(repoRoot, preferredSource, preferredPath, name) {
         );
     }
     return hits[0];
+}
+
+/// Reads a struct the fuse uses: declared in its own file, or in a file it
+/// imports (a shared abstract base, a library). Returns the parsed struct with
+/// the path it was found in.
+export function findStruct(repoRoot, source, path, name) {
+    if (new RegExp(`^\\s*struct\\s+${name}\\s*\\{`, "m").test(source)) {
+        return { path, ...parseStruct(source, path, name) };
+    }
+    const declaration = findDeclaration(repoRoot, source, path, name, false);
+    if (declaration.kind !== "struct") {
+        throw new SolidityReadError(
+            "STRUCT_NOT_FOUND",
+            `${name} is not declared as a struct in ${path} or its imports`,
+        );
+    }
+    return { path: declaration.path, ...parseStruct(declaration.source, declaration.path, name) };
 }
 
 /// Canonical ABI type of a declared Solidity type: structs become tuples,

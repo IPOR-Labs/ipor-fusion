@@ -15,6 +15,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 import { validateSchema } from "./lib/json-schema.mjs";
+import { findStruct, SolidityReadError } from "./lib/solidity-abi.mjs";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 const schemaPath = resolve(repoRoot, "catalog/fuses.schema.json");
@@ -108,20 +109,19 @@ function checkInterface(where, fusePath, iface) {
             }
             continue;
         }
-        const struct = new RegExp(`struct\\s+${entry.struct}\\s*\\{([^}]*)\\}`).exec(text);
-        if (!struct) {
-            fail(`${where}.${operation}.struct`, `${entry.struct} is not declared in ${fusePath}`);
-        } else {
-            const declared = struct[1]
-                .split(";")
-                .map((line) => line.replace(/\/\/[^\n]*/g, "").trim())
-                .filter(Boolean).length;
-            if (declared !== entry.fields.length) {
-                fail(
-                    `${where}.${operation}.fields`,
-                    `${entry.struct} declares ${declared} field(s), the catalog documents ${entry.fields.length}`,
-                );
-            }
+        let declared;
+        try {
+            declared = findStruct(repoRoot, text, fusePath, entry.struct).fields.length;
+        } catch (error) {
+            if (!(error instanceof SolidityReadError)) throw error;
+            fail(`${where}.${operation}.struct`, `${entry.struct} is not declared in ${fusePath} or its imports`);
+            continue;
+        }
+        if (declared !== entry.fields.length) {
+            fail(
+                `${where}.${operation}.fields`,
+                `${entry.struct} declares ${declared} field(s), the catalog documents ${entry.fields.length}`,
+            );
         }
     }
 

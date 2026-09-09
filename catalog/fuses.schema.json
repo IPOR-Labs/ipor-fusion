@@ -279,7 +279,8 @@
                         "properties": {
                             "name": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 0,
+                                "description": "Parameter or field name as declared; empty only for an unnamed plain parameter such as exit(bytes calldata)."
                             },
                             "type": {
                                 "type": "string",
