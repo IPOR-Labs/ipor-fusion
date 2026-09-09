@@ -2,9 +2,10 @@
     "schemaVersion": 1,
     "scope": {
         "classified": [
-            "test/factory/*.t.sol — the source-version suites needed for the factory pilot, at the top level of the directory only",
-            "test/deployed-factories/FusionFactoryEthereum.t.sol — unchanged deployed-usage coverage for the Ethereum pilot",
-            "test/fuses/<integration>/ and test/unitTest/fuses/<integration>/ local suites of the catalogued integrations (group fuses-local): Aave V4, Agua, async action, Euler V2, external state, Midas, Term Finance, transient storage, universal token swapper, update balances, burn request fee and the fuse whitelist — every file that deploys everything itself and reads no RPC; run 2026-09-09, 56 files, 57 test contracts, 1522 tests, all passing under factory_local"
+            "test/factory/*.t.sol \u2014 the source-version suites needed for the factory pilot, at the top level of the directory only",
+            "test/deployed-factories/FusionFactoryEthereum.t.sol \u2014 unchanged deployed-usage coverage for the Ethereum pilot",
+            "test/fuses/<integration>/ and test/unitTest/fuses/<integration>/ local suites of the catalogued integrations (group fuses-local): Aave V4, Agua, async action, Euler V2, external state, Midas, Term Finance, transient storage, universal token swapper, update balances, burn request fee and the fuse whitelist \u2014 every file that deploys everything itself and reads no RPC; run 2026-09-09, 56 files, 57 test contracts, 1522 tests, all passing under factory_local",
+            "test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol \u2014 deployed-usage coverage of the invariants docs/invariants.md lists for the Ethereum pilot"
         ],
         "unclassified": "Everything else under test/, including test/factory/price_feed/, any other file under test/deployed-factories/ and every fork suite of the integrations listed above, is deliberately not classified yet. An unlisted suite carries no claim in either direction: read its setUp() before quoting a result, and do not treat its absence here as evidence that it is local, that it forks, or that it is unnecessary. Suites are added one area at a time, each with the run that produced its numbers."
     },
@@ -114,7 +115,7 @@
             "setUp": {
                 "deploys": [
                     "MockERC20 underlying token",
-                    "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
+                    "MockPlasmaVault \u2014 a two-function stand-in defined in the test file, not a real PlasmaVault",
                     "WrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
                 ],
                 "mutations": ["labelled EOAs via makeAddr"],
@@ -140,7 +141,7 @@
             "setUp": {
                 "deploys": [
                     "MockERC20 underlying token",
-                    "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
+                    "MockPlasmaVault \u2014 a two-function stand-in defined in the test file, not a real PlasmaVault",
                     "WhitelistWrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
                 ],
                 "mutations": ["labelled EOAs via makeAddr"],
@@ -168,7 +169,7 @@
             "tests": 9,
             "setUp": {
                 "deploys": [
-                    "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
+                    "PlasmaVaultFactory and FeeManagerFactory \u2014 replacing the ones the existing factory points at",
                     "PlasmaVaultBase",
                     "PlasmaVault, used as the new plasmaVaultCoreBase for cloning",
                     "a FusionFactory implementation behind a new ERC1967Proxy"
@@ -196,7 +197,7 @@
                 "helpers": []
             },
             "proves": "That the checked-out FusionFactory source applies DAO fee packages correctly when it runs against real mainnet state at the pinned block.",
-            "doesNotProve": "That the deployed factory at 0xcd05909C… can do this. The fixture deploys its own factory, its own bases and its own component factories, precisely because the deployed ones do not accept the current PlasmaVaultInitData shape. A pass here says nothing about the live deployment."
+            "doesNotProve": "That the deployed factory at 0xcd05909C\u2026 can do this. The fixture deploys its own factory, its own bases and its own component factories, precisely because the deployed ones do not accept the current PlasmaVaultInitData shape. A pass here says nothing about the live deployment."
         },
         {
             "id": "factory-business-client-fee-packages-fork",
@@ -216,7 +217,7 @@
             "tests": 3,
             "setUp": {
                 "deploys": [
-                    "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
+                    "PlasmaVaultFactory and FeeManagerFactory \u2014 replacing the ones the existing factory points at",
                     "PlasmaVaultBase",
                     "PlasmaVault, used as the new plasmaVaultCoreBase for cloning",
                     "a FusionFactory implementation behind a new ERC1967Proxy"
@@ -245,7 +246,7 @@
                 "helpers": []
             },
             "proves": "That business-client fee packages resolve by direct caller against real mainnet state at the pinned block, using the checked-out source.",
-            "doesNotProve": "That the deployed factory at 0xcd05909C… offers these packages, or that the pilot caller would resolve to one. Same fresh-deployment caveat as the DAO fork suite."
+            "doesNotProve": "That the deployed factory at 0xcd05909C\u2026 offers these packages, or that the pilot caller would resolve to one. Same fresh-deployment caveat as the DAO fork suite."
         },
         {
             "id": "deployed-factory-ethereum-fusion-factory",
@@ -331,7 +332,61 @@
                 "helpers": []
             },
             "proves": "At Ethereum block 25937526, a vault created by the unchanged factory can be configured for the catalogued ERC4626 market with the deployed fuses and then carry a full asset cycle: deposit, supply into Steakhouse USDC through ALPHA_ROLE, exit back and redeem, with total assets preserved within 1 USDC on 100000 and the 50% market limit enforced.",
-            "doesNotProve": "That the current source's Erc4626SupplyFuse interface is deployed (it is not — the deployed fuse takes (vault, amount) without slippage bounds), that yield accrues over time, that any other substrate, market or protocol works, or that a transaction should be broadcast."
+            "doesNotProve": "That the current source's Erc4626SupplyFuse interface is deployed (it is not \u2014 the deployed fuse takes (vault, amount) without slippage bounds), that yield accrues over time, that any other substrate, market or protocol works, or that a transaction should be broadcast."
+        },
+        {
+            "id": "deployed-factory-ethereum-erc4626-invariants",
+            "group": "deployed-factory",
+            "path": "test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol",
+            "contracts": ["Erc4626StrategyInvariantsEthereumTest"],
+            "fixture": "deployed-usage",
+            "chainId": 1,
+            "stateProbe": {
+                "address": "0x12FD0EE183c85940CAedd4877f5d3Fc637515870",
+                "expect": "nonempty-code"
+            },
+            "profile": "factory_ethereum",
+            "rpc": "ETHEREUM_PROVIDER_URL",
+            "block": 25937526,
+            "ffi": false,
+            "tests": 1,
+            "setUp": {
+                "deploys": [],
+                "mutations": [
+                    "prank as an unprivileged caller for one permissionless clone transaction on the unchanged factory",
+                    "prank as the new vault's own owner to grant roles (including UPDATE_MARKETS_BALANCES_ROLE to the alpha) and configure the market; the deployed factory and fuses are never upgraded, etched or granted anything",
+                    "deal USDC to the test depositor and, in one test, to a non-whitelisted address (test-only funding); warp to just before and to the end of the vault's own redemption delay, and forward seven days where interest is let to accrue (test-only time travel)"
+                ],
+                "externalAddresses": [
+                    {
+                        "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+                        "role": "unchanged Ethereum FusionFactory proxy that creates the vault"
+                    },
+                    {
+                        "address": "0x12FD0EE183c85940CAedd4877f5d3Fc637515870",
+                        "role": "deployed ERC4626 supply fuse for market 100001, used unchanged"
+                    },
+                    {
+                        "address": "0x2C10C36028C430f445a4bA9f7Dd096a5DcC75d5e",
+                        "role": "deployed ERC4626 balance fuse for market 100001, used unchanged"
+                    },
+                    {
+                        "address": "0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB",
+                        "role": "Steakhouse USDC MetaMorpho vault, the market's only substrate"
+                    },
+                    {
+                        "address": "0xdd0f28e19C1780eb6396170735D45153D261490d",
+                        "role": "Gauntlet USDC Prime MetaMorpho vault, a USDC vault deliberately not granted"
+                    },
+                    {
+                        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                        "role": "USDC, the vault's underlying asset"
+                    }
+                ],
+                "helpers": []
+            },
+            "proves": "At Ethereum block 25937526, on a vault created by the unchanged factory and running the deployed ERC4626 fuses unchanged, the properties docs/invariants.md marks as tested by this suite hold: the redemption delay locks redeems, a substrate that was never granted is refused by the deployed fuse, the 50% market limit rejects a larger supply, the market is valued through the vault's price manager, total assets follow interest accrued over time in the external vault, and execute and deposit are refused without ALPHA_ROLE and WHITELIST_ROLE.",
+            "doesNotProve": "Anything at another block or with another substrate, that the current source's Erc4626SupplyFuse interface is deployed (it is not), that accrual over real later blocks matches the warped estimate, the request-based withdrawal path, instant-withdrawal fuses, the fee package's performance and management fee arithmetic, or that any transaction should be broadcast."
         },
         {
             "id": "deployed-price-feed-factory-ethereum-erc4626",
