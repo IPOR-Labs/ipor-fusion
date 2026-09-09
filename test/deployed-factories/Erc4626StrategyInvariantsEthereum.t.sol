@@ -218,6 +218,24 @@ contract Erc4626StrategyInvariantsEthereumTest is Test {
         emit log_named_uint("unrealized management fee (USDC, 6 decimals)", unrealizedManagementFee);
     }
 
+    /// @dev A5: the balance fuse values the market in USD with 18 decimals.
+    function testA5ShouldValueTheMarketInUsdWad() public {
+        _deposit();
+        _supply(SUPPLIED);
+
+        // The vault's own price manager is what the balance fuse prices with: USD in WAD.
+        (uint256 usdcPrice, uint256 priceDecimals) = IPriceOracleMiddleware(instance.priceManager).getAssetPrice(USDC);
+        assertEq(priceDecimals, 18, "price manager does not answer in 18 decimals");
+        assertApproxEqRel(usdcPrice, 1e18, 1e16, "USDC is not priced within 1% of 1 USD");
+
+        // The fuse returns the position in USD (WAD); the vault stores it converted back to
+        // the asset's decimals at the same price, so 40 000 USDC in the market comes back
+        // as 40 000e6 whatever the USDC/USD price is (it cancels out on the way back).
+        uint256 inMarket = IPlasmaVault(instance.plasmaVault).totalAssetsInMarket(IporFusionMarkets.ERC4626_0001);
+        assertApproxEqAbs(inMarket, SUPPLIED, TOLERANCE, "market value is not the supplied amount");
+        assertApproxEqAbs(IERC4626(instance.plasmaVault).totalAssets(), DEPOSIT, TOLERANCE, "total assets drifted");
+    }
+
     function _deposit() private returns (uint256 shares) {
         // Test-only: the depositor's USDC is dealt, never acquired on a market.
         deal(USDC, depositor, DEPOSIT);
