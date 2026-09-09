@@ -17045,6 +17045,175 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-lite-psm-market-48",
+            "protocol": "litepsm",
+            "chainId": 1,
+            "market": {
+                "id": 48,
+                "constant": "LITE_PSM",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((uint256,uint256,uint256))",
+                    "selector": "0xb871f74b",
+                    "struct": "LitePSMSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "USDC to convert, in USDC smallest units (6 decimals); capped at the Plasma Vault's USDC balance; 0 is a no-op"
+                        },
+                        {
+                            "name": "allowedTin",
+                            "type": "uint256",
+                            "meaning": "maximum accepted LitePSM sell fee (tin), WAD-based (1e18 = 100%); a higher live tin reverts with LitePSMSupplyFuseFeeExceeded"
+                        },
+                        {
+                            "name": "minSharesOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor on sUSDS shares minted from the whole USDS balance after sellGem, in sUSDS units (18 decimals); fewer reverts with LitePSMSupplyFuseInsufficientShares"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256,uint256,uint256))",
+                    "selector": "0x9a0de4a9",
+                    "struct": "LitePSMSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "USDC to receive, in USDC smallest units (6 decimals); capped by maxWithdraw on sUSDS after the tout fee; 0 is a no-op"
+                        },
+                        {
+                            "name": "allowedTout",
+                            "type": "uint256",
+                            "meaning": "maximum accepted LitePSM buy fee (tout), WAD-based; a higher live tout reverts with LitePSMSupplyFuseFeeExceeded (instantWithdraw only emits LitePSMSupplyFuseExitFailed)"
+                        },
+                        {
+                            "name": "minAmountOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor on USDC actually received (6 decimals); fewer reverts with LitePSMSupplyFuseInsufficientAmountOut; ignored by instantWithdraw"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:231",
+                    "sources": {
+                        "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol": "0x49c09126427674232c4e5577d031687230f93cd9188ffa33c44167333969b3eb",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "LitePSMSupplyFuseEnterData",
+                            "signature": "enter((uint256,uint256,uint256))",
+                            "selector": "0xb871f74b",
+                            "source": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol:16",
+                            "fields": [
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol:18"
+                                },
+                                {
+                                    "name": "allowedTin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol:20"
+                                },
+                                {
+                                    "name": "minSharesOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol:22"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "LitePSMSupplyFuseExitData",
+                            "signature": "exit((uint256,uint256,uint256))",
+                            "selector": "0x9a0de4a9",
+                            "source": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol:26",
+                            "fields": [
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol:28"
+                                },
+                                {
+                                    "name": "allowedTout",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol:30"
+                                },
+                                {
+                                    "name": "minAmountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol:32"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "none are read: USDC, USDS, sUSDS and the LitePSMWrapper 0xA188EEC8F81263234dA3622A406892F3D630f98c are constants of the fuse and neither enter, exit nor instantWithdraw performs a substrate check; the market only needs to exist with the fuse and a ZeroBalanceFuse registered",
+                "grantFunction": "not needed by the fuse (PlasmaVaultGovernance.grantMarketSubstrates would be a no-op for it)",
+                "checkFunction": "none",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing on this market: the fuse holds no position and is registered with ZeroBalanceFuse (always 0). The sUSDS it produces must be priced on a separate market by Erc4626BalanceFuse or Erc20BalanceFuse with sUSDS 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD as a substrate, and this market must depend on that market in the dependency graph so instantWithdraw refreshes it",
+                "priceSource": "none here; the sUSDS market's balance fuse prices it through the vault's PriceOracleMiddleware",
+                "unit": "USD normalized to WAD (18 decimals), always 0 for this market"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/litepsm/LitePSMSupplyFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "LitePSMSupplyFuse",
+                    "address": "0x771359B201De4Ce50F0F96A13ac72A636dC55508",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xcc667f6a14f78080ab7527c791b04924112e1622c471e34ca84892e3c78013bc",
+                    "observedMarketId": 48,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 48 and VERSION() returned its own address at the observed block",
+                        "the deployed runtime code (8142 bytes) contains enter((uint256,uint256,uint256)) 0xb871f74b, exit((uint256,uint256,uint256)) 0x9a0de4a9, enterTransient(), exitTransient() and instantWithdraw(bytes32[]), the same signatures as this checkout",
+                        "bytecode equivalence with this checkout's LitePSMSupplyFuse.sol was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "ZeroBalanceFuseLitePSM",
+                    "address": "0x336a13cad401e82fda58bEC8e42AcdB568A998eC",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x493b5d320a26b4c7b84da940b4d4db58bf7196a181ac9a2a2277fa0c2d1bc6ce",
+                    "observedMarketId": 48,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 48 at the observed block; balanceOf() 0x722713f7 present; VERSION() reverted, which ZeroBalanceFuse.sol does not expose either",
+                        "runtime code is 167 bytes, consistent with a compiled ZeroBalanceFuse; bytecode equivalence was not established"
+                    ]
+                }
+            }
         }
     ]
 }
