@@ -14,7 +14,10 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {MoonwellHelper, MoonWellAddresses} from "../../test_helpers/MoonwellHelper.sol";
 import {MoonwellSupplyFuseEnterData} from "../../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
-import {MoonwellClaimFuse, MoonwellClaimFuseData} from "../../../contracts/rewards_fuses/moonwell/MoonwellClaimFuse.sol";
+import {
+    MoonwellClaimFuse,
+    MoonwellClaimFuseData
+} from "../../../contracts/rewards_fuses/moonwell/MoonwellClaimFuse.sol";
 
 contract MoonwellClaimFuseBaseTest is Test {
     using PriceOracleMiddlewareHelper for PriceOracleMiddleware;

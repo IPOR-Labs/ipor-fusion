@@ -265,8 +265,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
             // Max vt' s.t. last * elapsed / vt' >= transferred
             //  <=>  vt' <= elapsed * last / transferred
             // transferredTokens != 0 guaranteed by the outer guard.
-            uint256 maxSafeVestingTime = (elapsed * uint256(data.lastUpdateBalance)) /
-                uint256(data.transferredTokens);
+            uint256 maxSafeVestingTime = (elapsed * uint256(data.lastUpdateBalance)) / uint256(data.transferredTokens);
 
             if (vestingTime_ > maxSafeVestingTime) {
                 revert UnsafeVestingTime(vestingTime_, maxSafeVestingTime);
@@ -289,10 +288,7 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// sentinel and returns 0 — accepting a zero anchor here would silently zero out totalAssets()
     /// even though the vestedAt() invariant guard would pass.
     /// @custom:access ATOMIST_ROLE
-    function rescheduleVesting(
-        uint32 newVestingTime_,
-        uint32 newUpdateBalanceTimestamp_
-    ) external restricted {
+    function rescheduleVesting(uint32 newVestingTime_, uint32 newUpdateBalanceTimestamp_) external restricted {
         if (newVestingTime_ == 0) revert InvalidVestingTime();
         if (newUpdateBalanceTimestamp_ == 0) revert InvalidTimestamp();
         if (uint256(newUpdateBalanceTimestamp_) > block.timestamp) revert InvalidTimestamp();

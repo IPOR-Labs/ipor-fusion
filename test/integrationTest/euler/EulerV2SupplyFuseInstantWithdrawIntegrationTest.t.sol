@@ -6,7 +6,11 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 
-import {EulerV2SupplyFuse, EulerV2SupplyFuseEnterData, EulerV2SupplyFuseExitData} from "../../../contracts/fuses/euler/EulerV2SupplyFuse.sol";
+import {
+    EulerV2SupplyFuse,
+    EulerV2SupplyFuseEnterData,
+    EulerV2SupplyFuseExitData
+} from "../../../contracts/fuses/euler/EulerV2SupplyFuse.sol";
 import {EulerV2BalanceFuse} from "../../../contracts/fuses/euler/EulerV2BalanceFuse.sol";
 import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
@@ -23,7 +27,12 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 /// @title EulerV2SupplyFuseInstantWithdrawIntegrationTest
 /// @notice Fork integration tests for instant withdraw on Ethereum mainnet

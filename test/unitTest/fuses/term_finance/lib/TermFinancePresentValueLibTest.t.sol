@@ -89,35 +89,17 @@ contract TermFinancePresentValueLibTest is Test {
 
     /// @dev face=1_003_889 (28d @5% after clearing), tau=28d. pv ~ 1_000_000.
     function test_presentValuePreMaturity_atClearing_equalsPrincipal_28d() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(
-            1_003_889,
-            USDC_PREC,
-            28 * 86_400,
-            5e16,
-            0
-        );
+        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(1_003_889, USDC_PREC, 28 * 86_400, 5e16, 0);
         assertApproxEqAbs(pv, 1_000_000, 2);
     }
 
     function test_presentValuePreMaturity_weeklyTenor_atClearing() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(
-            1_000_972,
-            USDC_PREC,
-            7 * 86_400,
-            5e16,
-            0
-        );
+        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(1_000_972, USDC_PREC, 7 * 86_400, 5e16, 0);
         assertApproxEqAbs(pv, 1_000_000, 2);
     }
 
     function test_presentValuePreMaturity_midTerm_partialAccrual() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(
-            1_003_889,
-            USDC_PREC,
-            14 * 86_400,
-            5e16,
-            0
-        );
+        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(1_003_889, USDC_PREC, 14 * 86_400, 5e16, 0);
         assertGt(pv, 1_000_000);
         assertLt(pv, 1_003_889);
         assertApproxEqAbs(pv, 1_001_941, 50);
@@ -394,13 +376,7 @@ contract TermFinancePresentValueLibTest is Test {
         uint256 face = 1_003_889;
         uint256 tau = 14 * 86_400;
 
-        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(
-            face,
-            USDC_PREC,
-            tau,
-            MAX_DISCOUNT_RATE,
-            0
-        );
+        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(face, USDC_PREC, tau, MAX_DISCOUNT_RATE, 0);
         // PV must remain <= face (saturated divisor is huge); we only assert invariant + non-zero.
         assertLe(pv, face);
     }

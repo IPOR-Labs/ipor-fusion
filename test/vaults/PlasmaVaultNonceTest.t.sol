@@ -104,15 +104,16 @@ contract PlasmaVaultNonceTest is Test {
 
     /// @notice Helper to create EIP-712 domain separator
     function _getDomainSeparator(address vaultAddress) internal view returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes(VAULT_NAME)),
-                keccak256(bytes("1")),
-                block.chainid,
-                vaultAddress
-            )
-        );
+        return
+            keccak256(
+                abi.encode(
+                    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                    keccak256(bytes(VAULT_NAME)),
+                    keccak256(bytes("1")),
+                    block.chainid,
+                    vaultAddress
+                )
+            );
     }
 
     /// @notice Helper to sign permit
@@ -257,7 +258,7 @@ contract PlasmaVaultNonceTest is Test {
                 address(vault),
                 alice,
                 bob,
-                100e18 + i,  // Different values to make each permit unique
+                100e18 + i, // Different values to make each permit unique
                 currentNonce,
                 deadline
             );
@@ -292,13 +293,7 @@ contract PlasmaVaultNonceTest is Test {
 
         // Sign delegation
         uint256 expiry = block.timestamp + 1 days;
-        (uint8 v, bytes32 r, bytes32 s) = _signDelegation(
-            ALICE_PRIVATE_KEY,
-            address(vault),
-            bob,
-            nonceBefore,
-            expiry
-        );
+        (uint8 v, bytes32 r, bytes32 s) = _signDelegation(ALICE_PRIVATE_KEY, address(vault), bob, nonceBefore, expiry);
 
         // Execute delegateBySig
         IVotes(address(vault)).delegateBySig(bob, nonceBefore, expiry, v, r, s);
@@ -389,17 +384,20 @@ contract PlasmaVaultNonceTest is Test {
         uint256 deadline
     ) internal {
         uint256 nonce = IERC20Permit(address(vault)).nonces(owner);
-        (uint8 v, bytes32 r, bytes32 s) = _signPermit(privateKey, address(vault), owner, spender, value, nonce, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = _signPermit(
+            privateKey,
+            address(vault),
+            owner,
+            spender,
+            value,
+            nonce,
+            deadline
+        );
         IERC20Permit(address(vault)).permit(owner, spender, value, deadline, v, r, s);
     }
 
     /// @notice Helper to execute delegateBySig
-    function _executeDelegateBySig(
-        PlasmaVault vault,
-        uint256 privateKey,
-        address delegatee,
-        uint256 expiry
-    ) internal {
+    function _executeDelegateBySig(PlasmaVault vault, uint256 privateKey, address delegatee, uint256 expiry) internal {
         address signer = vm.addr(privateKey);
         uint256 nonce = IERC20Permit(address(vault)).nonces(signer);
         (uint8 v, bytes32 r, bytes32 s) = _signDelegation(privateKey, address(vault), delegatee, nonce, expiry);
@@ -480,13 +478,7 @@ contract PlasmaVaultNonceTest is Test {
         uint256 expiry = block.timestamp + 1 days;
         uint256 nonce = IERC20Permit(address(vault)).nonces(alice);
 
-        (uint8 v, bytes32 r, bytes32 s) = _signDelegation(
-            ALICE_PRIVATE_KEY,
-            address(vault),
-            bob,
-            nonce,
-            expiry
-        );
+        (uint8 v, bytes32 r, bytes32 s) = _signDelegation(ALICE_PRIVATE_KEY, address(vault), bob, nonce, expiry);
 
         // First delegateBySig should succeed
         IVotes(address(vault)).delegateBySig(bob, nonce, expiry, v, r, s);
@@ -511,7 +503,7 @@ contract PlasmaVaultNonceTest is Test {
         vm.stopPrank();
 
         uint256 deadline = block.timestamp + 1 days;
-        uint256 wrongNonce = 5;  // Current nonce is 0, using 5
+        uint256 wrongNonce = 5; // Current nonce is 0, using 5
 
         (uint8 v, bytes32 r, bytes32 s) = _signPermit(
             ALICE_PRIVATE_KEY,
@@ -540,15 +532,9 @@ contract PlasmaVaultNonceTest is Test {
         vm.stopPrank();
 
         uint256 expiry = block.timestamp + 1 days;
-        uint256 wrongNonce = 10;  // Current nonce is 0, using 10
+        uint256 wrongNonce = 10; // Current nonce is 0, using 10
 
-        (uint8 v, bytes32 r, bytes32 s) = _signDelegation(
-            ALICE_PRIVATE_KEY,
-            address(vault),
-            bob,
-            wrongNonce,
-            expiry
-        );
+        (uint8 v, bytes32 r, bytes32 s) = _signDelegation(ALICE_PRIVATE_KEY, address(vault), bob, wrongNonce, expiry);
 
         // Should fail because nonce doesn't match
         vm.expectRevert(abi.encodeWithSelector(PlasmaVaultVotesPlugin.InvalidAccountNonce.selector, alice, 0));
@@ -569,33 +555,15 @@ contract PlasmaVaultNonceTest is Test {
         uint256 expiry = block.timestamp + 1 days;
 
         // First, use nonce 0 successfully
-        (uint8 v1, bytes32 r1, bytes32 s1) = _signDelegation(
-            ALICE_PRIVATE_KEY,
-            address(vault),
-            bob,
-            0,
-            expiry
-        );
+        (uint8 v1, bytes32 r1, bytes32 s1) = _signDelegation(ALICE_PRIVATE_KEY, address(vault), bob, 0, expiry);
         IVotes(address(vault)).delegateBySig(bob, 0, expiry, v1, r1, s1);
 
         // Then, use nonce 1 successfully
-        (uint8 v2, bytes32 r2, bytes32 s2) = _signDelegation(
-            ALICE_PRIVATE_KEY,
-            address(vault),
-            alice,
-            1,
-            expiry
-        );
+        (uint8 v2, bytes32 r2, bytes32 s2) = _signDelegation(ALICE_PRIVATE_KEY, address(vault), alice, 1, expiry);
         IVotes(address(vault)).delegateBySig(alice, 1, expiry, v2, r2, s2);
 
         // Now current nonce is 2. Try to use nonce 0 again (past nonce)
-        (uint8 v3, bytes32 r3, bytes32 s3) = _signDelegation(
-            ALICE_PRIVATE_KEY,
-            address(vault),
-            bob,
-            0,
-            expiry
-        );
+        (uint8 v3, bytes32 r3, bytes32 s3) = _signDelegation(ALICE_PRIVATE_KEY, address(vault), bob, 0, expiry);
 
         vm.expectRevert(abi.encodeWithSelector(PlasmaVaultVotesPlugin.InvalidAccountNonce.selector, alice, 2));
         IVotes(address(vault)).delegateBySig(bob, 0, expiry, v3, r3, s3);
@@ -715,13 +683,7 @@ contract PlasmaVaultNonceTest is Test {
 
         // Create delegation with expiry in the past
         uint256 expiry = block.timestamp - 1;
-        (uint8 v, bytes32 r, bytes32 s) = _signDelegation(
-            ALICE_PRIVATE_KEY,
-            address(vault),
-            bob,
-            nonceBefore,
-            expiry
-        );
+        (uint8 v, bytes32 r, bytes32 s) = _signDelegation(ALICE_PRIVATE_KEY, address(vault), bob, nonceBefore, expiry);
 
         // Should revert with expired signature
         vm.expectRevert(abi.encodeWithSelector(IVotes.VotesExpiredSignature.selector, expiry));
@@ -753,7 +715,7 @@ contract PlasmaVaultNonceTest is Test {
             accessManager: address(accessManager),
             plasmaVaultBase: address(plasmaVaultBase),
             withdrawManager: withdrawManager,
-            plasmaVaultVotesPlugin: address(0)  // No votes plugin
+            plasmaVaultVotesPlugin: address(0) // No votes plugin
         });
 
         PlasmaVault vault = new PlasmaVault();
@@ -871,8 +833,8 @@ contract PlasmaVaultNonceTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = _signPermit(
             ALICE_PRIVATE_KEY,
             address(vault),
-            alice,  // owner = alice
-            bob,    // spender = bob
+            alice, // owner = alice
+            bob, // spender = bob
             100e18,
             aliceNonce,
             deadline
@@ -911,7 +873,7 @@ contract PlasmaVaultNonceTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = _signDelegation(
             ALICE_PRIVATE_KEY,
             address(vault),
-            bob,        // delegatee
+            bob, // delegatee
             aliceNonce, // Alice's nonce
             expiry
         );
@@ -945,7 +907,7 @@ contract PlasmaVaultNonceTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = _signPermit(
             ALICE_PRIVATE_KEY,
             address(vault),
-            alice,  // Alice signs for herself
+            alice, // Alice signs for herself
             bob,
             100e18,
             0,

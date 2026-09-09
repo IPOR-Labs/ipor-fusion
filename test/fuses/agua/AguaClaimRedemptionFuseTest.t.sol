@@ -4,9 +4,19 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AguaSupplyFuse, AguaSupplyFuseEnterData} from "../../../contracts/fuses/agua/AguaSupplyFuse.sol";
-import {AguaRequestRedemptionFuse, AguaRequestRedemptionFuseEnterData} from "../../../contracts/fuses/agua/AguaRequestRedemptionFuse.sol";
-import {AguaClaimRedemptionFuse, AguaClaimRedemptionFuseEnterData} from "../../../contracts/fuses/agua/AguaClaimRedemptionFuse.sol";
-import {AguaSubstrateLib, AguaSubstrate, AguaSubstrateType} from "../../../contracts/fuses/agua/lib/AguaSubstrateLib.sol";
+import {
+    AguaRequestRedemptionFuse,
+    AguaRequestRedemptionFuseEnterData
+} from "../../../contracts/fuses/agua/AguaRequestRedemptionFuse.sol";
+import {
+    AguaClaimRedemptionFuse,
+    AguaClaimRedemptionFuseEnterData
+} from "../../../contracts/fuses/agua/AguaClaimRedemptionFuse.sol";
+import {
+    AguaSubstrateLib,
+    AguaSubstrate,
+    AguaSubstrateType
+} from "../../../contracts/fuses/agua/lib/AguaSubstrateLib.sol";
 import {IAguaGlobalCarryVault} from "../../../contracts/fuses/agua/ext/IAguaGlobalCarryVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
@@ -83,10 +93,7 @@ contract AguaClaimRedemptionFuseTest is Test {
     function _complete() internal {
         vault.execute(
             address(claimFuse),
-            abi.encodeWithSignature(
-                "enter((address))",
-                AguaClaimRedemptionFuseEnterData({vault: AGUA_VAULT})
-            )
+            abi.encodeWithSignature("enter((address))", AguaClaimRedemptionFuseEnterData({vault: AGUA_VAULT}))
         );
     }
 

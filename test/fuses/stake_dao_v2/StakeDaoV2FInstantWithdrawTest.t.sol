@@ -5,7 +5,10 @@ import {Test, console2} from "forge-std/Test.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {StakeDaoV2SupplyFuse, StakeDaoV2SupplyFuseEnterData} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol";
+import {
+    StakeDaoV2SupplyFuse,
+    StakeDaoV2SupplyFuseEnterData
+} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";

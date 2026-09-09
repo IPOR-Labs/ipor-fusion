@@ -482,17 +482,8 @@ contract FusionFactoryBusinessClientFeePackagesTest is Test {
 
         // when / then
         vm.prank(businessClient);
-        vm.expectRevert(
-            abi.encodeWithSelector(FusionFactoryLogicLib.DaoFeePackageIndexOutOfBounds.selector, 5, 1)
-        );
-        fusionFactory.clone(
-            "Business Vault",
-            "BV",
-            address(underlyingToken),
-            1 days,
-            makeAddr("vaultOwner"),
-            5
-        );
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLogicLib.DaoFeePackageIndexOutOfBounds.selector, 5, 1));
+        fusionFactory.clone("Business Vault", "BV", address(underlyingToken), 1 days, makeAddr("vaultOwner"), 5);
     }
 
     function test_cloneSupervised_shouldUseBusinessClientFeePackageWhenSet() public {

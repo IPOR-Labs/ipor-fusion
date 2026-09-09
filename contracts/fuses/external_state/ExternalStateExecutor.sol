@@ -122,8 +122,8 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
 
     /// @notice Emitted when a custodian proposes a balance update.
     event BalanceProposed(
-        address  balanceAccount,
-        address  proposer,
+        address balanceAccount,
+        address proposer,
         uint256 newValue,
         uint256 nonce,
         uint64 proposedAt,
@@ -132,22 +132,26 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
 
     /// @notice Emitted when a custodian confirms a pending balance update.
     event BalanceConfirmed(
-        address  balanceAccount, address  confirmer, uint256 oldValue, uint256 newValue, uint256 nonce
+        address balanceAccount,
+        address confirmer,
+        uint256 oldValue,
+        uint256 newValue,
+        uint256 nonce
     );
 
     /// @notice Emitted when a new `proposeBalance` call overwrites an un-confirmed pending proposal.
     /// @dev The previous proposer's hash becomes permanently invalid; off-chain tooling that tracks
     ///      pending proposals MUST listen to this event to discard stale hashes.
     event ProposalOverwritten(
-        address  balanceAccount,
-        address  oldProposer,
-        address  newProposer,
+        address balanceAccount,
+        address oldProposer,
+        address newProposer,
         uint256 oldNonce,
         uint256 newNonce
     );
 
     /// @notice Emitted when the operation fuse adds or removes balance for an account.
-    event BalanceChangedByFuse(address  balanceAccount, int256 delta, uint256 newBalance);
+    event BalanceChangedByFuse(address balanceAccount, int256 delta, uint256 newBalance);
 
     /// @notice Emitted after a batch of external actions has been executed.
     event ActionsExecuted(uint256 count);
@@ -175,7 +179,7 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
     );
 
     /// @notice Emitted when `withdrawAssetBalance` sweeps tokens back to the vault.
-    event AssetWithdrawn(address  asset, uint256 amount);
+    event AssetWithdrawn(address asset, uint256 amount);
 
     /// @notice Restricts access to the authorized PlasmaVault.
     modifier onlyVault() {
@@ -215,15 +219,19 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
     }
 
     /// @inheritdoc IExternalStateExecutor
-    function removeBalance(address balanceAccount_, uint256 valueInUnderlying_, address asset_, uint256 tokenAmount_)
-        external
-        override
-        onlyVault
-        nonReentrant
-    {
+    function removeBalance(
+        address balanceAccount_,
+        uint256 valueInUnderlying_,
+        address asset_,
+        uint256 tokenAmount_
+    ) external override onlyVault nonReentrant {
         uint256 current = balances[balanceAccount_];
         if (valueInUnderlying_ > current) {
-            revert ExternalStateErrors.ExternalStateExitExceedsTrackedBalance(balanceAccount_, valueInUnderlying_, current);
+            revert ExternalStateErrors.ExternalStateExitExceedsTrackedBalance(
+                balanceAccount_,
+                valueInUnderlying_,
+                current
+            );
         }
         int256 signedDelta = -valueInUnderlying_.toInt256();
         balances[balanceAccount_] = current - valueInUnderlying_;
@@ -278,20 +286,22 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
         }
 
         uint64 nowTs = uint64(block.timestamp);
-        pendingProposals[balanceAccount_] =
-            PendingProposal({value: newValue_, proposer: msg.sender, proposedAt: nowTs, nonce: newNonce});
+        pendingProposals[balanceAccount_] = PendingProposal({
+            value: newValue_,
+            proposer: msg.sender,
+            proposedAt: nowTs,
+            nonce: newNonce
+        });
 
         bytes32 h = _proposalHash(balanceAccount_, newValue_, msg.sender, nowTs, newNonce);
         emit BalanceProposed(balanceAccount_, msg.sender, newValue_, newNonce, nowTs, h);
     }
 
     /// @inheritdoc IExternalStateExecutor
-    function confirmBalance(address balanceAccount_, bytes32 proposalHash_)
-        external
-        override
-        onlyCustodian
-        nonReentrant
-    {
+    function confirmBalance(
+        address balanceAccount_,
+        bytes32 proposalHash_
+    ) external override onlyCustodian nonReentrant {
         // 0. Authorization-first — validate `balanceAccount_` against the vault substrate set
         //    (source of truth). If the account has been revoked, reject before any further checks
         //    so off-chain monitoring sees a clean `ExternalStateUnsupportedSubstrate` signal.
@@ -317,7 +327,13 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
         // 4. dust check
         _checkDust();
         // 5. hash verification
-        bytes32 expected = _proposalHash(balanceAccount_, pending.value, pending.proposer, pending.proposedAt, pending.nonce);
+        bytes32 expected = _proposalHash(
+            balanceAccount_,
+            pending.value,
+            pending.proposer,
+            pending.proposedAt,
+            pending.nonce
+        );
         if (expected != proposalHash_) {
             revert ExternalStateErrors.ExternalStateExecutorProposalHashMismatch(expected, proposalHash_);
         }
@@ -408,25 +424,33 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
                 balanceAccounts.push(ba);
             } else if (t == ExternalStateSubstrateType.STALENESS_MAX) {
                 if (seenStaleness) {
-                    revert ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate(uint8(ExternalStateSubstrateType.STALENESS_MAX));
+                    revert ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate(
+                        uint8(ExternalStateSubstrateType.STALENESS_MAX)
+                    );
                 }
                 seenStaleness = true;
                 stalenessMax = ExternalStateSubstrateLib.decodeUint248Payload(sub);
             } else if (t == ExternalStateSubstrateType.BIG_CHANGE_BPS) {
                 if (seenBigChange) {
-                    revert ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate(uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS));
+                    revert ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate(
+                        uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS)
+                    );
                 }
                 seenBigChange = true;
                 bigChangeBps = ExternalStateSubstrateLib.decodeUint248Payload(sub);
             } else if (t == ExternalStateSubstrateType.DUST_THRESHOLD) {
                 if (seenDust) {
-                    revert ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate(uint8(ExternalStateSubstrateType.DUST_THRESHOLD));
+                    revert ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate(
+                        uint8(ExternalStateSubstrateType.DUST_THRESHOLD)
+                    );
                 }
                 seenDust = true;
                 dustThreshold = ExternalStateSubstrateLib.decodeUint248Payload(sub);
             } else if (t == ExternalStateSubstrateType.MIN_UPDATE_INTERVAL) {
                 if (seenMinInterval) {
-                    revert ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate(uint8(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL));
+                    revert ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate(
+                        uint8(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL)
+                    );
                 }
                 seenMinInterval = true;
                 minUpdateInterval = ExternalStateSubstrateLib.decodeUint248Payload(sub);
@@ -443,10 +467,14 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
         // Without stalenessMax the staleness gate is disabled; without bigChangeBps the big-change
         // pause is silently skipped — both leave the vault unprotected.
         if (stalenessMax == 0) {
-            revert ExternalStateErrors.ExternalStateMandatorySingletonMissing(uint8(ExternalStateSubstrateType.STALENESS_MAX));
+            revert ExternalStateErrors.ExternalStateMandatorySingletonMissing(
+                uint8(ExternalStateSubstrateType.STALENESS_MAX)
+            );
         }
         if (bigChangeBps == 0) {
-            revert ExternalStateErrors.ExternalStateMandatorySingletonMissing(uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS));
+            revert ExternalStateErrors.ExternalStateMandatorySingletonMissing(
+                uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS)
+            );
         }
 
         emit SubstratesSynced(
@@ -544,7 +572,10 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
     function _requireBalanceAccountGrantedOnVault(address balanceAccount_) internal view {
         bytes32 encoded = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccount_);
         if (!IPlasmaVaultGovernance(VAULT).isMarketSubstrateGranted(MARKET_ID, encoded)) {
-            revert ExternalStateErrors.ExternalStateUnsupportedSubstrate(uint8(ExternalStateSubstrateType.BALANCE_ACCOUNT), encoded);
+            revert ExternalStateErrors.ExternalStateUnsupportedSubstrate(
+                uint8(ExternalStateSubstrateType.BALANCE_ACCOUNT),
+                encoded
+            );
         }
     }
 
@@ -554,15 +585,16 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
     ///      set before storage replacement.
     /// @param substrates_ Substrate set returned by `getMarketSubstrates(MARKET_ID)`.
     /// @return newBAs Memory array of balance accounts referenced by the new substrate set.
-    function _extractBalanceAccountsFromSubstrates(bytes32[] memory substrates_)
-        private
-        pure
-        returns (address[] memory newBAs)
-    {
+    function _extractBalanceAccountsFromSubstrates(
+        bytes32[] memory substrates_
+    ) private pure returns (address[] memory newBAs) {
         uint256 len = substrates_.length;
         uint256 count;
         for (uint256 i; i < len; ++i) {
-            if (ExternalStateSubstrateLib.decodeSubstrateType(substrates_[i]) == ExternalStateSubstrateType.BALANCE_ACCOUNT) {
+            if (
+                ExternalStateSubstrateLib.decodeSubstrateType(substrates_[i]) ==
+                ExternalStateSubstrateType.BALANCE_ACCOUNT
+            ) {
                 ++count;
             }
         }
@@ -620,7 +652,7 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
         for (uint256 i; i < len; ++i) {
             address asset = assets[i];
             uint256 bal = IERC20(asset).balanceOf(address(this));
-            uint256 allowed = (10 ** IERC20Metadata(asset).decimals()) * dt / DUST_THRESHOLD_DENOMINATOR;
+            uint256 allowed = ((10 ** IERC20Metadata(asset).decimals()) * dt) / DUST_THRESHOLD_DENOMINATOR;
             if (bal > allowed) {
                 revert ExternalStateErrors.ExternalStateExecutorDustCheckFailed(asset, bal, allowed);
             }
@@ -643,6 +675,9 @@ contract ExternalStateExecutor is IExternalStateExecutor, ReentrancyGuard {
         uint64 proposedAt_,
         uint256 nonce_
     ) internal view returns (bytes32) {
-        return keccak256(abi.encode(address(this), block.chainid, balanceAccount_, value_, proposer_, proposedAt_, nonce_));
+        return
+            keccak256(
+                abi.encode(address(this), block.chainid, balanceAccount_, value_, proposer_, proposedAt_, nonce_)
+            );
     }
 }

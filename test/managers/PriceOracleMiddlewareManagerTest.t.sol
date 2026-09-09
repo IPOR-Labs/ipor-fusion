@@ -3,14 +3,24 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    FeeConfig
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../contracts/vaults/PlasmaVault.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FixedValuePriceFeed} from "../../contracts/price_oracle/price_feed/FixedValuePriceFeed.sol";
 import {MutableValuePriceFeed} from "./MutableValuePriceFeed.sol";
 

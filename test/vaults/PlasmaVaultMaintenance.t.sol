@@ -2,13 +2,22 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FuseAction,
+    PlasmaVaultInitData
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVaultConfigLib} from "./../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuse,
+    CompoundV3SupplyFuseEnterData
+} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddlewareMock} from "../price_oracle/PriceOracleMiddlewareMock.sol";

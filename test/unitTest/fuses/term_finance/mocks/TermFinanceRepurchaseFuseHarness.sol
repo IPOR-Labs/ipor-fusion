@@ -11,10 +11,7 @@ import {PlasmaVaultConfigLib} from "contracts/libraries/PlasmaVaultConfigLib.sol
 ///      WithdrawManager storage slot is poked directly from the test using `vm.store`
 ///      (see `TermFinanceRepurchaseFuseTest._setWithdrawManager`).
 contract TermFinanceRepurchaseFuseHarness is TermFinanceRepurchaseFuse {
-    constructor(
-        uint256 marketId_,
-        address termController_
-    ) TermFinanceRepurchaseFuse(marketId_, termController_) {}
+    constructor(uint256 marketId_, address termController_) TermFinanceRepurchaseFuse(marketId_, termController_) {}
 
     function setMarketSubstrates(uint256 marketId_, bytes32[] memory substrates_) external {
         PlasmaVaultConfigLib.grantMarketSubstrates(marketId_, substrates_);

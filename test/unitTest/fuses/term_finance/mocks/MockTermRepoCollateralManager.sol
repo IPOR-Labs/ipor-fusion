@@ -75,7 +75,10 @@ contract MockTermRepoCollateralManager is IExtTermRepoCollateralManager {
         MockTermRepoLocker(termRepoLocker).transferTokenToWallet(msg.sender, collateralToken_, amount_);
     }
 
-    function getCollateralBalance(address borrower_, address collateralToken_) external view override returns (uint256) {
+    function getCollateralBalance(
+        address borrower_,
+        address collateralToken_
+    ) external view override returns (uint256) {
         return _balances[borrower_][collateralToken_];
     }
 

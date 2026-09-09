@@ -26,9 +26,21 @@ import {NapierCollectFuse, NapierCollectFuseEnterData} from "../../../contracts/
 import {NapierUniversalRouterFuse} from "../../../contracts/fuses/napier/NapierUniversalRouterFuse.sol";
 import {NapierCombineFuse, NapierCombineFuseEnterData} from "../../../contracts/fuses/napier/NapierCombineFuse.sol";
 import {NapierSwapPtFuse, NapierSwapPtFuseData} from "../../../contracts/fuses/napier/NapierSwapPtFuse.sol";
-import {NapierSwapYtFuse, NapierSwapYtEnterFuseData, NapierSwapYtExitFuseData} from "../../../contracts/fuses/napier/NapierSwapYtFuse.sol";
-import {NapierZapDepositFuse, NapierZapDepositFuseEnterData, NapierZapDepositFuseExitData} from "../../../contracts/fuses/napier/NapierZapDepositFuse.sol";
-import {NapierDepositFuse, NapierDepositFuseEnterData, NapierDepositFuseExitData} from "../../../contracts/fuses/napier/NapierDepositFuse.sol";
+import {
+    NapierSwapYtFuse,
+    NapierSwapYtEnterFuseData,
+    NapierSwapYtExitFuseData
+} from "../../../contracts/fuses/napier/NapierSwapYtFuse.sol";
+import {
+    NapierZapDepositFuse,
+    NapierZapDepositFuseEnterData,
+    NapierZapDepositFuseExitData
+} from "../../../contracts/fuses/napier/NapierZapDepositFuse.sol";
+import {
+    NapierDepositFuse,
+    NapierDepositFuseEnterData,
+    NapierDepositFuseExitData
+} from "../../../contracts/fuses/napier/NapierDepositFuse.sol";
 
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -37,11 +49,22 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {Erc4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FuseAction, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    FuseAction,
+    FeeConfig
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -84,7 +107,6 @@ contract NapierFuseTest is Test {
     address private constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     address private constant POOL_MANAGER = 0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32;
 
-
     // IPOR role accounts
     address constant SET_ASSETS_PRICES_SOURCES_ACCOUNT = 0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569;
 
@@ -113,7 +135,6 @@ contract NapierFuseTest is Test {
     IporFusionAccessManager private _accessManager;
     PriceOracleMiddleware private _priceOracleMiddleware =
         PriceOracleMiddleware(0xd19D0C917844b996B09c48A9FF622177Af219C79);
-
 
     // Price feeds
     address private _ptLinearOracle;
@@ -418,11 +439,11 @@ contract NapierFuseTest is Test {
         _napierPtPriceFeed = address(new NapierPtLpPriceFeed(_ptLinearOracle));
         _napierLpPriceFeed = address(new NapierPtLpPriceFeed(_lpTwapOracle));
         _napierYtPriceFeed = address(new NapierYtLinearPriceFeed(_ptLinearOracle));
-        _gauntletUSDCPriceFeed = address(new ERC4626PriceFeed(GAUNTLET_USDC_PRIME)); 
+        _gauntletUSDCPriceFeed = address(new ERC4626PriceFeed(GAUNTLET_USDC_PRIME));
         address[] memory assets = new address[](4);
         assets[0] = principalToken;
         assets[1] = pool;
-        assets[2] = yt; 
+        assets[2] = yt;
         assets[3] = GAUNTLET_USDC_PRIME;
         address[] memory sources = new address[](4); // Price feed contract address
         sources[0] = _napierPtPriceFeed;
@@ -655,7 +676,12 @@ contract NapierFuseTest is Test {
         IPrincipalToken pt = IPrincipalToken(principalToken);
 
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         // Get the actual PT balance after supply
@@ -759,7 +785,12 @@ contract NapierFuseTest is Test {
         IPrincipalToken pt = IPrincipalToken(principalToken);
 
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         uint256 ptBalance = pt.balanceOf(address(_plasmaVault));
@@ -810,7 +841,12 @@ contract NapierFuseTest is Test {
 
         // First, supply some PTs so the vault has a position to collect from
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         uint256 mockScale = (IResolver(pt.i_resolver()).scale() * 15) / 10;
@@ -871,7 +907,12 @@ contract NapierFuseTest is Test {
 
         // Arrange: ensure the vault holds PTs and YTs by supplying underlying
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
@@ -976,7 +1017,12 @@ contract NapierFuseTest is Test {
         address yt = pt.i_yt();
 
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));

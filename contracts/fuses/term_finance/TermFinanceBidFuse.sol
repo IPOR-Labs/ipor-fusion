@@ -153,11 +153,7 @@ contract TermFinanceBidFuse is IFuseCommon {
     /// @param servicer The servicer whose pairing was checked.
     /// @param expected The collateralManager returned by the servicer.
     /// @param actual The collateralManager supplied via calldata.
-    error TermFinanceBidFuseServicerCollateralManagerMismatch(
-        address servicer,
-        address expected,
-        address actual
-    );
+    error TermFinanceBidFuseServicerCollateralManagerMismatch(address servicer, address expected, address actual);
 
     /// @notice Reverts when `enter` is called with `amount == 0`.
     error TermFinanceBidFuseZeroAmount();
@@ -492,11 +488,7 @@ contract TermFinanceBidFuse is IFuseCommon {
     function _assertServicerCollateralManagerPaired(address servicer_, address collateralManager_) private view {
         address expected = IExtTermRepoServicer(servicer_).termRepoCollateralManager();
         if (expected != collateralManager_) {
-            revert TermFinanceBidFuseServicerCollateralManagerMismatch(
-                servicer_,
-                expected,
-                collateralManager_
-            );
+            revert TermFinanceBidFuseServicerCollateralManagerMismatch(servicer_, expected, collateralManager_);
         }
     }
 }

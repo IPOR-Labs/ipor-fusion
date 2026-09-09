@@ -76,13 +76,7 @@ contract ChainlinkGuardedPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgrad
         uint256 minValidRounds_
     ) external returns (address priceFeed) {
         priceFeed = address(
-            new ChainlinkGuardedPriceFeed(
-                aggregator_,
-                maxStalePeriod_,
-                maxDeviation_,
-                roundsToCheck_,
-                minValidRounds_
-            )
+            new ChainlinkGuardedPriceFeed(aggregator_, maxStalePeriod_, maxDeviation_, roundsToCheck_, minValidRounds_)
         );
 
         ChainlinkGuardedPriceFeed(priceFeed).latestRoundData();

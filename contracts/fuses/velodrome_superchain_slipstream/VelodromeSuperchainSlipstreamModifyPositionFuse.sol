@@ -9,7 +9,11 @@ import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.s
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
+import {
+    VelodromeSuperchainSlipstreamSubstrateLib,
+    VelodromeSuperchainSlipstreamSubstrateType,
+    VelodromeSuperchainSlipstreamSubstrate
+} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 
 /// @notice Data for entering a position in Velodrome Superchain Slipstream
 struct VelodromeSuperchainSlipstreamModifyPositionFuseEnterData {

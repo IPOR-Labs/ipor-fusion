@@ -28,12 +28,7 @@ struct TermFinanceRedeemFuseEnterData {
 ///      received (which may differ from `amountToRedeem * redemptionValue` if a haircut applies).
 contract TermFinanceRedeemFuse is IFuseCommon {
     /// @notice Emitted on successful redemption with the measured purchase-token delta.
-    event TermFinanceRedeemed(
-        address version,
-        address servicer,
-        uint256 amountToRedeem,
-        uint256 purchaseTokenReceived
-    );
+    event TermFinanceRedeemed(address version, address servicer, uint256 amountToRedeem, uint256 purchaseTokenReceived);
 
     /// @notice Reverts when the PlasmaVault has no WithdrawManager configured.
     /// @dev Codifies the non-functional requirement: a vault without a WithdrawManager

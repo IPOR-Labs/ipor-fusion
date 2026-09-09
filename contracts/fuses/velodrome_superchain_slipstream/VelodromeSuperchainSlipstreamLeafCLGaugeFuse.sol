@@ -5,7 +5,11 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
+import {
+    VelodromeSuperchainSlipstreamSubstrateLib,
+    VelodromeSuperchainSlipstreamSubstrateType,
+    VelodromeSuperchainSlipstreamSubstrate
+} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 

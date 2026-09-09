@@ -5,15 +5,30 @@ import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig, MarketSubstratesConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    FeeConfig,
+    MarketSubstratesConfig,
+    FuseAction
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    DataForInitialization,
+    PlasmaVaultAddress,
+    InitializationData
+} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuse,
+    CompoundV3SupplyFuseEnterData
+} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {IPool} from "../../contracts/fuses/aave_v3/ext/IPool.sol";

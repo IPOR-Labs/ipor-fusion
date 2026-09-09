@@ -427,10 +427,7 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
     function testShouldClosePositionAfterSubstratesRevoked() external {
         // given
         uint256 tokenId = _openPosition(_wethUsdcKey, 1000, 1e18, 3_000e6);
-        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(
-            IporFusionMarkets.UNISWAP_V4,
-            new bytes32[](0)
-        );
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_V4, new bytes32[](0));
 
         // when
         _closePosition(tokenId);
@@ -791,10 +788,7 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
         // given
         uint256 tokenId = _openPosition(_wethUsdcKey, 1000, 2e18, 6_000e6);
         uint128 liquidityBefore = _positionLiquidity(tokenId);
-        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(
-            IporFusionMarkets.UNISWAP_V4,
-            new bytes32[](0)
-        );
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_V4, new bytes32[](0));
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction(
@@ -1010,10 +1004,7 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
         uint256 tokenId = _openPosition(_usdcCbbtcKey, 2_000, 20_000e6, 20e6);
         _swapV4(_usdcCbbtcKey, true, 100_000e6);
         _swapV4(_usdcCbbtcKey, false, 1e8);
-        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(
-            IporFusionMarkets.UNISWAP_V4,
-            new bytes32[](0)
-        );
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_V4, new bytes32[](0));
 
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = tokenId;

@@ -16,7 +16,11 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
-import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {
+    UniversalTokenSwapperFuse,
+    UniversalTokenSwapperEnterData,
+    UniversalTokenSwapperData
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 import {MockDexActionEthereum} from "./MockDexActionEthereum.sol";
 

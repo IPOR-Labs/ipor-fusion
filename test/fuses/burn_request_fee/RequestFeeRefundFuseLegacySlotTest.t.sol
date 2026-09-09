@@ -4,17 +4,34 @@ pragma solidity 0.8.30;
 import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, MarketSubstratesConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    MarketSubstratesConfig,
+    FuseAction
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultVotesPlugin} from "../../../contracts/vaults/plugins/PlasmaVaultVotesPlugin.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager, WithdrawRequestInfo} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    DataForInitialization,
+    PlasmaVaultAddress,
+    InitializationData
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {BurnRequestFeeFuse, BurnRequestFeeDataEnter} from "../../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
-import {RequestFeeRefundFuse, RequestFeeRefundDataEnter} from "../../../contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol";
+import {
+    BurnRequestFeeFuse,
+    BurnRequestFeeDataEnter
+} from "../../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
+import {
+    RequestFeeRefundFuse,
+    RequestFeeRefundDataEnter
+} from "../../../contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
@@ -275,7 +292,10 @@ contract RequestFeeRefundFuseLegacySlotTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_burnRequestFeeFuse),
-            data: abi.encodeWithSelector(BurnRequestFeeFuse.enter.selector, BurnRequestFeeDataEnter({amount: feeAmount}))
+            data: abi.encodeWithSelector(
+                BurnRequestFeeFuse.enter.selector,
+                BurnRequestFeeDataEnter({amount: feeAmount})
+            )
         });
 
         vm.prank(_ALPHA);
@@ -398,7 +418,10 @@ contract RequestFeeRefundFuseLegacySlotTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_burnRequestFeeFuse),
-            data: abi.encodeWithSelector(BurnRequestFeeFuse.enter.selector, BurnRequestFeeDataEnter({amount: feeAmount}))
+            data: abi.encodeWithSelector(
+                BurnRequestFeeFuse.enter.selector,
+                BurnRequestFeeDataEnter({amount: feeAmount})
+            )
         });
 
         vm.prank(_ALPHA);
@@ -450,7 +473,10 @@ contract RequestFeeRefundFuseLegacySlotTest is Test {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_burnRequestFeeFuse),
-            data: abi.encodeWithSelector(BurnRequestFeeFuse.enter.selector, BurnRequestFeeDataEnter({amount: feeAmount}))
+            data: abi.encodeWithSelector(
+                BurnRequestFeeFuse.enter.selector,
+                BurnRequestFeeDataEnter({amount: feeAmount})
+            )
         });
 
         vm.prank(_ALPHA);

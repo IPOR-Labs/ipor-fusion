@@ -9,7 +9,11 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrateType,
+    AreodromeSlipstreamSubstrate
+} from "./AreodromeSlipstreamLib.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 import {ICLPool} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";

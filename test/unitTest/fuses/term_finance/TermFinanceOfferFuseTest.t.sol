@@ -10,9 +10,7 @@ import {
     TermFinanceOfferFuseEnterData,
     TermFinanceOfferFuseExitData
 } from "contracts/fuses/term_finance/TermFinanceOfferFuse.sol";
-import {
-    TermFinancePendingOffersStorageLib
-} from "contracts/fuses/term_finance/lib/TermFinancePendingOffersStorageLib.sol";
+import {TermFinancePendingOffersStorageLib} from "contracts/fuses/term_finance/lib/TermFinancePendingOffersStorageLib.sol";
 
 import {TermFinanceOfferFuseHarness} from "./mocks/TermFinanceOfferFuseHarness.sol";
 import {MockERC20Decimals} from "./mocks/MockERC20Decimals.sol";
@@ -23,7 +21,12 @@ import {MockTermRepoServicer} from "./mocks/MockTermRepoServicer.sol";
 contract TermFinanceOfferFuseTest is Test {
     /// @dev Local copies of fuse events for `vm.expectEmit` assertions.
     event TermFinanceOfferLocked(
-        address version, address servicer, address offerLocker, bytes32 offerId, uint256 amount, bytes32 offerPriceHash
+        address version,
+        address servicer,
+        address offerLocker,
+        bytes32 offerId,
+        uint256 amount,
+        bytes32 offerPriceHash
     );
     event TermFinanceOfferUnlocked(address version, address servicer, address offerLocker, bytes32[] offerIds);
 
@@ -81,18 +84,19 @@ contract TermFinanceOfferFuseTest is Test {
         _setWithdrawManager(address(0));
     }
 
-    function _enterData(uint256 amt_, bytes32 hash_, bytes32 existingId_)
-        internal
-        view
-        returns (TermFinanceOfferFuseEnterData memory)
-    {
-        return TermFinanceOfferFuseEnterData({
-            servicer: address(servicer),
-            offerLocker: address(offerLocker),
-            amount: amt_,
-            offerPriceHash: hash_,
-            existingOfferId: existingId_
-        });
+    function _enterData(
+        uint256 amt_,
+        bytes32 hash_,
+        bytes32 existingId_
+    ) internal view returns (TermFinanceOfferFuseEnterData memory) {
+        return
+            TermFinanceOfferFuseEnterData({
+                servicer: address(servicer),
+                offerLocker: address(offerLocker),
+                amount: amt_,
+                offerPriceHash: hash_,
+                existingOfferId: existingId_
+            });
     }
 
     // ============ constructor ============
@@ -129,8 +133,8 @@ contract TermFinanceOfferFuseTest is Test {
 
         assertTrue(harness.isOfferPending(address(servicer), expectedId), "pending entry written");
 
-        (address[] memory lockers, bytes32[] memory ids, uint256[] memory amounts) =
-            harness.getPendingOffersForServicer(address(servicer));
+        (address[] memory lockers, bytes32[] memory ids, uint256[] memory amounts) = harness
+            .getPendingOffersForServicer(address(servicer));
         assertEq(lockers.length, 1);
         assertEq(lockers[0], address(offerLocker));
         assertEq(ids.length, 1);
@@ -179,7 +183,8 @@ contract TermFinanceOfferFuseTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferFuse.TermFinanceOfferFuseUnsupportedMarket.selector, address(servicer)
+                TermFinanceOfferFuse.TermFinanceOfferFuseUnsupportedMarket.selector,
+                address(servicer)
             )
         );
         harness.enter(_enterData(1_000_000, keccak256("h"), bytes32(0)));
@@ -212,7 +217,8 @@ contract TermFinanceOfferFuseTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferFuse.TermFinanceOfferFuseOfferLockerNotDeployed.selector, address(spoof)
+                TermFinanceOfferFuse.TermFinanceOfferFuseOfferLockerNotDeployed.selector,
+                address(spoof)
             )
         );
         harness.enter(data);
@@ -226,7 +232,9 @@ contract TermFinanceOfferFuseTest is Test {
         // Assert full (expected, actual) payload, not just selector.
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferFuse.TermFinanceOfferFuseOfferLockerMismatch.selector, address(other), address(servicer)
+                TermFinanceOfferFuse.TermFinanceOfferFuseOfferLockerMismatch.selector,
+                address(other),
+                address(servicer)
             )
         );
         harness.enter(_enterData(1_000_000, keccak256("h"), bytes32(0)));
@@ -265,7 +273,9 @@ contract TermFinanceOfferFuseTest is Test {
         emit TermFinanceOfferUnlocked(address(harness), address(servicer), address(offerLocker), ids);
         harness.exit(
             TermFinanceOfferFuseExitData({
-                servicer: address(servicer), offerLocker: address(offerLocker), offerIds: ids
+                servicer: address(servicer),
+                offerLocker: address(offerLocker),
+                offerIds: ids
             })
         );
 
@@ -279,7 +289,9 @@ contract TermFinanceOfferFuseTest is Test {
         // Should not revert (locker.unlockOffers no-ops on unknown; storage remove is idempotent).
         harness.exit(
             TermFinanceOfferFuseExitData({
-                servicer: address(servicer), offerLocker: address(offerLocker), offerIds: ids
+                servicer: address(servicer),
+                offerLocker: address(offerLocker),
+                offerIds: ids
             })
         );
     }
@@ -291,12 +303,15 @@ contract TermFinanceOfferFuseTest is Test {
         bytes32[] memory ids = new bytes32[](0);
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferFuse.TermFinanceOfferFuseUnsupportedMarket.selector, address(servicer)
+                TermFinanceOfferFuse.TermFinanceOfferFuseUnsupportedMarket.selector,
+                address(servicer)
             )
         );
         harness.exit(
             TermFinanceOfferFuseExitData({
-                servicer: address(servicer), offerLocker: address(offerLocker), offerIds: ids
+                servicer: address(servicer),
+                offerLocker: address(offerLocker),
+                offerIds: ids
             })
         );
     }
@@ -309,12 +324,16 @@ contract TermFinanceOfferFuseTest is Test {
         // Assert full (expected, actual) payload, not just selector.
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferFuse.TermFinanceOfferFuseOfferLockerMismatch.selector, address(other), address(servicer)
+                TermFinanceOfferFuse.TermFinanceOfferFuseOfferLockerMismatch.selector,
+                address(other),
+                address(servicer)
             )
         );
         harness.exit(
             TermFinanceOfferFuseExitData({
-                servicer: address(servicer), offerLocker: address(offerLocker), offerIds: ids
+                servicer: address(servicer),
+                offerLocker: address(offerLocker),
+                offerIds: ids
             })
         );
     }
@@ -359,7 +378,9 @@ contract TermFinanceOfferFuseTest is Test {
         vm.expectRevert(TermFinanceOfferFuse.TermFinanceOfferFuseWithdrawManagerRequired.selector);
         harness.exit(
             TermFinanceOfferFuseExitData({
-                servicer: address(servicer), offerLocker: address(offerLocker), offerIds: ids
+                servicer: address(servicer),
+                offerLocker: address(offerLocker),
+                offerIds: ids
             })
         );
     }
@@ -386,7 +407,9 @@ contract TermFinanceOfferFuseTest is Test {
         vm.expectRevert(TermFinanceOfferFuse.TermFinanceOfferFuseWithdrawManagerRequired.selector);
         harness.exit(
             TermFinanceOfferFuseExitData({
-                servicer: address(servicer), offerLocker: address(offerLocker), offerIds: ids
+                servicer: address(servicer),
+                offerLocker: address(offerLocker),
+                offerIds: ids
             })
         );
     }
@@ -406,7 +429,9 @@ contract TermFinanceOfferFuseTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferFuse.TermFinanceOfferFuseTooManyPendingOffers.selector, address(servicer), cap + 1
+                TermFinanceOfferFuse.TermFinanceOfferFuseTooManyPendingOffers.selector,
+                address(servicer),
+                cap + 1
             )
         );
         harness.enter(_enterData(1_000_000, keccak256("overflow"), bytes32(0)));
@@ -430,7 +455,9 @@ contract TermFinanceOfferFuseTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferFuse.TermFinanceOfferFuseTooManyPendingOffers.selector, address(servicer), cap + 1
+                TermFinanceOfferFuse.TermFinanceOfferFuseTooManyPendingOffers.selector,
+                address(servicer),
+                cap + 1
             )
         );
         harness.enter(_enterData(1_000_000, keccak256("overflow"), bytes32(0)));
@@ -485,7 +512,9 @@ contract TermFinanceOfferFuseTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferFuse.TermFinanceOfferFuseTooManyPendingOffers.selector, address(servicer), cap + 1
+                TermFinanceOfferFuse.TermFinanceOfferFuseTooManyPendingOffers.selector,
+                address(servicer),
+                cap + 1
             )
         );
         harness.enter(_enterData(1_000_000, keccak256("attack"), fake));

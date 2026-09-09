@@ -3,11 +3,25 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {PlasmaVault, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {
+    PlasmaVault,
+    FuseAction,
+    MarketBalanceFuseConfig,
+    MarketSubstratesConfig,
+    PlasmaVaultInitData
+} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    AaveV3SupplyFuse,
+    AaveV3SupplyFuseEnterData,
+    AaveV3SupplyFuseExitData
+} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuse,
+    CompoundV3SupplyFuseEnterData,
+    CompoundV3SupplyFuseExitData
+} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {DoNothingFuse} from "../fuses/DoNothingFuse.sol";

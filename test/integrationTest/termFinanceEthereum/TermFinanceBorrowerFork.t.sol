@@ -27,12 +27,8 @@ import {IExtTermRepoToken} from "contracts/fuses/term_finance/ext/IExtTermRepoTo
 import {TermFinanceSubstrateLib} from "contracts/fuses/term_finance/lib/TermFinanceSubstrateLib.sol";
 
 import {TermFinanceBalanceFuseHarness} from "../../unitTest/fuses/term_finance/mocks/TermFinanceBalanceFuseHarness.sol";
-import {
-    TermFinanceCollateralFuseHarness
-} from "../../unitTest/fuses/term_finance/mocks/TermFinanceCollateralFuseHarness.sol";
-import {
-    TermFinanceRepurchaseFuseHarness
-} from "../../unitTest/fuses/term_finance/mocks/TermFinanceRepurchaseFuseHarness.sol";
+import {TermFinanceCollateralFuseHarness} from "../../unitTest/fuses/term_finance/mocks/TermFinanceCollateralFuseHarness.sol";
+import {TermFinanceRepurchaseFuseHarness} from "../../unitTest/fuses/term_finance/mocks/TermFinanceRepurchaseFuseHarness.sol";
 
 /// @title TermFinanceBorrowerFork
 /// @notice Fork integration tests for the borrower-side Term Finance fuses on live Ethereum
@@ -207,8 +203,10 @@ contract TermFinanceBorrowerFork is Test {
         uint256 obligation = IExtTermRepoServicer(SERVICER).getBorrowerRepurchaseObligation(LIVE_BORROWER);
         assertEq(obligation, 1_009_852_430_555, "live borrower obligation matches plan section 12");
 
-        uint256 liveCollateral =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(LIVE_BORROWER, PT_REUSD);
+        uint256 liveCollateral = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            LIVE_BORROWER,
+            PT_REUSD
+        );
         assertEq(liveCollateral, 1_163_347_104_549, "live borrower collateral matches plan section 12");
 
         // CollateralManager accepted-token surface (verified on-chain).
@@ -217,7 +215,11 @@ contract TermFinanceBorrowerFork is Test {
             1,
             "1 accepted collateral token"
         );
-        assertEq(IExtTermRepoCollateralManager(COLLATERAL_MANAGER).collateralTokens(0), PT_REUSD, "PT-reUSD is index 0");
+        assertEq(
+            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).collateralTokens(0),
+            PT_REUSD,
+            "PT-reUSD is index 0"
+        );
 
         // Active BidLocker is past its revealTime at this block (auction cycle #2 closed
         // around 2026-04-12 — verified on-chain). This is the load-bearing reason the bid +
@@ -251,8 +253,10 @@ contract TermFinanceBorrowerFork is Test {
         TermFinanceCollateralFuseHarness harness = _etchCollateralHarnessAtLiveBorrower();
         uint256 topUpAmount = 50_000 * 1e6; // 50k PT-reUSD (6 dec)
 
-        uint256 cmBalanceBefore =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(LIVE_BORROWER, PT_REUSD);
+        uint256 cmBalanceBefore = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            LIVE_BORROWER,
+            PT_REUSD
+        );
         deal(PT_REUSD, LIVE_BORROWER, topUpAmount);
 
         // Top up.
@@ -265,8 +269,10 @@ contract TermFinanceBorrowerFork is Test {
             })
         );
 
-        uint256 cmBalanceAfterLock =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(LIVE_BORROWER, PT_REUSD);
+        uint256 cmBalanceAfterLock = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            LIVE_BORROWER,
+            PT_REUSD
+        );
         assertEq(cmBalanceAfterLock, cmBalanceBefore + topUpAmount, "lock added topUpAmount");
         assertEq(IERC20(PT_REUSD).balanceOf(LIVE_BORROWER), 0, "lock drained borrower wallet");
 
@@ -280,8 +286,10 @@ contract TermFinanceBorrowerFork is Test {
             })
         );
 
-        uint256 cmBalanceAfterUnlock =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(LIVE_BORROWER, PT_REUSD);
+        uint256 cmBalanceAfterUnlock = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            LIVE_BORROWER,
+            PT_REUSD
+        );
         assertEq(cmBalanceAfterUnlock, cmBalanceBefore, "unlock returned to pre-test CM balance");
         assertEq(IERC20(PT_REUSD).balanceOf(LIVE_BORROWER), topUpAmount, "unlock restored borrower wallet");
     }
@@ -423,7 +431,8 @@ contract TermFinanceBorrowerFork is Test {
         // revert bubble.
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceBalanceFuse.TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked.selector, SERVICER
+                TermFinanceBalanceFuse.TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked.selector,
+                SERVICER
             )
         );
         harness.balanceOf();
@@ -439,8 +448,10 @@ contract TermFinanceBorrowerFork is Test {
     ///      between as a post-condition check.
     function testForkBalanceFuseFullLifecycleHappyPath() public {
         // ============ Step 1: snapshot pre-test state ============
-        uint256 collateralBefore =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(LIVE_BORROWER, PT_REUSD);
+        uint256 collateralBefore = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            LIVE_BORROWER,
+            PT_REUSD
+        );
         uint256 obligationBefore = IExtTermRepoServicer(SERVICER).getBorrowerRepurchaseObligation(LIVE_BORROWER);
 
         // ============ Step 2: lock additional collateral ============
@@ -456,8 +467,10 @@ contract TermFinanceBorrowerFork is Test {
             })
         );
 
-        uint256 collateralAfterLock =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(LIVE_BORROWER, PT_REUSD);
+        uint256 collateralAfterLock = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            LIVE_BORROWER,
+            PT_REUSD
+        );
         assertEq(collateralAfterLock, collateralBefore + topUpAmount, "collateral topped up");
 
         // ============ Step 3: partial repurchase ============
@@ -485,8 +498,10 @@ contract TermFinanceBorrowerFork is Test {
             })
         );
 
-        uint256 collateralAfterUnlock =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(LIVE_BORROWER, PT_REUSD);
+        uint256 collateralAfterUnlock = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            LIVE_BORROWER,
+            PT_REUSD
+        );
         assertEq(collateralAfterUnlock, collateralBefore, "collateral drained back to baseline");
 
         // ============ Step 6: final NAV sanity ============
@@ -551,13 +566,15 @@ contract TermFinanceBorrowerFork is Test {
         // `termAuction()` exists on the locker proxy but is not in IExtTermAuctionBidLocker
         // (we only need it transiently for this regression probe — raw staticcall keeps
         // the production interface minimal).
-        (bool okTermAuction, bytes memory retTermAuction) =
-            LIVE_BIDLOCKER.staticcall(abi.encodeWithSignature("termAuction()"));
+        (bool okTermAuction, bytes memory retTermAuction) = LIVE_BIDLOCKER.staticcall(
+            abi.encodeWithSignature("termAuction()")
+        );
         assertTrue(okTermAuction, "locker.termAuction() must be staticcall-safe");
         address termAuction = abi.decode(retTermAuction, (address));
         assertTrue(termAuction != address(0), "locker.termAuction() must be non-zero");
-        (bool okCompleted, bytes memory retCompleted) =
-            termAuction.staticcall(abi.encodeWithSignature("auctionCompleted()"));
+        (bool okCompleted, bytes memory retCompleted) = termAuction.staticcall(
+            abi.encodeWithSignature("auctionCompleted()")
+        );
         assertTrue(okCompleted, "termAuction.auctionCompleted() must be staticcall-safe");
         bool auctionCompleted = abi.decode(retCompleted, (bool));
         assertTrue(auctionCompleted, "auction must be completed at pinned block");
@@ -579,8 +596,9 @@ contract TermFinanceBorrowerFork is Test {
         ];
 
         for (uint256 i; i < probeIds.length; ++i) {
-            IExtTermAuctionBidLocker.TermAuctionBid memory b =
-                IExtTermAuctionBidLocker(LIVE_BIDLOCKER).lockedBid(probeIds[i]);
+            IExtTermAuctionBidLocker.TermAuctionBid memory b = IExtTermAuctionBidLocker(LIVE_BIDLOCKER).lockedBid(
+                probeIds[i]
+            );
             assertEq(b.id, bytes32(0), "id must be zero post-clearing");
             assertEq(b.bidder, address(0), "bidder must be zero post-clearing");
             assertEq(b.bidPriceHash, bytes32(0), "bidPriceHash must be zero post-clearing");
@@ -690,8 +708,10 @@ contract TermFinanceBorrowerFork is Test {
         // DISJOINTNESS (the invariant): auction-lock must NOT credit the ledger that
         // `getCollateralBalance` reads. If a future CM upgrade started crediting at lock time,
         // this assertion fails and flags the re-introduced double-count.
-        uint256 ledgerAfterAuctionLock =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(vault, PT_REUSD);
+        uint256 ledgerAfterAuctionLock = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            vault,
+            PT_REUSD
+        );
         assertEq(
             ledgerAfterAuctionLock,
             ledgerBefore,
@@ -709,8 +729,10 @@ contract TermFinanceBorrowerFork is Test {
         vm.prank(SERVICER);
         cm.journalBidCollateralToCollateralManager(vault, tokens, amounts);
 
-        uint256 ledgerAfterJournal =
-            IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(vault, PT_REUSD);
+        uint256 ledgerAfterJournal = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            vault,
+            PT_REUSD
+        );
         assertEq(
             ledgerAfterJournal,
             ledgerBefore + amount,

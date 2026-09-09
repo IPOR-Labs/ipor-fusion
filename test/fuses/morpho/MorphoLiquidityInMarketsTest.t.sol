@@ -15,7 +15,11 @@ import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
-import {MorphoSupplyFuse, MorphoSupplyFuseEnterData, MorphoSupplyFuseExitData} from "../../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
+import {
+    MorphoSupplyFuse,
+    MorphoSupplyFuseEnterData,
+    MorphoSupplyFuseExitData
+} from "../../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {MorphoOnlyLiquidityBalanceFuse} from "../../../contracts/fuses/morpho/MorphoOnlyLiquidityBalanceFuse.sol";
 import {FuseAction} from "../../../contracts/interfaces/IPlasmaVault.sol";
 

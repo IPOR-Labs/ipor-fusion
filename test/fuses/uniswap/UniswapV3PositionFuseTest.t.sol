@@ -19,12 +19,26 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {UniswapV3Balance} from "../../../contracts/fuses/uniswap/UniswapV3Balance.sol";
-import {UniswapV3NewPositionFuse, UniswapV3NewPositionFuseEnterData, UniswapV3NewPositionFuseExitData} from "../../../contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol";
-import {UniswapV3ModifyPositionFuse, UniswapV3ModifyPositionFuseEnterData, UniswapV3ModifyPositionFuseExitData} from "../../../contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol";
+import {
+    UniswapV3NewPositionFuse,
+    UniswapV3NewPositionFuseEnterData,
+    UniswapV3NewPositionFuseExitData
+} from "../../../contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol";
+import {
+    UniswapV3ModifyPositionFuse,
+    UniswapV3ModifyPositionFuseEnterData,
+    UniswapV3ModifyPositionFuseExitData
+} from "../../../contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {UniswapV3CollectFuse, UniswapV3CollectFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3CollectFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    UniswapV3CollectFuse,
+    UniswapV3CollectFuseEnterData
+} from "../../../contracts/fuses/uniswap/UniswapV3CollectFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";

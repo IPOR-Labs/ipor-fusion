@@ -645,10 +645,10 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
     function testWithdrawFeeFormulaConsistency() public {
         // Set various fee levels and verify formula
         uint256[] memory feeRates = new uint256[](4);
-        feeRates[0] = 1e16;  // 1%
-        feeRates[1] = 5e16;  // 5%
-        feeRates[2] = 1e17;  // 10%
-        feeRates[3] = 2e17;  // 20%
+        feeRates[0] = 1e16; // 1%
+        feeRates[1] = 5e16; // 5%
+        feeRates[2] = 1e17; // 10%
+        feeRates[3] = 2e17; // 20%
 
         for (uint256 i = 0; i < feeRates.length; i++) {
             // Reset state for each fee level
@@ -678,10 +678,10 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
     function testRedeemFeeFormulaConsistency() public {
         // Set various fee levels and verify formula
         uint256[] memory feeRates = new uint256[](4);
-        feeRates[0] = 1e16;  // 1%
-        feeRates[1] = 5e16;  // 5%
-        feeRates[2] = 1e17;  // 10%
-        feeRates[3] = 2e17;  // 20%
+        feeRates[0] = 1e16; // 1%
+        feeRates[1] = 5e16; // 5%
+        feeRates[2] = 1e17; // 10%
+        feeRates[3] = 2e17; // 20%
 
         for (uint256 i = 0; i < feeRates.length; i++) {
             // Reset state for each fee level
@@ -753,7 +753,7 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
         vm.stopPrank();
 
         // With 10% withdraw fee: effective assets = depositAmount * 0.90 = 9000
-        uint256 expectedMin = depositAmount * 90 / 100;
+        uint256 expectedMin = (depositAmount * 90) / 100;
 
         assertApproxEqRel(assetsReceived, expectedMin, 1e15, "Roundtrip should account for withdraw fee");
         assertLt(assetsReceived, depositAmount, "Should receive less than deposited due to fee");

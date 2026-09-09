@@ -4,7 +4,10 @@ pragma solidity 0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {ExternalStateForkTestBase, MockExternalStateProtocolForFork} from "./ExternalStateForkTestBase.t.sol";
-import {IExternalStateExecutor, ExternalStateExecutorAction} from "../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
+import {
+    IExternalStateExecutor,
+    ExternalStateExecutorAction
+} from "../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
 
 /// @title ExternalStateFuseForkTest
 /// @notice End-to-end fork scenarios covering enter / execute / exit paths of the ExternalState fuse
@@ -20,7 +23,8 @@ contract ExternalStateFuseForkTest is ExternalStateForkTestBase {
         // target substrate is bound to this exact selector in the default substrate grant set.
         ExternalStateExecutorAction[] memory actions = new ExternalStateExecutorAction[](1);
         actions[0] = ExternalStateExecutorAction({
-            target: address(externalStateProtocol), data: abi.encodeCall(MockExternalStateProtocolForFork.deposit, (USDC, 1_000e6))
+            target: address(externalStateProtocol),
+            data: abi.encodeCall(MockExternalStateProtocolForFork.deposit, (USDC, 1_000e6))
         });
 
         _enter(USDC, 1_000e6, balanceAccountA, actions);
@@ -33,13 +37,13 @@ contract ExternalStateFuseForkTest is ExternalStateForkTestBase {
         assertEq(externalStateProtocol.totalDeposits(), 1_000e6, "protocol recorded deposit");
 
         // Tracked balance equals underlying amount at 1:1 USDC-USD
-        (uint256 tracked,,) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (uint256 tracked, , ) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
         assertEq(tracked, 1_000e6, "tracked balance correct");
 
         // Exit the full amount back to vault (no actions — just transfer-back)
         _exit(USDC, 1_000e6, balanceAccountA);
 
-        (uint256 trackedAfter,,) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (uint256 trackedAfter, , ) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
         assertEq(trackedAfter, 0, "tracked balance cleared");
         assertEq(IERC20(USDC).balanceOf(address(vault)), 1_000e6, "vault received funds back");
         assertEq(IERC20(USDC).balanceOf(executor), 0, "executor empty");
@@ -53,17 +57,18 @@ contract ExternalStateFuseForkTest is ExternalStateForkTestBase {
         // Phase 1: transfer only (no actions). Balance credited, executor deployed lazily.
         _enter(USDC, 500e6, balanceAccountA);
         address executor = _executorAddress();
-        (uint256 tracked1,,) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (uint256 tracked1, , ) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
         assertEq(tracked1, 500e6, "tracked credited once");
 
         // Phase 2: actions-only (amount == 0). Tracked balance must NOT change.
         ExternalStateExecutorAction[] memory actions = new ExternalStateExecutorAction[](1);
         actions[0] = ExternalStateExecutorAction({
-            target: address(externalStateProtocol), data: abi.encodeCall(MockExternalStateProtocolForFork.deposit, (USDC, 500e6))
+            target: address(externalStateProtocol),
+            data: abi.encodeCall(MockExternalStateProtocolForFork.deposit, (USDC, 500e6))
         });
         _enter(address(0), 0, address(0), actions);
 
-        (uint256 tracked2,,) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (uint256 tracked2, , ) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
         assertEq(tracked2, 500e6, "balance unchanged by actions-only enter");
         assertEq(externalStateProtocol.totalDeposits(), 500e6, "protocol recorded the action");
     }

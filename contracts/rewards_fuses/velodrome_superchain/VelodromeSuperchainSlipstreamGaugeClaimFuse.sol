@@ -6,7 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {ILeafCLGauge} from "../../fuses/velodrome_superchain_slipstream/ext/ILeafCLGauge.sol";
-import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "../../fuses/velodrome_superchain/VelodromeSuperchainLib.sol";
+import {
+    VelodromeSuperchainSubstrateLib,
+    VelodromeSuperchainSubstrate,
+    VelodromeSuperchainSubstrateType
+} from "../../fuses/velodrome_superchain/VelodromeSuperchainLib.sol";
 
 /// @title VelodromeSuperchainSlipstreamGaugeClaimFuse
 /// @notice This contract handles the claiming of rewards from Velodrome gauges.

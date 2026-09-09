@@ -24,10 +24,7 @@ contract MockMidasRedemptionVault is IMidasRedemptionVault {
         nextRequestId = id;
     }
 
-    function redeemRequest(
-        address tokenOut,
-        uint256 amountMTokenIn
-    ) external override returns (uint256 requestId) {
+    function redeemRequest(address tokenOut, uint256 amountMTokenIn) external override returns (uint256 requestId) {
         lastTokenOut = tokenOut;
         lastAmountMToken = amountMTokenIn;
         redeemRequestCallCount++;
@@ -37,14 +34,14 @@ contract MockMidasRedemptionVault is IMidasRedemptionVault {
     // ---- Unused interface methods (must compile) ----
 
     function redeemInstant(
-        address, /* tokenOut */
-        uint256, /* amountMTokenIn */
+        address /* tokenOut */,
+        uint256 /* amountMTokenIn */,
         uint256 /* minReceiveAmount */
     ) external pure override {
         revert("not used");
     }
 
-    function redeemRequests(uint256 /* requestId */ ) external pure override returns (Request memory) {
+    function redeemRequests(uint256 /* requestId */) external pure override returns (Request memory) {
         revert("not used");
     }
 

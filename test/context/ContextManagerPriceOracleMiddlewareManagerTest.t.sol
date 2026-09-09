@@ -2,13 +2,23 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    FeeConfig
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";

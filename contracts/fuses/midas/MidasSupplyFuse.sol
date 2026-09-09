@@ -49,11 +49,19 @@ contract MidasSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     event MidasSupplyFuseEnter(address version, address mToken, uint256 amount, address depositVault);
 
     event MidasSupplyFuseExit(
-        address version, address mToken, uint256 amount, address tokenOut, address instantRedemptionVault
+        address version,
+        address mToken,
+        uint256 amount,
+        address tokenOut,
+        address instantRedemptionVault
     );
 
     event MidasSupplyFuseExitFailed(
-        address version, address mToken, uint256 amount, address tokenOut, address instantRedemptionVault
+        address version,
+        address mToken,
+        uint256 amount,
+        address tokenOut,
+        address instantRedemptionVault
     );
 
     error MidasSupplyFuseInsufficientMTokenReceived(uint256 expected, uint256 received);
@@ -92,7 +100,10 @@ contract MidasSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 amountInWad = IporMath.convertToWad(finalAmount, ERC20(data_.tokenIn).decimals());
 
         IMidasDepositVault(data_.depositVault).depositInstant(
-            data_.tokenIn, amountInWad, data_.minMTokenAmountOut, bytes32(0)
+            data_.tokenIn,
+            amountInWad,
+            data_.minMTokenAmountOut,
+            bytes32(0)
         );
 
         uint256 mTokenReceived = ERC20(data_.mToken).balanceOf(address(this)) - mTokenBefore;
@@ -122,10 +133,7 @@ contract MidasSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         address instantRedemptionVault = PlasmaVaultConfigLib.bytes32ToAddress(params_[3]);
         uint256 minTokenOutAmount = uint256(params_[4]);
 
-        _exit(
-            MidasSupplyFuseExitData(mToken, amount, minTokenOutAmount, tokenOut, instantRedemptionVault),
-            true
-        );
+        _exit(MidasSupplyFuseExitData(mToken, amount, minTokenOutAmount, tokenOut, instantRedemptionVault), true);
     }
 
     function _exit(MidasSupplyFuseExitData memory data_, bool catchExceptions_) internal {
@@ -148,9 +156,13 @@ contract MidasSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         ERC20(data_.mToken).forceApprove(data_.instantRedemptionVault, finalAmount);
 
         if (catchExceptions_) {
-            try IMidasRedemptionVault(data_.instantRedemptionVault).redeemInstant(
-                data_.tokenOut, finalAmount, data_.minTokenOutAmount
-            ) {
+            try
+                IMidasRedemptionVault(data_.instantRedemptionVault).redeemInstant(
+                    data_.tokenOut,
+                    finalAmount,
+                    data_.minTokenOutAmount
+                )
+            {
                 uint256 tokenOutReceived = ERC20(data_.tokenOut).balanceOf(address(this)) - tokenOutBefore;
 
                 if (tokenOutReceived < data_.minTokenOutAmount) {
@@ -160,17 +172,27 @@ contract MidasSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 ERC20(data_.mToken).forceApprove(data_.instantRedemptionVault, 0);
 
                 emit MidasSupplyFuseExit(
-                    VERSION, data_.mToken, finalAmount, data_.tokenOut, data_.instantRedemptionVault
+                    VERSION,
+                    data_.mToken,
+                    finalAmount,
+                    data_.tokenOut,
+                    data_.instantRedemptionVault
                 );
             } catch {
                 ERC20(data_.mToken).forceApprove(data_.instantRedemptionVault, 0);
                 emit MidasSupplyFuseExitFailed(
-                    VERSION, data_.mToken, finalAmount, data_.tokenOut, data_.instantRedemptionVault
+                    VERSION,
+                    data_.mToken,
+                    finalAmount,
+                    data_.tokenOut,
+                    data_.instantRedemptionVault
                 );
             }
         } else {
             IMidasRedemptionVault(data_.instantRedemptionVault).redeemInstant(
-                data_.tokenOut, finalAmount, data_.minTokenOutAmount
+                data_.tokenOut,
+                finalAmount,
+                data_.minTokenOutAmount
             );
 
             uint256 tokenOutReceived = ERC20(data_.tokenOut).balanceOf(address(this)) - tokenOutBefore;
@@ -181,9 +203,7 @@ contract MidasSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
             ERC20(data_.mToken).forceApprove(data_.instantRedemptionVault, 0);
 
-            emit MidasSupplyFuseExit(
-                VERSION, data_.mToken, finalAmount, data_.tokenOut, data_.instantRedemptionVault
-            );
+            emit MidasSupplyFuseExit(VERSION, data_.mToken, finalAmount, data_.tokenOut, data_.instantRedemptionVault);
         }
     }
 }

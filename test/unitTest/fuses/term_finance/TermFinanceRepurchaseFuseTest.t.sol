@@ -39,12 +39,7 @@ contract TermFinanceRepurchaseFuseTest is Test {
         0x465d2ff0062318fe6f4c7e9ac78cfcd70bc86a1d992722875ef83a9770513100;
 
     /// @dev Local copy of the fuse event for `vm.expectEmit` assertions.
-    event TermFinanceRepurchased(
-        address version,
-        address servicer,
-        uint256 amountPaid,
-        uint256 remainingObligation
-    );
+    event TermFinanceRepurchased(address version, address servicer, uint256 amountPaid, uint256 remainingObligation);
 
     uint256 internal constant MARKET_ID = 52;
     address internal constant WITHDRAW_MANAGER = address(0xBEEF);
@@ -172,11 +167,7 @@ contract TermFinanceRepurchaseFuseTest is Test {
             lockerBalanceBefore + amount,
             "purchase token lands in the per-Term locker (pulled via transferTokenFromWallet)"
         );
-        assertEq(
-            servicer.getBorrowerRepurchaseObligation(address(harness)),
-            0,
-            "obligation fully discharged"
-        );
+        assertEq(servicer.getBorrowerRepurchaseObligation(address(harness)), 0, "obligation fully discharged");
     }
 
     function testEnterShouldEmitRepurchasedEvent() public {

@@ -132,7 +132,11 @@ contract WrappedPlasmaVaultFactoryEthereumTest is Test {
 
         // Binding to the vault, in both directions that can be read.
         assertEq(IWrappedPlasmaVault(wrapper).PLASMA_VAULT(), instance.plasmaVault, "wrapper wraps another vault");
-        assertEq(IERC4626(wrapper).asset(), IERC4626(instance.plasmaVault).asset(), "wrapper asset differs from the vault's");
+        assertEq(
+            IERC4626(wrapper).asset(),
+            IERC4626(instance.plasmaVault).asset(),
+            "wrapper asset differs from the vault's"
+        );
         assertEq(IERC4626(wrapper).asset(), USDC, "wrapper asset is not USDC");
         assertEq(IERC20Metadata(wrapper).name(), "Wrapped Pilot USDC", "wrapper name mismatch");
         assertEq(IERC20Metadata(wrapper).symbol(), "wUSDC", "wrapper symbol mismatch");
@@ -140,7 +144,8 @@ contract WrappedPlasmaVaultFactoryEthereumTest is Test {
         // Ownership and fees are the wrapper's own, separate from the vault's.
         assertEq(IWrappedPlasmaVault(wrapper).owner(), wrapperOwner, "wrapper owner mismatch");
         IWrappedPlasmaVault.ManagementFeeData memory management = IWrappedPlasmaVault(wrapper).getManagementFeeData();
-        IWrappedPlasmaVault.PerformanceFeeData memory performance = IWrappedPlasmaVault(wrapper).getPerformanceFeeData();
+        IWrappedPlasmaVault.PerformanceFeeData memory performance = IWrappedPlasmaVault(wrapper)
+            .getPerformanceFeeData();
         assertEq(management.feeAccount, managementFeeAccount, "management fee account mismatch");
         assertEq(uint256(management.feeInPercentage), MANAGEMENT_FEE, "management fee mismatch");
         assertEq(performance.feeAccount, performanceFeeAccount, "performance fee account mismatch");
@@ -167,7 +172,11 @@ contract WrappedPlasmaVaultFactoryEthereumTest is Test {
 
         vm.prank(wrapperOwner);
         IWrappedPlasmaVault(wrapper).configureManagementFee(managementFeeAccount, 200);
-        assertEq(uint256(IWrappedPlasmaVault(wrapper).getManagementFeeData().feeInPercentage), 200, "owner could not configure the fee");
+        assertEq(
+            uint256(IWrappedPlasmaVault(wrapper).getManagementFeeData().feeInPercentage),
+            200,
+            "owner could not configure the fee"
+        );
     }
 
     function testShouldRejectInvalidWrapperInputs() public {

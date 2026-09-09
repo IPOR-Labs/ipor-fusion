@@ -161,7 +161,7 @@ contract ExternalStateBalanceFuseTest is Test {
 
         _custodianConfirm(executor, 101e6);
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.balanceOf, ()));
-        (,, uint256 custTs) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (, , uint256 custTs) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
         assertEq(_readLastCheckedCustodianTimestamp(), custTs);
     }
 
@@ -335,7 +335,7 @@ contract ExternalStateBalanceFuseTest is Test {
         IExternalStateExecutor(executor_).proposeBalance(balanceAccount, newValue_);
 
         // fetch pending
-        (,, uint64 pa, uint256 n) = ExternalStateExecutor(executor_).pendingProposals(balanceAccount);
+        (, , uint64 pa, uint256 n) = ExternalStateExecutor(executor_).pendingProposals(balanceAccount);
         bytes32 h = keccak256(abi.encode(executor_, block.chainid, balanceAccount, newValue_, custodianA, pa, n));
         vm.prank(custodianB);
         IExternalStateExecutor(executor_).confirmBalance(balanceAccount, h);
@@ -346,14 +346,18 @@ contract ExternalStateBalanceFuseTest is Test {
     }
 
     function _readLastTotalBalance() internal view returns (uint256) {
-        bytes32 s =
-            bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.LAST_TOTAL_BALANCE_SLOT_OFFSET);
+        bytes32 s = bytes32(
+            uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) +
+                ExternalStateTestConstants.LAST_TOTAL_BALANCE_SLOT_OFFSET
+        );
         return uint256(vm.load(address(vault), s));
     }
 
     function _readLastCheckedCustodianTimestamp() internal view returns (uint256) {
-        bytes32 s =
-            bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.LAST_CHECKED_CUSTODIAN_TS_SLOT_OFFSET);
+        bytes32 s = bytes32(
+            uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) +
+                ExternalStateTestConstants.LAST_CHECKED_CUSTODIAN_TS_SLOT_OFFSET
+        );
         return uint256(vm.load(address(vault), s));
     }
 }

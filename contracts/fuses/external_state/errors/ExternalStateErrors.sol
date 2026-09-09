@@ -47,7 +47,11 @@ library ExternalStateErrors {
     /// @param balanceAccount The balance account being decremented.
     /// @param valueInUnderlying The amount (in underlying units) attempted to remove.
     /// @param trackedBalance The currently tracked balance for the account.
-    error ExternalStateExitExceedsTrackedBalance(address balanceAccount, uint256 valueInUnderlying, uint256 trackedBalance);
+    error ExternalStateExitExceedsTrackedBalance(
+        address balanceAccount,
+        uint256 valueInUnderlying,
+        uint256 trackedBalance
+    );
 
     /// @notice Thrown when the PriceOracleMiddleware address is not configured on the plasma vault.
     error ExternalStatePriceOracleNotSet();

@@ -18,8 +18,15 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 import {SwapExecutorEth} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
-import {UniversalTokenSwapperEthFuse, UniversalTokenSwapperEthEnterData, UniversalTokenSwapperEthData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    UniversalTokenSwapperEthFuse,
+    UniversalTokenSwapperEthEnterData,
+    UniversalTokenSwapperEthData
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
@@ -1007,9 +1014,15 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         universalSwapSubstrates[10] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(STETH);
         universalSwapSubstrates[11] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(W_ETH);
         universalSwapSubstrates[12] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(USDC);
-        universalSwapSubstrates[13] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(STADER_STAKING_POOL_MANAGER);
-        universalSwapSubstrates[14] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(FRAX_ETHER_MINTER_V2_ADDRESS);
-        universalSwapSubstrates[15] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(ROCKET_DEPOSIT_POOL_ADDRESS);
+        universalSwapSubstrates[13] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(
+            STADER_STAKING_POOL_MANAGER
+        );
+        universalSwapSubstrates[14] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(
+            FRAX_ETHER_MINTER_V2_ADDRESS
+        );
+        universalSwapSubstrates[15] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(
+            ROCKET_DEPOSIT_POOL_ADDRESS
+        );
         // Slippage substrate - using 100% slippage for testing (same as original 1e18)
         universalSwapSubstrates[16] = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(1e18);
         // Unused slots can be zero
@@ -1021,10 +1034,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
     }
 
     function _setupFuses() private returns (address[] memory fuses_) {
-        _universalTokenSwapperFuse = new UniversalTokenSwapperEthFuse(
-            IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            W_ETH
-        );
+        _universalTokenSwapperFuse = new UniversalTokenSwapperEthFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, W_ETH);
         _swapExecutorEth = SwapExecutorEth(_universalTokenSwapperFuse.EXECUTOR());
 
         _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());

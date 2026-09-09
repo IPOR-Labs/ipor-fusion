@@ -45,7 +45,9 @@ contract MidasPendingRequestsStorageLibTest is Test {
         vault.execute(
             address(helper),
             abi.encodeWithSelector(
-                MidasPendingRequestsHelper.addPendingRedemption.selector, redemptionVault_, requestId_
+                MidasPendingRequestsHelper.addPendingRedemption.selector,
+                redemptionVault_,
+                requestId_
             )
         );
     }
@@ -54,25 +56,21 @@ contract MidasPendingRequestsStorageLibTest is Test {
         vault.execute(
             address(helper),
             abi.encodeWithSelector(
-                MidasPendingRequestsHelper.removePendingRedemption.selector, redemptionVault_, requestId_
+                MidasPendingRequestsHelper.removePendingRedemption.selector,
+                redemptionVault_,
+                requestId_
             )
         );
     }
 
-    function _getPendingDeposits()
-        internal
-        returns (address[] memory vaults, uint256[][] memory requestIds)
-    {
+    function _getPendingDeposits() internal returns (address[] memory vaults, uint256[][] memory requestIds) {
         bytes memory result = _staticDelegateCall(
             abi.encodeWithSelector(MidasPendingRequestsHelper.getPendingDeposits.selector)
         );
         return abi.decode(result, (address[], uint256[][]));
     }
 
-    function _getPendingRedemptions()
-        internal
-        returns (address[] memory vaults, uint256[][] memory requestIds)
-    {
+    function _getPendingRedemptions() internal returns (address[] memory vaults, uint256[][] memory requestIds) {
         bytes memory result = _staticDelegateCall(
             abi.encodeWithSelector(MidasPendingRequestsHelper.getPendingRedemptions.selector)
         );
@@ -103,7 +101,9 @@ contract MidasPendingRequestsStorageLibTest is Test {
     function _isRedemptionPending(address redemptionVault_, uint256 requestId_) internal returns (bool) {
         bytes memory result = _staticDelegateCall(
             abi.encodeWithSelector(
-                MidasPendingRequestsHelper.isRedemptionPending.selector, redemptionVault_, requestId_
+                MidasPendingRequestsHelper.isRedemptionPending.selector,
+                redemptionVault_,
+                requestId_
             )
         );
         return abi.decode(result, (bool));
@@ -113,8 +113,9 @@ contract MidasPendingRequestsStorageLibTest is Test {
     function _staticDelegateCall(bytes memory data_) internal returns (bytes memory) {
         // Use execute which does delegatecall - the helper reads from vault's storage
         // We wrap it in a call to capture return data
-        (bool success, bytes memory returnData) =
-            address(vault).call(abi.encodeWithSelector(PlasmaVaultMock.execute.selector, address(helper), data_));
+        (bool success, bytes memory returnData) = address(vault).call(
+            abi.encodeWithSelector(PlasmaVaultMock.execute.selector, address(helper), data_)
+        );
         // execute doesn't return data, so we need a different approach
         // Use the fallback which does delegatecall and returns data
         (success, returnData) = address(vault).call(data_);
@@ -158,7 +159,7 @@ contract MidasPendingRequestsStorageLibTest is Test {
 
         _removePendingDeposit(DEPOSIT_VAULT_A, 1);
 
-        (address[] memory vaults,) = _getPendingDeposits();
+        (address[] memory vaults, ) = _getPendingDeposits();
         assertEq(vaults.length, 0, "Deposit vaults array should be empty after removing last request");
     }
 
@@ -177,7 +178,7 @@ contract MidasPendingRequestsStorageLibTest is Test {
         assertTrue(_isRedemptionPending(REDEMPTION_VAULT_A, 1), "Vault A redemption should be pending");
         assertTrue(_isRedemptionPending(REDEMPTION_VAULT_B, 2), "Vault B redemption should be pending");
 
-        (address[] memory vaults,) = _getPendingRedemptions();
+        (address[] memory vaults, ) = _getPendingRedemptions();
         assertEq(vaults.length, 2, "Should have 2 redemption vaults");
     }
 
@@ -196,7 +197,7 @@ contract MidasPendingRequestsStorageLibTest is Test {
 
         _removePendingRedemption(REDEMPTION_VAULT_A, 1);
 
-        (address[] memory vaults,) = _getPendingRedemptions();
+        (address[] memory vaults, ) = _getPendingRedemptions();
         assertEq(vaults.length, 0, "Redemption vaults should be empty after removing last request");
     }
 
@@ -260,9 +261,7 @@ contract MidasPendingRequestsStorageLibTest is Test {
 
         assertTrue(_isRedemptionPending(REDEMPTION_VAULT_A, 1), "Request 1 should be pending");
         assertFalse(_isRedemptionPending(REDEMPTION_VAULT_A, 999), "Request 999 should not be pending");
-        assertFalse(
-            _isRedemptionPending(REDEMPTION_VAULT_B, 1), "Request 1 on different vault should not be pending"
-        );
+        assertFalse(_isRedemptionPending(REDEMPTION_VAULT_B, 1), "Request 1 on different vault should not be pending");
     }
 
     // ============ Error Tests ============
@@ -363,7 +362,7 @@ contract MidasPendingRequestsStorageLibTest is Test {
         // Remove vault B's only request — triggers _removeDepositVault for vault at index 1
         _removePendingDeposit(DEPOSIT_VAULT_B, 2);
 
-        (address[] memory vaults,) = _getPendingDeposits();
+        (address[] memory vaults, ) = _getPendingDeposits();
         assertEq(vaults.length, 1, "Should have 1 deposit vault remaining");
         assertEq(vaults[0], DEPOSIT_VAULT_A, "Remaining vault should be vault A");
     }
@@ -376,7 +375,7 @@ contract MidasPendingRequestsStorageLibTest is Test {
         // Remove vault B's only request — triggers _removeRedemptionVault for vault at index 1
         _removePendingRedemption(REDEMPTION_VAULT_B, 2);
 
-        (address[] memory vaults,) = _getPendingRedemptions();
+        (address[] memory vaults, ) = _getPendingRedemptions();
         assertEq(vaults.length, 1, "Should have 1 redemption vault remaining");
         assertEq(vaults[0], REDEMPTION_VAULT_A, "Remaining vault should be vault A");
     }

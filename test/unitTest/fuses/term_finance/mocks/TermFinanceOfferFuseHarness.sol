@@ -3,9 +3,7 @@ pragma solidity 0.8.30;
 
 import {TermFinanceOfferFuse} from "contracts/fuses/term_finance/TermFinanceOfferFuse.sol";
 import {PlasmaVaultConfigLib} from "contracts/libraries/PlasmaVaultConfigLib.sol";
-import {
-    TermFinancePendingOffersStorageLib
-} from "contracts/fuses/term_finance/lib/TermFinancePendingOffersStorageLib.sol";
+import {TermFinancePendingOffersStorageLib} from "contracts/fuses/term_finance/lib/TermFinancePendingOffersStorageLib.sol";
 
 contract TermFinanceOfferFuseHarness is TermFinanceOfferFuse {
     constructor(uint256 marketId_, address termController_) TermFinanceOfferFuse(marketId_, termController_) {}
@@ -18,11 +16,9 @@ contract TermFinanceOfferFuseHarness is TermFinanceOfferFuse {
         return TermFinancePendingOffersStorageLib.isOfferPending(servicer_, offerId_);
     }
 
-    function getPendingOffersForServicer(address servicer_)
-        external
-        view
-        returns (address[] memory offerLockers, bytes32[] memory offerIds, uint256[] memory amounts)
-    {
+    function getPendingOffersForServicer(
+        address servicer_
+    ) external view returns (address[] memory offerLockers, bytes32[] memory offerIds, uint256[] memory amounts) {
         return TermFinancePendingOffersStorageLib.getPendingOffersForServicer(servicer_);
     }
 

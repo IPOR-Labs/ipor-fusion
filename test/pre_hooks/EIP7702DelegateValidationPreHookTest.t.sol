@@ -62,12 +62,7 @@ contract MockEIP7702Executor {
     /// @dev In real EIP-7702, this happens automatically when calling an EOA with delegation
     ///      Here we simulate it by having the EOA call this, which then calls vault
     ///      The key difference: msg.sender to vault = this contract (simulating EOA with code)
-    function executeAsSmartWallet(
-        address vault_,
-        address asset_,
-        uint256 amount_,
-        address receiver_
-    ) external {
+    function executeAsSmartWallet(address vault_, address asset_, uint256 amount_, address receiver_) external {
         IERC20(asset_).approve(vault_, amount_);
         PlasmaVault(vault_).deposit(amount_, receiver_);
     }
@@ -692,7 +687,10 @@ contract EIP7702DelegateValidationPreHookTest is Test {
         plasmaVault.deposit(50e6, userEOA);
         vm.stopPrank();
 
-        assertTrue(IERC20(address(plasmaVault)).balanceOf(userEOA) > 0, "Deposit should succeed after whitelist update");
+        assertTrue(
+            IERC20(address(plasmaVault)).balanceOf(userEOA) > 0,
+            "Deposit should succeed after whitelist update"
+        );
     }
 
     // ============================================

@@ -80,7 +80,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         );
     }
 
-
     /// @notice Creates a new Fusion Vault by cloning existing contracts
     /// @param assetName_ The name of the asset
     /// @param assetSymbol_ The symbol of the asset

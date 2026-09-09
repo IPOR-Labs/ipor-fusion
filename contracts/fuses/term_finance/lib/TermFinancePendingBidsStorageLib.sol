@@ -62,7 +62,6 @@ library TermFinancePendingBidsStorageLib {
         mapping(address servicer => ServicerBids) byServicer;
     }
 
-
     /// @notice Add a pending bid for a servicer (or refresh an existing entry in-place).
     /// @dev If `(servicer_, bidId_)` is already tracked, refreshes the bound `bidLocker_`,
     ///      `amount_`, `collateralTokens_`, and `collateralAmounts_` so the latest enter call
@@ -230,7 +229,7 @@ library TermFinancePendingBidsStorageLib {
             s.slot := TERM_FINANCE_PENDING_BIDS_SLOT
         }
     }
-    
+
     function _removeServicer(PendingBidsStorage storage s_, address servicer_) private {
         uint256 idxPlus = s_.servicerIndexOf[servicer_];
         // Defensive: unreachable from current callers. `_removeServicer` is only invoked at

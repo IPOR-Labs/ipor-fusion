@@ -437,7 +437,9 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     /// @dev Checks tokenIn, tokenOut, all targets, and dust tokens against configured substrates in single pass
     /// @param data_ The swap data containing tokens and targets to validate
     /// @return slippageWad The slippage limit in WAD for use in USD slippage validation
-    function _checkSubstratesInternal(UniversalTokenSwapperEthEnterData memory data_) private view returns (uint256 slippageWad) {
+    function _checkSubstratesInternal(
+        UniversalTokenSwapperEthEnterData memory data_
+    ) private view returns (uint256 slippageWad) {
         uint256 targetsLength = data_.data.targets.length;
         if (targetsLength == 0) {
             revert UniversalTokenSwapperEthFuseEmptyTargets();

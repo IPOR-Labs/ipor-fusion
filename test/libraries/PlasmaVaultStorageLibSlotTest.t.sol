@@ -183,7 +183,11 @@ contract PlasmaVaultStorageLibSlotTest is Test {
         bytes32 callbackHandlerSlot = 0xb37e8684757599da669b8aea811ee2b3693b2582d2c730fab3f4965fa2ec3e00;
         assertTrue(expectedSlot != callbackHandlerSlot, "legacy slot must differ from CALLBACK_HANDLER");
         // Differs from CALLBACK_HANDLER by exactly the last byte (0x11 vs 0x00).
-        assertEq(uint256(expectedSlot) - uint256(callbackHandlerSlot), 0x11, "legacy slot must be CALLBACK_HANDLER + 0x11");
+        assertEq(
+            uint256(expectedSlot) - uint256(callbackHandlerSlot),
+            0x11,
+            "legacy slot must be CALLBACK_HANDLER + 0x11"
+        );
     }
 
     /// @notice Verifies PLASMA_VAULT_BASE_SLOT

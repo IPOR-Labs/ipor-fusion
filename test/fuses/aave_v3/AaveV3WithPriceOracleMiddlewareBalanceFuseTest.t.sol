@@ -15,8 +15,14 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
+import {
+    AaveV3SupplyFuseEnterData,
+    AaveV3SupplyFuseExitData
+} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {
+    AaveV3BorrowFuseEnterData,
+    AaveV3BorrowFuseExitData
+} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 
 /*
 Test description:
@@ -59,7 +65,14 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
         // Setup fee packages before creating vault
         FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
-        _fusionInstance = fusionFactory.clone("AaveV2WithPriceOracleMiddlewareBalanceFuse", "AV2", _WETH, 0, _ATOMIST, 0);
+        _fusionInstance = fusionFactory.clone(
+            "AaveV2WithPriceOracleMiddlewareBalanceFuse",
+            "AV2",
+            _WETH,
+            0,
+            _ATOMIST,
+            0
+        );
 
         vm.startPrank(_ATOMIST);
         IporFusionAccessManager(_fusionInstance.accessManager).grantRole(Roles.ATOMIST_ROLE, _ATOMIST, 0);

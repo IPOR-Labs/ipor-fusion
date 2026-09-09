@@ -76,7 +76,8 @@ contract ExternalStateBalanceFuse is IMarketBalanceFuse, IFuseCommon {
             return 0;
         }
 
-        (uint256 totalBalance, uint256 bigChangeBps, uint256 lastCustodianTs) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (uint256 totalBalance, uint256 bigChangeBps, uint256 lastCustodianTs) = IExternalStateExecutor(executor)
+            .getBalanceFuseSnapshot();
 
         uint256 lastChecked = ExternalStateExecutorStorageLib.getLastCheckedCustodianTimestamp();
         uint256 prevTotal = ExternalStateExecutorStorageLib.getLastTotalBalance();

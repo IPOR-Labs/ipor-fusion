@@ -890,7 +890,6 @@ contract FusionFactoryTest is Test {
         assertTrue(instance.rewardsManager != address(0));
         assertTrue(instance.contextManager != address(0));
         assertTrue(instance.feeManager != address(0));
-
     }
 
     function testShouldRevertUpgradeWhenNotOwner() public {
@@ -1755,14 +1754,7 @@ contract FusionFactoryTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
-        fusionFactory.clone(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            10
-        );
+        fusionFactory.clone("Test Asset", "TEST", address(underlyingToken), redemptionDelay, owner, 10);
     }
 
     function testShouldRevertWhenCloneWithInvalidDaoFeePackageIndex() public {
@@ -1771,14 +1763,7 @@ contract FusionFactoryTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLogicLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
-        fusionFactory.clone(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            10
-        );
+        fusionFactory.clone("Test Asset", "TEST", address(underlyingToken), redemptionDelay, owner, 10);
     }
 
     function testShouldCreateVaultWithDifferentDaoFeePackages() public {

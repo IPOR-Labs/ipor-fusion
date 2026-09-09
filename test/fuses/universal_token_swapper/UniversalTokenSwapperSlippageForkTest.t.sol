@@ -16,7 +16,11 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 
-import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {
+    UniversalTokenSwapperFuse,
+    UniversalTokenSwapperEnterData,
+    UniversalTokenSwapperData
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -428,7 +432,11 @@ contract UniversalTokenSwapperSlippageForkTest is Test {
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, universalSwapSubstrates);
     }
 
-    function _setupMarketConfigsWithoutSlippage() private pure returns (MarketSubstratesConfig[] memory marketConfigs_) {
+    function _setupMarketConfigsWithoutSlippage()
+        private
+        pure
+        returns (MarketSubstratesConfig[] memory marketConfigs_)
+    {
         marketConfigs_ = new MarketSubstratesConfig[](1);
 
         // No slippage substrate - fuse should use DEFAULT_SLIPPAGE_WAD (1%)

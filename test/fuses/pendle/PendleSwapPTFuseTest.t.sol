@@ -16,9 +16,19 @@ import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccess
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PendleHelper, PendleAddresses} from "../../test_helpers/PendleHelper.sol";
 
-import {PendleSwapPTFuse, PendleSwapPTFuseEnterData, PendleSwapPTFuseExitData} from "../../../contracts/fuses/pendle/PendleSwapPTFuse.sol";
-import {PendleRedeemPTAfterMaturityFuse, PendleRedeemPTAfterMaturityFuseEnterData} from "../../../contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    PendleSwapPTFuse,
+    PendleSwapPTFuseEnterData,
+    PendleSwapPTFuseExitData
+} from "../../../contracts/fuses/pendle/PendleSwapPTFuse.sol";
+import {
+    PendleRedeemPTAfterMaturityFuse,
+    PendleRedeemPTAfterMaturityFuseEnterData
+} from "../../../contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";

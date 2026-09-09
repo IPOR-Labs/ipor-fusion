@@ -32,9 +32,11 @@ interface IMidasDepositVault {
     /// @param amountToken Amount of tokenIn to deposit (decimals 18)
     /// @param referrerId Referrer identifier (can be bytes32(0) if none)
     /// @return requestId Unique ID for tracking the mint request
-    function depositRequest(address tokenIn, uint256 amountToken, bytes32 referrerId)
-        external
-        returns (uint256 requestId);
+    function depositRequest(
+        address tokenIn,
+        uint256 amountToken,
+        bytes32 referrerId
+    ) external returns (uint256 requestId);
 
     /// @notice Get deposit request details by ID
     /// @param requestId The ID of the deposit request

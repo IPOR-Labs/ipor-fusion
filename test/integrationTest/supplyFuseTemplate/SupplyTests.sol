@@ -6,7 +6,12 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {TestAccountSetup} from "./TestAccountSetup.sol";
 import {TestPriceOracleSetup} from "./TestPriceOracleSetup.sol";
 import {TestVaultSetup} from "./TestVaultSetup.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FuseAction
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 abstract contract SupplyTest is TestAccountSetup, TestPriceOracleSetup, TestVaultSetup {

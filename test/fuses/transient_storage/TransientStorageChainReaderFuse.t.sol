@@ -2,7 +2,12 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {TransientStorageChainReaderFuse, ExternalCalls, ExternalCall, ReadDataFromResponse} from "../../../contracts/fuses/transient_storage/TransientStorageChainReaderFuse.sol";
+import {
+    TransientStorageChainReaderFuse,
+    ExternalCalls,
+    ExternalCall,
+    ReadDataFromResponse
+} from "../../../contracts/fuses/transient_storage/TransientStorageChainReaderFuse.sol";
 import {DataType, TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {TransientStorageChainReaderFuseMock, MockTarget} from "./TransientStorageChainReaderFuseMock.sol";

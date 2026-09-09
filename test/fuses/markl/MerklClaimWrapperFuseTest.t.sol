@@ -59,8 +59,10 @@ contract MerklClaimWrapperFuseTest is Test {
 
         // claimRewards has no active role holder on this fork, so grant its target role to the
         // vault's real alpha signer, then drive the normal flow as the alpha.
-        uint64 claimRole = IAccessManager(ACCESS_MANAGER)
-            .getTargetFunctionRole(REWARDS_CLAIM_MANAGER, RewardsClaimManager.claimRewards.selector);
+        uint64 claimRole = IAccessManager(ACCESS_MANAGER).getTargetFunctionRole(
+            REWARDS_CLAIM_MANAGER,
+            RewardsClaimManager.claimRewards.selector
+        );
         _grantRoleViaStorage(claimRole, ALPHA);
     }
 
@@ -82,7 +84,11 @@ contract MerklClaimWrapperFuseTest is Test {
         calls[0] = FuseAction({
             fuse: address(fuse),
             data: abi.encodeWithSignature(
-                "claim(address[],uint256[],bytes32[][],address[])", tokens, amounts, proofs, receivedTokens
+                "claim(address[],uint256[],bytes32[][],address[])",
+                tokens,
+                amounts,
+                proofs,
+                receivedTokens
             )
         });
 
@@ -114,7 +120,8 @@ contract MerklClaimWrapperFuseTest is Test {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
         vm.expectRevert(
             abi.encodeWithSelector(
-                MerklClaimWrapperFuse.MerklClaimWrapperFuseDistributorZeroAddress.selector, predicted
+                MerklClaimWrapperFuse.MerklClaimWrapperFuseDistributorZeroAddress.selector,
+                predicted
             )
         );
         new MerklClaimWrapperFuse(IporFusionMarkets.MERKL, address(0));
@@ -131,7 +138,8 @@ contract MerklClaimWrapperFuseTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                MerklClaimWrapperFuse.MerklClaimWrapperFuseRewardsClaimManagerZeroAddress.selector, address(fuse)
+                MerklClaimWrapperFuse.MerklClaimWrapperFuseRewardsClaimManagerZeroAddress.selector,
+                address(fuse)
             )
         );
         fuse.claim(tokens, amounts, proofs, receivedTokens);
@@ -155,7 +163,11 @@ contract MerklClaimWrapperFuseTest is Test {
         calls[0] = FuseAction({
             fuse: address(fuse),
             data: abi.encodeWithSignature(
-                "claim(address[],uint256[],bytes32[][],address[])", tokens, amounts, proofs, receivedTokens
+                "claim(address[],uint256[],bytes32[][],address[])",
+                tokens,
+                amounts,
+                proofs,
+                receivedTokens
             )
         });
 
@@ -163,7 +175,8 @@ contract MerklClaimWrapperFuseTest is Test {
         // assert the selector is present in the revert.
         vm.expectRevert(
             abi.encodeWithSelector(
-                MerklClaimWrapperFuse.MerklClaimWrapperFuseInvalidInputLengths.selector, address(fuse)
+                MerklClaimWrapperFuse.MerklClaimWrapperFuseInvalidInputLengths.selector,
+                address(fuse)
             )
         );
         vm.prank(ALPHA);
@@ -191,13 +204,18 @@ contract MerklClaimWrapperFuseTest is Test {
         calls[0] = FuseAction({
             fuse: address(fuse),
             data: abi.encodeWithSignature(
-                "claim(address[],uint256[],bytes32[][],address[])", tokens, amounts, proofs, receivedTokens
+                "claim(address[],uint256[],bytes32[][],address[])",
+                tokens,
+                amounts,
+                proofs,
+                receivedTokens
             )
         });
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                MerklClaimWrapperFuse.MerklClaimWrapperFuseUnsupportedReceivedToken.selector, WRAPPER
+                MerklClaimWrapperFuse.MerklClaimWrapperFuseUnsupportedReceivedToken.selector,
+                WRAPPER
             )
         );
         vm.prank(ALPHA);
@@ -234,7 +252,11 @@ contract MerklClaimWrapperFuseTest is Test {
         calls[0] = FuseAction({
             fuse: address(fuse),
             data: abi.encodeWithSignature(
-                "claim(address[],uint256[],bytes32[][],address[])", tokens, amounts, proofs, receivedTokens
+                "claim(address[],uint256[],bytes32[][],address[])",
+                tokens,
+                amounts,
+                proofs,
+                receivedTokens
             )
         });
 
@@ -248,7 +270,9 @@ contract MerklClaimWrapperFuseTest is Test {
 
         // The zero-delta WRAPPER must not have been forwarded.
         assertEq(
-            IERC20(WRAPPER).balanceOf(REWARDS_CLAIM_MANAGER), rcmWrapperBefore, "Zero-delta token must not be forwarded"
+            IERC20(WRAPPER).balanceOf(REWARDS_CLAIM_MANAGER),
+            rcmWrapperBefore,
+            "Zero-delta token must not be forwarded"
         );
 
         // The positive-delta token must have been forwarded to the RCM. The fork is pinned, so the
@@ -281,7 +305,7 @@ contract MerklClaimWrapperFuseTest is Test {
         bytes32 roleBase = keccak256(abi.encode(roleId, uint256(1)));
         bytes32 accessSlot = keccak256(abi.encode(account, roleBase));
         vm.store(ACCESS_MANAGER, accessSlot, bytes32(uint256(1)));
-        (bool ok,) = IAccessManager(ACCESS_MANAGER).hasRole(roleId, account);
+        (bool ok, ) = IAccessManager(ACCESS_MANAGER).hasRole(roleId, account);
         require(ok, "role grant via storage failed");
     }
 

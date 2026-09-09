@@ -8,9 +8,15 @@ import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {MoonwellSupplyFuseEnterData, MoonwellSupplyFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
+import {
+    MoonwellSupplyFuseEnterData,
+    MoonwellSupplyFuseExitData
+} from "../../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
 import {MoonwellHelperLib} from "../../../contracts/fuses/moonwell/MoonwellHelperLib.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";

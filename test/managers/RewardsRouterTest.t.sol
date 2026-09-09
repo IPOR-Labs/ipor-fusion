@@ -87,10 +87,7 @@ contract RewardsRouterTest is Test {
         _accessManager.setTargetFunctionRole(address(_rewardsManager), sel, role);
     }
 
-    function _one(
-        address target,
-        bytes memory data
-    ) private pure returns (IRewardsRouter.ExecuteCall[] memory c) {
+    function _one(address target, bytes memory data) private pure returns (IRewardsRouter.ExecuteCall[] memory c) {
         c = new IRewardsRouter.ExecuteCall[](1);
         c[0] = IRewardsRouter.ExecuteCall({target: target, data: data});
     }

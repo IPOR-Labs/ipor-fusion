@@ -5,7 +5,10 @@ import {Test} from "forge-std/Test.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Erc4626SupplyFuse} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {
+    Erc4626SupplyFuseEnterData,
+    Erc4626SupplyFuseExitData
+} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {IWETH9} from "./IWETH9.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
@@ -40,7 +43,9 @@ contract Erc4626SupplyFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
-        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0}));
+        vaultMock.enterErc4626Supply(
+            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0})
+        );
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -111,13 +116,17 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0}));
+        vaultMock.enterErc4626Supply(
+            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0})
+        );
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
 
         // when
-        vaultMock.exitErc4626Supply(Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2, maxSharesBurned: 0}));
+        vaultMock.exitErc4626Supply(
+            Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2, maxSharesBurned: 0})
+        );
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -144,7 +153,9 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0}));
+        vaultMock.enterErc4626Supply(
+            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0})
+        );
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
@@ -325,7 +336,9 @@ contract Erc4626SupplyFuseTest is Test {
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
 
         // when
-        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0}));
+        vaultMock.enterErc4626Supply(
+            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0})
+        );
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -351,13 +364,17 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0}));
+        vaultMock.enterErc4626Supply(
+            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0})
+        );
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
 
         // when
-        vaultMock.exitErc4626Supply(Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2, maxSharesBurned: 0}));
+        vaultMock.exitErc4626Supply(
+            Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2, maxSharesBurned: 0})
+        );
 
         // then
         uint256 balanceAfter = ERC20(vault.asset()).balanceOf(address(vaultMock));
@@ -384,7 +401,9 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0}));
+        vaultMock.enterErc4626Supply(
+            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0})
+        );
 
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
 
@@ -427,7 +446,11 @@ contract Erc4626SupplyFuseTest is Test {
             )
         );
         vaultMock.enterErc4626Supply(
-            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: type(uint256).max})
+            Erc4626SupplyFuseEnterData({
+                vault: marketAddress,
+                vaultAssetAmount: amount,
+                minSharesOut: type(uint256).max
+            })
         );
     }
 
@@ -484,7 +507,9 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0}));
+        vaultMock.enterErc4626Supply(
+            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0})
+        );
 
         // when
         vm.expectRevert(
@@ -518,13 +543,19 @@ contract Erc4626SupplyFuseTest is Test {
         address[] memory assets = new address[](1);
         assets[0] = address(vault);
         vaultMock.grantAssetsToMarket(fuse.MARKET_ID(), assets);
-        vaultMock.enterErc4626Supply(Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0}));
+        vaultMock.enterErc4626Supply(
+            Erc4626SupplyFuseEnterData({vault: marketAddress, vaultAssetAmount: amount, minSharesOut: 0})
+        );
 
         uint256 expectedShares = vault.previewWithdraw(amount / 2);
 
         // when
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2, maxSharesBurned: expectedShares})
+            Erc4626SupplyFuseExitData({
+                vault: marketAddress,
+                vaultAssetAmount: amount / 2,
+                maxSharesBurned: expectedShares
+            })
         );
 
         // then
@@ -595,11 +626,18 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
         // Verify that maxWithdraw < convertToAssets (the fee creates the gap)
         uint256 maxWithdrawAmount = feeVault.maxWithdraw(address(vaultMock));
         uint256 convertToAssetsAmount = feeVault.convertToAssets(sharesBefore);
-        assertTrue(maxWithdrawAmount < convertToAssetsAmount, "maxWithdraw should be less than convertToAssets for fee vault");
+        assertTrue(
+            maxWithdrawAmount < convertToAssetsAmount,
+            "maxWithdraw should be less than convertToAssets for fee vault"
+        );
 
         // when - request full exit (type(uint256).max to trigger cap)
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: type(uint256).max, maxSharesBurned: 0})
+            Erc4626SupplyFuseExitData({
+                vault: address(feeVault),
+                vaultAssetAmount: type(uint256).max,
+                maxSharesBurned: 0
+            })
         );
 
         // then
@@ -671,13 +709,21 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
         // Verify standard vault: maxWithdraw == convertToAssets
         uint256 maxWithdrawAmount = standardVault.maxWithdraw(address(vaultMock));
         uint256 convertToAssetsAmount = standardVault.convertToAssets(sharesBefore);
-        assertEq(maxWithdrawAmount, convertToAssetsAmount, "maxWithdraw should equal convertToAssets for standard vault");
+        assertEq(
+            maxWithdrawAmount,
+            convertToAssetsAmount,
+            "maxWithdraw should equal convertToAssets for standard vault"
+        );
 
         uint256 balanceBefore = underlyingToken.balanceOf(address(vaultMock));
 
         // when - full exit
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: address(standardVault), vaultAssetAmount: type(uint256).max, maxSharesBurned: 0})
+            Erc4626SupplyFuseExitData({
+                vault: address(standardVault),
+                vaultAssetAmount: type(uint256).max,
+                maxSharesBurned: 0
+            })
         );
 
         // then

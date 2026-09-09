@@ -893,7 +893,10 @@ contract MidasPendingRequestsStorageLibTest is Test {
 
         // And: removable
         harness.removePendingRedemption(VAULT_A, REQUEST_ZERO);
-        assertFalse(harness.isRedemptionPending(VAULT_A, REQUEST_ZERO), "Zero redemption request ID should be removable");
+        assertFalse(
+            harness.isRedemptionPending(VAULT_A, REQUEST_ZERO),
+            "Zero redemption request ID should be removable"
+        );
     }
 
     /// @dev B.5 — max uint256 request ID for redemption: full lifecycle

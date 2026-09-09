@@ -48,7 +48,11 @@ contract MockMidasDepositVault is IMidasDepositVault {
         revert("MockMidasDepositVault: not implemented");
     }
 
-    function depositRequest(address tokenIn, uint256 amountToken, bytes32 referrerId) external override returns (uint256 requestId) {
+    function depositRequest(
+        address tokenIn,
+        uint256 amountToken,
+        bytes32 referrerId
+    ) external override returns (uint256 requestId) {
         lastTokenIn = tokenIn;
         lastAmountToken = amountToken;
         lastReferrerId = referrerId;

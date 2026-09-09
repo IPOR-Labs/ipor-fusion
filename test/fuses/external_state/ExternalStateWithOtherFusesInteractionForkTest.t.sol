@@ -66,7 +66,9 @@ contract ExternalStateWithOtherFusesInteractionForkTest is ExternalStateForkTest
         deal(DAI, _executorAddress(), daiAirdrop);
 
         // Rescue on the tracked ASSET substrate reverts.
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden.selector, USDC));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden.selector, USDC)
+        );
         _executeFuse(address(rescueFuse), abi.encodeCall(rescueFuse.rescue, (USDC)));
 
         // Executor still holds the USDC — rescue did NOT execute.
@@ -102,7 +104,11 @@ contract ExternalStateWithOtherFusesInteractionForkTest is ExternalStateForkTest
         PlasmaVaultGovernance(address(vault)).addFuses(fuses);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateMultipleMarketsNotSupported.selector, MARKET_ID, MARKET_ID + 1)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateMultipleMarketsNotSupported.selector,
+                MARKET_ID,
+                MARKET_ID + 1
+            )
         );
         _executeFuse(address(secondOpFuse), abi.encodeCall(secondOpFuse.createExecutor, ()));
     }
@@ -127,4 +133,3 @@ contract ExternalStateWithOtherFusesInteractionForkTest is ExternalStateForkTest
         assertEq(marketAValue2, marketAValue, "ExternalState fuse value stable across reads");
     }
 }
-

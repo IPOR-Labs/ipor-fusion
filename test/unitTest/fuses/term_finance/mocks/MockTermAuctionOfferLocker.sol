@@ -133,11 +133,7 @@ contract MockTermAuctionOfferLocker {
         }
     }
 
-    function revealOffers(
-        bytes32[] calldata ids_,
-        uint256[] calldata prices_,
-        uint256[] calldata nonces_
-    ) external {
+    function revealOffers(bytes32[] calldata ids_, uint256[] calldata prices_, uint256[] calldata nonces_) external {
         if (revealOffersReverts) revert("MockOfferLocker: revealOffers reverts");
         for (uint256 i; i < ids_.length; ++i) {
             IExtTermAuctionOfferLocker.TermAuctionOffer storage o = offers[ids_[i]];

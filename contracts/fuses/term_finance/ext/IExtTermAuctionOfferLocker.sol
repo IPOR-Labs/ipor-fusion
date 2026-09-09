@@ -28,11 +28,7 @@ interface IExtTermAuctionOfferLocker {
 
     function lockOffers(TermAuctionOfferSubmission[] calldata offerSubmissions) external returns (bytes32[] memory);
 
-    function revealOffers(
-        bytes32[] calldata ids,
-        uint256[] calldata prices,
-        uint256[] calldata nonces
-    ) external;
+    function revealOffers(bytes32[] calldata ids, uint256[] calldata prices, uint256[] calldata nonces) external;
 
     function unlockOffers(bytes32[] calldata ids) external;
 

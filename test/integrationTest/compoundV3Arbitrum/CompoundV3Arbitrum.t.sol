@@ -4,7 +4,11 @@ pragma solidity 0.8.30;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MarketBalanceFuseConfig, MarketSubstratesConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuse,
+    CompoundV3SupplyFuseEnterData,
+    CompoundV3SupplyFuseExitData
+} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {CompoundV3BalanceFuse} from "../../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
 

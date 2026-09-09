@@ -33,8 +33,9 @@ contract TermFinancePendingOffersStorageLibTest is Test {
         assertEq(servicers.length, 1);
         assertEq(servicers[0], SRV_A);
 
-        (address[] memory offerLockers, bytes32[] memory ids, uint256[] memory amounts) = h
-            .getPendingOffersForServicer(SRV_A);
+        (address[] memory offerLockers, bytes32[] memory ids, uint256[] memory amounts) = h.getPendingOffersForServicer(
+            SRV_A
+        );
         assertEq(offerLockers.length, 1);
         assertEq(offerLockers[0], LOCKER_A);
         assertEq(ids.length, 1);
@@ -63,8 +64,9 @@ contract TermFinancePendingOffersStorageLibTest is Test {
         // Same id, different locker (simulates latest enter wins).
         h.addPendingOffer(SRV_A, LOCKER_A2, ID_1, 9_999);
 
-        (address[] memory offerLockers, bytes32[] memory ids, uint256[] memory amounts) = h
-            .getPendingOffersForServicer(SRV_A);
+        (address[] memory offerLockers, bytes32[] memory ids, uint256[] memory amounts) = h.getPendingOffersForServicer(
+            SRV_A
+        );
         // Per-id Locker AND amount are refreshed; entry not duplicated. This keeps NAV accurate
         // when the locker returns a colliding id (defensive against bugs / malicious upstream).
         assertEq(offerLockers.length, 1);
@@ -181,8 +183,9 @@ contract TermFinancePendingOffersStorageLibTest is Test {
     // ============ getters ============
 
     function test_get_emptyServicer_returnsEmptyArrays() public view {
-        (address[] memory offerLockers, bytes32[] memory ids, uint256[] memory amounts) = h
-            .getPendingOffersForServicer(SRV_A);
+        (address[] memory offerLockers, bytes32[] memory ids, uint256[] memory amounts) = h.getPendingOffersForServicer(
+            SRV_A
+        );
         assertEq(offerLockers.length, 0);
         assertEq(ids.length, 0);
         assertEq(amounts.length, 0);
@@ -220,8 +223,9 @@ contract TermFinancePendingOffersStorageLibTest is Test {
         // Cycle N+1 — fresh locker, same servicer, different id.
         h.addPendingOffer(SRV_A, LOCKER_A2, ID_2, 5_000);
 
-        (address[] memory lockers, bytes32[] memory ids, uint256[] memory amounts) = h
-            .getPendingOffersForServicer(SRV_A);
+        (address[] memory lockers, bytes32[] memory ids, uint256[] memory amounts) = h.getPendingOffersForServicer(
+            SRV_A
+        );
 
         assertEq(lockers.length, 2);
         assertEq(ids.length, 2);

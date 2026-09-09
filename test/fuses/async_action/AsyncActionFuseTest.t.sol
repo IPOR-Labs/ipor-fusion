@@ -2,9 +2,20 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {AsyncActionFuse, AsyncActionFuseEnterData, AsyncActionFuseExitData} from "../../../contracts/fuses/async_action/AsyncActionFuse.sol";
+import {
+    AsyncActionFuse,
+    AsyncActionFuseEnterData,
+    AsyncActionFuseExitData
+} from "../../../contracts/fuses/async_action/AsyncActionFuse.sol";
 import {AsyncActionBalanceFuse} from "../../../contracts/fuses/async_action/AsyncActionBalanceFuse.sol";
-import {AsyncActionFuseLib, AllowedAmountToOutside, AllowedTargets, AllowedSlippage, AsyncActionFuseSubstrate, AsyncActionFuseSubstrateType} from "../../../contracts/fuses/async_action/AsyncActionFuseLib.sol";
+import {
+    AsyncActionFuseLib,
+    AllowedAmountToOutside,
+    AllowedTargets,
+    AllowedSlippage,
+    AsyncActionFuseSubstrate,
+    AsyncActionFuseSubstrateType
+} from "../../../contracts/fuses/async_action/AsyncActionFuseLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -17,7 +28,10 @@ import {MockEthReceiver} from "./MockEthReceiver.sol";
 import {ReadAsyncExecutor} from "../../../contracts/readers/ReadAsyncExecutor.sol";
 import {UniversalReader, ReadResult} from "../../../contracts/universal_reader/UniversalReader.sol";
 import {AsyncExecutor} from "../../../contracts/fuses/async_action/AsyncExecutor.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 

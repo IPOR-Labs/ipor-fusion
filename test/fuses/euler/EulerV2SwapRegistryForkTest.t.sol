@@ -11,8 +11,16 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contract
 import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
 import {EulerV2SupplyFuse, EulerV2SupplyFuseEnterData} from "../../../contracts/fuses/euler/EulerV2SupplyFuse.sol";
 import {EulerV2BalanceFuse} from "../../../contracts/fuses/euler/EulerV2BalanceFuse.sol";
-import {EulerV2SwapDeployFuse, EulerV2SwapDeployFuseEnterData, EulerV2SwapDeployFuseExitData} from "../../../contracts/fuses/euler/EulerV2SwapDeployFuse.sol";
-import {EulerV2SwapRegistryFuse, EulerV2SwapRegistryFuseEnterData, EulerV2SwapRegistryFuseExitData} from "../../../contracts/fuses/euler/EulerV2SwapRegistryFuse.sol";
+import {
+    EulerV2SwapDeployFuse,
+    EulerV2SwapDeployFuseEnterData,
+    EulerV2SwapDeployFuseExitData
+} from "../../../contracts/fuses/euler/EulerV2SwapDeployFuse.sol";
+import {
+    EulerV2SwapRegistryFuse,
+    EulerV2SwapRegistryFuseEnterData,
+    EulerV2SwapRegistryFuseExitData
+} from "../../../contracts/fuses/euler/EulerV2SwapRegistryFuse.sol";
 import {IEulerV2Swap} from "../../../contracts/fuses/euler/ext/IEulerV2Swap.sol";
 import {IEulerV2SwapFactory} from "../../../contracts/fuses/euler/ext/IEulerV2SwapFactory.sol";
 import {IEulerV2SwapRegistry} from "../../../contracts/fuses/euler/ext/IEulerV2SwapRegistry.sol";
@@ -26,7 +34,12 @@ import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovern
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
@@ -75,8 +88,7 @@ contract EulerV2SwapRegistryForkTest is Test {
 
     // Hook-flag constraint (Uniswap-v4 hook address bits) — identical to EulerV2SwapForkTest.
     uint160 private constant _HOOK_FLAG_MASK = uint160((1 << 14) - 1); // 0x3FFF
-    uint160 private constant _HOOK_FLAG_REQUIRED =
-        uint160((1 << 13) | (1 << 11) | (1 << 7) | (1 << 5) | (1 << 3)); // 0x28A8
+    uint160 private constant _HOOK_FLAG_REQUIRED = uint160((1 << 13) | (1 << 11) | (1 << 7) | (1 << 5) | (1 << 3)); // 0x28A8
 
     function setUp() public {
         // Pinned recent Base block for deterministic state (same as EulerV2SwapForkTest).
@@ -397,7 +409,10 @@ contract EulerV2SwapRegistryForkTest is Test {
     }
 
     function _decommissionAction(address pool) private view returns (FuseAction memory action) {
-        EulerV2SwapDeployFuseExitData memory data = EulerV2SwapDeployFuseExitData({pool: pool, subAccount: _SUB_ACCOUNT});
+        EulerV2SwapDeployFuseExitData memory data = EulerV2SwapDeployFuseExitData({
+            pool: pool,
+            subAccount: _SUB_ACCOUNT
+        });
         action = FuseAction({
             fuse: _eulerSwapDeployFuse,
             data: abi.encodeWithSignature("exit((address,bytes1))", data)
@@ -444,10 +459,7 @@ contract EulerV2SwapRegistryForkTest is Test {
         // still authorized as the EVC account operator. Decommission the pool (DeployFuse.exit removes
         // the operator) before unregistering — this mirrors the real teardown order.
         _execute(_decommissionAction(pool));
-        assertFalse(
-            IEVC(_EVC).isAccountOperatorAuthorized(_eulerAccount, pool),
-            "operator removed before unregister"
-        );
+        assertFalse(IEVC(_EVC).isAccountOperatorAuthorized(_eulerAccount, pool), "operator removed before unregister");
 
         // when — unregister
         _execute(_unregisterAction(pool));
@@ -470,10 +482,7 @@ contract EulerV2SwapRegistryForkTest is Test {
         );
 
         // when / then
-        bytes memory err = abi.encodeWithSignature(
-            "EulerV2SwapRegistryFuseNotRegistered(address)",
-            _eulerAccount
-        );
+        bytes memory err = abi.encodeWithSignature("EulerV2SwapRegistryFuseNotRegistered(address)", _eulerAccount);
 
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = _unregisterAction(pool);

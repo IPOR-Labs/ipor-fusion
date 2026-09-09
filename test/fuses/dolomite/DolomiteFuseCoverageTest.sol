@@ -15,9 +15,21 @@ import {WETHPriceFeed} from "../../../contracts/price_oracle/price_feed/WETHPric
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
-import {DolomiteSupplyFuse, DolomiteSupplyFuseEnterData, DolomiteSupplyFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteSupplyFuse.sol";
-import {DolomiteBorrowFuse, DolomiteBorrowFuseEnterData, DolomiteBorrowFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteBorrowFuse.sol";
-import {DolomiteCollateralFuse, DolomiteCollateralFuseEnterData, DolomiteCollateralFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteCollateralFuse.sol";
+import {
+    DolomiteSupplyFuse,
+    DolomiteSupplyFuseEnterData,
+    DolomiteSupplyFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteSupplyFuse.sol";
+import {
+    DolomiteBorrowFuse,
+    DolomiteBorrowFuseEnterData,
+    DolomiteBorrowFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteBorrowFuse.sol";
+import {
+    DolomiteCollateralFuse,
+    DolomiteCollateralFuseEnterData,
+    DolomiteCollateralFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteCollateralFuse.sol";
 import {DolomiteBalanceFuse} from "../../../contracts/fuses/dolomite/DolomiteBalanceFuse.sol";
 import {DolomiteFuseLib, DolomiteSubstrate} from "../../../contracts/fuses/dolomite/DolomiteFuseLib.sol";
 import {IDolomiteMargin} from "../../../contracts/fuses/dolomite/ext/IDolomiteMargin.sol";

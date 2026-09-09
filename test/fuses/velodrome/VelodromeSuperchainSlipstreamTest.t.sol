@@ -11,13 +11,34 @@ import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactor
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {VelodromeSuperchainSlipstreamBalanceFuse} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalanceFuse.sol";
-import {VelodromeSuperchainSlipstreamCollectFuse, VelodromeSuperchainSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
-import {VelodromeSuperchainSlipstreamLeafCLGaugeFuse, VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData, VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol";
-import {VelodromeSuperchainSlipstreamModifyPositionFuse, VelodromeSuperchainSlipstreamModifyPositionFuseEnterData, VelodromeSuperchainSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol";
-import {VelodromeSuperchainSlipstreamNewPositionFuse, VelodromeSuperchainSlipstreamNewPositionFuseEnterData} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamSubstrateLib.sol";
+import {
+    VelodromeSuperchainSlipstreamCollectFuse,
+    VelodromeSuperchainSlipstreamCollectFuseEnterData
+} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol";
+import {
+    VelodromeSuperchainSlipstreamLeafCLGaugeFuse,
+    VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData,
+    VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData
+} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol";
+import {
+    VelodromeSuperchainSlipstreamModifyPositionFuse,
+    VelodromeSuperchainSlipstreamModifyPositionFuseEnterData,
+    VelodromeSuperchainSlipstreamModifyPositionFuseExitData
+} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol";
+import {
+    VelodromeSuperchainSlipstreamNewPositionFuse,
+    VelodromeSuperchainSlipstreamNewPositionFuseEnterData
+} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol";
+import {
+    VelodromeSuperchainSlipstreamSubstrateLib,
+    VelodromeSuperchainSlipstreamSubstrateType,
+    VelodromeSuperchainSlipstreamSubstrate
+} from "../../../contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILeafGauge.sol";
 import {ILeafCLGauge} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/ILeafCLGauge.sol";
 import {INonfungiblePositionManager} from "../../../contracts/fuses/velodrome_superchain_slipstream/ext/INonfungiblePositionManager.sol";

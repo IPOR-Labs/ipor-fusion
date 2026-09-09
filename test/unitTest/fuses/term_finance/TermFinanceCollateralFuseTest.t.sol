@@ -106,24 +106,24 @@ contract TermFinanceCollateralFuseTest is Test {
         vm.store(address(harness), WITHDRAW_MANAGER_SLOT, bytes32(uint256(uint160(manager_))));
     }
 
-    function _enterData(
-        uint256 amount_
-    ) internal view returns (TermFinanceCollateralFuseEnterData memory) {
-        return TermFinanceCollateralFuseEnterData({
-            servicer: address(servicer),
-            collateralManager: address(collateralManager),
-            collateralToken: address(collateralToken),
-            amount: amount_
-        });
+    function _enterData(uint256 amount_) internal view returns (TermFinanceCollateralFuseEnterData memory) {
+        return
+            TermFinanceCollateralFuseEnterData({
+                servicer: address(servicer),
+                collateralManager: address(collateralManager),
+                collateralToken: address(collateralToken),
+                amount: amount_
+            });
     }
 
     function _exitData(uint256 amount_) internal view returns (TermFinanceCollateralFuseExitData memory) {
-        return TermFinanceCollateralFuseExitData({
-            servicer: address(servicer),
-            collateralManager: address(collateralManager),
-            collateralToken: address(collateralToken),
-            amount: amount_
-        });
+        return
+            TermFinanceCollateralFuseExitData({
+                servicer: address(servicer),
+                collateralManager: address(collateralManager),
+                collateralToken: address(collateralToken),
+                amount: amount_
+            });
     }
 
     function _setupLockedPosition(uint256 amount_) internal {
@@ -449,10 +449,7 @@ contract TermFinanceCollateralFuseTest is Test {
 
         // Should not revert on the accepted-token check.
         harness.enter(_enterData(1e18));
-        assertEq(
-            collateralManager.getCollateralBalance(address(harness), address(collateralToken)),
-            1e18
-        );
+        assertEq(collateralManager.getCollateralBalance(address(harness), address(collateralToken)), 1e18);
     }
 
     function testExitShouldRevertWhenCollateralTokenNotAcceptedByManager() public {

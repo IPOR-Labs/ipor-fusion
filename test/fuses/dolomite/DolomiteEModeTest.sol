@@ -14,7 +14,11 @@ import {WETHPriceFeed} from "../../../contracts/price_oracle/price_feed/WETHPric
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
-import {DolomiteEModeFuse, DolomiteEModeFuseEnterData, DolomiteEModeFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteEModeFuse.sol";
+import {
+    DolomiteEModeFuse,
+    DolomiteEModeFuseEnterData,
+    DolomiteEModeFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteEModeFuse.sol";
 import {DolomiteSupplyFuse} from "../../../contracts/fuses/dolomite/DolomiteSupplyFuse.sol";
 import {DolomiteBalanceFuse} from "../../../contracts/fuses/dolomite/DolomiteBalanceFuse.sol";
 import {DolomiteFuseLib, DolomiteSubstrate} from "../../../contracts/fuses/dolomite/DolomiteFuseLib.sol";

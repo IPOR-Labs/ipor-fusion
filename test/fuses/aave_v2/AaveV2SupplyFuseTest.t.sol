@@ -5,7 +5,11 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {AaveLendingPoolV2, ReserveData} from "../../../contracts/fuses/aave_v2/ext/AaveLendingPoolV2.sol";
-import {AaveV2SupplyFuse, AaveV2SupplyFuseEnterData, AaveV2SupplyFuseExitData} from "../../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
+import {
+    AaveV2SupplyFuse,
+    AaveV2SupplyFuseEnterData,
+    AaveV2SupplyFuseExitData
+} from "../../../contracts/fuses/aave_v2/AaveV2SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";

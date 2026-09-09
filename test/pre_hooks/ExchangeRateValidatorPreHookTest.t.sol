@@ -9,7 +9,13 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {ExchangeRateValidatorConfigLib, ExchangeRateValidatorConfig, HookType, ValidatorData, Hook} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
+import {
+    ExchangeRateValidatorConfigLib,
+    ExchangeRateValidatorConfig,
+    HookType,
+    ValidatorData,
+    Hook
+} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
 import {SimpleExecutePreHook} from "./SimpleExecutePreHook.sol";
 
 /// @title ExchangeRateValidatorPreHookTest

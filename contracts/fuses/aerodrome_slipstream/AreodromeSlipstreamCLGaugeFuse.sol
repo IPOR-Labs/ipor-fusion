@@ -5,7 +5,11 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrateType,
+    AreodromeSlipstreamSubstrate
+} from "./AreodromeSlipstreamLib.sol";
 import {ICLGauge} from "./ext/ICLGauge.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 

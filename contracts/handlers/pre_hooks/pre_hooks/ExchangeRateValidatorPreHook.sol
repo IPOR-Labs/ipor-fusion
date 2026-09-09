@@ -4,7 +4,13 @@ pragma solidity 0.8.30;
 import {IPreHook} from "../IPreHook.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
-import {ExchangeRateValidatorConfigLib, Hook, ValidatorData, HookType, ExchangeRateValidatorConfig} from "./ExchangeRateValidatorConfigLib.sol";
+import {
+    ExchangeRateValidatorConfigLib,
+    Hook,
+    ValidatorData,
+    HookType,
+    ExchangeRateValidatorConfig
+} from "./ExchangeRateValidatorConfigLib.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title ExchangeRateValidatorPreHook

@@ -24,7 +24,12 @@ contract ExternalStateStalenessForkTest is ExternalStateForkTestBase {
         vm.warp(block.timestamp + STALENESS_MAX_S + 1);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStatePreHookStale.selector, lastUpdated, block.timestamp, STALENESS_MAX_S)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStatePreHookStale.selector,
+                lastUpdated,
+                block.timestamp,
+                STALENESS_MAX_S
+            )
         );
         vm.prank(user);
         vault.deposit(1e6, user);
@@ -74,7 +79,12 @@ contract ExternalStateStalenessForkTest is ExternalStateForkTestBase {
 
         // The pre-hook must use oldest (accountA) and revert.
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStatePreHookStale.selector, tA, block.timestamp, STALENESS_MAX_S)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStatePreHookStale.selector,
+                tA,
+                block.timestamp,
+                STALENESS_MAX_S
+            )
         );
         vm.prank(user);
         vault.deposit(1e6, user);

@@ -110,12 +110,13 @@ contract TermFinanceBidRevealFuseTest is Test {
         uint256[] memory prices_,
         uint256[] memory nonces_
     ) internal view returns (TermFinanceBidRevealFuseEnterData memory) {
-        return TermFinanceBidRevealFuseEnterData({
-            bidLocker: address(bidLocker),
-            bidIds: ids_,
-            bidPrices: prices_,
-            bidNonces: nonces_
-        });
+        return
+            TermFinanceBidRevealFuseEnterData({
+                bidLocker: address(bidLocker),
+                bidIds: ids_,
+                bidPrices: prices_,
+                bidNonces: nonces_
+            });
     }
 
     // ============ constructor ============
@@ -141,10 +142,7 @@ contract TermFinanceBidRevealFuseTest is Test {
     function testConstructorShouldNotRevertWhenWithdrawManagerIsZero() public {
         // No `vm.store` of WITHDRAW_MANAGER_SLOT — fresh deployment runs in a context where
         // the slot is empty. Plain `new`'ing the harness must succeed.
-        TermFinanceBidRevealFuseHarness fresh = new TermFinanceBidRevealFuseHarness(
-            MARKET_ID,
-            address(controller)
-        );
+        TermFinanceBidRevealFuseHarness fresh = new TermFinanceBidRevealFuseHarness(MARKET_ID, address(controller));
         assertEq(fresh.MARKET_ID(), MARKET_ID);
     }
 
@@ -252,7 +250,8 @@ contract TermFinanceBidRevealFuseTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceBidRevealFuse.TermFinanceBidRevealFuseBidLockerNotDeployed.selector, address(spoof)
+                TermFinanceBidRevealFuse.TermFinanceBidRevealFuseBidLockerNotDeployed.selector,
+                address(spoof)
             )
         );
         harness.enter(data);

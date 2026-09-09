@@ -2,7 +2,13 @@
 pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
-import {PlasmaVault, PlasmaVaultInitData, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    FuseAction,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -39,7 +45,10 @@ import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOrac
 import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 import {StakeDaoV2BalanceFuse} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2BalanceFuse.sol";
-import {StakeDaoV2SupplyFuse, StakeDaoV2SupplyFuseEnterData} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol";
+import {
+    StakeDaoV2SupplyFuse,
+    StakeDaoV2SupplyFuseEnterData
+} from "../../../contracts/fuses/stake_dao_v2/StakeDaoV2SupplyFuse.sol";
 import {StakeDaoV2ClaimFuse} from "../../../contracts/rewards_fuses/stake_dao_v2/StakeDaoV2ClaimFuse.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IAccountant} from "../../../contracts/fuses/stake_dao_v2/ext/IAccountant.sol";
@@ -47,7 +56,10 @@ import {IRewardVault} from "../../../contracts/fuses/stake_dao_v2/ext/IRewardVau
 import {SimpleMockAccountant} from "./mocks/SimpleMockAccountant.sol";
 import {MockRewardVault} from "./mocks/MockRewardVault.sol";
 import {BalanceFusesReader} from "../../../contracts/readers/BalanceFusesReader.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 

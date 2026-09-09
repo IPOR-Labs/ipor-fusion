@@ -22,8 +22,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
 
     /// @dev VestingData storage slot — same constant as RewardsClaimManagersStorageLib.
     /// Used by helpers to materialise contrived storage states (incident replay).
-    bytes32 private constant _VESTING_DATA_SLOT =
-        0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc00;
+    bytes32 private constant _VESTING_DATA_SLOT = 0x6ab1bcc6104660f940addebf2a0f1cdfdd8fb6e9a4305fcd73bc32a2bcbabc00;
 
     address private _atomist;
     address private _operator;
@@ -77,11 +76,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
         slot0 |= uint256(updateBalanceTimestamp) << 32;
         slot0 |= uint256(transferredTokens) << 64;
         vm.store(address(_rcm), _VESTING_DATA_SLOT, bytes32(slot0));
-        vm.store(
-            address(_rcm),
-            bytes32(uint256(_VESTING_DATA_SLOT) + 1),
-            bytes32(uint256(lastUpdateBalance))
-        );
+        vm.store(address(_rcm), bytes32(uint256(_VESTING_DATA_SLOT) + 1), bytes32(uint256(lastUpdateBalance)));
     }
 
     /// @dev Read packed VestingData straight off the slot for assertions.
@@ -180,16 +175,11 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
         });
 
         // elapsed = 696, maxSafe = 696 * 2_016_009_048_351_496_489 / 2_200_009_874_193_100 = 637.
-        uint256 expectedMaxSafe = (uint256(696) * uint256(2_016_009_048_351_496_489)) /
-            uint256(2_200_009_874_193_100);
+        uint256 expectedMaxSafe = (uint256(696) * uint256(2_016_009_048_351_496_489)) / uint256(2_200_009_874_193_100);
 
         vm.prank(_operator);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                RewardsClaimManager.UnsafeVestingTime.selector,
-                uint256(1_814_400),
-                expectedMaxSafe
-            )
+            abi.encodeWithSelector(RewardsClaimManager.UnsafeVestingTime.selector, uint256(1_814_400), expectedMaxSafe)
         );
         _rcm.setupVestingTime(1_814_400);
     }
@@ -268,11 +258,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
         // is still 1000 — passing 1001 must revert.
         vm.prank(_operator);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                RewardsClaimManager.UnsafeVestingTime.selector,
-                uint256(1_001),
-                uint256(1_000)
-            )
+            abi.encodeWithSelector(RewardsClaimManager.UnsafeVestingTime.selector, uint256(1_001), uint256(1_000))
         );
         _rcm.setupVestingTime(1_001);
     }
@@ -308,16 +294,8 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
         VestingData memory data = _readVestingData();
         assertEq(uint256(data.vestingTime), 1_814_400, "new vt persisted");
         assertEq(uint256(data.updateBalanceTimestamp), 1_779_784_631, "anchor shifted into the past");
-        assertEq(
-            uint256(data.transferredTokens),
-            2_200_009_874_193_100,
-            "transferredTokens unchanged"
-        );
-        assertEq(
-            uint256(data.lastUpdateBalance),
-            2_016_009_048_351_496_489,
-            "lastUpdateBalance unchanged"
-        );
+        assertEq(uint256(data.transferredTokens), 2_200_009_874_193_100, "transferredTokens unchanged");
+        assertEq(uint256(data.lastUpdateBalance), 2_016_009_048_351_496_489, "lastUpdateBalance unchanged");
 
         assertEq(
             _underlying.balanceOf(address(_plasmaVault)),
@@ -411,21 +389,12 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
         });
 
         // Sanity check: the linear curve (ignoring the sentinel) WOULD put us at full maturation.
-        uint256 vestedOnCurve = RewardsClaimManagersStorageLib.vestedAt(
-            1_000,
-            1 days,
-            0,
-            block.timestamp
-        );
+        uint256 vestedOnCurve = RewardsClaimManagersStorageLib.vestedAt(1_000, 1 days, 0, block.timestamp);
         assertEq(vestedOnCurve, 1_000, "linear curve is fully matured at block.timestamp");
         // ...so claimable per the curve should be 1000 - 100 = 900.
 
         // But balanceOf() hits the `updateBalanceTimestamp == 0` sentinel and returns 0.
-        assertEq(
-            _rcm.balanceOf(),
-            0,
-            "PoC: sentinel collapses balanceOf despite a fully matured curve"
-        );
+        assertEq(_rcm.balanceOf(), 0, "PoC: sentinel collapses balanceOf despite a fully matured curve");
 
         // Equivalently: a fresh rescheduleVesting(_, 0) call is now refused at the guard,
         // so this storage shape is unreachable through the public API.
@@ -481,11 +450,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
         vm.prank(_operator);
         _rcm.transferVestedTokensToVault();
 
-        assertEq(
-            _underlying.balanceOf(address(_plasmaVault)),
-            vaultBalanceBefore,
-            "no transfer during clamp window"
-        );
+        assertEq(_underlying.balanceOf(address(_plasmaVault)), vaultBalanceBefore, "no transfer during clamp window");
     }
 
     /// @notice updateBalance() must rescue the contract from the clamp window: post-call the
@@ -507,11 +472,7 @@ contract RewardsClaimManagerVestingScheduleTest is Test {
 
         VestingData memory data = _readVestingData();
         assertEq(uint256(data.transferredTokens), 0, "transferredTokens reset to zero");
-        assertEq(
-            uint256(data.updateBalanceTimestamp),
-            uint32(block.timestamp),
-            "timestamp rebased to now"
-        );
+        assertEq(uint256(data.updateBalanceTimestamp), uint32(block.timestamp), "timestamp rebased to now");
         // lastUpdateBalance must equal the IERC20 balance of the manager AFTER any drain in
         // updateBalance — during the clamp window balanceOf() returns 0, so no drain happens
         // and the live IERC20 balance is the full seed.

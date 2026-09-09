@@ -351,11 +351,7 @@ contract TermFinanceBalanceFuseTest is Test {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
-        vm.mockCallRevert(
-            address(t.servicer),
-            abi.encodeWithSignature("termRepoToken()"),
-            bytes("revert")
-        );
+        vm.mockCallRevert(address(t.servicer), abi.encodeWithSignature("termRepoToken()"), bytes("revert"));
 
         assertEq(harness.balanceOf(), 0);
     }
@@ -364,11 +360,7 @@ contract TermFinanceBalanceFuseTest is Test {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
-        vm.mockCall(
-            address(t.servicer),
-            abi.encodeWithSignature("termRepoToken()"),
-            abi.encode(address(0))
-        );
+        vm.mockCall(address(t.servicer), abi.encodeWithSignature("termRepoToken()"), abi.encode(address(0)));
 
         assertEq(harness.balanceOf(), 0);
     }
@@ -377,11 +369,7 @@ contract TermFinanceBalanceFuseTest is Test {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
-        vm.mockCallRevert(
-            address(t.servicer),
-            abi.encodeWithSignature("purchaseToken()"),
-            bytes("revert")
-        );
+        vm.mockCallRevert(address(t.servicer), abi.encodeWithSignature("purchaseToken()"), bytes("revert"));
 
         assertEq(harness.balanceOf(), 0);
     }
@@ -390,11 +378,7 @@ contract TermFinanceBalanceFuseTest is Test {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
-        vm.mockCall(
-            address(t.servicer),
-            abi.encodeWithSignature("purchaseToken()"),
-            abi.encode(address(0))
-        );
+        vm.mockCall(address(t.servicer), abi.encodeWithSignature("purchaseToken()"), abi.encode(address(0)));
 
         assertEq(harness.balanceOf(), 0);
     }
@@ -403,11 +387,7 @@ contract TermFinanceBalanceFuseTest is Test {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
-        vm.mockCallRevert(
-            address(t.repoToken),
-            abi.encodeWithSignature("decimals()"),
-            bytes("revert")
-        );
+        vm.mockCallRevert(address(t.repoToken), abi.encodeWithSignature("decimals()"), bytes("revert"));
 
         assertEq(harness.balanceOf(), 0);
     }
@@ -416,11 +396,7 @@ contract TermFinanceBalanceFuseTest is Test {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
-        vm.mockCallRevert(
-            address(t.purchaseToken),
-            abi.encodeWithSignature("decimals()"),
-            bytes("revert")
-        );
+        vm.mockCallRevert(address(t.purchaseToken), abi.encodeWithSignature("decimals()"), bytes("revert"));
 
         assertEq(harness.balanceOf(), 0);
     }
@@ -429,11 +405,7 @@ contract TermFinanceBalanceFuseTest is Test {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
-        vm.mockCallRevert(
-            address(t.repoToken),
-            abi.encodeWithSignature("redemptionValue()"),
-            bytes("revert")
-        );
+        vm.mockCallRevert(address(t.repoToken), abi.encodeWithSignature("redemptionValue()"), bytes("revert"));
 
         assertEq(harness.balanceOf(), 0);
     }
@@ -442,11 +414,7 @@ contract TermFinanceBalanceFuseTest is Test {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
-        vm.mockCallRevert(
-            address(t.servicer),
-            abi.encodeWithSignature("redemptionTimestamp()"),
-            bytes("revert")
-        );
+        vm.mockCallRevert(address(t.servicer), abi.encodeWithSignature("redemptionTimestamp()"), bytes("revert"));
 
         assertEq(harness.balanceOf(), 0);
     }
@@ -462,11 +430,7 @@ contract TermFinanceBalanceFuseTest is Test {
         vm.warp(tred + 1);
 
         // Override shortfallHaircut to revert.
-        vm.mockCallRevert(
-            address(t.servicer),
-            abi.encodeWithSignature("shortfallHaircutMantissa()"),
-            bytes("revert")
-        );
+        vm.mockCallRevert(address(t.servicer), abi.encodeWithSignature("shortfallHaircutMantissa()"), bytes("revert"));
 
         assertEq(harness.balanceOf(), 0, "shortfallHaircut revert -> 0 PV");
     }
@@ -564,9 +528,7 @@ contract TermFinanceBalanceFuseTest is Test {
     /// @dev Mirrors the bids-side semantics (`_pendingBidsValueWadForServicer`) where storage
     ///      entry presence is authoritative regardless of whether liveness can be confirmed
     ///      on the locker. Closes the silent-degradation window on the offer-side leg.
-    function testBalanceFuseRevertsOnPriceZeroForServicerPurchaseToken_pendingOfferStorageOnly_brokenLocker()
-        public
-    {
+    function testBalanceFuseRevertsOnPriceZeroForServicerPurchaseToken_pendingOfferStorageOnly_brokenLocker() public {
         Term memory t = _deployUsdcTerm(block.timestamp + SECS_7D);
         _grantSubstrate(address(t.servicer));
 
@@ -1070,9 +1032,23 @@ contract TermFinanceBalanceFuseTest is Test {
         oracle.setAssetPrice(address(coll), 1e8, 8);
 
         // Cycle N locker + live bid.
-        _registerLivePendingBid(t, _deployBidLocker(t), bytes32(uint256(0xCAFE1001)), 800_000, address(coll), 1_000_000);
+        _registerLivePendingBid(
+            t,
+            _deployBidLocker(t),
+            bytes32(uint256(0xCAFE1001)),
+            800_000,
+            address(coll),
+            1_000_000
+        );
         // Cycle N+1 locker + live bid.
-        _registerLivePendingBid(t, _deployBidLocker(t), bytes32(uint256(0xCAFE1002)), 1_500_000, address(coll), 2_500_000);
+        _registerLivePendingBid(
+            t,
+            _deployBidLocker(t),
+            bytes32(uint256(0xCAFE1002)),
+            1_500_000,
+            address(coll),
+            2_500_000
+        );
 
         uint256 nav = harness.balanceOf();
         uint256 expected = _convertUsdcToWad(1_000_000 + 2_500_000);
@@ -1089,7 +1065,14 @@ contract TermFinanceBalanceFuseTest is Test {
         // Zero-locker pending bid (no liveness call is made for it — the `bidLocker == 0` short
         // circuit at the top of `_pendingBidLegValueWad` covers this).
         (address[] memory tokens, uint256[] memory amounts) = _singleCollateral(makeAddr("phantom-coll"), 999);
-        harness.addPendingBid(address(t.servicer), address(0), bytes32(uint256(0xDEADBEEF)), 1_000_000, tokens, amounts);
+        harness.addPendingBid(
+            address(t.servicer),
+            address(0),
+            bytes32(uint256(0xDEADBEEF)),
+            1_000_000,
+            tokens,
+            amounts
+        );
 
         // Good bid: live on the locker, contributes 500_000 USDC-equivalent collateral.
         MockERC20Decimals coll = new MockERC20Decimals("Collateral", "COLL", 6);
@@ -1114,7 +1097,14 @@ contract TermFinanceBalanceFuseTest is Test {
         // Cleared on locker: bidder == 0 (default struct after delete) — DON'T call setLockedBid.
         // Tracked in storage:
         (address[] memory tokens, uint256[] memory amounts) = _singleCollateral(address(coll), 1_000_000);
-        harness.addPendingBid(address(t.servicer), address(bidLocker), bytes32(uint256(0x511E)), 1_000_000, tokens, amounts);
+        harness.addPendingBid(
+            address(t.servicer),
+            address(bidLocker),
+            bytes32(uint256(0x511E)),
+            1_000_000,
+            tokens,
+            amounts
+        );
 
         uint256 nav = harness.balanceOf();
         assertEq(nav, 0, "stale (bidder==0) bid skipped, no value added");
@@ -1134,7 +1124,14 @@ contract TermFinanceBalanceFuseTest is Test {
         oracle.setAssetPrice(address(coll), 1e8, 8);
 
         (address[] memory tokens, uint256[] memory amounts) = _singleCollateral(address(coll), 1_000_000);
-        harness.addPendingBid(address(t.servicer), address(bidLocker), bytes32(uint256(0xABCD)), 1_000_000, tokens, amounts);
+        harness.addPendingBid(
+            address(t.servicer),
+            address(bidLocker),
+            bytes32(uint256(0xABCD)),
+            1_000_000,
+            tokens,
+            amounts
+        );
 
         uint256 nav = harness.balanceOf();
         assertEq(nav, 0, "lockedBid revert -> skip via try/catch");
@@ -1237,7 +1234,14 @@ contract TermFinanceBalanceFuseTest is Test {
         MockTermAuctionBidLocker bidLocker = _deployBidLocker(t);
         bidLocker.setLockedBidReverts(true);
         (address[] memory tokens, uint256[] memory amounts) = _singleCollateral(makeAddr("col"), 1);
-        harness.addPendingBid(address(t.servicer), address(bidLocker), bytes32(uint256(0xB1D7)), 1_000_000, tokens, amounts);
+        harness.addPendingBid(
+            address(t.servicer),
+            address(bidLocker),
+            bytes32(uint256(0xB1D7)),
+            1_000_000,
+            tokens,
+            amounts
+        );
 
         // Force debt read to revert.
         vm.mockCallRevert(
@@ -1535,7 +1539,14 @@ contract TermFinanceBalanceFuseTest is Test {
         t.collateralManager.externalLockCollateral(address(t.purchaseToken), 3_000_000);
 
         // Pending bid: 1.5M collateral on a live bidLocker.
-        _registerLivePendingBid(t, _deployBidLocker(t), bytes32(uint256(0xBEE7)), 800_000, address(t.purchaseToken), 1_500_000);
+        _registerLivePendingBid(
+            t,
+            _deployBidLocker(t),
+            bytes32(uint256(0xBEE7)),
+            800_000,
+            address(t.purchaseToken),
+            1_500_000
+        );
 
         // Debt: 2M face.
         t.servicer.setBorrowerRepurchaseObligation(address(harness), 2_000_000);
@@ -1584,11 +1595,7 @@ contract TermFinanceBalanceFuseTest is Test {
         bytes32 offerId = bytes32(uint256(0xABC));
         harness.addPendingOffer(address(t.servicer), address(t.offerLocker), offerId, 1_000_000);
 
-        vm.mockCall(
-            address(t.servicer),
-            abi.encodeWithSignature("purchaseToken()"),
-            abi.encode(address(0))
-        );
+        vm.mockCall(address(t.servicer), abi.encodeWithSignature("purchaseToken()"), abi.encode(address(0)));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -1781,11 +1788,7 @@ contract TermFinanceBalanceFuseTest is Test {
 
         // 100 > MAX_TOKEN_DECIMALS (30). Topology probe degrades via the cap; held leg
         // becomes a re-raise candidate because balance > 0.
-        vm.mockCall(
-            address(t.purchaseToken),
-            abi.encodeWithSignature("decimals()"),
-            abi.encode(uint8(100))
-        );
+        vm.mockCall(address(t.purchaseToken), abi.encodeWithSignature("decimals()"), abi.encode(uint8(100)));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -1805,11 +1808,7 @@ contract TermFinanceBalanceFuseTest is Test {
 
         t.servicer.setBorrowerRepurchaseObligation(address(harness), 1_000_000);
 
-        vm.mockCall(
-            address(t.purchaseToken),
-            abi.encodeWithSignature("decimals()"),
-            abi.encode(uint8(100))
-        );
+        vm.mockCall(address(t.purchaseToken), abi.encodeWithSignature("decimals()"), abi.encode(uint8(100)));
 
         vm.expectRevert(
             abi.encodeWithSelector(

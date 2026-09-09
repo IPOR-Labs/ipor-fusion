@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
-import {MidasClaimFromExecutorFuse, MidasClaimFromExecutorFuseEnterData} from "contracts/fuses/midas/MidasClaimFromExecutorFuse.sol";
+import {
+    MidasClaimFromExecutorFuse,
+    MidasClaimFromExecutorFuseEnterData
+} from "contracts/fuses/midas/MidasClaimFromExecutorFuse.sol";
 import {PlasmaVaultConfigLib} from "contracts/libraries/PlasmaVaultConfigLib.sol";
 import {MidasExecutorStorageLib} from "contracts/fuses/midas/lib/MidasExecutorStorageLib.sol";
 

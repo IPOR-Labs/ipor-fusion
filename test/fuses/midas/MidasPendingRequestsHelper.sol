@@ -22,19 +22,11 @@ contract MidasPendingRequestsHelper {
         MidasPendingRequestsStorageLib.removePendingRedemption(redemptionVault_, requestId_);
     }
 
-    function getPendingDeposits()
-        external
-        view
-        returns (address[] memory vaults, uint256[][] memory requestIds)
-    {
+    function getPendingDeposits() external view returns (address[] memory vaults, uint256[][] memory requestIds) {
         return MidasPendingRequestsStorageLib.getPendingDeposits();
     }
 
-    function getPendingRedemptions()
-        external
-        view
-        returns (address[] memory vaults, uint256[][] memory requestIds)
-    {
+    function getPendingRedemptions() external view returns (address[] memory vaults, uint256[][] memory requestIds) {
         return MidasPendingRequestsStorageLib.getPendingRedemptions();
     }
 

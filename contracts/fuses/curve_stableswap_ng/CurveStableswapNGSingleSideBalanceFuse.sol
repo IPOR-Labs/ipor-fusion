@@ -32,14 +32,14 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
         address plasmaVault = address(this);
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         address lpTokenAddress;
-        uint256 lpTokenBalance; 
-        uint256 totalSupply ;
+        uint256 lpTokenBalance;
+        uint256 totalSupply;
         uint256 nCoins;
         address coin;
         uint256 coinAmount;
         uint256 coinPrice;
         uint256 coinPriceDecimals;
-        
+
         for (uint256 i; i < len; ++i) {
             lpTokenAddress = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
             lpTokenBalance = ERC20(lpTokenAddress).balanceOf(plasmaVault);
@@ -54,23 +54,13 @@ contract CurveStableswapNGSingleSideBalanceFuse is IMarketBalanceFuse {
 
             nCoins = ICurveStableswapNG(lpTokenAddress).N_COINS();
             for (uint256 j; j < nCoins; ++j) {
-                
                 coin = ICurveStableswapNG(lpTokenAddress).coins(j);
-                
-                coinAmount = Math.mulDiv(
-                    ICurveStableswapNG(lpTokenAddress).balances(j),
-                    lpTokenBalance,
-                    totalSupply
-                );
 
+                coinAmount = Math.mulDiv(ICurveStableswapNG(lpTokenAddress).balances(j), lpTokenBalance, totalSupply);
 
-                    ( coinPrice,  coinPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
-                    .getAssetPrice(coin);
-                
-                balance += IporMath.convertToWad(
-                    coinAmount * coinPrice,
-                    ERC20(coin).decimals() + coinPriceDecimals
-                );
+                (coinPrice, coinPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(coin);
+
+                balance += IporMath.convertToWad(coinAmount * coinPrice, ERC20(coin).decimals() + coinPriceDecimals);
             }
         }
         return balance;

@@ -43,11 +43,7 @@ contract TermFinanceLiveBalanceFork is Test {
         mock.setAssetPrice(USDC, 1e8, 8);
         oracle = address(mock);
 
-        harness = new TermFinanceBalanceFuseHarness(
-            IporFusionMarkets.TERM_FINANCE,
-            TERM_CONTROLLER,
-            ADAPTER_B
-        );
+        harness = new TermFinanceBalanceFuseHarness(IporFusionMarkets.TERM_FINANCE, TERM_CONTROLLER, ADAPTER_B);
         harness.setPriceOracleMiddleware(oracle);
 
         bytes32[] memory subs = new bytes32[](1);

@@ -165,7 +165,9 @@ contract LitePSMSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 allowedTin = TypeConversionLib.toUint256(inputs[1]);
         uint256 minSharesOut = TypeConversionLib.toUint256(inputs[2]);
 
-        uint256 usdsReceived = enter(LitePSMSupplyFuseEnterData({amount: amount, allowedTin: allowedTin, minSharesOut: minSharesOut}));
+        uint256 usdsReceived = enter(
+            LitePSMSupplyFuseEnterData({amount: amount, allowedTin: allowedTin, minSharesOut: minSharesOut})
+        );
 
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(usdsReceived);
@@ -187,7 +189,9 @@ contract LitePSMSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 allowedTout = TypeConversionLib.toUint256(inputs[1]);
         uint256 minAmountOut = TypeConversionLib.toUint256(inputs[2]);
 
-        uint256 usdcReceived = _exit(LitePSMSupplyFuseExitData({amount: amount, allowedTout: allowedTout, minAmountOut: minAmountOut}));
+        uint256 usdcReceived = _exit(
+            LitePSMSupplyFuseExitData({amount: amount, allowedTout: allowedTout, minAmountOut: minAmountOut})
+        );
 
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(usdcReceived);
@@ -280,7 +284,10 @@ contract LitePSMSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param usdcAmount_ Desired USDC amount to receive (6 decimals)
     /// @return finalUsdcAmount The actual USDC amount that can be received
     /// @return finalUsdsAmount The USDS amount to withdraw from sUSDS (includes tout fee)
-    function _computeExitAmounts(uint256 usdcAmount_, uint256 tout_) private view returns (uint256 finalUsdcAmount, uint256 finalUsdsAmount) {
+    function _computeExitAmounts(
+        uint256 usdcAmount_,
+        uint256 tout_
+    ) private view returns (uint256 finalUsdcAmount, uint256 finalUsdsAmount) {
         uint256 usdsRequired = _usdcToUsdsWithTout(usdcAmount_, tout_);
 
         uint256 maxUsdsWithdraw = IERC4626(SUSDS).maxWithdraw(address(this));
@@ -302,7 +309,7 @@ contract LitePSMSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @return usdsAmount The total USDS needed: usdcAmount * 1e12 + usdcAmount * 1e12 * tout / WAD
     function _usdcToUsdsWithTout(uint256 usdcAmount_, uint256 tout_) private pure returns (uint256 usdsAmount) {
         uint256 usdsBase = usdcAmount_ * DECIMAL_CONVERSION;
-        usdsAmount = usdsBase + usdsBase * tout_ / WAD;
+        usdsAmount = usdsBase + (usdsBase * tout_) / WAD;
     }
 
     /// @notice Converts a max USDS amount (18 decimals) back to the maximum USDC (6 decimals) receivable via buyGem, accounting for tout fee
@@ -310,6 +317,6 @@ contract LitePSMSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param tout_ The PSM tout fee (WAD-based)
     /// @return usdcAmount The max USDC receivable, rounded down to 6-decimal precision
     function _usdsToUsdcWithTout(uint256 usdsAmount_, uint256 tout_) private pure returns (uint256 usdcAmount) {
-        usdcAmount = usdsAmount_ * WAD / ((WAD + tout_) * DECIMAL_CONVERSION);
+        usdcAmount = (usdsAmount_ * WAD) / ((WAD + tout_) * DECIMAL_CONVERSION);
     }
 }

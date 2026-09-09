@@ -130,11 +130,9 @@ library TermFinancePendingOffersStorageLib {
     /// @return offerLockers Array of TermAuctionOfferLocker addresses (one per offerId)
     /// @return offerIds Array of pending offer ids
     /// @return amounts Array of pending amounts in purchase-token raw units (parallel to offerIds)
-    function getPendingOffersForServicer(address servicer_)
-        internal
-        view
-        returns (address[] memory offerLockers, bytes32[] memory offerIds, uint256[] memory amounts)
-    {
+    function getPendingOffersForServicer(
+        address servicer_
+    ) internal view returns (address[] memory offerLockers, bytes32[] memory offerIds, uint256[] memory amounts) {
         PendingOffersStorage storage s = _getStorage();
         ServicerOffers storage so = s.byServicer[servicer_];
 

@@ -151,19 +151,14 @@ contract TermFinanceBidFuseTest is Test {
     }
 
     function _exitData(bytes32[] memory ids_) internal view returns (TermFinanceBidFuseExitData memory) {
-        return
-            TermFinanceBidFuseExitData({
-                servicer: address(servicer),
-                bidLocker: address(bidLocker),
-                bidIds: ids_
-            });
+        return TermFinanceBidFuseExitData({servicer: address(servicer), bidLocker: address(bidLocker), bidIds: ids_});
     }
 
-    function _defaultEnterData(uint256 amt_, bytes32 hash_, bytes32 existingId_)
-        internal
-        view
-        returns (TermFinanceBidFuseEnterData memory)
-    {
+    function _defaultEnterData(
+        uint256 amt_,
+        bytes32 hash_,
+        bytes32 existingId_
+    ) internal view returns (TermFinanceBidFuseEnterData memory) {
         address[] memory tokens = new address[](2);
         tokens[0] = address(weth);
         tokens[1] = address(wsteth);
@@ -381,10 +376,7 @@ contract TermFinanceBidFuseTest is Test {
         bytes32[] memory empty = new bytes32[](0);
         harness.setMarketSubstrates(MARKET_ID, empty);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseUnsupportedMarket.selector,
-                address(servicer)
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseUnsupportedMarket.selector, address(servicer))
         );
         harness.enter(_defaultEnterData(1_000_000_000, keccak256("h"), bytes32(0)));
     }
@@ -410,10 +402,7 @@ contract TermFinanceBidFuseTest is Test {
     function testEnterShouldRevertWhenTermNotDeployed() public {
         controller.setIsTermDeployed(address(servicer), false);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseTermNotDeployed.selector,
-                address(servicer)
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseTermNotDeployed.selector, address(servicer))
         );
         harness.enter(_defaultEnterData(1_000_000_000, keccak256("h"), bytes32(0)));
     }
@@ -434,10 +423,7 @@ contract TermFinanceBidFuseTest is Test {
         data.bidLocker = address(spoof);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseBidLockerNotDeployed.selector,
-                address(spoof)
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseBidLockerNotDeployed.selector, address(spoof))
         );
         harness.enter(data);
     }
@@ -496,10 +482,7 @@ contract TermFinanceBidFuseTest is Test {
         harness.setMarketSubstrates(MARKET_ID, empty);
         bytes32[] memory ids = new bytes32[](0);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseUnsupportedMarket.selector,
-                address(servicer)
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseUnsupportedMarket.selector, address(servicer))
         );
         harness.exit(_exitData(ids));
     }
@@ -575,10 +558,7 @@ contract TermFinanceBidFuseTest is Test {
         amounts[1] = 50e18;
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseDuplicateCollateralToken.selector,
-                dup
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseDuplicateCollateralToken.selector, dup)
         );
         harness.enter(_enterData(1_000_000_000, keccak256("h"), bytes32(0), tokens, amounts));
     }

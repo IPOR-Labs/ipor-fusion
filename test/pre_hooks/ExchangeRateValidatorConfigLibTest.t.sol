@@ -2,7 +2,13 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {ExchangeRateValidatorConfigLib, ExchangeRateValidatorConfig, HookType, Hook, ValidatorData} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
+import {
+    ExchangeRateValidatorConfigLib,
+    ExchangeRateValidatorConfig,
+    HookType,
+    Hook,
+    ValidatorData
+} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
 
 /// @title ExchangeRateValidatorConfigLibTest
 /// @notice Comprehensive tests for ExchangeRateValidatorConfigLib encoding and decoding functions

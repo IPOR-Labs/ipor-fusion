@@ -3,14 +3,30 @@ pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
-import {MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FuseAction,
+    PlasmaVault
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {
+    Erc4626SupplyFuse,
+    Erc4626SupplyFuseEnterData,
+    Erc4626SupplyFuseExitData
+} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {Erc4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {GearboxV3FarmdSupplyFuseExitData, GearboxV3FarmdSupplyFuseEnterData, GearboxV3FarmSupplyFuse} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol";
+import {
+    GearboxV3FarmdSupplyFuseExitData,
+    GearboxV3FarmdSupplyFuseEnterData,
+    GearboxV3FarmSupplyFuse
+} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol";
 import {GearboxV3FarmBalanceFuse} from "../../../contracts/fuses/gearbox_v3/GearboxV3FarmBalanceFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 

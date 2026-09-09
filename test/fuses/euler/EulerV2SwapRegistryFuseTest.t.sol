@@ -3,7 +3,11 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
-import {EulerV2SwapRegistryFuse, EulerV2SwapRegistryFuseEnterData, EulerV2SwapRegistryFuseExitData} from "../../../contracts/fuses/euler/EulerV2SwapRegistryFuse.sol";
+import {
+    EulerV2SwapRegistryFuse,
+    EulerV2SwapRegistryFuseEnterData,
+    EulerV2SwapRegistryFuseExitData
+} from "../../../contracts/fuses/euler/EulerV2SwapRegistryFuse.sol";
 import {EulerFuseLib} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
 import {IEulerV2Swap} from "../../../contracts/fuses/euler/ext/IEulerV2Swap.sol";
 import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
@@ -165,10 +169,7 @@ contract EulerV2SwapRegistryFuseTest is Test {
         });
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                EulerV2SwapRegistryFuse.EulerV2SwapRegistryFuseNotRegistered.selector,
-                eulerAccount
-            )
+            abi.encodeWithSelector(EulerV2SwapRegistryFuse.EulerV2SwapRegistryFuseNotRegistered.selector, eulerAccount)
         );
         _exit(data);
     }

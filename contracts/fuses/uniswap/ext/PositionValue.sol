@@ -203,16 +203,14 @@ library PositionValue {
                 poolFeeGrowthInside0LastX128 - feeParams.positionFeeGrowthInside0LastX128,
                 feeParams.liquidity,
                 FixedPoint128.Q128
-            ) +
-            feeParams.tokensOwed0;
+            ) + feeParams.tokensOwed0;
 
         amount1 =
             FullMath.mulDiv(
                 poolFeeGrowthInside1LastX128 - feeParams.positionFeeGrowthInside1LastX128,
                 feeParams.liquidity,
                 FixedPoint128.Q128
-            ) +
-            feeParams.tokensOwed1;
+            ) + feeParams.tokensOwed1;
     }
 
     function _getFeeGrowthInside(

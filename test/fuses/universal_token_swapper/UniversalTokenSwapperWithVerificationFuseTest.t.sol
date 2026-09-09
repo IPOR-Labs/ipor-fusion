@@ -18,9 +18,20 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {SwapExecutorEth, SwapExecutorEthData} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
-import {UniversalTokenSwapperWithVerificationFuse, UniversalTokenSwapperWithVerificationEnterData, UniversalTokenSwapperWithVerificationData, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    SwapExecutorEth,
+    SwapExecutorEthData
+} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
+import {
+    UniversalTokenSwapperWithVerificationFuse,
+    UniversalTokenSwapperWithVerificationEnterData,
+    UniversalTokenSwapperWithVerificationData,
+    UniversalTokenSwapperSubstrate
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";

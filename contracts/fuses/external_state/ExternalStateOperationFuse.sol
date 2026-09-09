@@ -96,8 +96,13 @@ contract ExternalStateOperationFuse is IFuseCommon {
     ///         underlying via the price oracle and credit the balance account; then (optionally) run actions.
     /// @param data_ Enter parameters.
     function enter(ExternalStateOperationFuseEnterData calldata data_) external {
-        (address executor, uint256 actionsCount) =
-            _resolveExecutorAndValidate(data_.amount, data_.asset, data_.balanceAccount, data_.actions, true);
+        (address executor, uint256 actionsCount) = _resolveExecutorAndValidate(
+            data_.amount,
+            data_.asset,
+            data_.balanceAccount,
+            data_.actions,
+            true
+        );
 
         uint256 valueInUnderlying;
         if (data_.amount > 0) {
@@ -111,7 +116,12 @@ contract ExternalStateOperationFuse is IFuseCommon {
         }
 
         emit ExternalStateOperationFuseEnter(
-            VERSION, data_.asset, data_.amount, data_.balanceAccount, valueInUnderlying, actionsCount
+            VERSION,
+            data_.asset,
+            data_.amount,
+            data_.balanceAccount,
+            valueInUnderlying,
+            actionsCount
         );
     }
 
@@ -119,8 +129,13 @@ contract ExternalStateOperationFuse is IFuseCommon {
     ///         decrement the balance account and pull `amount` of `asset` back to the vault.
     /// @param data_ Exit parameters.
     function exit(ExternalStateOperationFuseExitData calldata data_) external {
-        (address executor, uint256 actionsCount) =
-            _resolveExecutorAndValidate(data_.amount, data_.asset, data_.balanceAccount, data_.actions, false);
+        (address executor, uint256 actionsCount) = _resolveExecutorAndValidate(
+            data_.amount,
+            data_.asset,
+            data_.balanceAccount,
+            data_.actions,
+            false
+        );
 
         if (actionsCount > 0) {
             IExternalStateExecutor(executor).execute(data_.actions);
@@ -129,11 +144,21 @@ contract ExternalStateOperationFuse is IFuseCommon {
         uint256 valueInUnderlying;
         if (data_.amount > 0) {
             valueInUnderlying = _convertAmountToUnderlying(data_.asset, data_.amount);
-            IExternalStateExecutor(executor).removeBalance(data_.balanceAccount, valueInUnderlying, data_.asset, data_.amount);
+            IExternalStateExecutor(executor).removeBalance(
+                data_.balanceAccount,
+                valueInUnderlying,
+                data_.asset,
+                data_.amount
+            );
         }
 
         emit ExternalStateOperationFuseExit(
-            VERSION, data_.asset, data_.amount, data_.balanceAccount, valueInUnderlying, actionsCount
+            VERSION,
+            data_.asset,
+            data_.amount,
+            data_.balanceAccount,
+            valueInUnderlying,
+            actionsCount
         );
     }
 
@@ -222,11 +247,10 @@ contract ExternalStateOperationFuse is IFuseCommon {
     ///      as the `PriceOracleMiddleware` source for this market. Governance MUST verify the
     ///      oracle binding before enabling user deposits — this is enforced **off-chain only**.
     ///      See `contracts/fuses/external_state/README.md` ("Oracle requirements").
-    function _convertAmountToUnderlying(address asset_, uint256 amount_)
-        internal
-        view
-        returns (uint256 underlyingAmount)
-    {
+    function _convertAmountToUnderlying(
+        address asset_,
+        uint256 amount_
+    ) internal view returns (uint256 underlyingAmount) {
         address priceOracle = PlasmaVaultLib.getPriceOracleMiddleware();
         if (priceOracle == address(0)) revert ExternalStateErrors.ExternalStatePriceOracleNotSet();
 
@@ -234,8 +258,9 @@ contract ExternalStateOperationFuse is IFuseCommon {
         if (assetPrice == 0) revert ExternalStateErrors.ExternalStateInvalidPrice(asset_);
 
         address underlying = IERC4626(address(this)).asset();
-        (uint256 underlyingPrice, uint256 underlyingPriceDecimals) =
-            IPriceOracleMiddleware(priceOracle).getAssetPrice(underlying);
+        (uint256 underlyingPrice, uint256 underlyingPriceDecimals) = IPriceOracleMiddleware(priceOracle).getAssetPrice(
+            underlying
+        );
         if (underlyingPrice == 0) revert ExternalStateErrors.ExternalStateInvalidPrice(underlying);
 
         uint256 assetDecimals = IERC20Metadata(asset_).decimals();

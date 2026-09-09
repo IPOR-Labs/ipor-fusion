@@ -18,12 +18,7 @@ import {MockTermRepoToken} from "./mocks/MockTermRepoToken.sol";
 
 contract TermFinanceRedeemFuseTest is Test {
     /// @dev Local copy of fuse event for `vm.expectEmit` assertions.
-    event TermFinanceRedeemed(
-        address version,
-        address servicer,
-        uint256 amountToRedeem,
-        uint256 purchaseTokenReceived
-    );
+    event TermFinanceRedeemed(address version, address servicer, uint256 amountToRedeem, uint256 purchaseTokenReceived);
 
     uint256 internal constant MARKET_ID = 52;
 

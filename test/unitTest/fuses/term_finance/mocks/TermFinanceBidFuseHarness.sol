@@ -22,7 +22,9 @@ contract TermFinanceBidFuseHarness is TermFinanceBidFuse {
         return TermFinancePendingBidsStorageLib.isBidPending(servicer_, bidId_);
     }
 
-    function getPendingBidsForServicer(address servicer_)
+    function getPendingBidsForServicer(
+        address servicer_
+    )
         external
         view
         returns (

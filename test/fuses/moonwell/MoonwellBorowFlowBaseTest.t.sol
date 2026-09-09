@@ -10,10 +10,19 @@ import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {MoonwellBorrowFuseEnterData, MoonwellBorrowFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellBorrowFuse.sol";
-import {MoonwellEnableMarketFuseEnterData, MoonwellEnableMarketFuseExitData} from "../../../contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol";
+import {
+    MoonwellBorrowFuseEnterData,
+    MoonwellBorrowFuseExitData
+} from "../../../contracts/fuses/moonwell/MoonwellBorrowFuse.sol";
+import {
+    MoonwellEnableMarketFuseEnterData,
+    MoonwellEnableMarketFuseExitData
+} from "../../../contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol";
 import {MoonwellSupplyFuseEnterData} from "../../../contracts/fuses/moonwell/MoonwellSupplyFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {IporFusionAccessManagerHelper} from "../../test_helpers/IporFusionAccessManagerHelper.sol";
 import {MoonwellHelper, MoonWellAddresses} from "../../test_helpers/MoonwellHelper.sol";
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";

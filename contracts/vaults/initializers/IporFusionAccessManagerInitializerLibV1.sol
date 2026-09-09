@@ -5,7 +5,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
-import {RoleToFunction, AdminRole, AccountToRole, InitializationData} from "../../managers/access/IporFusionAccessManagerInitializationLib.sol";
+import {
+    RoleToFunction,
+    AdminRole,
+    AccountToRole,
+    InitializationData
+} from "../../managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {PlasmaVaultGovernance} from "../PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../PlasmaVaultBase.sol";
 import {Roles} from "../../libraries/Roles.sol";

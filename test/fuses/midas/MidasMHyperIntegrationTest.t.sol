@@ -12,10 +12,22 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 
-import {MidasSupplyFuse, MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
-import {MidasRequestSupplyFuse, MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {
+    MidasSupplyFuse,
+    MidasSupplyFuseEnterData,
+    MidasSupplyFuseExitData
+} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
+import {
+    MidasRequestSupplyFuse,
+    MidasRequestSupplyFuseEnterData,
+    MidasRequestSupplyFuseExitData
+} from "../../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
 import {MidasBalanceFuse} from "../../../contracts/fuses/midas/MidasBalanceFuse.sol";
-import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {
+    MidasSubstrateLib,
+    MidasSubstrate,
+    MidasSubstrateType
+} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
 import {PriceOracleMiddlewareHelper} from "../../test_helpers/PriceOracleMiddlewareHelper.sol";
@@ -230,7 +242,12 @@ contract MidasMHyperIntegrationTest is Test {
 
             assertEq(usdcBefore - usdcAfter, firstDeposit, "First deposit should spend exact USDC");
             assertGt(mHyperAfterFirst, 0, "Should hold mHYPER after first deposit");
-            assertApproxEqRel(plasmaVault.totalAssets(), totalAssetsBefore, 0.0001e18, "totalAssets stable after first deposit");
+            assertApproxEqRel(
+                plasmaVault.totalAssets(),
+                totalAssetsBefore,
+                0.0001e18,
+                "totalAssets stable after first deposit"
+            );
             assertEq(plasmaVault.convertToAssets(1e6), exchangeRateBefore, "exchangeRate stable after first deposit");
         }
 
@@ -244,8 +261,17 @@ contract MidasMHyperIntegrationTest is Test {
 
             assertEq(usdcBefore - usdcAfter, secondDeposit, "Second deposit should spend exact USDC");
             assertGt(IERC20(MHYPER_TOKEN).balanceOf(address(plasmaVault)), mHyperAfterFirst, "mHYPER should increase");
-            assertGt(plasmaVault.totalAssetsInMarket(MARKET_ID), totalAssetsInMarketAfterFirst, "totalAssetsInMarket should increase");
-            assertApproxEqRel(plasmaVault.totalAssets(), totalAssetsBefore, 0.0001e18, "totalAssets stable after both deposits");
+            assertGt(
+                plasmaVault.totalAssetsInMarket(MARKET_ID),
+                totalAssetsInMarketAfterFirst,
+                "totalAssetsInMarket should increase"
+            );
+            assertApproxEqRel(
+                plasmaVault.totalAssets(),
+                totalAssetsBefore,
+                0.0001e18,
+                "totalAssets stable after both deposits"
+            );
             assertEq(plasmaVault.convertToAssets(1e6), exchangeRateBefore, "exchangeRate stable after both deposits");
             assertApproxEqRel(
                 plasmaVault.totalAssetsInMarket(MARKET_ID),
@@ -306,7 +332,12 @@ contract MidasMHyperIntegrationTest is Test {
 
         // totalAssets should be close to before (minus 0.5% fee on 100k out of 500k = ~0.1% loss)
         uint256 totalAssetsAfter = plasmaVault.totalAssets();
-        assertApproxEqRel(totalAssetsAfter, totalAssetsBefore, 0.002e18, "totalAssets should be close after round-trip");
+        assertApproxEqRel(
+            totalAssetsAfter,
+            totalAssetsBefore,
+            0.002e18,
+            "totalAssets should be close after round-trip"
+        );
 
         // Exchange rate should be stable (small loss from 0.5% redemption fee on 100k/500k = ~0.1%)
         uint256 exchangeRateAfter = plasmaVault.convertToAssets(1e6);
@@ -472,9 +503,18 @@ contract MidasMHyperIntegrationTest is Test {
 
             uint256 usdcAfter = IERC20(USDC).balanceOf(address(plasmaVault));
             assertEq(usdcBefore - usdcAfter, 200_000e6, "Should spend exactly 200k USDC");
-            assertGt(IERC20(MHYPER_TOKEN).balanceOf(address(plasmaVault)), 180_000e18, "Should receive meaningful mHYPER");
+            assertGt(
+                IERC20(MHYPER_TOKEN).balanceOf(address(plasmaVault)),
+                180_000e18,
+                "Should receive meaningful mHYPER"
+            );
             assertEq(plasmaVault.convertToAssets(1e6), exchangeRateInitial, "exchangeRate stable after deposit");
-            assertApproxEqRel(plasmaVault.totalAssets(), totalAssetsInitial, 0.0001e18, "totalAssets stable after deposit");
+            assertApproxEqRel(
+                plasmaVault.totalAssets(),
+                totalAssetsInitial,
+                0.0001e18,
+                "totalAssets stable after deposit"
+            );
         }
 
         // --- Redeem all mHYPER ---
@@ -507,8 +547,18 @@ contract MidasMHyperIntegrationTest is Test {
             assertGt(usdcAfter - usdcBefore, 190_000e6, "Should receive at least 190k USDC (after 0.5% fee)");
 
             // After full round-trip, exchange rate drops by ~0.2% (0.5% fee on 200k out of 500k)
-            assertApproxEqRel(plasmaVault.convertToAssets(1e6), exchangeRateInitial, 0.003e18, "exchangeRate close after round-trip");
-            assertApproxEqRel(plasmaVault.totalAssets(), totalAssetsInitial, 0.003e18, "totalAssets close after round-trip");
+            assertApproxEqRel(
+                plasmaVault.convertToAssets(1e6),
+                exchangeRateInitial,
+                0.003e18,
+                "exchangeRate close after round-trip"
+            );
+            assertApproxEqRel(
+                plasmaVault.totalAssets(),
+                totalAssetsInitial,
+                0.003e18,
+                "totalAssets close after round-trip"
+            );
         }
     }
 

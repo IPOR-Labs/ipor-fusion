@@ -2,7 +2,10 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {UniversalTokenSwapperWithVerificationFuse, UniversalTokenSwapperSubstrate} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
+import {
+    UniversalTokenSwapperWithVerificationFuse,
+    UniversalTokenSwapperSubstrate
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol";
 
 contract UniversalTokenSwapperWithVerificationFuseTest is Test {
     UniversalTokenSwapperWithVerificationFuse public swapper;

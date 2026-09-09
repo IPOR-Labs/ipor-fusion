@@ -18,9 +18,21 @@ import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactor
 import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {VelodromeSuperchainBalanceFuse} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainBalanceFuse.sol";
-import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainLib.sol";
-import {VelodromeSuperchainLiquidityFuse, VelodromeSuperchainLiquidityFuseEnterData, VelodromeSuperchainLiquidityFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol";
-import {VelodromeSuperchainGaugeFuse, VelodromeSuperchainGaugeFuseEnterData, VelodromeSuperchainGaugeFuseExitData} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol";
+import {
+    VelodromeSuperchainSubstrateLib,
+    VelodromeSuperchainSubstrate,
+    VelodromeSuperchainSubstrateType
+} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainLib.sol";
+import {
+    VelodromeSuperchainLiquidityFuse,
+    VelodromeSuperchainLiquidityFuseEnterData,
+    VelodromeSuperchainLiquidityFuseExitData
+} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol";
+import {
+    VelodromeSuperchainGaugeFuse,
+    VelodromeSuperchainGaugeFuseEnterData,
+    VelodromeSuperchainGaugeFuseExitData
+} from "../../../contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IRouter} from "../../../contracts/fuses/velodrome_superchain/ext/IRouter.sol";
@@ -29,7 +41,10 @@ import {ILeafGauge} from "../../../contracts/fuses/velodrome_superchain/ext/ILea
 import {IPool} from "../../../contracts/fuses/velodrome_superchain/ext/IPool.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {IWETH9} from "../erc4626/IWETH9.sol";

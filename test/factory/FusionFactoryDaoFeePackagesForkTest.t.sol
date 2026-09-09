@@ -275,11 +275,7 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
 
         // then
         assertTrue(shares > 0, "Should receive shares");
-        assertEq(
-            ERC20(instance.plasmaVault).balanceOf(atomist),
-            shares,
-            "Atomist should have shares"
-        );
+        assertEq(ERC20(instance.plasmaVault).balanceOf(atomist), shares, "Atomist should have shares");
     }
 
     /// @notice Test creating multiple vaults with different fee packages

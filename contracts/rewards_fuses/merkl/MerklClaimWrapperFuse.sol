@@ -29,7 +29,10 @@ contract MerklClaimWrapperFuse {
      * @param rewardsClaimManager Address of the RewardsClaimManager receiving the rewards
      */
     event MerklClaimWrapperFuseRewardsClaimed(
-        address version, address receivedToken, uint256 receivedTokenAmount, address rewardsClaimManager
+        address version,
+        address receivedToken,
+        uint256 receivedTokenAmount,
+        address rewardsClaimManager
     );
 
     /**
@@ -160,9 +163,11 @@ contract MerklClaimWrapperFuse {
      * @param amounts_ Array of claimable amounts for each claimed token
      * @param proofs_ Array of merkle proofs for each claimed token
      */
-    function _callDistributor(address[] calldata tokens_, uint256[] calldata amounts_, bytes32[][] calldata proofs_)
-        internal
-    {
+    function _callDistributor(
+        address[] calldata tokens_,
+        uint256[] calldata amounts_,
+        bytes32[][] calldata proofs_
+    ) internal {
         uint256 tokensLength = tokens_.length;
         address[] memory users = new address[](tokensLength);
         for (uint256 i; i < tokensLength; ++i) {

@@ -5,7 +5,14 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, FuseAction, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    FuseAction,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FeeConfig
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -16,10 +23,26 @@ import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConf
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
-import {DolomiteSupplyFuse, DolomiteSupplyFuseEnterData, DolomiteSupplyFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteSupplyFuse.sol";
-import {DolomiteBorrowFuse, DolomiteBorrowFuseEnterData, DolomiteBorrowFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteBorrowFuse.sol";
-import {DolomiteCollateralFuse, DolomiteCollateralFuseEnterData, DolomiteCollateralFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteCollateralFuse.sol";
-import {DolomiteEModeFuse, DolomiteEModeFuseEnterData, DolomiteEModeFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteEModeFuse.sol";
+import {
+    DolomiteSupplyFuse,
+    DolomiteSupplyFuseEnterData,
+    DolomiteSupplyFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteSupplyFuse.sol";
+import {
+    DolomiteBorrowFuse,
+    DolomiteBorrowFuseEnterData,
+    DolomiteBorrowFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteBorrowFuse.sol";
+import {
+    DolomiteCollateralFuse,
+    DolomiteCollateralFuseEnterData,
+    DolomiteCollateralFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteCollateralFuse.sol";
+import {
+    DolomiteEModeFuse,
+    DolomiteEModeFuseEnterData,
+    DolomiteEModeFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteEModeFuse.sol";
 import {DolomiteBalanceFuse} from "../../../contracts/fuses/dolomite/DolomiteBalanceFuse.sol";
 import {DolomiteFuseLib, DolomiteSubstrate} from "../../../contracts/fuses/dolomite/DolomiteFuseLib.sol";
 import {IDolomiteMargin} from "../../../contracts/fuses/dolomite/ext/IDolomiteMargin.sol";

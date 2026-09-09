@@ -12,7 +12,12 @@ import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    FeeConfig
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -23,7 +28,12 @@ import {MorphoCollateralFuse} from "../../contracts/fuses/morpho/MorphoCollatera
 import {MorphoBorrowFuse} from "../../contracts/fuses/morpho/MorphoBorrowFuse.sol";
 import {MorphoBalanceFuse} from "../../contracts/fuses/morpho/MorphoBalanceFuse.sol";
 
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {MorphoFlashLoanFuse} from "../../contracts/fuses/morpho/MorphoFlashLoanFuse.sol";

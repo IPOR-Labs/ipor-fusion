@@ -35,8 +35,12 @@ interface IExternalStateExecutor {
     /// @param valueInUnderlying_ The amount in vault underlying units to remove from the tracked balance.
     /// @param asset_ The asset token to transfer back to the vault.
     /// @param tokenAmount_ Amount of `asset_` (in asset decimals) to transfer back.
-    function removeBalance(address balanceAccount_, uint256 valueInUnderlying_, address asset_, uint256 tokenAmount_)
-        external;
+    function removeBalance(
+        address balanceAccount_,
+        uint256 valueInUnderlying_,
+        address asset_,
+        uint256 tokenAmount_
+    ) external;
 
     /// @notice Execute a batch of external calls from the executor context.
     /// @param actions_ Ordered list of (target, data) tuples forwarded via `Address.functionCall`.

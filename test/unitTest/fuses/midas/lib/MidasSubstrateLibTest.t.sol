@@ -54,19 +54,28 @@ contract MidasSubstrateLibTest is Test {
     // 1.1 — M_TOKEN encoding
     function testSubstrateToBytes32_MToken() public view {
         // given
-        MidasSubstrate memory sub = MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: ADDR_01});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType.M_TOKEN,
+            substrateAddress: ADDR_01
+        });
         // when
         bytes32 result = harness.substrateToBytes32(sub);
         // then — type bits (1 << 160) OR'd with address
         bytes32 expected = bytes32(uint256(uint160(ADDR_01)) | (uint256(1) << 160));
-        assertEq(result, expected, "M_TOKEN encoding should place type=1 in bits [255:160] and address in bits [159:0]");
+        assertEq(
+            result,
+            expected,
+            "M_TOKEN encoding should place type=1 in bits [255:160] and address in bits [159:0]"
+        );
     }
 
     // 1.2 — DEPOSIT_VAULT encoding
     function testSubstrateToBytes32_DepositVault() public view {
         // given
-        MidasSubstrate memory sub =
-            MidasSubstrate({substrateType: MidasSubstrateType.DEPOSIT_VAULT, substrateAddress: ADDR_02});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType.DEPOSIT_VAULT,
+            substrateAddress: ADDR_02
+        });
         // when
         bytes32 result = harness.substrateToBytes32(sub);
         // then
@@ -77,8 +86,10 @@ contract MidasSubstrateLibTest is Test {
     // 1.3 — REDEMPTION_VAULT encoding
     function testSubstrateToBytes32_RedemptionVault() public view {
         // given
-        MidasSubstrate memory sub =
-            MidasSubstrate({substrateType: MidasSubstrateType.REDEMPTION_VAULT, substrateAddress: ADDR_03});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType.REDEMPTION_VAULT,
+            substrateAddress: ADDR_03
+        });
         // when
         bytes32 result = harness.substrateToBytes32(sub);
         // then
@@ -89,8 +100,10 @@ contract MidasSubstrateLibTest is Test {
     // 1.4 — INSTANT_REDEMPTION_VAULT encoding
     function testSubstrateToBytes32_InstantRedemptionVault() public view {
         // given
-        MidasSubstrate memory sub =
-            MidasSubstrate({substrateType: MidasSubstrateType.INSTANT_REDEMPTION_VAULT, substrateAddress: ADDR_04});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType.INSTANT_REDEMPTION_VAULT,
+            substrateAddress: ADDR_04
+        });
         // when
         bytes32 result = harness.substrateToBytes32(sub);
         // then
@@ -101,8 +114,10 @@ contract MidasSubstrateLibTest is Test {
     // 1.5 — ASSET encoding
     function testSubstrateToBytes32_Asset() public view {
         // given
-        MidasSubstrate memory sub =
-            MidasSubstrate({substrateType: MidasSubstrateType.ASSET, substrateAddress: ADDR_05});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType.ASSET,
+            substrateAddress: ADDR_05
+        });
         // when
         bytes32 result = harness.substrateToBytes32(sub);
         // then
@@ -113,8 +128,10 @@ contract MidasSubstrateLibTest is Test {
     // 1.6 — UNDEFINED encoding: type=0 contributes 0 to upper bits, result is raw address
     function testSubstrateToBytes32_Undefined() public view {
         // given
-        MidasSubstrate memory sub =
-            MidasSubstrate({substrateType: MidasSubstrateType.UNDEFINED, substrateAddress: ADDR_06});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType.UNDEFINED,
+            substrateAddress: ADDR_06
+        });
         // when
         bytes32 result = harness.substrateToBytes32(sub);
         // then — type=0 → no upper bits set, result == address bytes
@@ -125,8 +142,10 @@ contract MidasSubstrateLibTest is Test {
     // 1.7 — Zero address edge case: only type bits present
     function testSubstrateToBytes32_ZeroAddress() public view {
         // given
-        MidasSubstrate memory sub =
-            MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: address(0)});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType.M_TOKEN,
+            substrateAddress: address(0)
+        });
         // when
         bytes32 result = harness.substrateToBytes32(sub);
         // then — lower 160 bits are 0, upper = type=1
@@ -138,8 +157,10 @@ contract MidasSubstrateLibTest is Test {
     function testSubstrateToBytes32_MaxAddress() public view {
         // given
         address maxAddr = address(type(uint160).max);
-        MidasSubstrate memory sub =
-            MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: maxAddr});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType.M_TOKEN,
+            substrateAddress: maxAddr
+        });
         // when
         bytes32 result = harness.substrateToBytes32(sub);
         // then
@@ -172,7 +193,11 @@ contract MidasSubstrateLibTest is Test {
         // when
         MidasSubstrate memory sub = harness.bytes32ToSubstrate(encoded);
         // then
-        assertEq(uint8(sub.substrateType), uint8(MidasSubstrateType.DEPOSIT_VAULT), "Decoded type should be DEPOSIT_VAULT");
+        assertEq(
+            uint8(sub.substrateType),
+            uint8(MidasSubstrateType.DEPOSIT_VAULT),
+            "Decoded type should be DEPOSIT_VAULT"
+        );
         assertEq(sub.substrateAddress, ADDR_02, "Decoded address should match ADDR_02");
     }
 
@@ -184,7 +209,9 @@ contract MidasSubstrateLibTest is Test {
         MidasSubstrate memory sub = harness.bytes32ToSubstrate(encoded);
         // then
         assertEq(
-            uint8(sub.substrateType), uint8(MidasSubstrateType.REDEMPTION_VAULT), "Decoded type should be REDEMPTION_VAULT"
+            uint8(sub.substrateType),
+            uint8(MidasSubstrateType.REDEMPTION_VAULT),
+            "Decoded type should be REDEMPTION_VAULT"
         );
         assertEq(sub.substrateAddress, ADDR_03, "Decoded address should match ADDR_03");
     }
@@ -233,7 +260,11 @@ contract MidasSubstrateLibTest is Test {
         // when
         MidasSubstrate memory sub = harness.bytes32ToSubstrate(encoded);
         // then
-        assertEq(uint8(sub.substrateType), uint8(MidasSubstrateType.UNDEFINED), "All-zero bytes32 should decode to UNDEFINED");
+        assertEq(
+            uint8(sub.substrateType),
+            uint8(MidasSubstrateType.UNDEFINED),
+            "All-zero bytes32 should decode to UNDEFINED"
+        );
         assertEq(sub.substrateAddress, address(0), "All-zero bytes32 should decode to address(0)");
     }
 
@@ -449,10 +480,14 @@ contract MidasSubstrateLibTest is Test {
     // 8.2 — Same address, different types produce different bytes32
     function testEncoding_DifferentTypeSameAddressProducesDifferentBytes32() public view {
         // given
-        MidasSubstrate memory sub1 =
-            MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: ADDR_01});
-        MidasSubstrate memory sub2 =
-            MidasSubstrate({substrateType: MidasSubstrateType.DEPOSIT_VAULT, substrateAddress: ADDR_01});
+        MidasSubstrate memory sub1 = MidasSubstrate({
+            substrateType: MidasSubstrateType.M_TOKEN,
+            substrateAddress: ADDR_01
+        });
+        MidasSubstrate memory sub2 = MidasSubstrate({
+            substrateType: MidasSubstrateType.DEPOSIT_VAULT,
+            substrateAddress: ADDR_01
+        });
         // when
         bytes32 enc1 = harness.substrateToBytes32(sub1);
         bytes32 enc2 = harness.substrateToBytes32(sub2);
@@ -463,10 +498,14 @@ contract MidasSubstrateLibTest is Test {
     // 8.3 — Same type, different addresses produce different bytes32
     function testEncoding_SameTypeDifferentAddressProducesDifferentBytes32() public view {
         // given
-        MidasSubstrate memory sub1 =
-            MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: ADDR_01});
-        MidasSubstrate memory sub2 =
-            MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: ADDR_02});
+        MidasSubstrate memory sub1 = MidasSubstrate({
+            substrateType: MidasSubstrateType.M_TOKEN,
+            substrateAddress: ADDR_01
+        });
+        MidasSubstrate memory sub2 = MidasSubstrate({
+            substrateType: MidasSubstrateType.M_TOKEN,
+            substrateAddress: ADDR_02
+        });
         // when
         bytes32 enc1 = harness.substrateToBytes32(sub1);
         bytes32 enc2 = harness.substrateToBytes32(sub2);
@@ -644,8 +683,10 @@ contract MidasSubstrateLibTest is Test {
     function testFuzz_SubstrateToBytes32_EncodingLayout(address addr, uint8 typeRaw) public view {
         vm.assume(typeRaw <= 5);
         // given
-        MidasSubstrate memory sub =
-            MidasSubstrate({substrateType: MidasSubstrateType(typeRaw), substrateAddress: addr});
+        MidasSubstrate memory sub = MidasSubstrate({
+            substrateType: MidasSubstrateType(typeRaw),
+            substrateAddress: addr
+        });
         // when
         bytes32 encoded = harness.substrateToBytes32(sub);
         // then — verify bit layout directly
@@ -659,8 +700,10 @@ contract MidasSubstrateLibTest is Test {
     function testFuzz_RoundTrip_EncodeDecodeIdentity(address addr, uint8 typeRaw) public view {
         vm.assume(typeRaw <= 5);
         // given
-        MidasSubstrate memory original =
-            MidasSubstrate({substrateType: MidasSubstrateType(typeRaw), substrateAddress: addr});
+        MidasSubstrate memory original = MidasSubstrate({
+            substrateType: MidasSubstrateType(typeRaw),
+            substrateAddress: addr
+        });
         // when
         bytes32 encoded = harness.substrateToBytes32(original);
         MidasSubstrate memory decoded = harness.bytes32ToSubstrate(encoded);

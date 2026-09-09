@@ -12,7 +12,11 @@ import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrateType,
+    AreodromeSlipstreamSubstrate
+} from "./AreodromeSlipstreamLib.sol";
 
 /// @title AreodromeSlipstreamModifyPositionFuseEnterData
 /// @notice Input data structure for increasing liquidity in an existing Aerodrome Slipstream position

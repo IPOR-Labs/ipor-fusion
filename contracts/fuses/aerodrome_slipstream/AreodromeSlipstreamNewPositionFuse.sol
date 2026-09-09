@@ -9,7 +9,11 @@ import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrateType,
+    AreodromeSlipstreamSubstrate
+} from "./AreodromeSlipstreamLib.sol";
 
 struct AreodromeSlipstreamNewPositionFuseEnterData {
     /// @notice The address of the token0 for a specific pool

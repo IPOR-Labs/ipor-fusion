@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
-import {MidasRequestSupplyFuse, MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {
+    MidasRequestSupplyFuse,
+    MidasRequestSupplyFuseEnterData,
+    MidasRequestSupplyFuseExitData
+} from "contracts/fuses/midas/MidasRequestSupplyFuse.sol";
 import {MidasPendingRequestsStorageLib} from "contracts/fuses/midas/lib/MidasPendingRequestsStorageLib.sol";
 import {MidasExecutorStorageLib} from "contracts/fuses/midas/lib/MidasExecutorStorageLib.sol";
 import {PlasmaVaultStorageLib} from "contracts/libraries/PlasmaVaultStorageLib.sol";
@@ -47,7 +51,11 @@ contract MidasRequestSupplyFuseHarness {
     /// @notice Call fuse.cleanupPendingDeposits() via delegatecall
     function cleanupPendingDeposits(address depositVault_, uint256 maxIterations_) external {
         (bool success, bytes memory ret) = fuse.delegatecall(
-            abi.encodeWithSelector(MidasRequestSupplyFuse.cleanupPendingDeposits.selector, depositVault_, maxIterations_)
+            abi.encodeWithSelector(
+                MidasRequestSupplyFuse.cleanupPendingDeposits.selector,
+                depositVault_,
+                maxIterations_
+            )
         );
         if (!success) {
             assembly {
@@ -59,7 +67,11 @@ contract MidasRequestSupplyFuseHarness {
     /// @notice Call fuse.cleanupPendingRedemptions() via delegatecall
     function cleanupPendingRedemptions(address redemptionVault_, uint256 maxIterations_) external {
         (bool success, bytes memory ret) = fuse.delegatecall(
-            abi.encodeWithSelector(MidasRequestSupplyFuse.cleanupPendingRedemptions.selector, redemptionVault_, maxIterations_)
+            abi.encodeWithSelector(
+                MidasRequestSupplyFuse.cleanupPendingRedemptions.selector,
+                redemptionVault_,
+                maxIterations_
+            )
         );
         if (!success) {
             assembly {

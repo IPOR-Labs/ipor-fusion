@@ -2,7 +2,11 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {AguaSubstrateLib, AguaSubstrate, AguaSubstrateType} from "../../../contracts/fuses/agua/lib/AguaSubstrateLib.sol";
+import {
+    AguaSubstrateLib,
+    AguaSubstrate,
+    AguaSubstrateType
+} from "../../../contracts/fuses/agua/lib/AguaSubstrateLib.sol";
 
 /// @title AguaSubstrateLibTest
 /// @notice Pure unit tests for encoding/decoding of Agua typed substrates. No fork required.

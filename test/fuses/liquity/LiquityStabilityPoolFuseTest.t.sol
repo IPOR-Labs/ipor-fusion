@@ -6,10 +6,21 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IAddressesRegistry} from "../../../contracts/fuses/liquity/ext/IAddressesRegistry.sol";
 import {IStabilityPool} from "../../../contracts/fuses/liquity/ext/IStabilityPool.sol";
 import {LiquityBalanceFuse} from "../../../contracts/fuses/liquity/LiquityBalanceFuse.sol";
-import {LiquityStabilityPoolFuse, LiquityStabilityPoolFuseEnterData, LiquityStabilityPoolFuseExitData} from "../../../contracts/fuses/liquity/LiquityStabilityPoolFuse.sol";
+import {
+    LiquityStabilityPoolFuse,
+    LiquityStabilityPoolFuseEnterData,
+    LiquityStabilityPoolFuseExitData
+} from "../../../contracts/fuses/liquity/LiquityStabilityPoolFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
-import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    UniversalTokenSwapperFuse,
+    UniversalTokenSwapperData,
+    UniversalTokenSwapperEnterData
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -20,7 +31,14 @@ import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOrac
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FeeConfig,
+    FuseAction,
+    PlasmaVault,
+    PlasmaVaultInitData
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";

@@ -8,7 +8,11 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
-import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {
+    AaveV3SupplyFuse,
+    AaveV3SupplyFuseEnterData,
+    AaveV3SupplyFuseExitData
+} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84

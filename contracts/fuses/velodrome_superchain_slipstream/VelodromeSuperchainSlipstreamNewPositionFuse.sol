@@ -9,7 +9,11 @@ import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.s
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
+import {
+    VelodromeSuperchainSlipstreamSubstrateLib,
+    VelodromeSuperchainSlipstreamSubstrateType,
+    VelodromeSuperchainSlipstreamSubstrate
+} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 
 struct VelodromeSuperchainSlipstreamNewPositionFuseEnterData {
     /// @notice The address of the token0 for a specific pool

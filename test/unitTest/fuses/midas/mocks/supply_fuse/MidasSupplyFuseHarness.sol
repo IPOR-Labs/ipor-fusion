@@ -2,8 +2,16 @@
 pragma solidity 0.8.30;
 
 import {PlasmaVaultConfigLib} from "../../../../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
-import {MidasSupplyFuse, MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../../../../../contracts/fuses/midas/MidasSupplyFuse.sol";
+import {
+    MidasSubstrateLib,
+    MidasSubstrate,
+    MidasSubstrateType
+} from "../../../../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {
+    MidasSupplyFuse,
+    MidasSupplyFuseEnterData,
+    MidasSupplyFuseExitData
+} from "../../../../../../contracts/fuses/midas/MidasSupplyFuse.sol";
 
 /// @title MidasSupplyFuseHarness
 /// @notice Test harness that simulates PlasmaVault context for MidasSupplyFuse unit tests.
@@ -85,11 +93,7 @@ contract MidasSupplyFuseHarness {
     }
 
     /// @notice Grant exactly [mToken, depositVault] — no ASSET (for testing E4 branch)
-    function grantMTokenAndDepositVaultOnly(
-        uint256 marketId_,
-        address mToken_,
-        address depositVault_
-    ) external {
+    function grantMTokenAndDepositVaultOnly(uint256 marketId_, address mToken_, address depositVault_) external {
         bytes32[] memory subs = new bytes32[](2);
         subs[0] = MidasSubstrateLib.substrateToBytes32(
             MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: mToken_})

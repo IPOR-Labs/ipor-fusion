@@ -58,7 +58,9 @@ library ExternalStateSubstrateLib {
     /// @return encoded The bytes32-encoded substrate with the CUSTODIAN type discriminator.
     function encodeCustodianSubstrate(address custodian_) internal pure returns (bytes32 encoded) {
         if (custodian_ == address(0)) revert ExternalStateErrors.ExternalStateZeroAddress();
-        encoded = bytes32((uint256(ExternalStateSubstrateType.CUSTODIAN) << _TYPE_SHIFT) | uint256(uint160(custodian_)));
+        encoded = bytes32(
+            (uint256(ExternalStateSubstrateType.CUSTODIAN) << _TYPE_SHIFT) | uint256(uint160(custodian_))
+        );
     }
 
     /// @notice Encode a BALANCE_ACCOUNT substrate.
@@ -66,8 +68,9 @@ library ExternalStateSubstrateLib {
     /// @return encoded The bytes32-encoded substrate with the BALANCE_ACCOUNT type discriminator.
     function encodeBalanceAccountSubstrate(address balanceAccount_) internal pure returns (bytes32 encoded) {
         if (balanceAccount_ == address(0)) revert ExternalStateErrors.ExternalStateZeroAddress();
-        encoded =
-            bytes32((uint256(ExternalStateSubstrateType.BALANCE_ACCOUNT) << _TYPE_SHIFT) | uint256(uint160(balanceAccount_)));
+        encoded = bytes32(
+            (uint256(ExternalStateSubstrateType.BALANCE_ACCOUNT) << _TYPE_SHIFT) | uint256(uint160(balanceAccount_))
+        );
     }
 
     // ============================================================
@@ -81,8 +84,9 @@ library ExternalStateSubstrateLib {
     function encodeTargetSubstrate(address target_, bytes4 selector_) internal pure returns (bytes32 encoded) {
         if (target_ == address(0)) revert ExternalStateErrors.ExternalStateZeroAddress();
         encoded = bytes32(
-            (uint256(ExternalStateSubstrateType.TARGET) << _TYPE_SHIFT) | (uint256(uint32(selector_)) << _SELECTOR_SHIFT)
-                | uint256(uint160(target_))
+            (uint256(ExternalStateSubstrateType.TARGET) << _TYPE_SHIFT) |
+                (uint256(uint32(selector_)) << _SELECTOR_SHIFT) |
+                uint256(uint160(target_))
         );
     }
 
@@ -95,7 +99,10 @@ library ExternalStateSubstrateLib {
     /// @return encoded The bytes32-encoded substrate with the STALENESS_MAX type discriminator.
     function encodeStalenessMaxSubstrate(uint256 secondsValue_) internal pure returns (bytes32 encoded) {
         if (secondsValue_ > type(uint248).max) {
-            revert ExternalStateErrors.ExternalStateSubstratePayloadOverflow(uint8(ExternalStateSubstrateType.STALENESS_MAX), secondsValue_);
+            revert ExternalStateErrors.ExternalStateSubstratePayloadOverflow(
+                uint8(ExternalStateSubstrateType.STALENESS_MAX),
+                secondsValue_
+            );
         }
         encoded = bytes32((uint256(ExternalStateSubstrateType.STALENESS_MAX) << _TYPE_SHIFT) | secondsValue_);
     }
@@ -105,7 +112,10 @@ library ExternalStateSubstrateLib {
     /// @return encoded The bytes32-encoded substrate with the BIG_CHANGE_BPS type discriminator.
     function encodeBigChangeBpsSubstrate(uint256 bps_) internal pure returns (bytes32 encoded) {
         if (bps_ > type(uint248).max) {
-            revert ExternalStateErrors.ExternalStateSubstratePayloadOverflow(uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS), bps_);
+            revert ExternalStateErrors.ExternalStateSubstratePayloadOverflow(
+                uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS),
+                bps_
+            );
         }
         encoded = bytes32((uint256(ExternalStateSubstrateType.BIG_CHANGE_BPS) << _TYPE_SHIFT) | bps_);
     }
@@ -115,7 +125,10 @@ library ExternalStateSubstrateLib {
     /// @return encoded The bytes32-encoded substrate with the DUST_THRESHOLD type discriminator.
     function encodeDustThresholdSubstrate(uint256 percent_) internal pure returns (bytes32 encoded) {
         if (percent_ > type(uint248).max) {
-            revert ExternalStateErrors.ExternalStateSubstratePayloadOverflow(uint8(ExternalStateSubstrateType.DUST_THRESHOLD), percent_);
+            revert ExternalStateErrors.ExternalStateSubstratePayloadOverflow(
+                uint8(ExternalStateSubstrateType.DUST_THRESHOLD),
+                percent_
+            );
         }
         encoded = bytes32((uint256(ExternalStateSubstrateType.DUST_THRESHOLD) << _TYPE_SHIFT) | percent_);
     }
@@ -125,7 +138,10 @@ library ExternalStateSubstrateLib {
     /// @return encoded The bytes32-encoded substrate with the MIN_UPDATE_INTERVAL type discriminator.
     function encodeMinUpdateIntervalSubstrate(uint256 secondsValue_) internal pure returns (bytes32 encoded) {
         if (secondsValue_ > type(uint248).max) {
-            revert ExternalStateErrors.ExternalStateSubstratePayloadOverflow(uint8(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL), secondsValue_);
+            revert ExternalStateErrors.ExternalStateSubstratePayloadOverflow(
+                uint8(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL),
+                secondsValue_
+            );
         }
         encoded = bytes32((uint256(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL) << _TYPE_SHIFT) | secondsValue_);
     }
@@ -217,7 +233,10 @@ library ExternalStateSubstrateLib {
     function validateAssetGranted(uint256 marketId_, address asset_) internal view {
         bytes32 encoded = encodeAssetSubstrate(asset_);
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId_, encoded)) {
-            revert ExternalStateErrors.ExternalStateUnsupportedSubstrate(uint8(ExternalStateSubstrateType.ASSET), encoded);
+            revert ExternalStateErrors.ExternalStateUnsupportedSubstrate(
+                uint8(ExternalStateSubstrateType.ASSET),
+                encoded
+            );
         }
     }
 
@@ -227,7 +246,10 @@ library ExternalStateSubstrateLib {
     function validateBalanceAccountGranted(uint256 marketId_, address balanceAccount_) internal view {
         bytes32 encoded = encodeBalanceAccountSubstrate(balanceAccount_);
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId_, encoded)) {
-            revert ExternalStateErrors.ExternalStateUnsupportedSubstrate(uint8(ExternalStateSubstrateType.BALANCE_ACCOUNT), encoded);
+            revert ExternalStateErrors.ExternalStateUnsupportedSubstrate(
+                uint8(ExternalStateSubstrateType.BALANCE_ACCOUNT),
+                encoded
+            );
         }
     }
 
@@ -238,7 +260,10 @@ library ExternalStateSubstrateLib {
     function validateTargetSelectorGranted(uint256 marketId_, address target_, bytes4 selector_) internal view {
         bytes32 encoded = encodeTargetSubstrate(target_, selector_);
         if (!PlasmaVaultConfigLib.isMarketSubstrateGranted(marketId_, encoded)) {
-            revert ExternalStateErrors.ExternalStateUnsupportedSubstrate(uint8(ExternalStateSubstrateType.TARGET), encoded);
+            revert ExternalStateErrors.ExternalStateUnsupportedSubstrate(
+                uint8(ExternalStateSubstrateType.TARGET),
+                encoded
+            );
         }
     }
 }

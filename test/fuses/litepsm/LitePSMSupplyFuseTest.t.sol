@@ -7,10 +7,18 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
-import {LitePSMSupplyFuse, LitePSMSupplyFuseEnterData, LitePSMSupplyFuseExitData, LitePSMSupplyFuseFeeExceeded, LitePSMSupplyFuseInsufficientShares, LitePSMSupplyFuseInsufficientAmountOut} from
-    "../../../contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from
-    "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    LitePSMSupplyFuse,
+    LitePSMSupplyFuseEnterData,
+    LitePSMSupplyFuseExitData,
+    LitePSMSupplyFuseFeeExceeded,
+    LitePSMSupplyFuseInsufficientShares,
+    LitePSMSupplyFuseInsufficientAmountOut
+} from "../../../contracts/fuses/chains/ethereum/litepsm/LitePSMSupplyFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
@@ -42,7 +50,9 @@ contract LitePSMSupplyFuseTest is Test {
         uint256 usdcBalanceBefore = ERC20(USDC).balanceOf(address(vaultMock));
 
         // when
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: amount, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: amount, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         // then
         uint256 usdcBalanceAfter = ERC20(USDC).balanceOf(address(vaultMock));
@@ -51,7 +61,7 @@ contract LitePSMSupplyFuseTest is Test {
 
         // 100 USDC = 100 USDS (1:1 PSM), compute expected sUSDS shares from price per share
         uint256 sharesPerUsds = IERC4626(SUSDS).previewWithdraw(1e18);
-        uint256 expectedShares = 100e18 * sharesPerUsds / 1e18;
+        uint256 expectedShares = (100e18 * sharesPerUsds) / 1e18;
 
         assertEq(usdcBalanceBefore, 1_000e6, "USDC balance before should be 1_000e6");
         assertEq(usdcBalanceAfter, 900e6, "USDC balance after should be 900e6");
@@ -70,12 +80,16 @@ contract LitePSMSupplyFuseTest is Test {
         deal(USDC, address(vaultMock), 1_000e6);
 
         // Enter first: USDC -> USDS -> sUSDS
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: amount, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: amount, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         uint256 usdcBalanceBefore = ERC20(USDC).balanceOf(address(vaultMock));
 
         // when - exit: sUSDS -> USDS -> USDC (pass USDC amount, 6 decimals)
-        vaultMock.exitLitePSMSupply(LitePSMSupplyFuseExitData({amount: 100e6, allowedTout: type(uint256).max, minAmountOut: 0}));
+        vaultMock.exitLitePSMSupply(
+            LitePSMSupplyFuseExitData({amount: 100e6, allowedTout: type(uint256).max, minAmountOut: 0})
+        );
 
         // then
         uint256 usdcBalanceAfter = ERC20(USDC).balanceOf(address(vaultMock));
@@ -99,7 +113,9 @@ contract LitePSMSupplyFuseTest is Test {
         deal(USDC, address(vaultMock), 1_000e6);
 
         // Enter first: USDC -> USDS -> sUSDS
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: amount, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: amount, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         bytes32[] memory params = new bytes32[](2);
         params[0] = bytes32(uint256(100e6)); // USDC amount (6 decimals)
@@ -129,7 +145,9 @@ contract LitePSMSupplyFuseTest is Test {
         uint256 balanceBefore = ERC20(USDC).balanceOf(address(vaultMock));
 
         // when
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 0, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 0, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         // then
         uint256 balanceAfter = ERC20(USDC).balanceOf(address(vaultMock));
@@ -144,12 +162,16 @@ contract LitePSMSupplyFuseTest is Test {
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
 
         deal(USDC, address(vaultMock), 100e6);
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 50e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 50e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         uint256 susdsBalanceBefore = IERC4626(SUSDS).balanceOf(address(vaultMock));
 
         // when
-        vaultMock.exitLitePSMSupply(LitePSMSupplyFuseExitData({amount: 0, allowedTout: type(uint256).max, minAmountOut: 0}));
+        vaultMock.exitLitePSMSupply(
+            LitePSMSupplyFuseExitData({amount: 0, allowedTout: type(uint256).max, minAmountOut: 0})
+        );
 
         // then
         uint256 susdsBalanceAfter = IERC4626(SUSDS).balanceOf(address(vaultMock));
@@ -194,7 +216,7 @@ contract LitePSMSupplyFuseTest is Test {
 
         // 100 USDC = 100 USDS (1:1 PSM), compute expected sUSDS shares
         uint256 sharesPerUsds = IERC4626(SUSDS).previewWithdraw(1e18);
-        uint256 expectedShares = 100e18 * sharesPerUsds / 1e18;
+        uint256 expectedShares = (100e18 * sharesPerUsds) / 1e18;
 
         assertEq(usdcBalanceAfter, 900e6, "USDC balance after should be 900e6");
         assertEq(usdsBalanceAfter, 0, "USDS balance after should be 0");
@@ -210,7 +232,9 @@ contract LitePSMSupplyFuseTest is Test {
 
         deal(USDC, address(vaultMock), 1_000e6);
 
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         bytes32[] memory inputs = new bytes32[](3);
         inputs[0] = TypeConversionLib.toBytes32(uint256(100e6)); // USDC amount
@@ -268,7 +292,9 @@ contract LitePSMSupplyFuseTest is Test {
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
 
         deal(USDC, address(vaultMock), 1_000e6);
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         // Mock tout to 10% (0.1e18)
         vm.mockCall(LITE_PSM, abi.encodeWithSignature("tout()"), abi.encode(0.1e18));
@@ -286,13 +312,17 @@ contract LitePSMSupplyFuseTest is Test {
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
 
         deal(USDC, address(vaultMock), 1_000e6);
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 1_000e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 1_000e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         // Mock tout to 10% (0.1e18)
         vm.mockCall(LITE_PSM, abi.encodeWithSignature("tout()"), abi.encode(0.1e18));
 
         // when - request 100 USDC; with 10% tout, exit needs 110 USDS from sUSDS
-        vaultMock.exitLitePSMSupply(LitePSMSupplyFuseExitData({amount: 100e6, allowedTout: type(uint256).max, minAmountOut: 0}));
+        vaultMock.exitLitePSMSupply(
+            LitePSMSupplyFuseExitData({amount: 100e6, allowedTout: type(uint256).max, minAmountOut: 0})
+        );
 
         // then - should receive exactly 100 USDC (tout is paid from extra USDS, not deducted from USDC output)
         uint256 usdcBalanceAfter = ERC20(USDC).balanceOf(address(vaultMock));
@@ -307,7 +337,9 @@ contract LitePSMSupplyFuseTest is Test {
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
 
         deal(USDC, address(vaultMock), 100e6);
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         uint256 maxUsdsWithdraw = IERC4626(SUSDS).maxWithdraw(address(vaultMock));
 
@@ -315,11 +347,13 @@ contract LitePSMSupplyFuseTest is Test {
         vm.mockCall(LITE_PSM, abi.encodeWithSignature("tout()"), abi.encode(0.1e18));
 
         // when - request 200 USDC (more than available with 10% tout)
-        vaultMock.exitLitePSMSupply(LitePSMSupplyFuseExitData({amount: 200e6, allowedTout: type(uint256).max, minAmountOut: 0}));
+        vaultMock.exitLitePSMSupply(
+            LitePSMSupplyFuseExitData({amount: 200e6, allowedTout: type(uint256).max, minAmountOut: 0})
+        );
 
         // then - should receive less than 100 USDC due to 10% tout eating into the available USDS
         // maxUSDC = maxUsdsWithdraw / (1.1 * 1e12), rounded down to USDC precision
-        uint256 expectedUsdc = maxUsdsWithdraw * 1e18 / (1.1e18 * 1e12);
+        uint256 expectedUsdc = (maxUsdsWithdraw * 1e18) / (1.1e18 * 1e12);
         uint256 usdcBalanceAfter = ERC20(USDC).balanceOf(address(vaultMock));
         assertEq(usdcBalanceAfter, expectedUsdc, "USDC should be capped based on available sUSDS minus tout");
     }
@@ -332,7 +366,9 @@ contract LitePSMSupplyFuseTest is Test {
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
 
         deal(USDC, address(vaultMock), 1_000e6);
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 500e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 500e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         // Mock tout to 10% (0.1e18)
         vm.mockCall(LITE_PSM, abi.encodeWithSignature("tout()"), abi.encode(0.1e18));
@@ -357,7 +393,9 @@ contract LitePSMSupplyFuseTest is Test {
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
 
         deal(USDC, address(vaultMock), 1_000e6);
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         uint256 susdsBalanceBefore = IERC4626(SUSDS).balanceOf(address(vaultMock));
         uint256 usdcBalanceBefore = ERC20(USDC).balanceOf(address(vaultMock));
@@ -390,7 +428,9 @@ contract LitePSMSupplyFuseTest is Test {
         deal(USDC, address(vaultMock), 50e6); // only 50 USDC
 
         // when - request 100 USDC but only 50 available
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         // then - should use all 50 USDC
         uint256 usdcBalanceAfter = ERC20(USDC).balanceOf(address(vaultMock));
@@ -398,7 +438,7 @@ contract LitePSMSupplyFuseTest is Test {
 
         // 50 USDC = 50 USDS (1:1 PSM), compute expected sUSDS shares
         uint256 sharesPerUsds = IERC4626(SUSDS).previewWithdraw(1e18);
-        uint256 expectedShares = 50e18 * sharesPerUsds / 1e18;
+        uint256 expectedShares = (50e18 * sharesPerUsds) / 1e18;
 
         assertEq(usdcBalanceAfter, 0, "all USDC should be consumed");
         assertApproxEqAbs(susdsBalanceAfter, expectedShares, 10000, "sUSDS shares should match expected for 50 USDC");
@@ -412,7 +452,9 @@ contract LitePSMSupplyFuseTest is Test {
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(balanceFuse));
 
         deal(USDC, address(vaultMock), 100e6);
-        vaultMock.enterLitePSMSupply(LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0}));
+        vaultMock.enterLitePSMSupply(
+            LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: 0})
+        );
 
         // Mock tout to 10% (0.1e18)
         vm.mockCall(LITE_PSM, abi.encodeWithSignature("tout()"), abi.encode(0.1e18));
@@ -451,7 +493,7 @@ contract LitePSMSupplyFuseTest is Test {
         uint256 expectedShares = IERC4626(SUSDS).previewDeposit(100e18);
 
         // when - set minSharesOut slightly below expected (allow 1% tolerance)
-        uint256 minShares = expectedShares * 99 / 100;
+        uint256 minShares = (expectedShares * 99) / 100;
         vaultMock.enterLitePSMSupply(
             LitePSMSupplyFuseEnterData({amount: 100e6, allowedTin: type(uint256).max, minSharesOut: minShares})
         );
@@ -503,5 +545,4 @@ contract LitePSMSupplyFuseTest is Test {
         uint256 usdcBalanceAfter = ERC20(USDC).balanceOf(address(vaultMock));
         assertApproxEqAbs(usdcBalanceAfter, 1_000e6, 1, "should have ~1000 USDC after instant withdraw");
     }
-
 }

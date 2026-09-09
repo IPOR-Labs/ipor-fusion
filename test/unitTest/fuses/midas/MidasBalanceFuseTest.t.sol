@@ -87,37 +87,42 @@ contract MidasBalanceFuseTest is Test {
 
     /// @dev Build a single DEPOSIT_VAULT substrate bytes32
     function _depositVaultSubstrate(address vault_) internal pure returns (bytes32) {
-        return MidasSubstrateLib.substrateToBytes32(
-            MidasSubstrate({substrateType: MidasSubstrateType.DEPOSIT_VAULT, substrateAddress: vault_})
-        );
+        return
+            MidasSubstrateLib.substrateToBytes32(
+                MidasSubstrate({substrateType: MidasSubstrateType.DEPOSIT_VAULT, substrateAddress: vault_})
+            );
     }
 
     /// @dev Build a single REDEMPTION_VAULT substrate bytes32
     function _redemptionVaultSubstrate(address vault_) internal pure returns (bytes32) {
-        return MidasSubstrateLib.substrateToBytes32(
-            MidasSubstrate({substrateType: MidasSubstrateType.REDEMPTION_VAULT, substrateAddress: vault_})
-        );
+        return
+            MidasSubstrateLib.substrateToBytes32(
+                MidasSubstrate({substrateType: MidasSubstrateType.REDEMPTION_VAULT, substrateAddress: vault_})
+            );
     }
 
     /// @dev Build a single ASSET substrate bytes32
     function _assetSubstrate(address asset_) internal pure returns (bytes32) {
-        return MidasSubstrateLib.substrateToBytes32(
-            MidasSubstrate({substrateType: MidasSubstrateType.ASSET, substrateAddress: asset_})
-        );
+        return
+            MidasSubstrateLib.substrateToBytes32(
+                MidasSubstrate({substrateType: MidasSubstrateType.ASSET, substrateAddress: asset_})
+            );
     }
 
     /// @dev Build a M_TOKEN substrate bytes32
     function _mTokenSubstrate(address mToken_) internal pure returns (bytes32) {
-        return MidasSubstrateLib.substrateToBytes32(
-            MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: mToken_})
-        );
+        return
+            MidasSubstrateLib.substrateToBytes32(
+                MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: mToken_})
+            );
     }
 
     /// @dev Build a INSTANT_REDEMPTION_VAULT substrate bytes32
     function _instantRedemptionVaultSubstrate(address vault_) internal pure returns (bytes32) {
-        return MidasSubstrateLib.substrateToBytes32(
-            MidasSubstrate({substrateType: MidasSubstrateType.INSTANT_REDEMPTION_VAULT, substrateAddress: vault_})
-        );
+        return
+            MidasSubstrateLib.substrateToBytes32(
+                MidasSubstrate({substrateType: MidasSubstrateType.INSTANT_REDEMPTION_VAULT, substrateAddress: vault_})
+            );
     }
 
     /// @dev Set up a single deposit vault with mToken and data feed
@@ -142,12 +147,7 @@ contract MidasBalanceFuseTest is Test {
     }
 
     /// @dev Create a pending deposit request on the harness storage
-    function _addPendingDepositRequest(
-        address vault_,
-        uint256 requestId_,
-        uint8 status_,
-        uint256 usdAmount_
-    ) internal {
+    function _addPendingDepositRequest(address vault_, uint256 requestId_, uint8 status_, uint256 usdAmount_) internal {
         MockMidasDepositVaultForBalance(vault_).setMintRequest(
             requestId_,
             IMidasDepositVault.Request({
@@ -684,8 +684,8 @@ contract MidasBalanceFuseTest is Test {
         harness.setExecutor(executor);
         harness.setPriceOracle(address(oracle));
         oracle.setAssetPrice(address(usdc), 1e8, 8);
-        mTokenA.setBalance(executor, 30e18);    // D.a: 30e18
-        usdc.setBalance(executor, 500e6);        // D.b: 500e18
+        mTokenA.setBalance(executor, 30e18); // D.a: 30e18
+        usdc.setBalance(executor, 500e6); // D.b: 500e18
 
         bytes32[] memory substrates = new bytes32[](3);
         substrates[0] = _depositVaultSubstrate(address(depositVault));
@@ -693,7 +693,7 @@ contract MidasBalanceFuseTest is Test {
         substrates[2] = _assetSubstrate(address(usdc));
         harness.setMarketSubstrates(MARKET_ID, substrates);
 
-        _addPendingDepositRequest(address(depositVault), 1, 0, 200e18);   // B: 200e18
+        _addPendingDepositRequest(address(depositVault), 1, 0, 200e18); // B: 200e18
         _addPendingRedemptionRequest(address(redemptionVault), 1, 0, 50e18); // C: 50e18
 
         // Expected total: 100 + 200 + 50 + 30 + 500 = 880e18
@@ -741,11 +741,11 @@ contract MidasBalanceFuseTest is Test {
         usdc.setBalance(executor, 100e6);
 
         bytes32[] memory substrates = new bytes32[](5);
-        substrates[0] = _depositVaultSubstrate(address(depositVault));       // B2: processed
+        substrates[0] = _depositVaultSubstrate(address(depositVault)); // B2: processed
         substrates[1] = _redemptionVaultSubstrate(address(redemptionVault)); // B3: processed
-        substrates[2] = _assetSubstrate(address(usdc));                      // B4: processed
-        substrates[3] = _mTokenSubstrate(address(mTokenB));                  // B5: ignored
-        substrates[4] = _instantRedemptionVaultSubstrate(makeAddr("irv"));   // B5: ignored
+        substrates[2] = _assetSubstrate(address(usdc)); // B4: processed
+        substrates[3] = _mTokenSubstrate(address(mTokenB)); // B5: ignored
+        substrates[4] = _instantRedemptionVaultSubstrate(makeAddr("irv")); // B5: ignored
         harness.setMarketSubstrates(MARKET_ID, substrates);
 
         // When
@@ -1129,9 +1129,7 @@ contract MidasBalanceFuseTest is Test {
     }
 
     /// @dev PR4: redemption vault mToken does not match any deposit vault → revert
-    function test_balanceOf_ComponentC_ShouldRevert_WhenRedemptionVaultMTokenDoesNotMatchAnyDepositVault()
-        public
-    {
+    function test_balanceOf_ComponentC_ShouldRevert_WhenRedemptionVaultMTokenDoesNotMatchAnyDepositVault() public {
         // Given: deposit vault has mTokenA, redemption vault has mTokenB
         _setupDepositVault(depositVault, mTokenA, dataFeed, 1e18, 0);
         redemptionVault.setMToken(address(mTokenB)); // different
@@ -1266,11 +1264,7 @@ contract MidasBalanceFuseTest is Test {
         uint256 expected = IporMath.convertToWad(expectedProduct, totalDecimals);
         uint256 balance = harness.balanceOf();
 
-        assertEq(
-            balance,
-            expected,
-            "Fuzz: Component D asset valuation should match IporMath.convertToWad formula"
-        );
+        assertEq(balance, expected, "Fuzz: Component D asset valuation should match IporMath.convertToWad formula");
     }
 
     /// @dev Fuzz: no revert with realistic multi-vault inputs

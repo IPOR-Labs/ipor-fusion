@@ -177,7 +177,9 @@ contract VeloraSwapperFuseTest is Test {
         );
 
         // when/then
-        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, address(0)));
+        vm.expectRevert(
+            abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, address(0))
+        );
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
@@ -200,7 +202,9 @@ contract VeloraSwapperFuseTest is Test {
         );
 
         // when/then
-        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, address(0)));
+        vm.expectRevert(
+            abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, address(0))
+        );
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
@@ -223,7 +227,9 @@ contract VeloraSwapperFuseTest is Test {
         );
 
         // when/then
-        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, unsupportedToken));
+        vm.expectRevert(
+            abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, unsupportedToken)
+        );
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
@@ -249,7 +255,9 @@ contract VeloraSwapperFuseTest is Test {
         );
 
         // when/then
-        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, unsupportedToken));
+        vm.expectRevert(
+            abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, unsupportedToken)
+        );
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
@@ -356,7 +364,9 @@ contract VeloraSwapperFuseTest is Test {
 
         // when/then - use helper contract to test revert (library functions are inlined)
         VeloraSlippageEncoderHelper helper = new VeloraSlippageEncoderHelper();
-        vm.expectRevert(abi.encodeWithSelector(VeloraSubstrateLib.VeloraSubstrateLibSlippageOverflow.selector, overflowValue));
+        vm.expectRevert(
+            abi.encodeWithSelector(VeloraSubstrateLib.VeloraSubstrateLibSlippageOverflow.selector, overflowValue)
+        );
         helper.encodeSlippage(overflowValue);
     }
 
@@ -402,7 +412,9 @@ contract VeloraSwapperFuseTest is Test {
         );
 
         // when/then - should revert with tokenIn (first check fails)
-        vm.expectRevert(abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, unsupportedTokenIn));
+        vm.expectRevert(
+            abi.encodeWithSelector(VeloraSwapperFuse.VeloraSwapperFuseUnsupportedAsset.selector, unsupportedTokenIn)
+        );
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
@@ -1155,7 +1167,8 @@ contract VeloraSwapperFuseTest is Test {
         // userAddress: 0xeafCcCE3F73a1ac8690F49acF56C4142183619dd (executor address)
         // srcToken: USDC, destToken: WETH, srcAmount: 1000000000 (1000 USDC)
         // Expected output: ~0.332 WETH (at ~$3300/ETH)
-        bytes memory swapCallData = hex"e3ead59e000000000000000000000000000010036c0190e009a000d0fc3541100a07380a000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583100000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000000000003b9aca00000000000000000000000000000000000000000000000000048fe7c176ca7bf3000000000000000000000000000000000000000000000000049bb3cb2d003f2479c34107785249f98e91fe6c17d7e51a0000000000000000000000001945b1c6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000160000000000000000000000000000000000000000000000000000000000000018000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000460000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004600fc85a171bd0b53bf0bbace74f04b66170ae3eab0000040000240000ff000003000000000000000000000000000000000000000000000000000000000947c2d90000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009ef4a86b0f299b28510fd37e6f1361ec0f769a65000000000000000000000000129b3d9a0a6e4beab88f5cb1e57995d72a6e24f10000000000000000000000006a000f20005980200259b80c5102003040001068000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583100000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000000000003b9aca00000000000000000000000000000000000000000000000000049bb3cb2d003f4c000000000000000000000000000000000000000000000000049bb3cb2d003f4c000000000000000000000000000000000000000000000000000000006971f53c0000000000000000000000000000000000000000000000003d21715ddb97be7e000000000000000000000000000000000000000000000000000000006971f50d000000000000000000000000000000000000000000000000000000006971f530000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000003222fefb98e3457f8dd227bed3ffba3300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002800000000000000000000000006044eef7179034319e2c8636ea885b37cbfa9aba000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000041a495cb059dab7ef513e911008f3f36b17027afbc57059e51e25e402476cf45b2431fdaf0145a68f87779ff8a115c1f42a0bdd98ea5aeaa142982fccded5757151c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004149ccb95af61543633df30c26dc138c2097f44cfe5b4f5fad9129a46a02cfac6345148d743d056b41e37c7ea810ff638e321a1aaf79294164108a91cd23a959571c00000000000000000000000000000000000000000000000000000000000000";
+        bytes
+            memory swapCallData = hex"e3ead59e000000000000000000000000000010036c0190e009a000d0fc3541100a07380a000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583100000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000000000003b9aca00000000000000000000000000000000000000000000000000048fe7c176ca7bf3000000000000000000000000000000000000000000000000049bb3cb2d003f2479c34107785249f98e91fe6c17d7e51a0000000000000000000000001945b1c6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000160000000000000000000000000000000000000000000000000000000000000018000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000460000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004600fc85a171bd0b53bf0bbace74f04b66170ae3eab0000040000240000ff000003000000000000000000000000000000000000000000000000000000000947c2d90000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009ef4a86b0f299b28510fd37e6f1361ec0f769a65000000000000000000000000129b3d9a0a6e4beab88f5cb1e57995d72a6e24f10000000000000000000000006a000f20005980200259b80c5102003040001068000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583100000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000000000003b9aca00000000000000000000000000000000000000000000000000049bb3cb2d003f4c000000000000000000000000000000000000000000000000049bb3cb2d003f4c000000000000000000000000000000000000000000000000000000006971f53c0000000000000000000000000000000000000000000000003d21715ddb97be7e000000000000000000000000000000000000000000000000000000006971f50d000000000000000000000000000000000000000000000000000000006971f530000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000003222fefb98e3457f8dd227bed3ffba3300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002800000000000000000000000006044eef7179034319e2c8636ea885b37cbfa9aba000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000041a495cb059dab7ef513e911008f3f36b17027afbc57059e51e25e402476cf45b2431fdaf0145a68f87779ff8a115c1f42a0bdd98ea5aeaa142982fccded5757151c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004149ccb95af61543633df30c26dc138c2097f44cfe5b4f5fad9129a46a02cfac6345148d743d056b41e37c7ea810ff638e321a1aaf79294164108a91cd23a959571c00000000000000000000000000000000000000000000000000000000000000";
 
         VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
             tokenIn: USDC,
@@ -1471,7 +1484,12 @@ contract VeloraSwapperFuseWithMockExecutor {
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
         // Call mock executor
-        MockBrokenVeloraSwapExecutor(EXECUTOR).execute(data_.tokenIn, data_.tokenOut, data_.amountIn, data_.swapCallData);
+        MockBrokenVeloraSwapExecutor(EXECUTOR).execute(
+            data_.tokenIn,
+            data_.tokenOut,
+            data_.amountIn,
+            data_.swapCallData
+        );
 
         // Record balances after swap
         uint256 tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(plasmaVault);
@@ -1522,12 +1540,7 @@ contract MockLowOutputVeloraExecutor {
 
     address private constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
-    function execute(
-        address tokenIn_,
-        address tokenOut_,
-        uint256,
-        bytes calldata
-    ) external {
+    function execute(address tokenIn_, address tokenOut_, uint256, bytes calldata) external {
         // Consume all tokenIn (don't return it)
         uint256 tokenInBalance = ERC20(tokenIn_).balanceOf(address(this));
         // Keep tokenIn in executor (simulating it was used in swap)
@@ -1548,12 +1561,7 @@ contract MockSuccessfulVeloraExecutor {
 
     address private constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
-    function execute(
-        address tokenIn_,
-        address tokenOut_,
-        uint256,
-        bytes calldata
-    ) external {
+    function execute(address tokenIn_, address tokenOut_, uint256, bytes calldata) external {
         // Consume all tokenIn (don't return it)
         // tokenIn stays in executor simulating consumption
 
@@ -1618,7 +1626,12 @@ contract VeloraSwapperFuseWithMockExecutorAndEvent {
 
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
-        MockSuccessfulVeloraExecutor(EXECUTOR).execute(data_.tokenIn, data_.tokenOut, data_.amountIn, data_.swapCallData);
+        MockSuccessfulVeloraExecutor(EXECUTOR).execute(
+            data_.tokenIn,
+            data_.tokenOut,
+            data_.amountIn,
+            data_.swapCallData
+        );
 
         uint256 tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(plasmaVault);
         uint256 tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
@@ -1654,12 +1667,7 @@ contract MockHighSlippageVeloraExecutor {
 
     address private constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
-    function execute(
-        address,
-        address tokenOut_,
-        uint256,
-        bytes calldata
-    ) external {
+    function execute(address, address tokenOut_, uint256, bytes calldata) external {
         // Return all WETH we have (which is much less than expected)
         if (tokenOut_ == WETH) {
             uint256 wethBalance = ERC20(WETH).balanceOf(address(this));
@@ -1757,7 +1765,12 @@ contract VeloraSwapperFuseWithSlippageCheck {
 
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
-        MockHighSlippageVeloraExecutor(EXECUTOR).execute(data_.tokenIn, data_.tokenOut, data_.amountIn, data_.swapCallData);
+        MockHighSlippageVeloraExecutor(EXECUTOR).execute(
+            data_.tokenIn,
+            data_.tokenOut,
+            data_.amountIn,
+            data_.swapCallData
+        );
 
         uint256 tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(plasmaVault);
         uint256 tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
@@ -1794,8 +1807,12 @@ contract VeloraSwapperFuseWithSlippageCheck {
             revert VeloraSwapperFuseInvalidPriceOracleMiddleware();
         }
 
-        (uint256 tokenInPrice, uint256 tokenInPriceDecimals) = MockZeroPriceOracle(PRICE_ORACLE).getAssetPrice(tokenIn_);
-        (uint256 tokenOutPrice, uint256 tokenOutPriceDecimals) = MockZeroPriceOracle(PRICE_ORACLE).getAssetPrice(tokenOut_);
+        (uint256 tokenInPrice, uint256 tokenInPriceDecimals) = MockZeroPriceOracle(PRICE_ORACLE).getAssetPrice(
+            tokenIn_
+        );
+        (uint256 tokenOutPrice, uint256 tokenOutPriceDecimals) = MockZeroPriceOracle(PRICE_ORACLE).getAssetPrice(
+            tokenOut_
+        );
 
         if (tokenInPrice == 0) {
             revert VeloraSwapperFuseInvalidPrice(tokenIn_);
@@ -1809,8 +1826,10 @@ contract VeloraSwapperFuseWithSlippageCheck {
         uint256 tokenOutDecimals = ERC20(tokenOut_).decimals();
 
         // Convert to USD values in WAD (1e18)
-        uint256 amountUsdInDelta = (tokenInDelta_ * tokenInPrice * _ONE) / (10 ** (tokenInDecimals + tokenInPriceDecimals));
-        uint256 amountUsdOutDelta = (tokenOutDelta_ * tokenOutPrice * _ONE) / (10 ** (tokenOutDecimals + tokenOutPriceDecimals));
+        uint256 amountUsdInDelta = (tokenInDelta_ * tokenInPrice * _ONE) /
+            (10 ** (tokenInDecimals + tokenInPriceDecimals));
+        uint256 amountUsdOutDelta = (tokenOutDelta_ * tokenOutPrice * _ONE) /
+            (10 ** (tokenOutDecimals + tokenOutPriceDecimals));
 
         if (amountUsdInDelta == 0) {
             revert VeloraSwapperFuseSlippageFail();

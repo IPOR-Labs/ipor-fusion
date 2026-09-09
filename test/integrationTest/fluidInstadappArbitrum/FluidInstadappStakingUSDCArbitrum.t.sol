@@ -3,16 +3,32 @@ pragma solidity 0.8.30;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SupplyTest} from "../supplyFuseTemplate/SupplyTests.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FuseAction
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {
+    Erc4626SupplyFuse,
+    Erc4626SupplyFuseEnterData,
+    Erc4626SupplyFuseExitData
+} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {Erc4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
-import {FluidInstadappStakingSupplyFuse, FluidInstadappStakingSupplyFuseEnterData, FluidInstadappStakingSupplyFuseExitData} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    FluidInstadappStakingSupplyFuse,
+    FluidInstadappStakingSupplyFuseEnterData,
+    FluidInstadappStakingSupplyFuseExitData
+} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 
 contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
     address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;

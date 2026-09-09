@@ -92,7 +92,7 @@ library FusionFactoryLib {
         FusionFactoryStorageLib.setBurnRequestFeeBalanceFuseAddress(burnRequestFeeBalanceFuse_);
     }
 
-     function clone(
+    function clone(
         string memory assetName_,
         string memory assetSymbol_,
         address underlyingToken_,

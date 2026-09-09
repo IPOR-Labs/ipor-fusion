@@ -9,7 +9,11 @@ import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {ILeafGauge} from "./ext/ILeafGauge.sol";
-import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
+import {
+    VelodromeSuperchainSubstrateLib,
+    VelodromeSuperchainSubstrate,
+    VelodromeSuperchainSubstrateType
+} from "./VelodromeSuperchainLib.sol";
 
 /// @notice Data structure used for entering a gauge deposit operation
 /// @param gaugeAddress The address of the Velodrome Superchain gauge contract

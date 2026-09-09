@@ -4,8 +4,16 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {MidasSupplyFuse, MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
-import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {
+    MidasSupplyFuse,
+    MidasSupplyFuseEnterData,
+    MidasSupplyFuseExitData
+} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
+import {
+    MidasSubstrateLib,
+    MidasSubstrate,
+    MidasSubstrateType
+} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
@@ -165,15 +173,17 @@ contract MidasSupplyFuseTest is Test {
 
         // This may revert due to Midas KYC requirements on mainnet fork
         // We test the logic path by verifying it processes the capped amount
-        try vault.enterMidasSupply(
-            MidasSupplyFuseEnterData({
-                mToken: MTBILL_TOKEN,
-                tokenIn: USDC,
-                amount: 1000e6, // requesting more than available
-                minMTokenAmountOut: 0,
-                depositVault: MTBILL_DEPOSIT_VAULT
-            })
-        ) {
+        try
+            vault.enterMidasSupply(
+                MidasSupplyFuseEnterData({
+                    mToken: MTBILL_TOKEN,
+                    tokenIn: USDC,
+                    amount: 1000e6, // requesting more than available
+                    minMTokenAmountOut: 0,
+                    depositVault: MTBILL_DEPOSIT_VAULT
+                })
+            )
+        {
             // If it succeeds, USDC should decrease by at most the available balance
             uint256 usdcAfter = IERC20(USDC).balanceOf(address(vault));
             assertLe(usdcBefore - usdcAfter, usdcAmount, "Should not spend more than available");
@@ -191,15 +201,17 @@ contract MidasSupplyFuseTest is Test {
 
         // Midas depositInstant on mainnet may require KYC whitelisting
         // We try-catch to handle both whitelisted and non-whitelisted scenarios
-        try vault.enterMidasSupply(
-            MidasSupplyFuseEnterData({
-                mToken: MTBILL_TOKEN,
-                tokenIn: USDC,
-                amount: usdcAmount,
-                minMTokenAmountOut: 0,
-                depositVault: MTBILL_DEPOSIT_VAULT
-            })
-        ) {
+        try
+            vault.enterMidasSupply(
+                MidasSupplyFuseEnterData({
+                    mToken: MTBILL_TOKEN,
+                    tokenIn: USDC,
+                    amount: usdcAmount,
+                    minMTokenAmountOut: 0,
+                    depositVault: MTBILL_DEPOSIT_VAULT
+                })
+            )
+        {
             uint256 mTokenAfter = IERC20(MTBILL_TOKEN).balanceOf(address(vault));
             uint256 usdcAfter = IERC20(USDC).balanceOf(address(vault));
 
@@ -296,11 +308,7 @@ contract MidasSupplyFuseTest is Test {
             })
         );
 
-        assertEq(
-            ERC20(USDC).allowance(address(vault), MTBILL_DEPOSIT_VAULT),
-            0,
-            "Approval should be zero after mint"
-        );
+        assertEq(ERC20(USDC).allowance(address(vault), MTBILL_DEPOSIT_VAULT), 0, "Approval should be zero after mint");
     }
 
     function testShouldEmitMidasSupplyFuseEnterEvent() public {
@@ -316,9 +324,7 @@ contract MidasSupplyFuseTest is Test {
         deal(MTBILL_TOKEN, address(vault), 95e18);
 
         vm.expectEmit(true, true, true, true);
-        emit MidasSupplyFuse.MidasSupplyFuseEnter(
-            fuse.VERSION(), MTBILL_TOKEN, usdcAmount, MTBILL_DEPOSIT_VAULT
-        );
+        emit MidasSupplyFuse.MidasSupplyFuseEnter(fuse.VERSION(), MTBILL_TOKEN, usdcAmount, MTBILL_DEPOSIT_VAULT);
 
         vault.enterMidasSupply(
             MidasSupplyFuseEnterData({
@@ -420,15 +426,17 @@ contract MidasSupplyFuseTest is Test {
         uint256 usdcBefore = IERC20(USDC).balanceOf(address(vault));
 
         // Midas redeemInstant on mainnet may require KYC whitelisting
-        try vault.exitMidasSupply(
-            MidasSupplyFuseExitData({
-                mToken: MTBILL_TOKEN,
-                amount: 100e18,
-                minTokenOutAmount: 0,
-                tokenOut: USDC,
-                instantRedemptionVault: MTBILL_INSTANT_REDEMPTION_VAULT
-            })
-        ) {
+        try
+            vault.exitMidasSupply(
+                MidasSupplyFuseExitData({
+                    mToken: MTBILL_TOKEN,
+                    amount: 100e18,
+                    minTokenOutAmount: 0,
+                    tokenOut: USDC,
+                    instantRedemptionVault: MTBILL_INSTANT_REDEMPTION_VAULT
+                })
+            )
+        {
             uint256 mTokenAfter = IERC20(MTBILL_TOKEN).balanceOf(address(vault));
             uint256 usdcAfter = IERC20(USDC).balanceOf(address(vault));
 
@@ -586,7 +594,11 @@ contract MidasSupplyFuseTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit MidasSupplyFuse.MidasSupplyFuseExit(
-            fuse.VERSION(), MTBILL_TOKEN, mTokenAmount, USDC, MTBILL_INSTANT_REDEMPTION_VAULT
+            fuse.VERSION(),
+            MTBILL_TOKEN,
+            mTokenAmount,
+            USDC,
+            MTBILL_INSTANT_REDEMPTION_VAULT
         );
 
         vault.exitMidasSupply(
@@ -654,7 +666,11 @@ contract MidasSupplyFuseTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit MidasSupplyFuse.MidasSupplyFuseExit(
-            fuse.VERSION(), MTBILL_TOKEN, mTokenAmount, USDC, MTBILL_INSTANT_REDEMPTION_VAULT
+            fuse.VERSION(),
+            MTBILL_TOKEN,
+            mTokenAmount,
+            USDC,
+            MTBILL_INSTANT_REDEMPTION_VAULT
         );
 
         vault.instantWithdraw(params);
@@ -687,7 +703,11 @@ contract MidasSupplyFuseTest is Test {
         // Should NOT revert — catches exception and emits ExitFailed event
         vm.expectEmit(true, true, true, true);
         emit MidasSupplyFuse.MidasSupplyFuseExitFailed(
-            fuse.VERSION(), MTBILL_TOKEN, mTokenAmount, USDC, MTBILL_INSTANT_REDEMPTION_VAULT
+            fuse.VERSION(),
+            MTBILL_TOKEN,
+            mTokenAmount,
+            USDC,
+            MTBILL_INSTANT_REDEMPTION_VAULT
         );
 
         vault.instantWithdraw(params);

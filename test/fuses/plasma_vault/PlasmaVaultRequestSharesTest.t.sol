@@ -2,7 +2,10 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {PlasmaVaultRequestSharesFuse, PlasmaVaultRequestSharesFuseEnterData} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol";
+import {
+    PlasmaVaultRequestSharesFuse,
+    PlasmaVaultRequestSharesFuseEnterData
+} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 
@@ -12,12 +15,25 @@ import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
-import {UniversalTokenSwapperFuse, UniversalTokenSwapperEnterData, UniversalTokenSwapperData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {
+    UniversalTokenSwapperFuse,
+    UniversalTokenSwapperEnterData,
+    UniversalTokenSwapperData
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
-import {Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
-import {PlasmaVaultRedeemFromRequestFuse, PlasmaVaultRedeemFromRequestFuseEnterData} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol";
+import {
+    Erc4626SupplyFuseEnterData,
+    Erc4626SupplyFuseExitData
+} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {
+    PlasmaVaultRedeemFromRequestFuse,
+    PlasmaVaultRedeemFromRequestFuseEnterData
+} from "../../../contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol";
 
 interface CreditEnforcer {
     function mintStablecoin(uint256 amount) external returns (uint256);

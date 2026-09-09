@@ -51,11 +51,7 @@ contract MockMidasRedemptionVaultForSupplyFuse is IMidasRedemptionVault {
     }
 
     /// @notice Simulates redeemInstant: records args, optionally reverts, transfers tokenOut to msg.sender
-    function redeemInstant(
-        address tokenOut,
-        uint256 amountMTokenIn,
-        uint256 minReceiveAmount
-    ) external override {
+    function redeemInstant(address tokenOut, uint256 amountMTokenIn, uint256 minReceiveAmount) external override {
         if (shouldRevert) {
             bytes memory data = revertData;
             assembly {
@@ -70,7 +66,7 @@ contract MockMidasRedemptionVaultForSupplyFuse is IMidasRedemptionVault {
 
         // Transfer tokenOut to caller (simulating the vault transferring to PlasmaVault context)
         if (tokenOutToTransfer > 0 && tokenOutAddress != address(0)) {
-            (bool success,) = tokenOutAddress.call(
+            (bool success, ) = tokenOutAddress.call(
                 abi.encodeWithSignature("transfer(address,uint256)", msg.sender, tokenOutToTransfer)
             );
             require(success, "MockMidasRedemptionVault: transfer failed");
@@ -80,7 +76,7 @@ contract MockMidasRedemptionVaultForSupplyFuse is IMidasRedemptionVault {
     // ---- Unused interface stubs ----
 
     function redeemRequest(
-        address, /* tokenOut */
+        address /* tokenOut */,
         uint256 /* amountMTokenIn */
     ) external pure override returns (uint256) {
         revert("MockMidasRedemptionVaultForSupplyFuse: not used");

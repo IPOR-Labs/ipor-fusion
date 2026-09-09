@@ -7,7 +7,11 @@ import {IMidasDataFeed} from "../../../contracts/fuses/midas/ext/IMidasDataFeed.
 import {IMidasDepositVault} from "../../../contracts/fuses/midas/ext/IMidasDepositVault.sol";
 import {IMidasRedemptionVault} from "../../../contracts/fuses/midas/ext/IMidasRedemptionVault.sol";
 import {MidasBalanceFuse} from "../../../contracts/fuses/midas/MidasBalanceFuse.sol";
-import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {
+    MidasSubstrateLib,
+    MidasSubstrate,
+    MidasSubstrateType
+} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {MidasSupplyFuse} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
 import {MidasPendingRequestsHelper} from "./MidasPendingRequestsHelper.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
@@ -111,7 +115,9 @@ contract MidasBalanceFuseTest is Test {
         vault.execute(
             address(storageHelper),
             abi.encodeWithSelector(
-                MidasPendingRequestsHelper.addPendingRedemption.selector, redemptionVault_, requestId_
+                MidasPendingRequestsHelper.addPendingRedemption.selector,
+                redemptionVault_,
+                requestId_
             )
         );
     }
@@ -192,11 +198,7 @@ contract MidasBalanceFuseTest is Test {
     function testShouldRevertWhenDataFeedReturnsZero() public {
         // Mock data feed to return 0 price (via deposit vault's mTokenDataFeed)
         address dataFeed = address(uint160(uint256(keccak256(abi.encodePacked("dataFeed", MTBILL_DEPOSIT_VAULT)))));
-        vm.mockCall(
-            dataFeed,
-            abi.encodeWithSelector(IMidasDataFeed.getDataInBase18.selector),
-            abi.encode(uint256(0))
-        );
+        vm.mockCall(dataFeed, abi.encodeWithSelector(IMidasDataFeed.getDataInBase18.selector), abi.encode(uint256(0)));
 
         deal(MTBILL_TOKEN, address(vault), 100e18);
 

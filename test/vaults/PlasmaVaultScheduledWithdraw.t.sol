@@ -4,22 +4,40 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, MarketSubstratesConfig, FeeConfig, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    MarketSubstratesConfig,
+    FeeConfig,
+    FuseAction
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultVotesPlugin} from "../../contracts/vaults/plugins/PlasmaVaultVotesPlugin.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager, WithdrawRequestInfo} from "../../contracts/managers/withdraw/WithdrawManager.sol";
-import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    DataForInitialization,
+    PlasmaVaultAddress,
+    InitializationData
+} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
 import {BurnRequestFeeFuse} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {UpdateWithdrawManagerMaintenanceFuse, UpdateWithdrawManagerMaintenanceFuseEnterData} from "../../contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol";
+import {
+    UpdateWithdrawManagerMaintenanceFuse,
+    UpdateWithdrawManagerMaintenanceFuseEnterData
+} from "../../contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol";
 import {UniversalReader, ReadResult} from "../../contracts/universal_reader/UniversalReader.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../contracts/libraries/TypeConversionLib.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 

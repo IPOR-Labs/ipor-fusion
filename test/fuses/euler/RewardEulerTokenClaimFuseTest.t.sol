@@ -6,7 +6,10 @@ import {MerklClaimFuse} from "../../../contracts/rewards_fuses/merkl/MerklClaimF
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
-import {RewardEulerTokenClaimFuse, ClaimData} from "../../../contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol";
+import {
+    RewardEulerTokenClaimFuse,
+    ClaimData
+} from "../../../contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol";
 import {IREUL} from "../../../contracts/rewards_fuses/euler/ext/IREUL.sol";
 
 // Merkl specific addresses on Ethereum mainnet

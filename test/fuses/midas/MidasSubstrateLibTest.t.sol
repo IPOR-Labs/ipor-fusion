@@ -2,7 +2,11 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {
+    MidasSubstrateLib,
+    MidasSubstrate,
+    MidasSubstrateType
+} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 
@@ -40,10 +44,7 @@ contract MidasSubstrateLibTest is Test {
         ];
 
         for (uint256 i; i < types.length; i++) {
-            MidasSubstrate memory original = MidasSubstrate({
-                substrateType: types[i],
-                substrateAddress: USDC
-            });
+            MidasSubstrate memory original = MidasSubstrate({substrateType: types[i], substrateAddress: USDC});
 
             bytes32 encoded = MidasSubstrateLib.substrateToBytes32(original);
             MidasSubstrate memory decoded = MidasSubstrateLib.bytes32ToSubstrate(encoded);

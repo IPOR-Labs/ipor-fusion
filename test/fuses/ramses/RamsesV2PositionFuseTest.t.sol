@@ -15,12 +15,26 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RamsesV2Balance} from "../../../contracts/fuses/ramses/RamsesV2Balance.sol";
-import {RamsesV2NewPositionFuse, RamsesV2NewPositionFuseEnterData, RamsesV2NewPositionFuseExitData} from "../../../contracts/fuses/ramses/RamsesV2NewPositionFuse.sol";
-import {RamsesV2ModifyPositionFuse, RamsesV2ModifyPositionFuseEnterData, RamsesV2ModifyPositionFuseExitData} from "../../../contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol";
+import {
+    RamsesV2NewPositionFuse,
+    RamsesV2NewPositionFuseEnterData,
+    RamsesV2NewPositionFuseExitData
+} from "../../../contracts/fuses/ramses/RamsesV2NewPositionFuse.sol";
+import {
+    RamsesV2ModifyPositionFuse,
+    RamsesV2ModifyPositionFuseEnterData,
+    RamsesV2ModifyPositionFuseExitData
+} from "../../../contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {RamsesV2CollectFuse, RamsesV2CollectFuseEnterData} from "../../../contracts/fuses/ramses/RamsesV2CollectFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    RamsesV2CollectFuse,
+    RamsesV2CollectFuseEnterData
+} from "../../../contracts/fuses/ramses/RamsesV2CollectFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";

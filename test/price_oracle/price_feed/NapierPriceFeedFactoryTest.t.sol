@@ -306,8 +306,6 @@ contract NapierPriceFeedFactoryTest is Test {
         assertGt(price, 0, "Price should be positive");
         assertLt(price, 1e18, "Price should be less than 1e18");
         assertEq(timestamp, block.timestamp, "Timestamp should match block timestamp");
-
-        
     }
 
     function testCreateTwapPriceFeed() public {
@@ -329,8 +327,6 @@ contract NapierPriceFeedFactoryTest is Test {
         assertGt(price, 0, "Price should be positive");
         assertLt(price, 1e18, "Price should be less than 1e18");
         assertEq(timestamp, block.timestamp, "Timestamp should match block timestamp");
-
-        
     }
 
     function testCreateYtTwapPriceFeed() public {

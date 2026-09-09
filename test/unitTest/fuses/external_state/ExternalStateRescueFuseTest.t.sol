@@ -121,7 +121,12 @@ contract ExternalStateRescueFuseTest is Test {
     function test_rescue_revertsForTrackedAsset() public {
         _storeExecutor();
         asset.mint(address(executor), 100e6);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden.selector, address(asset)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden.selector,
+                address(asset)
+            )
+        );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.rescue, (address(asset))));
         // Funds remain on the executor — rescue did NOT execute.
         assertEq(asset.balanceOf(address(executor)), 100e6);

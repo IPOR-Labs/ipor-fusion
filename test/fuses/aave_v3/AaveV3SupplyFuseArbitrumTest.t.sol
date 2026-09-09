@@ -8,7 +8,11 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
-import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {
+    AaveV3SupplyFuse,
+    AaveV3SupplyFuseEnterData,
+    AaveV3SupplyFuseExitData
+} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {TransientStorageLib} from "../../../contracts/transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";

@@ -12,8 +12,7 @@ library MidasExecutorStorageLib {
     /// @dev Uses ERC-7201 namespaced storage pattern to avoid storage collisions.
     ///      Calculation: keccak256(abi.encode(uint256(keccak256("io.ipor.midas.Executor")) - 1)) & ~bytes32(uint256(0xff))
     ///      The slot is calculated by: namespace hash - 1, then clearing the last byte to align to 256-bit boundary.
-    bytes32 private constant MIDAS_EXECUTOR_SLOT =
-        0x70d197bb241b100c004ed80fc4b87ce41500fa5c47b2ad133730792ea68d7d00;
+    bytes32 private constant MIDAS_EXECUTOR_SLOT = 0x70d197bb241b100c004ed80fc4b87ce41500fa5c47b2ad133730792ea68d7d00;
 
     /// @dev Structure holding the MidasExecutor address
     /// @custom:storage-location erc7201:io.ipor.midas.Executor

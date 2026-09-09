@@ -4,9 +4,15 @@ pragma solidity ^0.8.30;
 import {Test} from "forge-std/Test.sol";
 
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {HarvestDoHardWorkFuse, HarvestDoHardWorkFuseEnterData} from "../../../contracts/fuses/harvest/HarvestDoHardWorkFuse.sol";
+import {
+    HarvestDoHardWorkFuse,
+    HarvestDoHardWorkFuseEnterData
+} from "../../../contracts/fuses/harvest/HarvestDoHardWorkFuse.sol";
 import {IHarvestController} from "../../../contracts/fuses/harvest/ext/IHarvestController.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";

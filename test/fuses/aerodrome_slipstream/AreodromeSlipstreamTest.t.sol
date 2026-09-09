@@ -18,12 +18,32 @@ import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
-import {AreodromeSlipstreamCollectFuse, AreodromeSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
-import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEnterData, AreodromeSlipstreamNewPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
-import {AreodromeSlipstreamModifyPositionFuse, AreodromeSlipstreamModifyPositionFuseEnterData, AreodromeSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
-import {AreodromeSlipstreamCLGaugeFuse, AreodromeSlipstreamCLGaugeFuseEnterData, AreodromeSlipstreamCLGaugeFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
+import {
+    AreodromeSlipstreamCollectFuse,
+    AreodromeSlipstreamCollectFuseEnterData
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
+import {
+    AreodromeSlipstreamNewPositionFuse,
+    AreodromeSlipstreamNewPositionFuseEnterData,
+    AreodromeSlipstreamNewPositionFuseExitData
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
+import {
+    AreodromeSlipstreamModifyPositionFuse,
+    AreodromeSlipstreamModifyPositionFuseEnterData,
+    AreodromeSlipstreamModifyPositionFuseExitData
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
+import {
+    AreodromeSlipstreamCLGaugeFuse,
+    AreodromeSlipstreamCLGaugeFuseEnterData,
+    AreodromeSlipstreamCLGaugeFuseExitData
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
 import {AreodromeSlipstreamBalanceFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalanceFuse.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate, PoolNotDeployed} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrateType,
+    AreodromeSlipstreamSubstrate,
+    PoolNotDeployed
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -38,7 +58,10 @@ import {AreodromeSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuse
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 
 /// @title AreodromeSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse

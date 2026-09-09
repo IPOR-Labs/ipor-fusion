@@ -76,7 +76,13 @@ contract ChainlinkGuardedPriceFeedTest is Test {
     }
 
     function test_constructor_AcceptsMaxDeviationAtWad() public {
-        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, 1e18, ROUNDS, MIN_ROUNDS);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            1e18,
+            ROUNDS,
+            MIN_ROUNDS
+        );
         assertEq(feed.MAX_DEVIATION(), 1e18, "should accept 1e18 exactly");
     }
 
@@ -139,7 +145,13 @@ contract ChainlinkGuardedPriceFeedTest is Test {
         require(realAnswer > 0 && realUpdatedAt > 0, "pinned block produced empty Chainlink reading");
         vm.warp(realUpdatedAt + 1);
 
-        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, 5e17, ROUNDS, MIN_ROUNDS);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            5e17,
+            ROUNDS,
+            MIN_ROUNDS
+        );
 
         (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound) = feed
             .latestRoundData();
@@ -155,11 +167,23 @@ contract ChainlinkGuardedPriceFeedTest is Test {
         (, , , uint256 realUpdatedAt, ) = AggregatorV3Interface(CHAINLINK_ETH_USD).latestRoundData();
         vm.warp(realUpdatedAt + 1);
 
-        ChainlinkGuardedPriceFeed feed1 = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, 5e17, 1, MIN_ROUNDS);
+        ChainlinkGuardedPriceFeed feed1 = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            5e17,
+            1,
+            MIN_ROUNDS
+        );
         (, int256 price1, , , ) = feed1.latestRoundData();
         assertGt(price1, 0, "rounds=1 should return positive price");
 
-        ChainlinkGuardedPriceFeed feed10 = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, 5e17, 10, MIN_ROUNDS);
+        ChainlinkGuardedPriceFeed feed10 = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            5e17,
+            10,
+            MIN_ROUNDS
+        );
         (, int256 price10, , , ) = feed10.latestRoundData();
         assertGt(price10, 0, "rounds=10 should return positive price");
     }
@@ -339,7 +363,13 @@ contract ChainlinkGuardedPriceFeedTest is Test {
     // ------------------------------------------------------------------
 
     function test_latestRoundData_PhaseBoundary_ShrinksWindow() public {
-        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, MAX_DEV, 10, MIN_ROUNDS);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            MAX_DEV,
+            10,
+            MIN_ROUNDS
+        );
         uint80 latestRoundId = SYNTH_PHASE | 3;
         // only aggregator rounds 2 and 1 exist before the latest; the loop must
         // not walk below round 1 (previous phase). Only these two are mocked -
@@ -384,7 +414,13 @@ contract ChainlinkGuardedPriceFeedTest is Test {
 
     function test_latestRoundData_RevertsWhenUsableRoundsBelowMinimum() public {
         // window of 5, at least 3 of them must be usable
-        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, MAX_DEV, ROUNDS, 3);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            MAX_DEV,
+            ROUNDS,
+            3
+        );
         uint80 latestRoundId = SYNTH_PHASE | 20;
         _mockLatest(latestRoundId, 1000e8, block.timestamp);
         _mockRound(latestRoundId - 1, 1000e8, block.timestamp); // valid
@@ -398,7 +434,13 @@ contract ChainlinkGuardedPriceFeedTest is Test {
     }
 
     function test_latestRoundData_PassesWhenUsableRoundsAtMinimum() public {
-        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, MAX_DEV, ROUNDS, 3);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            MAX_DEV,
+            ROUNDS,
+            3
+        );
         uint80 latestRoundId = SYNTH_PHASE | 20;
         _mockLatest(latestRoundId, 1000e8, block.timestamp);
         _mockRound(latestRoundId - 1, 1000e8, block.timestamp); // valid
@@ -414,7 +456,13 @@ contract ChainlinkGuardedPriceFeedTest is Test {
     /// @dev A short phase-start window is only accepted when it still reaches
     /// `MIN_VALID_ROUNDS`; a stricter minimum fails the read closed.
     function test_latestRoundData_PhaseStart_FailsClosedUnderStrictMinimum() public {
-        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, MAX_DEV, ROUNDS, 3);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            MAX_DEV,
+            ROUNDS,
+            3
+        );
         uint80 latestRoundId = SYNTH_PHASE | 3;
         _mockLatest(latestRoundId, 1500e8, block.timestamp);
         _mockRound(SYNTH_PHASE | 3, 1500e8, block.timestamp);
@@ -545,7 +593,13 @@ contract ChainlinkGuardedPriceFeedTest is Test {
     /// gone and a degraded window fails closed again.
     function test_latestRoundData_AfterWarmUp_MinValidRoundsEnforcedInFull() public {
         _mockLatest(SYNTH_PHASE | 10, 1000e8, block.timestamp);
-        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, MAX_DEV, ROUNDS, 3);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            MAX_DEV,
+            ROUNDS,
+            3
+        );
 
         // rounds 10..13 exist (4 reachable, cap no longer binds), but only 2 are usable
         _mockLatest(SYNTH_PHASE | 14, 1000e8, block.timestamp);
@@ -562,7 +616,13 @@ contract ChainlinkGuardedPriceFeedTest is Test {
     /// first answers, so the full `MIN_VALID_ROUNDS` is required from round 1.
     function test_latestRoundData_NewPhase_NoWarmUpRelaxation() public {
         _mockLatest(SYNTH_PHASE | 10, 1000e8, block.timestamp);
-        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(CHAINLINK_ETH_USD, MAX_STALE, MAX_DEV, ROUNDS, 3);
+        ChainlinkGuardedPriceFeed feed = new ChainlinkGuardedPriceFeed(
+            CHAINLINK_ETH_USD,
+            MAX_STALE,
+            MAX_DEV,
+            ROUNDS,
+            3
+        );
 
         uint80 nextPhase = uint80(100) << 64;
         _mockLatest(nextPhase | 2, 1000e8, block.timestamp);

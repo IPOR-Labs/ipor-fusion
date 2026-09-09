@@ -375,10 +375,7 @@ contract PlasmaVaultWithdrawZeroBurnDrainTest is Test {
             AAVE_V3_MARKET_ID,
             ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
         );
-        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(
-            AAVE_V3_MARKET_ID,
-            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
-        );
+        AaveV3SupplyFuse supplyFuse = new AaveV3SupplyFuse(AAVE_V3_MARKET_ID, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
 
         address[] memory fuses = new address[](1);
         fuses[0] = address(supplyFuse);
@@ -408,14 +405,7 @@ contract PlasmaVaultWithdrawZeroBurnDrainTest is Test {
         usersToRoles.atomist = atomist;
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, address(withdrawManager));
 
-        PlasmaVaultConfigurator.setupPlasmaVault(
-            vm,
-            atomist,
-            address(plasmaVault),
-            fuses,
-            balanceFuses,
-            marketConfigs
-        );
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
 
         return plasmaVault;
     }

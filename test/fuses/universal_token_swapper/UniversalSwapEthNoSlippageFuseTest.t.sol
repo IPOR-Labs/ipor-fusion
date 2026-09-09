@@ -18,7 +18,11 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 import {SwapExecutorEth} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
-import {UniversalTokenSwapperEthFuseNoSlippage, UniversalTokenSwapperEthEnterDataNoSlippage, UniversalTokenSwapperEthDataNoSlippage} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol";
+import {
+    UniversalTokenSwapperEthFuseNoSlippage,
+    UniversalTokenSwapperEthEnterDataNoSlippage,
+    UniversalTokenSwapperEthDataNoSlippage
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";

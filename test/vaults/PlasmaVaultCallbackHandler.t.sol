@@ -7,16 +7,38 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {IMorpho} from "@morpho-org/morpho-blue/src/interfaces/IMorpho.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {MorphoSupplyWithCallBackDataFuse, MorphoSupplyFuseEnterData} from "../../contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol";
+import {
+    MorphoSupplyWithCallBackDataFuse,
+    MorphoSupplyFuseEnterData
+} from "../../contracts/fuses/morpho/MorphoSupplyWithCallBackDataFuse.sol";
 import {MorphoBalanceFuse} from "../../contracts/fuses/morpho/MorphoBalanceFuse.sol";
-import {MarketSubstratesConfig, FeeConfig, MarketBalanceFuseConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    MarketSubstratesConfig,
+    FeeConfig,
+    MarketBalanceFuseConfig,
+    PlasmaVaultInitData
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
-import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {InitializationData} from "../../contracts/managers/access/IporFusionAccessManagerInitializationLib.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, PlasmaVaultInitData, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FeeConfig,
+    PlasmaVaultInitData,
+    FuseAction
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuse,
+    CompoundV3SupplyFuseEnterData
+} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";

@@ -3,7 +3,10 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
-import {ConfigureInstantWithdrawalFuse, ConfigureInstantWithdrawalFuseEnterData} from "../../../contracts/fuses/maintenance/ConfigureInstantWithdrawalFuse.sol";
+import {
+    ConfigureInstantWithdrawalFuse,
+    ConfigureInstantWithdrawalFuseEnterData
+} from "../../../contracts/fuses/maintenance/ConfigureInstantWithdrawalFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";

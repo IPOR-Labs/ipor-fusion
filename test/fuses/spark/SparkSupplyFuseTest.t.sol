@@ -9,9 +9,16 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {SDaiPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/SDaiPriceFeedEthereum.sol";
 
 import {SparkBalanceFuse} from "../../../contracts/fuses/chains/ethereum/spark/SparkBalanceFuse.sol";
-import {SparkSupplyFuse, SparkSupplyFuseEnterData, SparkSupplyFuseExitData} from "../../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
+import {
+    SparkSupplyFuse,
+    SparkSupplyFuseEnterData,
+    SparkSupplyFuseExitData
+} from "../../../contracts/fuses/chains/ethereum/spark/SparkSupplyFuse.sol";
 import {ISavingsDai} from "../../../contracts/fuses/chains/ethereum/spark/ext/ISavingsDai.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 

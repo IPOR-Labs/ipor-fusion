@@ -15,12 +15,7 @@ contract TermFinanceCleanupFuseHarness is TermFinanceCleanupFuse {
 
     // ------------------------- offers helpers -------------------------
 
-    function addPendingOffer(
-        address servicer_,
-        address offerLocker_,
-        bytes32 offerId_,
-        uint256 amount_
-    ) external {
+    function addPendingOffer(address servicer_, address offerLocker_, bytes32 offerId_, uint256 amount_) external {
         TermFinancePendingOffersStorageLib.addPendingOffer(servicer_, offerLocker_, offerId_, amount_);
     }
 

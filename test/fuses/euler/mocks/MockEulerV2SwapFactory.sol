@@ -28,10 +28,7 @@ contract MockEulerV2SwapFactory {
         deployResultSet = true;
     }
 
-    function computePoolAddress(
-        IEulerV2Swap.StaticParams memory,
-        bytes32
-    ) external view returns (address) {
+    function computePoolAddress(IEulerV2Swap.StaticParams memory, bytes32) external view returns (address) {
         return computeResult;
     }
 

@@ -3,7 +3,10 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
-import {ExternalStateUnpauseFuse, ExternalStateUnpauseData} from "../../../../contracts/fuses/external_state/ExternalStateUnpauseFuse.sol";
+import {
+    ExternalStateUnpauseFuse,
+    ExternalStateUnpauseData
+} from "../../../../contracts/fuses/external_state/ExternalStateUnpauseFuse.sol";
 import {ExternalStateExecutor} from "../../../../contracts/fuses/external_state/ExternalStateExecutor.sol";
 import {IExternalStateExecutor} from "../../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -108,7 +111,9 @@ contract ExternalStateUnpauseFuseTest is Test {
         (, uint256 strangerPk) = makeAddrAndKey("stranger");
         ExternalStateUnpauseData memory d = _signedData(100e6, 1, block.timestamp + 1 hours, strangerPk, block.chainid);
         address signer = vm.addr(strangerPk);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, signer));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, signer)
+        );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.unpause, (d)));
     }
 
@@ -119,7 +124,11 @@ contract ExternalStateUnpauseFuseTest is Test {
         // Sign 200 but executor reports 100
         ExternalStateUnpauseData memory d = _signedData(200e6, 1, block.timestamp + 1 hours, atomistPk, block.chainid);
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseBalanceMismatch.selector, uint256(200e6), uint256(100e6))
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateUnpauseBalanceMismatch.selector,
+                uint256(200e6),
+                uint256(100e6)
+            )
         );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.unpause, (d)));
     }
@@ -134,7 +143,9 @@ contract ExternalStateUnpauseFuseTest is Test {
 
         // Re-pause and replay — nonce already used
         _setPaused(true);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignatureReplay.selector, uint256(42)));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignatureReplay.selector, uint256(42))
+        );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.unpause, (d)));
     }
 
@@ -176,10 +187,19 @@ contract ExternalStateUnpauseFuseTest is Test {
         });
         // Compute expected recovered signer (wrong vault → different digest → different signer)
         bytes32 correctDigest = keccak256(
-            abi.encodePacked(address(vault), MARKET_ID, uint256(100e6), uint256(1), uint256(block.timestamp + 1 hours), block.chainid)
+            abi.encodePacked(
+                address(vault),
+                MARKET_ID,
+                uint256(100e6),
+                uint256(1),
+                uint256(block.timestamp + 1 hours),
+                block.chainid
+            )
         );
         address recoveredSigner = ECDSA.recover(correctDigest, d.signature);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, recoveredSigner));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, recoveredSigner)
+        );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.unpause, (d)));
     }
 
@@ -191,10 +211,19 @@ contract ExternalStateUnpauseFuseTest is Test {
         ExternalStateUnpauseData memory d = _signedData(100e6, 1, block.timestamp + 1 hours, atomistPk, wrongChain);
         // Compute expected recovered signer (wrong chainId → different digest → different signer)
         bytes32 correctDigest = keccak256(
-            abi.encodePacked(address(vault), MARKET_ID, uint256(100e6), uint256(1), uint256(block.timestamp + 1 hours), block.chainid)
+            abi.encodePacked(
+                address(vault),
+                MARKET_ID,
+                uint256(100e6),
+                uint256(1),
+                uint256(block.timestamp + 1 hours),
+                block.chainid
+            )
         );
         address recoveredSigner = ECDSA.recover(correctDigest, d.signature);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, recoveredSigner));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, recoveredSigner)
+        );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.unpause, (d)));
     }
 
@@ -223,10 +252,19 @@ contract ExternalStateUnpauseFuseTest is Test {
         });
         // Compute expected recovered signer (wrong marketId → different digest → different signer)
         bytes32 correctDigest = keccak256(
-            abi.encodePacked(address(vault), MARKET_ID, uint256(100e6), uint256(1), uint256(block.timestamp + 1 hours), block.chainid)
+            abi.encodePacked(
+                address(vault),
+                MARKET_ID,
+                uint256(100e6),
+                uint256(1),
+                uint256(block.timestamp + 1 hours),
+                block.chainid
+            )
         );
         address recoveredSigner = ECDSA.recover(correctDigest, d.signature);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, recoveredSigner));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, recoveredSigner)
+        );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.unpause, (d)));
     }
 
@@ -251,7 +289,12 @@ contract ExternalStateUnpauseFuseTest is Test {
 
         bytes32 digest = keccak256(
             abi.encodePacked(
-                address(vault), MARKET_ID, uint256(100e6), uint256(1), uint256(block.timestamp + 1 hours), block.chainid
+                address(vault),
+                MARKET_ID,
+                uint256(100e6),
+                uint256(1),
+                uint256(block.timestamp + 1 hours),
+                block.chainid
             )
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(atomistPk, digest);
@@ -262,7 +305,10 @@ contract ExternalStateUnpauseFuseTest is Test {
         bytes memory sig = abi.encodePacked(r, highS, vFlipped);
 
         ExternalStateUnpauseData memory d = ExternalStateUnpauseData({
-            confirmedTotalBalance: 100e6, nonce: 1, expirationTime: block.timestamp + 1 hours, signature: sig
+            confirmedTotalBalance: 100e6,
+            nonce: 1,
+            expirationTime: block.timestamp + 1 hours,
+            signature: sig
         });
         vm.expectRevert(abi.encodeWithSelector(ECDSA.ECDSAInvalidSignatureS.selector, highS));
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.unpause, (d)));
@@ -295,7 +341,13 @@ contract ExternalStateUnpauseFuseTest is Test {
 
         // Second atomist unpauses with nonce 2 (different nonce, different signer)
         _setPaused(true);
-        ExternalStateUnpauseData memory d2 = _signedData(100e6, 2, block.timestamp + 1 hours, atomist2Pk, block.chainid);
+        ExternalStateUnpauseData memory d2 = _signedData(
+            100e6,
+            2,
+            block.timestamp + 1 hours,
+            atomist2Pk,
+            block.chainid
+        );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.unpause, (d2)));
         assertFalse(_readPaused());
     }
@@ -317,12 +369,16 @@ contract ExternalStateUnpauseFuseTest is Test {
         return ExternalStateSlotHelpers.readPaused(address(vault));
     }
 
-    function _signedData(uint256 balance_, uint256 nonce_, uint256 expiration_, uint256 pk_, uint256 chainId_)
-        internal
-        view
-        returns (ExternalStateUnpauseData memory d)
-    {
-        bytes32 digest = keccak256(abi.encodePacked(address(vault), MARKET_ID, balance_, nonce_, expiration_, chainId_));
+    function _signedData(
+        uint256 balance_,
+        uint256 nonce_,
+        uint256 expiration_,
+        uint256 pk_,
+        uint256 chainId_
+    ) internal view returns (ExternalStateUnpauseData memory d) {
+        bytes32 digest = keccak256(
+            abi.encodePacked(address(vault), MARKET_ID, balance_, nonce_, expiration_, chainId_)
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk_, digest);
         d = ExternalStateUnpauseData({
             confirmedTotalBalance: balance_,

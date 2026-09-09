@@ -3,8 +3,16 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {AguaSupplyFuse, AguaSupplyFuseEnterData} from "../../../contracts/fuses/agua/AguaSupplyFuse.sol";
-import {AguaRequestRedemptionFuse, AguaRequestRedemptionFuseEnterData, AguaRequestRedemptionFuseExitData} from "../../../contracts/fuses/agua/AguaRequestRedemptionFuse.sol";
-import {AguaSubstrateLib, AguaSubstrate, AguaSubstrateType} from "../../../contracts/fuses/agua/lib/AguaSubstrateLib.sol";
+import {
+    AguaRequestRedemptionFuse,
+    AguaRequestRedemptionFuseEnterData,
+    AguaRequestRedemptionFuseExitData
+} from "../../../contracts/fuses/agua/AguaRequestRedemptionFuse.sol";
+import {
+    AguaSubstrateLib,
+    AguaSubstrate,
+    AguaSubstrateType
+} from "../../../contracts/fuses/agua/lib/AguaSubstrateLib.sol";
 import {IAguaGlobalCarryVault} from "../../../contracts/fuses/agua/ext/IAguaGlobalCarryVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
@@ -77,10 +85,7 @@ contract AguaRequestRedemptionFuseTest is Test {
     function _cancel() internal {
         vault.execute(
             address(requestFuse),
-            abi.encodeWithSignature(
-                "exit((address))",
-                AguaRequestRedemptionFuseExitData({vault: AGUA_VAULT})
-            )
+            abi.encodeWithSignature("exit((address))", AguaRequestRedemptionFuseExitData({vault: AGUA_VAULT}))
         );
     }
 

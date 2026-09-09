@@ -2,7 +2,11 @@
 pragma solidity 0.8.30;
 
 import {ISilo} from "./ext/ISilo.sol";
-import {SiloV2SupplyCollateralFuseAbstract, SiloV2SupplyCollateralFuseEnterData, SiloV2SupplyCollateralFuseExitData} from "./SiloV2SupplyCollateralFuseAbstract.sol";
+import {
+    SiloV2SupplyCollateralFuseAbstract,
+    SiloV2SupplyCollateralFuseEnterData,
+    SiloV2SupplyCollateralFuseExitData
+} from "./SiloV2SupplyCollateralFuseAbstract.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {SiloIndex} from "./SiloIndex.sol";

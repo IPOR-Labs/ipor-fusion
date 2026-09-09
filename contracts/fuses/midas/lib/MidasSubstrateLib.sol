@@ -65,10 +65,7 @@ library MidasSubstrateLib {
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 marketId_,
                 substrateToBytes32(
-                    MidasSubstrate({
-                        substrateType: MidasSubstrateType.DEPOSIT_VAULT,
-                        substrateAddress: depositVault_
-                    })
+                    MidasSubstrate({substrateType: MidasSubstrateType.DEPOSIT_VAULT, substrateAddress: depositVault_})
                 )
             )
         ) {
@@ -111,7 +108,8 @@ library MidasSubstrateLib {
             )
         ) {
             revert MidasFuseUnsupportedSubstrate(
-                uint8(MidasSubstrateType.INSTANT_REDEMPTION_VAULT), instantRedemptionVault_
+                uint8(MidasSubstrateType.INSTANT_REDEMPTION_VAULT),
+                instantRedemptionVault_
             );
         }
     }
@@ -123,9 +121,7 @@ library MidasSubstrateLib {
         if (
             !PlasmaVaultConfigLib.isMarketSubstrateGranted(
                 marketId_,
-                substrateToBytes32(
-                    MidasSubstrate({substrateType: MidasSubstrateType.ASSET, substrateAddress: asset_})
-                )
+                substrateToBytes32(MidasSubstrate({substrateType: MidasSubstrateType.ASSET, substrateAddress: asset_}))
             )
         ) {
             revert MidasFuseUnsupportedSubstrate(uint8(MidasSubstrateType.ASSET), asset_);

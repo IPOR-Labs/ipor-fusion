@@ -11,7 +11,11 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
 import {IPool} from "./ext/IPool.sol";
 import {ILeafGauge} from "./ext/ILeafGauge.sol";
-import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
+import {
+    VelodromeSuperchainSubstrateLib,
+    VelodromeSuperchainSubstrate,
+    VelodromeSuperchainSubstrateType
+} from "./VelodromeSuperchainLib.sol";
 
 /// @title VelodromeSuperchainBalanceFuse
 /// @notice Calculates the USD value of Plasma Vault positions in Velodrome Superchain pools and gauges

@@ -2,7 +2,11 @@
 pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
-import {MidasSupplyFuse, MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../../../contracts/fuses/midas/MidasSupplyFuse.sol";
+import {
+    MidasSupplyFuse,
+    MidasSupplyFuseEnterData,
+    MidasSupplyFuseExitData
+} from "../../../../contracts/fuses/midas/MidasSupplyFuse.sol";
 import {MidasSubstrateLib} from "../../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {Errors} from "../../../../contracts/libraries/errors/Errors.sol";
 import {IporMath} from "../../../../contracts/libraries/math/IporMath.sol";
@@ -89,25 +93,33 @@ contract MidasSupplyFuseTest is Test {
     }
 
     /// @dev Build a standard enter data struct
-    function _enterData(uint256 amount_, uint256 minMTokenAmountOut_) internal view returns (MidasSupplyFuseEnterData memory) {
-        return MidasSupplyFuseEnterData({
-            mToken: address(mToken),
-            tokenIn: address(tokenIn),
-            amount: amount_,
-            minMTokenAmountOut: minMTokenAmountOut_,
-            depositVault: address(depositVault)
-        });
+    function _enterData(
+        uint256 amount_,
+        uint256 minMTokenAmountOut_
+    ) internal view returns (MidasSupplyFuseEnterData memory) {
+        return
+            MidasSupplyFuseEnterData({
+                mToken: address(mToken),
+                tokenIn: address(tokenIn),
+                amount: amount_,
+                minMTokenAmountOut: minMTokenAmountOut_,
+                depositVault: address(depositVault)
+            });
     }
 
     /// @dev Build a standard exit data struct
-    function _exitData(uint256 amount_, uint256 minTokenOutAmount_) internal view returns (MidasSupplyFuseExitData memory) {
-        return MidasSupplyFuseExitData({
-            mToken: address(mToken),
-            amount: amount_,
-            minTokenOutAmount: minTokenOutAmount_,
-            tokenOut: address(tokenOut),
-            instantRedemptionVault: address(redemptionVault)
-        });
+    function _exitData(
+        uint256 amount_,
+        uint256 minTokenOutAmount_
+    ) internal view returns (MidasSupplyFuseExitData memory) {
+        return
+            MidasSupplyFuseExitData({
+                mToken: address(mToken),
+                amount: amount_,
+                minTokenOutAmount: minTokenOutAmount_,
+                tokenOut: address(tokenOut),
+                instantRedemptionVault: address(redemptionVault)
+            });
     }
 
     // ============================================================
@@ -167,7 +179,11 @@ contract MidasSupplyFuseTest is Test {
 
         // when/then
         vm.expectRevert(
-            abi.encodeWithSelector(MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector, uint8(2), address(depositVault))
+            abi.encodeWithSelector(
+                MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector,
+                uint8(2),
+                address(depositVault)
+            )
         );
         harness.enter(data);
     }
@@ -238,7 +254,11 @@ contract MidasSupplyFuseTest is Test {
 
         // then — depositInstant called with WAD(500e6, 6) = 500e18
         uint256 expectedAmountInWad = IporMath.convertToWad(balance, 6);
-        assertEq(depositVault.lastAmountToken(), expectedAmountInWad, "depositInstant should receive WAD-converted capped amount");
+        assertEq(
+            depositVault.lastAmountToken(),
+            expectedAmountInWad,
+            "depositInstant should receive WAD-converted capped amount"
+        );
         assertEq(depositVault.lastTokenIn(), address(tokenIn), "depositInstant should receive correct tokenIn");
     }
 
@@ -257,7 +277,11 @@ contract MidasSupplyFuseTest is Test {
 
         // then — depositInstant called with WAD(1000e6, 6) = 1000e18
         uint256 expectedAmountInWad = IporMath.convertToWad(requestedAmount, 6);
-        assertEq(depositVault.lastAmountToken(), expectedAmountInWad, "depositInstant should receive WAD of requested amount");
+        assertEq(
+            depositVault.lastAmountToken(),
+            expectedAmountInWad,
+            "depositInstant should receive WAD of requested amount"
+        );
     }
 
     /// @notice E8 — revert when mToken received < minMTokenAmountOut
@@ -473,7 +497,11 @@ contract MidasSupplyFuseTest is Test {
         });
 
         vm.expectRevert(
-            abi.encodeWithSelector(MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector, uint8(5), address(tokenOut))
+            abi.encodeWithSelector(
+                MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector,
+                uint8(5),
+                address(tokenOut)
+            )
         );
         harness2.exit(data);
     }
@@ -487,7 +515,11 @@ contract MidasSupplyFuseTest is Test {
         vm.recordLogs();
         harness.exit(_exitData(1000e18, 0));
 
-        assertEq(redemptionVault.redeemInstantCallCount(), 0, "redeemInstant should not be called when mToken balance is 0");
+        assertEq(
+            redemptionVault.redeemInstantCallCount(),
+            0,
+            "redeemInstant should not be called when mToken balance is 0"
+        );
         assertEq(vm.getRecordedLogs().length, 0, "No event emitted when finalAmount == 0");
     }
 
@@ -508,7 +540,11 @@ contract MidasSupplyFuseTest is Test {
         harness.exit(data);
 
         // then — redeemInstant called with 500e18 (capped)
-        assertEq(redemptionVault.lastAmountMTokenIn(), mTokenBalance, "redeemInstant should receive capped mToken amount");
+        assertEq(
+            redemptionVault.lastAmountMTokenIn(),
+            mTokenBalance,
+            "redeemInstant should receive capped mToken amount"
+        );
         assertEq(redemptionVault.lastTokenOut(), address(tokenOut), "redeemInstant should receive correct tokenOut");
     }
 
@@ -526,7 +562,11 @@ contract MidasSupplyFuseTest is Test {
         harness.exit(_exitData(requestedAmount, tokenOutAmount));
 
         // then
-        assertEq(redemptionVault.lastAmountMTokenIn(), requestedAmount, "redeemInstant should receive the requested amount");
+        assertEq(
+            redemptionVault.lastAmountMTokenIn(),
+            requestedAmount,
+            "redeemInstant should receive the requested amount"
+        );
     }
 
     /// @notice X8 — revert when tokenOut received < minTokenOutAmount
@@ -601,7 +641,11 @@ contract MidasSupplyFuseTest is Test {
         assertEq(mToken.approveCallCount(), 2, "Should have exactly 2 approve calls on mToken");
         assertEq(mToken.approveSpenders(0), address(redemptionVault), "First approve: spender must be redemptionVault");
         assertEq(mToken.approveAmounts(0), finalAmount, "First approve: amount must be finalAmount");
-        assertEq(mToken.approveSpenders(1), address(redemptionVault), "Second approve: spender must be redemptionVault");
+        assertEq(
+            mToken.approveSpenders(1),
+            address(redemptionVault),
+            "Second approve: spender must be redemptionVault"
+        );
         assertEq(mToken.approveAmounts(1), 0, "Second approve: amount must be 0 (clear approval)");
     }
 
@@ -618,7 +662,11 @@ contract MidasSupplyFuseTest is Test {
         // when/then
         vm.expectEmit(true, true, true, true, address(harness));
         emit MidasSupplyFuse.MidasSupplyFuseExit(
-            fuse.VERSION(), address(mToken), finalAmount, address(tokenOut), address(redemptionVault)
+            fuse.VERSION(),
+            address(mToken),
+            finalAmount,
+            address(tokenOut),
+            address(redemptionVault)
         );
         harness.exit(_exitData(finalAmount, tokenOutAmt));
     }
@@ -689,7 +737,11 @@ contract MidasSupplyFuseTest is Test {
         // when/then — NO revert (caught), ExitFailed event emitted
         vm.expectEmit(true, true, true, true, address(harness));
         emit MidasSupplyFuse.MidasSupplyFuseExitFailed(
-            fuse.VERSION(), address(mToken), amount, address(tokenOut), address(redemptionVault)
+            fuse.VERSION(),
+            address(mToken),
+            amount,
+            address(tokenOut),
+            address(redemptionVault)
         );
         harness.instantWithdraw(params); // must not revert
     }
@@ -771,7 +823,11 @@ contract MidasSupplyFuseTest is Test {
 
         // then — MidasSupplyFuseExit event emitted (not ExitFailed)
         // Approval cleared
-        assertEq(mToken.allowance(address(harness), address(redemptionVault)), 0, "mToken approval should be cleared after success");
+        assertEq(
+            mToken.allowance(address(harness), address(redemptionVault)),
+            0,
+            "mToken approval should be cleared after success"
+        );
         assertEq(tokenOut.balanceOf(address(harness)), minTokenOut, "Harness should receive tokenOut");
     }
 
@@ -780,10 +836,7 @@ contract MidasSupplyFuseTest is Test {
     // ============================================================
 
     /// @notice Fuzz: enter with various amounts and balances — verifies capping and WAD conversion
-    function test_enter_Fuzz_ShouldHandleVariousAmountsAndBalances(
-        uint128 amount,
-        uint128 balance
-    ) public {
+    function test_enter_Fuzz_ShouldHandleVariousAmountsAndBalances(uint128 amount, uint128 balance) public {
         vm.assume(amount > 0);
         vm.assume(balance > 0);
         // Avoid overflow in WAD conversion: finalAmount * 10^12 must fit in uint256
@@ -805,16 +858,17 @@ contract MidasSupplyFuseTest is Test {
         harness.enter(data);
 
         // then — verify finalAmount capping
-        assertEq(depositVault.lastAmountToken(), expectedAmountInWad, "depositInstant amountInWad must match IporMath.convertToWad(min(balance, amount), 6)");
+        assertEq(
+            depositVault.lastAmountToken(),
+            expectedAmountInWad,
+            "depositInstant amountInWad must match IporMath.convertToWad(min(balance, amount), 6)"
+        );
         // mTokens minted by vault equal to WAD of finalAmount
         assertEq(mToken.balanceOf(address(harness)), mTokensMinted, "Harness should hold the minted mTokens");
     }
 
     /// @notice Fuzz: exit with various amounts and mToken balances — verifies capping
-    function test_exit_Fuzz_ShouldHandleVariousAmountsAndBalances(
-        uint128 amount,
-        uint128 mTokenBalance
-    ) public {
+    function test_exit_Fuzz_ShouldHandleVariousAmountsAndBalances(uint128 amount, uint128 mTokenBalance) public {
         vm.assume(amount > 0);
         vm.assume(mTokenBalance > 0);
 
@@ -833,14 +887,15 @@ contract MidasSupplyFuseTest is Test {
         harness.exit(data);
 
         // then — redeemInstant called with min(balance, amount)
-        assertEq(redemptionVault.lastAmountMTokenIn(), expectedFinalAmount, "redeemInstant must receive min(mTokenBalance, amount)");
+        assertEq(
+            redemptionVault.lastAmountMTokenIn(),
+            expectedFinalAmount,
+            "redeemInstant must receive min(mTokenBalance, amount)"
+        );
     }
 
     /// @notice Fuzz: exit slippage boundary — verifies minTokenOut check across value pairs
-    function test_exit_Fuzz_SlippageBoundary(
-        uint64 minTokenOut,
-        uint64 tokenOutTransferred
-    ) public {
+    function test_exit_Fuzz_SlippageBoundary(uint64 minTokenOut, uint64 tokenOutTransferred) public {
         vm.assume(minTokenOut > 0);
         vm.assume(tokenOutTransferred > 0);
 
@@ -865,7 +920,11 @@ contract MidasSupplyFuseTest is Test {
             harness.exit(data);
         } else {
             harness.exit(data); // must not revert
-            assertEq(tokenOut.balanceOf(address(harness)), uint256(tokenOutTransferred), "Harness should receive transferred tokenOut");
+            assertEq(
+                tokenOut.balanceOf(address(harness)),
+                uint256(tokenOutTransferred),
+                "Harness should receive transferred tokenOut"
+            );
         }
     }
 
@@ -924,7 +983,11 @@ contract MidasSupplyFuseTest is Test {
         harness.enter(_enterData(exactAmount, 777e18));
 
         // then
-        assertEq(depositVault.lastAmountToken(), IporMath.convertToWad(exactAmount, 6), "Should use exact amount when balance == amount");
+        assertEq(
+            depositVault.lastAmountToken(),
+            IporMath.convertToWad(exactAmount, 6),
+            "Should use exact amount when balance == amount"
+        );
     }
 
     /// @notice E9 with amount = 1 (minimal value)
@@ -955,7 +1018,11 @@ contract MidasSupplyFuseTest is Test {
         harness.exit(_exitData(exactAmount, tokenOutAmt));
 
         // then
-        assertEq(redemptionVault.lastAmountMTokenIn(), exactAmount, "Should use exact amount when mTokenBalance == amount");
+        assertEq(
+            redemptionVault.lastAmountMTokenIn(),
+            exactAmount,
+            "Should use exact amount when mTokenBalance == amount"
+        );
     }
 
     /// @notice E9 with large values — no overflow in WAD conversion
@@ -971,7 +1038,11 @@ contract MidasSupplyFuseTest is Test {
         harness.enter(_enterData(largeAmount, expectedWad));
 
         // then
-        assertEq(depositVault.lastAmountToken(), expectedWad, "Large amount should convert to correct WAD without overflow");
+        assertEq(
+            depositVault.lastAmountToken(),
+            expectedWad,
+            "Large amount should convert to correct WAD without overflow"
+        );
     }
 
     /// @notice E9 edge case — zero-decimal token

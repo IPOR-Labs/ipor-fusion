@@ -17,11 +17,23 @@ import {FuseAction} from "../../../contracts/interfaces/IPlasmaVault.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 import {IVault} from "ethereum-vault-connector/src/interfaces/IVault.sol";
 import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
-import {EulerV2BatchFuse, EulerV2BatchItem, EulerV2BatchFuseData} from "../../../contracts/fuses/euler/EulerV2BatchFuse.sol";
+import {
+    EulerV2BatchFuse,
+    EulerV2BatchItem,
+    EulerV2BatchFuseData
+} from "../../../contracts/fuses/euler/EulerV2BatchFuse.sol";
 import {CallbackHandlerEuler} from "../../../contracts/handlers/callbacks/CallbackHandlerEuler.sol";
 import {CallbackData} from "../../../contracts/libraries/CallbackHandlerLib.sol";
-import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
+import {
+    AaveV3SupplyFuse,
+    AaveV3SupplyFuseEnterData,
+    AaveV3SupplyFuseExitData
+} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {
+    AaveV3BorrowFuse,
+    AaveV3BorrowFuseEnterData,
+    AaveV3BorrowFuseExitData
+} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {UniswapV3SwapFuse, UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
@@ -259,11 +271,7 @@ contract EulerV2BatchFlashLoan is Test {
         // USDC balance: started with 10,000. Flash borrowed 1,000, supplied to Aave (locked as collateral).
         // Swap proceeds (~0.1 WETH ≈ ~180-250 USDC) returned as USDC, used together with existing USDC for Euler repay.
         // Net effect: vault USDC decreased by ~(1,000 - swapProceeds) since collateral is locked in Aave.
-        assertLt(
-            usdcBalanceAfter,
-            usdcBalanceBefore,
-            "USDC balance should decrease (collateral locked in Aave)"
-        );
+        assertLt(usdcBalanceAfter, usdcBalanceBefore, "USDC balance should decrease (collateral locked in Aave)");
         assertGt(
             usdcBalanceAfter,
             usdcBalanceBefore - flashLoanAmount,
@@ -336,7 +344,10 @@ contract EulerV2BatchFlashLoan is Test {
         vm.startPrank(FUSE_MANAGER);
         PlasmaVaultGovernance(plasmaVault).addBalanceFuse(IporFusionMarkets.EULER_V2, BALANCE_FUSE_EULERV2);
         PlasmaVaultGovernance(plasmaVault).addBalanceFuse(IporFusionMarkets.AAVE_V3, address(aaveBalanceFuse));
-        PlasmaVaultGovernance(plasmaVault).addBalanceFuse(IporFusionMarkets.UNISWAP_SWAP_V3, address(uniswapBalanceFuse));
+        PlasmaVaultGovernance(plasmaVault).addBalanceFuse(
+            IporFusionMarkets.UNISWAP_SWAP_V3,
+            address(uniswapBalanceFuse)
+        );
         vm.stopPrank();
     }
 

@@ -182,14 +182,7 @@ contract TermFinanceCleanupFuseTest is Test {
     }
 
     function _addPendingBidEmptyCollateral(address bidLocker_, bytes32 bidId_, uint256 amount_) internal {
-        harness.addPendingBid(
-            servicer,
-            bidLocker_,
-            bidId_,
-            amount_,
-            new address[](0),
-            new uint256[](0)
-        );
+        harness.addPendingBid(servicer, bidLocker_, bidId_, amount_, new address[](0), new uint256[](0));
     }
 
     // ============ constructor ============
@@ -602,11 +595,7 @@ contract TermFinanceCleanupFuseTest is Test {
         _addPendingBidEmptyCollateral(address(0), zeroLockerBidId, 1_000);
 
         vm.expectEmit(true, true, true, true);
-        emit TermFinanceCleanupFuse.TermFinanceCleanupPrunedBidOnRevert(
-            address(harness),
-            servicer,
-            zeroLockerBidId
-        );
+        emit TermFinanceCleanupFuse.TermFinanceCleanupPrunedBidOnRevert(address(harness), servicer, zeroLockerBidId);
         harness.enter(_enterData(_emptyIds(), _emptyIds()));
 
         assertFalse(harness.isBidPending(servicer, zeroLockerBidId), "zero-locker bid pruned");

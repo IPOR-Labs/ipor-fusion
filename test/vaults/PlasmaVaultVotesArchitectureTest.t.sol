@@ -69,7 +69,9 @@ contract PlasmaVaultVotesArchitectureTest is Test {
     }
 
     /// @notice Helper to deploy a PlasmaVault with or without votes plugin
-    function _deployVault(bool withVotesPlugin) internal returns (PlasmaVault vault, IporFusionAccessManager accessManager) {
+    function _deployVault(
+        bool withVotesPlugin
+    ) internal returns (PlasmaVault vault, IporFusionAccessManager accessManager) {
         accessManager = RoleLib.createAccessManager(usersToRoles, 0, vm);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 

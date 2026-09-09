@@ -24,7 +24,10 @@ import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/ext/IAaveP
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BorrowFuse, AaveV3BorrowFuseEnterData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
-import {AaveV3RepayWithATokensFuse, AaveV3RepayWithATokensFuseEnterData} from "../../../contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol";
+import {
+    AaveV3RepayWithATokensFuse,
+    AaveV3RepayWithATokensFuseEnterData
+} from "../../../contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol";
 
 /// @title AaveV3RepayWithATokensFuseTest
 /// @notice Fork integration tests for AaveV3RepayWithATokensFuse running against a real PlasmaVault
@@ -77,14 +80,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
         FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
         // Clone a fresh PlasmaVault with DAI as the underlying.
-        _fusionInstance = fusionFactory.clone(
-            "AaveV3RepayWithATokensFuseTest",
-            "RWAT",
-            DAI,
-            0,
-            ATOMIST,
-            0
-        );
+        _fusionInstance = fusionFactory.clone("AaveV3RepayWithATokensFuseTest", "RWAT", DAI, 0, ATOMIST, 0);
 
         // Assign roles through the access manager.
         vm.startPrank(ATOMIST);
@@ -131,10 +127,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
         substrates[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
         substrates[1] = PlasmaVaultConfigLib.addressToBytes32(WETH);
 
-        PlasmaVaultGovernance(_fusionInstance.plasmaVault).grantMarketSubstrates(
-            IporFusionMarkets.AAVE_V3,
-            substrates
-        );
+        PlasmaVaultGovernance(_fusionInstance.plasmaVault).grantMarketSubstrates(IporFusionMarkets.AAVE_V3, substrates);
         PlasmaVaultGovernance(_fusionInstance.plasmaVault).grantMarketSubstrates(
             IporFusionMarkets.ERC20_VAULT_BALANCE,
             substrates
@@ -167,10 +160,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
     }
 
     function testShouldSetImmutablesAndVersionInConstructor() external {
-        AaveV3RepayWithATokensFuse fuse = new AaveV3RepayWithATokensFuse(
-            42,
-            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
-        );
+        AaveV3RepayWithATokensFuse fuse = new AaveV3RepayWithATokensFuse(42, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
         assertEq(fuse.VERSION(), address(fuse), "VERSION should equal deployment address");
         assertEq(fuse.MARKET_ID(), 42, "MARKET_ID should equal constructor arg");
         assertEq(
@@ -211,10 +201,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
         bytes32[] memory onlyWeth = new bytes32[](1);
         onlyWeth[0] = PlasmaVaultConfigLib.addressToBytes32(WETH);
         vm.startPrank(FUSE_MANAGER);
-        PlasmaVaultGovernance(_fusionInstance.plasmaVault).grantMarketSubstrates(
-            IporFusionMarkets.AAVE_V3,
-            onlyWeth
-        );
+        PlasmaVaultGovernance(_fusionInstance.plasmaVault).grantMarketSubstrates(IporFusionMarkets.AAVE_V3, onlyWeth);
         vm.stopPrank();
 
         FuseAction[] memory calls = new FuseAction[](1);
@@ -339,15 +326,10 @@ contract AaveV3RepayWithATokensFuseTest is Test {
         _callRepay(DAI, debtBefore / 4, 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
-        bytes32 expectedTopic = keccak256(
-            "AaveV3RepayWithATokensFuseEnter(address,address,uint256,uint256,uint256)"
-        );
+        bytes32 expectedTopic = keccak256("AaveV3RepayWithATokensFuseEnter(address,address,uint256,uint256,uint256)");
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics.length > 0 && logs[i].topics[0] == expectedTopic) {
-                (address version, , , , ) = abi.decode(
-                    logs[i].data,
-                    (address, address, uint256, uint256, uint256)
-                );
+                (address version, , , , ) = abi.decode(logs[i].data, (address, address, uint256, uint256, uint256));
                 assertEq(version, _repayFuse.VERSION(), "event version == fuse.VERSION()");
                 assertEq(version, address(_repayFuse), "VERSION is the fuse deployment address");
                 /// @dev Under delegatecall the vault is the emitter, not the fuse. Guards against
@@ -445,11 +427,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
             address(_repayFuse),
             abi.encodeCall(
                 AaveV3RepayWithATokensFuse.enter,
-                AaveV3RepayWithATokensFuseEnterData({
-                    asset: DAI,
-                    amount: type(uint256).max,
-                    minAmount: 0
-                })
+                AaveV3RepayWithATokensFuseEnterData({asset: DAI, amount: type(uint256).max, minAmount: 0})
             )
         );
 
@@ -558,10 +536,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
         FuseAction[] memory borrowDai = new FuseAction[](1);
         borrowDai[0] = FuseAction(
             address(_borrowFuse),
-            abi.encodeCall(
-                AaveV3BorrowFuse.enter,
-                AaveV3BorrowFuseEnterData({asset: DAI, amount: 10_000e18})
-            )
+            abi.encodeCall(AaveV3BorrowFuse.enter, AaveV3BorrowFuseEnterData({asset: DAI, amount: 10_000e18}))
         );
         vm.startPrank(ALPHA);
         PlasmaVault(_fusionInstance.plasmaVault).execute(borrowDai);
@@ -609,10 +584,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
         FuseAction[] memory borrowDai = new FuseAction[](1);
         borrowDai[0] = FuseAction(
             address(_borrowFuse),
-            abi.encodeCall(
-                AaveV3BorrowFuse.enter,
-                AaveV3BorrowFuseEnterData({asset: DAI, amount: 10_000e18})
-            )
+            abi.encodeCall(AaveV3BorrowFuse.enter, AaveV3BorrowFuseEnterData({asset: DAI, amount: 10_000e18}))
         );
         vm.startPrank(ALPHA);
         PlasmaVault(_fusionInstance.plasmaVault).execute(borrowDai);
@@ -656,9 +628,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
 
     /// @dev Scans recorded logs for the fuse's Enter event topic and returns whether it appeared.
     function _hasRepayEvent(Vm.Log[] memory logs_) internal pure returns (bool) {
-        bytes32 expectedTopic = keccak256(
-            "AaveV3RepayWithATokensFuseEnter(address,address,uint256,uint256,uint256)"
-        );
+        bytes32 expectedTopic = keccak256("AaveV3RepayWithATokensFuseEnter(address,address,uint256,uint256,uint256)");
         for (uint256 i; i < logs_.length; ++i) {
             if (logs_[i].topics.length > 0 && logs_[i].topics[0] == expectedTopic) {
                 return true;
@@ -671,9 +641,7 @@ contract AaveV3RepayWithATokensFuseTest is Test {
     function _findRepayEvent(
         Vm.Log[] memory logs_
     ) internal pure returns (bool found, address asset, uint256 amountRequested, uint256 amountRepaid) {
-        bytes32 expectedTopic = keccak256(
-            "AaveV3RepayWithATokensFuseEnter(address,address,uint256,uint256,uint256)"
-        );
+        bytes32 expectedTopic = keccak256("AaveV3RepayWithATokensFuseEnter(address,address,uint256,uint256,uint256)");
         for (uint256 i; i < logs_.length; ++i) {
             if (logs_[i].topics.length > 0 && logs_[i].topics[0] == expectedTopic) {
                 (, address asset_, uint256 requested_, , uint256 repaid_) = abi.decode(

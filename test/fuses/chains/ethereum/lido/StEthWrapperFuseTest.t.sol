@@ -7,7 +7,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {StEthWrapperFuse} from "../../../../../contracts/fuses/chains/ethereum/lido/StEthWrapperFuse.sol";
 import {ERC20BalanceFuse} from "../../../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {IporFusionMarkets} from "../../../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {TypeConversionLib} from "../../../../../contracts/libraries/TypeConversionLib.sol";
@@ -17,10 +20,22 @@ import {FeeAccount} from "../../../../../contracts/managers/fee/FeeAccount.sol";
 import {WithdrawManager} from "../../../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PriceOracleMiddleware} from "../../../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {WstETHPriceFeedEthereum} from "../../../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
-import {PlasmaVault, PlasmaVaultInitData, FuseAction, FeeConfig, MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    FuseAction,
+    FeeConfig,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig
+} from "../../../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FeeConfigHelper} from "../../../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigurator} from "../../../../utils/PlasmaVaultConfigurator.sol";
 import {IWstETH} from "./IWstETH.sol";

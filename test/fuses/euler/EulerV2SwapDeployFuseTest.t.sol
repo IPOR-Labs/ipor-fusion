@@ -3,7 +3,11 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
-import {EulerV2SwapDeployFuse, EulerV2SwapDeployFuseEnterData, EulerV2SwapDeployFuseExitData} from "../../../contracts/fuses/euler/EulerV2SwapDeployFuse.sol";
+import {
+    EulerV2SwapDeployFuse,
+    EulerV2SwapDeployFuseEnterData,
+    EulerV2SwapDeployFuseExitData
+} from "../../../contracts/fuses/euler/EulerV2SwapDeployFuse.sol";
 import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
 import {IEulerV2Swap} from "../../../contracts/fuses/euler/ext/IEulerV2Swap.sol";
 import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
@@ -115,10 +119,7 @@ contract EulerV2SwapDeployFuseTest is Test {
     }
 
     function _enter(EulerV2SwapDeployFuseEnterData memory data) internal returns (address deployed) {
-        bytes memory ret = harness.delegateExecute(
-            address(fuse),
-            abi.encodeCall(EulerV2SwapDeployFuse.enter, (data))
-        );
+        bytes memory ret = harness.delegateExecute(address(fuse), abi.encodeCall(EulerV2SwapDeployFuse.enter, (data)));
         deployed = abi.decode(ret, (address));
     }
 

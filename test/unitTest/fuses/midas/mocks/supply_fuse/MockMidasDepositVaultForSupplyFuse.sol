@@ -48,7 +48,9 @@ contract MockMidasDepositVaultForSupplyFuse is IMidasDepositVault {
         // Mint mTokens to caller (simulating the vault minting to PlasmaVault context)
         if (mTokensToMint > 0 && mTokenAddress != address(0)) {
             // Call mint on the mock ERC20 (requires MockERC20ForSupplyFuse.mint interface)
-            (bool success,) = mTokenAddress.call(abi.encodeWithSignature("mint(address,uint256)", msg.sender, mTokensToMint));
+            (bool success, ) = mTokenAddress.call(
+                abi.encodeWithSignature("mint(address,uint256)", msg.sender, mTokensToMint)
+            );
             require(success, "MockMidasDepositVault: mint failed");
         }
     }
@@ -56,8 +58,8 @@ contract MockMidasDepositVaultForSupplyFuse is IMidasDepositVault {
     // ---- Unused interface stubs ----
 
     function depositRequest(
-        address, /* tokenIn */
-        uint256, /* amountToken */
+        address /* tokenIn */,
+        uint256 /* amountToken */,
         bytes32 /* referrerId */
     ) external pure override returns (uint256) {
         revert("MockMidasDepositVaultForSupplyFuse: not used");

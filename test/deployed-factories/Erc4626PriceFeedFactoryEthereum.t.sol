@@ -42,10 +42,7 @@ contract Erc4626PriceFeedFactoryEthereumTest is Test {
         assertTrue(FEED_FACTORY.code.length > 0, "feed factory has no code");
 
         vm.prank(caller);
-        address feed = IDeployedErc4626PriceFeedFactory(FEED_FACTORY).create(
-            STEAKHOUSE_USDC,
-            PRICE_ORACLE_MIDDLEWARE
-        );
+        address feed = IDeployedErc4626PriceFeedFactory(FEED_FACTORY).create(STEAKHOUSE_USDC, PRICE_ORACLE_MIDDLEWARE);
 
         assertTrue(feed != address(0), "factory returned the zero address");
         assertTrue(feed.code.length > 0, "created feed has no code");

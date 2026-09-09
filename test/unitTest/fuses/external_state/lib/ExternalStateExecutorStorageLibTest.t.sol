@@ -204,7 +204,11 @@ contract ExternalStateExecutorStorageLibTest is Test {
         _seedMandatorySubstrates();
         h.getOrCreateExecutor(MARKET_ID);
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateMultipleMarketsNotSupported.selector, MARKET_ID, MARKET_ID + 1)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateMultipleMarketsNotSupported.selector,
+                MARKET_ID,
+                MARKET_ID + 1
+            )
         );
         h.getOrCreateExecutor(MARKET_ID + 1);
     }

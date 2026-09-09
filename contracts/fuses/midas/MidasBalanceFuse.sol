@@ -126,7 +126,11 @@ contract MidasBalanceFuse is IMarketBalanceFuse {
 
         // Component C: Pending redemption requests (from substrates + storage)
         balanceValue += _calculatePendingRedemptionValue(
-            redemptionVaults, redemptionVaultsCount, mTokens, mTokenPrices, uniqueMTokenCount
+            redemptionVaults,
+            redemptionVaultsCount,
+            mTokens,
+            mTokenPrices,
+            uniqueMTokenCount
         );
 
         // Component D: Executor balance (mTokens and assets held during async operations)
@@ -205,11 +209,14 @@ contract MidasBalanceFuse is IMarketBalanceFuse {
             for (uint256 i; i < assetsCount_; ++i) {
                 assetBalance = IERC20(assets_[i]).balanceOf(executor);
                 if (assetBalance > 0) {
-                    (uint256 assetPrice, uint256 assetPriceDecimals) =
-                        IPriceOracleMiddleware(priceOracle).getAssetPrice(assets_[i]);
+                    (uint256 assetPrice, uint256 assetPriceDecimals) = IPriceOracleMiddleware(priceOracle)
+                        .getAssetPrice(assets_[i]);
                     // balance (asset decimals) * price (oracle decimals) → convert combined decimals to WAD (18)
                     uint256 assetDecimals = IERC20Metadata(assets_[i]).decimals();
-                    executorValue += IporMath.convertToWad(assetBalance * assetPrice, assetDecimals + assetPriceDecimals);
+                    executorValue += IporMath.convertToWad(
+                        assetBalance * assetPrice,
+                        assetDecimals + assetPriceDecimals
+                    );
                 }
             }
         }

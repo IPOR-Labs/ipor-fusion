@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Mock DEX action for testing. Must be pre-funded with tokens before use.
-contract MockDexActionEthereum is Test{
+contract MockDexActionEthereum is Test {
     using SafeERC20 for ERC20;
 
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;

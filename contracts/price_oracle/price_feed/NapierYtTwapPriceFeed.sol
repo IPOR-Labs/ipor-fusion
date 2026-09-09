@@ -57,12 +57,7 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
     error PriceOracleOracleNotReady(uint16 requiredCardinality);
 
     /// @notice Configure the YT price feed
-    constructor(
-        address tokiOracle_,
-        address liquidityToken_,
-        uint32 twapWindow_,
-        address quote_
-    ) {
+    constructor(address tokiOracle_, address liquidityToken_, uint32 twapWindow_, address quote_) {
         if (tokiOracle_ == address(0) || liquidityToken_ == address(0)) {
             revert PriceOracleZeroAddress();
         }
@@ -137,9 +132,7 @@ contract NapierYtTwapPriceFeed is IPriceFeed {
             ? unitPriceQuote * 10 ** (18 - quoteDecimals)
             : unitPriceQuote / 10 ** (quoteDecimals - 18);
 
-        (uint256 quoteUsdPrice, uint256 quoteUsdDecimals) = IPriceOracleMiddleware(msg.sender).getAssetPrice(
-            QUOTE
-        );
+        (uint256 quoteUsdPrice, uint256 quoteUsdDecimals) = IPriceOracleMiddleware(msg.sender).getAssetPrice(QUOTE);
 
         price = ((unitPrice18 * quoteUsdPrice) / 10 ** quoteUsdDecimals).toInt256();
 

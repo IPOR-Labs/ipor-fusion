@@ -80,10 +80,9 @@ contract UniswapV4Balance is IMarketBalanceFuse {
         }
 
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
-        
-        if(priceOracleMiddleware == address(0)) {
+
+        if (priceOracleMiddleware == address(0)) {
             revert UniswapV4BalanceInvalidPriceOracleMiddleware();
-            
         }
         uint256 balance;
 

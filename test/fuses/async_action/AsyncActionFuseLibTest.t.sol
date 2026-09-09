@@ -2,7 +2,14 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {AsyncActionFuseLib, AllowedAmountToOutside, AllowedTargets, AllowedSlippage, AsyncActionFuseSubstrate, AsyncActionFuseSubstrateType} from "../../../contracts/fuses/async_action/AsyncActionFuseLib.sol";
+import {
+    AsyncActionFuseLib,
+    AllowedAmountToOutside,
+    AllowedTargets,
+    AllowedSlippage,
+    AsyncActionFuseSubstrate,
+    AsyncActionFuseSubstrateType
+} from "../../../contracts/fuses/async_action/AsyncActionFuseLib.sol";
 
 contract AsyncActionFuseLibTest is Test {
     function test_encodeAllowedAmountToOutsideRoundTrip() public {

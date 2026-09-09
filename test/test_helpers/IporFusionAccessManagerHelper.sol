@@ -6,7 +6,12 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {TestAddresses} from "./TestAddresses.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 
 /// @title IporFusionAccessManagerHelper

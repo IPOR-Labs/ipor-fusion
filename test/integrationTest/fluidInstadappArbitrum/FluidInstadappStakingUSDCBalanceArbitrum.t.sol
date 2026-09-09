@@ -10,7 +10,11 @@ import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovern
 import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData} from "../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {Erc4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
-import {FluidInstadappStakingSupplyFuseExitData, FluidInstadappStakingSupplyFuseEnterData, FluidInstadappStakingSupplyFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
+import {
+    FluidInstadappStakingSupplyFuseExitData,
+    FluidInstadappStakingSupplyFuseEnterData,
+    FluidInstadappStakingSupplyFuse
+} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingSupplyFuse.sol";
 import {FluidInstadappStakingBalanceFuse} from "../../../contracts/fuses/fluid_instadapp/FluidInstadappStakingBalanceFuse.sol";
 import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 import {AaveV3SupplyFuse} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";

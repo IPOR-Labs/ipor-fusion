@@ -15,7 +15,8 @@ import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol"
 /// @author IPOR Labs
 library ExternalStateExecutorStorageLib {
     /// @dev Pre-computed ERC-7201 storage slot for the namespaced `ExternalStateStorage` struct.
-    bytes32 private constant _EXTERNAL_STATE_STORAGE_SLOT = 0x1781023874512ec457c16827ad102f41a5c5ce1cd7ba8aa8fcd2da52541d8a00;
+    bytes32 private constant _EXTERNAL_STATE_STORAGE_SLOT =
+        0x1781023874512ec457c16827ad102f41a5c5ce1cd7ba8aa8fcd2da52541d8a00;
 
     /// @notice Emitted when the executor address is bound to this vault's ExternalState storage.
     /// @param executor Address of the deployed `ExternalStateExecutor`.

@@ -211,10 +211,7 @@ abstract contract UniswapV4TestBase is Test {
         erc20Substrates[1] = PlasmaVaultConfigLib.addressToBytes32(WETH);
         erc20Substrates[2] = PlasmaVaultConfigLib.addressToBytes32(CBBTC);
 
-        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(
-            IporFusionMarkets.UNISWAP_V4,
-            v4Substrates
-        );
+        PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.UNISWAP_V4, v4Substrates);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(
             IporFusionMarkets.ERC20_VAULT_BALANCE,
             erc20Substrates
@@ -250,10 +247,7 @@ abstract contract UniswapV4TestBase is Test {
         _balanceFuse = new UniswapV4Balance(IporFusionMarkets.UNISWAP_V4, POSITION_MANAGER, POOL_MANAGER);
         ERC20BalanceFuse erc20Balance = new ERC20BalanceFuse(IporFusionMarkets.ERC20_VAULT_BALANCE);
 
-        PlasmaVaultGovernance(_plasmaVault).addBalanceFuse(
-            IporFusionMarkets.UNISWAP_V4,
-            address(_balanceFuse)
-        );
+        PlasmaVaultGovernance(_plasmaVault).addBalanceFuse(IporFusionMarkets.UNISWAP_V4, address(_balanceFuse));
         PlasmaVaultGovernance(_plasmaVault).addBalanceFuse(
             IporFusionMarkets.ERC20_VAULT_BALANCE,
             address(erc20Balance)

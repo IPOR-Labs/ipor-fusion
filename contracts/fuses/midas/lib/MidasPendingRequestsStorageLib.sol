@@ -96,11 +96,7 @@ library MidasPendingRequestsStorageLib {
     /// @notice Get all pending deposit vaults and their request IDs
     /// @return vaults Array of deposit vault addresses with pending requests
     /// @return requestIds Array of arrays containing request IDs per vault
-    function getPendingDeposits()
-        internal
-        view
-        returns (address[] memory vaults, uint256[][] memory requestIds)
-    {
+    function getPendingDeposits() internal view returns (address[] memory vaults, uint256[][] memory requestIds) {
         MidasPendingRequestsStorage storage s = _getStorage();
         uint256 length = s.depositVaults.length;
         vaults = new address[](length);
@@ -203,11 +199,7 @@ library MidasPendingRequestsStorageLib {
     /// @notice Get all pending redemption vaults and their request IDs
     /// @return vaults Array of redemption vault addresses with pending requests
     /// @return requestIds Array of arrays containing request IDs per vault
-    function getPendingRedemptions()
-        internal
-        view
-        returns (address[] memory vaults, uint256[][] memory requestIds)
-    {
+    function getPendingRedemptions() internal view returns (address[] memory vaults, uint256[][] memory requestIds) {
         MidasPendingRequestsStorage storage s = _getStorage();
         uint256 length = s.redemptionVaults.length;
         vaults = new address[](length);

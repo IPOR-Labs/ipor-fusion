@@ -2,7 +2,10 @@
 pragma solidity 0.8.30;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {TransientStorageMapperFuse, TransientStorageMapperEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageMapperFuse.sol";
+import {
+    TransientStorageMapperFuse,
+    TransientStorageMapperEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageMapperFuse.sol";
 import {TransientStorageLib} from "../../../contracts/transient_storage/TransientStorageLib.sol";
 
 /// @title TransientStorageMapperFuseMock

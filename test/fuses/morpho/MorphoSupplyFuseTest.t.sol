@@ -10,10 +10,17 @@ import {SharesMathLib} from "@morpho-org/morpho-blue/src/libraries/SharesMathLib
 import {MarketParamsLib} from "@morpho-org/morpho-blue/src/libraries/MarketParamsLib.sol";
 import {MorphoLib} from "@morpho-org/morpho-blue/src/libraries/periphery/MorphoLib.sol";
 
-import {MorphoSupplyFuse, MorphoSupplyFuseExitData, MorphoSupplyFuseEnterData} from "../../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
+import {
+    MorphoSupplyFuse,
+    MorphoSupplyFuseExitData,
+    MorphoSupplyFuseEnterData
+} from "../../../contracts/fuses/morpho/MorphoSupplyFuse.sol";
 import {MorphoBalanceFuse} from "../../../contracts/fuses/morpho/MorphoBalanceFuse.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 

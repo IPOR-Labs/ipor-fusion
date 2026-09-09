@@ -62,7 +62,12 @@ contract TermFinanceOfferFuse is IFuseCommon {
 
     /// @notice Emitted when a sealed-bid offer is successfully locked in a Term Finance auction.
     event TermFinanceOfferLocked(
-        address version, address servicer, address offerLocker, bytes32 offerId, uint256 amount, bytes32 offerPriceHash
+        address version,
+        address servicer,
+        address offerLocker,
+        bytes32 offerId,
+        uint256 amount,
+        bytes32 offerPriceHash
     );
 
     /// @notice Emitted on a pre-reveal cancel (`exit`).
@@ -136,8 +141,8 @@ contract TermFinanceOfferFuse is IFuseCommon {
 
         ERC20(purchaseToken).forceApprove(termRepoLocker, data_.amount);
 
-        IExtTermAuctionOfferLocker.TermAuctionOfferSubmission[] memory submissions =
-            new IExtTermAuctionOfferLocker.TermAuctionOfferSubmission[](1);
+        IExtTermAuctionOfferLocker.TermAuctionOfferSubmission[]
+            memory submissions = new IExtTermAuctionOfferLocker.TermAuctionOfferSubmission[](1);
         submissions[0] = IExtTermAuctionOfferLocker.TermAuctionOfferSubmission({
             id: data_.existingOfferId,
             offeror: address(this),
@@ -159,7 +164,12 @@ contract TermFinanceOfferFuse is IFuseCommon {
         TermFinancePendingOffersStorageLib.addPendingOffer(data_.servicer, data_.offerLocker, offerId, data_.amount);
 
         emit TermFinanceOfferLocked(
-            VERSION, data_.servicer, data_.offerLocker, offerId, data_.amount, data_.offerPriceHash
+            VERSION,
+            data_.servicer,
+            data_.offerLocker,
+            offerId,
+            data_.amount,
+            data_.offerPriceHash
         );
     }
 

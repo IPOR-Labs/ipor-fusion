@@ -312,11 +312,7 @@ contract TermFinanceCollateralFuse is IFuseCommon {
     function _assertServicerCollateralManagerPaired(address servicer_, address collateralManager_) private view {
         address expected = IExtTermRepoServicer(servicer_).termRepoCollateralManager();
         if (expected != collateralManager_) {
-            revert TermFinanceCollateralFuseServicerCollateralManagerMismatch(
-                servicer_,
-                expected,
-                collateralManager_
-            );
+            revert TermFinanceCollateralFuseServicerCollateralManagerMismatch(servicer_, expected, collateralManager_);
         }
     }
 

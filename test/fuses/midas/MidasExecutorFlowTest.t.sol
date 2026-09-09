@@ -6,13 +6,24 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {MidasExecutor} from "../../../contracts/fuses/midas/MidasExecutor.sol";
-import {MidasRequestSupplyFuse, MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
-import {MidasClaimFromExecutorFuse, MidasClaimFromExecutorFuseEnterData} from "../../../contracts/fuses/midas/MidasClaimFromExecutorFuse.sol";
+import {
+    MidasRequestSupplyFuse,
+    MidasRequestSupplyFuseEnterData,
+    MidasRequestSupplyFuseExitData
+} from "../../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {
+    MidasClaimFromExecutorFuse,
+    MidasClaimFromExecutorFuseEnterData
+} from "../../../contracts/fuses/midas/MidasClaimFromExecutorFuse.sol";
 import {MidasBalanceFuse} from "../../../contracts/fuses/midas/MidasBalanceFuse.sol";
 import {IMidasDepositVault} from "../../../contracts/fuses/midas/ext/IMidasDepositVault.sol";
 import {IMidasRedemptionVault} from "../../../contracts/fuses/midas/ext/IMidasRedemptionVault.sol";
 import {IMidasDataFeed} from "../../../contracts/fuses/midas/ext/IMidasDataFeed.sol";
-import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {
+    MidasSubstrateLib,
+    MidasSubstrate,
+    MidasSubstrateType
+} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {MidasPendingRequestsStorageLib} from "../../../contracts/fuses/midas/lib/MidasPendingRequestsStorageLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
@@ -195,10 +206,7 @@ contract MidasExecutorFlowTest is Test {
 
     /// @dev Helper: deploy executor via the claim fuse's deployExecutor() through vault delegatecall
     function _deployExecutor() internal returns (address executor) {
-        vault.execute(
-            address(claimFuse),
-            abi.encodeWithSignature("deployExecutor()")
-        );
+        vault.execute(address(claimFuse), abi.encodeWithSignature("deployExecutor()"));
         executor = _readExecutorSlot();
     }
 
@@ -259,7 +267,9 @@ contract MidasExecutorFlowTest is Test {
         vault.execute(
             address(storageHelper),
             abi.encodeWithSelector(
-                MidasPendingRequestsHelper.addPendingRedemption.selector, redemptionVault_, requestId_
+                MidasPendingRequestsHelper.addPendingRedemption.selector,
+                redemptionVault_,
+                requestId_
             )
         );
     }
@@ -329,11 +339,7 @@ contract MidasExecutorFlowTest is Test {
         assertTrue(executor != address(0), "Executor should be deployed (non-zero address)");
 
         // Verify the executor's PLASMA_VAULT is the vault
-        assertEq(
-            MidasExecutor(executor).PLASMA_VAULT(),
-            address(vault),
-            "Executor PLASMA_VAULT should be the vault"
-        );
+        assertEq(MidasExecutor(executor).PLASMA_VAULT(), address(vault), "Executor PLASMA_VAULT should be the vault");
     }
 
     function testShouldDeployExecutorIdempotent() public {
@@ -341,10 +347,7 @@ contract MidasExecutorFlowTest is Test {
         address executor2 = _readExecutorSlot();
 
         // Call deployExecutor again
-        vault.execute(
-            address(claimFuse),
-            abi.encodeWithSignature("deployExecutor()")
-        );
+        vault.execute(address(claimFuse), abi.encodeWithSignature("deployExecutor()"));
         address executor3 = _readExecutorSlot();
 
         assertEq(executor1, executor2, "Executor address should be stable after first deploy");
@@ -416,7 +419,12 @@ contract MidasExecutorFlowTest is Test {
         // The fact that enter() succeeds (doesn't revert on requestId == 0) proves depositRequest was called
         vm.expectEmit(true, true, true, true);
         emit MidasRequestSupplyFuse.MidasRequestSupplyFuseEnter(
-            requestFuse.VERSION(), MTBILL_TOKEN, usdcAmount, USDC, mockRequestId, MTBILL_DEPOSIT_VAULT
+            requestFuse.VERSION(),
+            MTBILL_TOKEN,
+            usdcAmount,
+            USDC,
+            mockRequestId,
+            MTBILL_DEPOSIT_VAULT
         );
 
         vault.enterMidasRequestSupply(
@@ -505,7 +513,12 @@ contract MidasExecutorFlowTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit MidasRequestSupplyFuse.MidasRequestSupplyFuseExit(
-            requestFuse.VERSION(), MTBILL_TOKEN, mTokenAmount, USDC, mockRequestId, MTBILL_REDEMPTION_VAULT
+            requestFuse.VERSION(),
+            MTBILL_TOKEN,
+            mTokenAmount,
+            USDC,
+            mockRequestId,
+            MTBILL_REDEMPTION_VAULT
         );
 
         vault.exitMidasRequestSupply(
@@ -657,7 +670,9 @@ contract MidasExecutorFlowTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseClaimed(
-            claimFuse.VERSION(), MTBILL_TOKEN, mTokensToDeliver
+            claimFuse.VERSION(),
+            MTBILL_TOKEN,
+            mTokensToDeliver
         );
 
         vault.execute(
@@ -824,11 +839,7 @@ contract MidasExecutorFlowTest is Test {
         // Component D (executor) = 0
         uint256 expectedVaultValue = (mTokensApproved * MOCK_MTBILL_PRICE) / 1e18;
 
-        assertEq(
-            balanceAfterClaim,
-            expectedVaultValue,
-            "Balance after claim should equal vault mToken value"
-        );
+        assertEq(balanceAfterClaim, expectedVaultValue, "Balance after claim should equal vault mToken value");
 
         // Most importantly: balance should be consistent (no double counting)
         assertEq(

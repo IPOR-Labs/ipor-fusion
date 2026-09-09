@@ -210,12 +210,7 @@ contract RewardsRouterE2EReplayTest is Test {
         // 4. redeem the ERC4626 reward token to USDC (router now owns the shares).
         calls[3] = IRewardsRouter.ExecuteCall(
             REWARD_4626,
-            abi.encodeWithSignature(
-                "redeem(uint256,address,address)",
-                R4626_CLAIMED,
-                address(router),
-                address(router)
-            )
+            abi.encodeWithSignature("redeem(uint256,address,address)", R4626_CLAIMED, address(router), address(router))
         );
 
         // 5-6. approve + swap the claimed USDC -> WETH (verbatim Augustus calldata).

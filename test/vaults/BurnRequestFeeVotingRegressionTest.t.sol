@@ -7,7 +7,10 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IFuseCommon} from "../../contracts/fuses/IFuse.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {IPlasmaVaultBase} from "../../contracts/interfaces/IPlasmaVaultBase.sol";
-import {BurnRequestFeeFuse, BurnRequestFeeDataEnter} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
+import {
+    BurnRequestFeeFuse,
+    BurnRequestFeeDataEnter
+} from "../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
 
 // ============================================
 // VULNERABLE VERSION OF BurnRequestFeeFuse
@@ -204,7 +207,10 @@ contract BurnRequestFeeVotingRegressionTest is Test {
         assertEq(vulnerableFuse.updateValue(), BURN_AMOUNT, "Update value should match burn amount");
 
         // CRITICAL: MockPlasmaVaultBase.updateInternal was NEVER called!
-        assertFalse(mockBase.updateInternalCalled(), "PlasmaVaultBase.updateInternal should NOT be called by vulnerable fuse");
+        assertFalse(
+            mockBase.updateInternalCalled(),
+            "PlasmaVaultBase.updateInternal should NOT be called by vulnerable fuse"
+        );
     }
 
     /// @notice Test that vulnerable fuse correctly calls its own _update but bypasses vault hooks
@@ -223,7 +229,10 @@ contract BurnRequestFeeVotingRegressionTest is Test {
 
         // After: fuse's _update called, but vault's updateInternal NOT called
         assertTrue(vulnerableFuse.updateCalled(), "Fuse's _update should be called");
-        assertFalse(mockBase.updateInternalCalled(), "Vault's updateInternal should NOT be called - this is the vulnerability");
+        assertFalse(
+            mockBase.updateInternalCalled(),
+            "Vault's updateInternal should NOT be called - this is the vulnerability"
+        );
     }
 
     // ============================================

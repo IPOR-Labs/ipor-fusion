@@ -36,12 +36,7 @@ contract VeloraSwapExecutor {
     /// @param tokenOut_ The output token address
     /// @param amountIn_ The amount of tokenIn to approve for the swap
     /// @param swapCallData_ Raw calldata from Velora/ParaSwap API
-    function execute(
-        address tokenIn_,
-        address tokenOut_,
-        uint256 amountIn_,
-        bytes calldata swapCallData_
-    ) external {
+    function execute(address tokenIn_, address tokenOut_, uint256 amountIn_, bytes calldata swapCallData_) external {
         // Approve Augustus v6.2 to spend tokenIn
         IERC20(tokenIn_).forceApprove(AUGUSTUS_V6_2, amountIn_);
 

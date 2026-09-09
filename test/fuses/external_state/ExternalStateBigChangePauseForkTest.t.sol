@@ -88,7 +88,7 @@ contract ExternalStateBigChangePauseForkTest is ExternalStateForkTestBase {
         deal(USDC, address(vault), 100e6);
         _enter(USDC, 100e6, balanceAccountA);
 
-        (uint256 total,,) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
         assertEq(total, 600e6, "alpha enter succeeded under pause");
     }
 
@@ -155,7 +155,11 @@ contract ExternalStateBigChangePauseForkTest is ExternalStateForkTestBase {
         _exit(USDC, 100e6, balanceAccountA);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseBalanceMismatch.selector, uint256(500e6), uint256(400e6))
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateUnpauseBalanceMismatch.selector,
+                uint256(500e6),
+                uint256(400e6)
+            )
         );
         _executeFuse(address(unpauseFuse), abi.encodeCall(unpauseFuse.unpause, (d)));
     }

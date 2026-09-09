@@ -37,7 +37,7 @@ contract ExternalStateMultiBalanceAccountsForkTest is ExternalStateForkTestBase 
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL_S + 1);
         _custodianConfirm(balanceAccountB, 300e6);
 
-        (uint256 total,,) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
         assertEq(total, 400e6, "sum across balance accounts");
 
         // USD WAD: 400 underlying USDC @ $1 -> 400e18.

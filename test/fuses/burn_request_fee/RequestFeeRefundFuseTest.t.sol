@@ -6,17 +6,31 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, MarketSubstratesConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    MarketSubstratesConfig,
+    FuseAction
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultVotesPlugin} from "../../../contracts/vaults/plugins/PlasmaVaultVotesPlugin.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager, WithdrawRequestInfo} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
-import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress, InitializationData} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    DataForInitialization,
+    PlasmaVaultAddress,
+    InitializationData
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {BurnRequestFeeFuse} from "../../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
-import {RequestFeeRefundFuse, RequestFeeRefundDataEnter} from "../../../contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol";
+import {
+    RequestFeeRefundFuse,
+    RequestFeeRefundDataEnter
+} from "../../../contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
@@ -217,11 +231,10 @@ contract RequestFeeRefundFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
-    function _buildRefundAction(address recipient_, uint256 amount_)
-        private
-        view
-        returns (FuseAction[] memory actions)
-    {
+    function _buildRefundAction(
+        address recipient_,
+        uint256 amount_
+    ) private view returns (FuseAction[] memory actions) {
         actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(_requestFeeRefundFuse),
@@ -304,11 +317,7 @@ contract RequestFeeRefundFuseTest is Test {
         emit RequestFeeRefundFuse.RequestFeeRefundEnter(address(_requestFeeRefundFuse), _USER, half);
         _executeRefund(_USER, half);
 
-        assertEq(
-            PlasmaVaultBase(_plasmaVault).balanceOf(_USER),
-            userBalStart + 2 * half,
-            "after second refund: user"
-        );
+        assertEq(PlasmaVaultBase(_plasmaVault).balanceOf(_USER), userBalStart + 2 * half, "after second refund: user");
         assertEq(
             PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager),
             wmBalStart - 2 * half,
@@ -389,11 +398,7 @@ contract RequestFeeRefundFuseTest is Test {
         }
 
         assertEq(PlasmaVaultBase(_plasmaVault).totalSupply(), totalSupplyBefore, "totalSupply unchanged");
-        assertEq(
-            PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager),
-            wmBalBefore,
-            "wm balance unchanged"
-        );
+        assertEq(PlasmaVaultBase(_plasmaVault).balanceOf(_withdrawManager), wmBalBefore, "wm balance unchanged");
     }
 
     function testEnter_reverts_whenAmountExceedsBalance() external {
@@ -407,12 +412,7 @@ contract RequestFeeRefundFuseTest is Test {
 
         vm.prank(_ALPHA);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IERC20Errors.ERC20InsufficientBalance.selector,
-                _withdrawManager,
-                wmBal,
-                tooMuch
-            )
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, _withdrawManager, wmBal, tooMuch)
         );
         PlasmaVault(_plasmaVault).execute(actions);
     }

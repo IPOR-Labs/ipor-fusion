@@ -374,7 +374,9 @@ contract StringConverterTest is Test {
         testStrings[2] = "hello world";
         testStrings[3] = "abcdefghijklmnopqrstuvwxyz1234"; // 30 chars (fits in 1 bytes32)
         testStrings[4] = "abcdefghijklmnopqrstuvwxyz123456"; // 32 chars
-        testStrings[5] = "This is a very long string that should be split across multiple bytes32 arrays to test the conversion logic thoroughly";
+        testStrings[
+            5
+        ] = "This is a very long string that should be split across multiple bytes32 arrays to test the conversion logic thoroughly";
 
         for (uint256 i = 0; i < testStrings.length; i++) {
             bytes32[] memory packed = StringConverter.toBytes32(testStrings[i]);
@@ -417,10 +419,6 @@ contract StringConverterTest is Test {
         bytes32[] memory packed = StringConverter.toBytes32(input);
         string memory result = StringConverter.fromBytes32(packed);
 
-        assertEq(
-            keccak256(bytes(result)),
-            keccak256(bytes(input)),
-            "Fuzz: Round-trip should preserve all bytes"
-        );
+        assertEq(keccak256(bytes(result)), keccak256(bytes(input)), "Fuzz: Round-trip should preserve all bytes");
     }
 }

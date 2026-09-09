@@ -62,7 +62,12 @@ contract ExternalStatePausePreHookTest is Test {
         uint256 lastUpdated = block.timestamp;
         vm.warp(block.timestamp + STALENESS_MAX_S + 1);
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStatePreHookStale.selector, lastUpdated, block.timestamp, STALENESS_MAX_S)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStatePreHookStale.selector,
+                lastUpdated,
+                block.timestamp,
+                STALENESS_MAX_S
+            )
         );
         vault.delegateExecute(address(hook), abi.encodeCall(hook.run, (bytes4(0))));
     }
@@ -108,10 +113,12 @@ contract ExternalStatePausePreHookTest is Test {
         bytes4[3] memory selectors = [
             bytes4(0x6e553f65), // deposit(uint256,address)
             bytes4(0xba087652), // redeem(uint256,address,address)
-            bytes4(0xb460af94)  // withdraw(uint256,address,address)
+            bytes4(0xb460af94) // withdraw(uint256,address,address)
         ];
         for (uint256 i; i < selectors.length; ++i) {
-            vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStatePreHookExecutorNotDeployed.selector));
+            vm.expectRevert(
+                abi.encodeWithSelector(ExternalStateErrors.ExternalStatePreHookExecutorNotDeployed.selector)
+            );
             vault.delegateExecute(address(hook), abi.encodeCall(hook.run, (selectors[i])));
         }
     }
@@ -134,7 +141,12 @@ contract ExternalStatePausePreHookTest is Test {
         // Now executor.lastCustodianUpdateTimestamp != vault's lastCheckedCustodianTimestamp
         // and delta (200/100 = 200%) > bigChangeBps (1000 bps = 10%)
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStatePreHookBigChangeDetected.selector, uint256(100), uint256(300), uint256(1000))
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStatePreHookBigChangeDetected.selector,
+                uint256(100),
+                uint256(300),
+                uint256(1000)
+            )
         );
         vault.delegateExecute(address(hook), abi.encodeCall(hook.run, (bytes4(0))));
     }
@@ -154,7 +166,7 @@ contract ExternalStatePausePreHookTest is Test {
         vault.grantMarketSubstrates(MARKET_ID, subs);
 
         executor = address(new ExternalStateExecutor(MARKET_ID, address(vault)));
-        (bool ok,) = executor.call(abi.encodeCall(IExternalStateExecutor.syncSubstrates, ()));
+        (bool ok, ) = executor.call(abi.encodeCall(IExternalStateExecutor.syncSubstrates, ()));
         require(ok, "sync failed");
         ExternalStateSlotHelpers.setExecutor(address(vault), executor);
     }
@@ -162,7 +174,7 @@ contract ExternalStatePausePreHookTest is Test {
     function _confirm(address executor_, uint256 newValue_) internal {
         vm.prank(custodianA);
         IExternalStateExecutor(executor_).proposeBalance(balanceAccount, newValue_);
-        (,, uint64 pa, uint256 n) = ExternalStateExecutor(executor_).pendingProposals(balanceAccount);
+        (, , uint64 pa, uint256 n) = ExternalStateExecutor(executor_).pendingProposals(balanceAccount);
         bytes32 h = keccak256(abi.encode(executor_, block.chainid, balanceAccount, newValue_, custodianA, pa, n));
         vm.prank(custodianB);
         IExternalStateExecutor(executor_).confirmBalance(balanceAccount, h);

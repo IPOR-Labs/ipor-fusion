@@ -97,10 +97,7 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address underlyingAsset = IERC4626(data_.vault).asset();
 
-        finalVaultAssetAmount = IporMath.min(
-            data_.vaultAssetAmount,
-            ERC20(underlyingAsset).balanceOf(address(this))
-        );
+        finalVaultAssetAmount = IporMath.min(data_.vaultAssetAmount, ERC20(underlyingAsset).balanceOf(address(this)));
 
         if (finalVaultAssetAmount == 0) {
             return 0;
@@ -123,7 +120,9 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 amount = TypeConversionLib.toUint256(inputs[1]);
         uint256 minSharesOut = TypeConversionLib.toUint256(inputs[2]);
 
-        uint256 suppliedAmount = enter(Erc4626SupplyFuseEnterData({vault: vault, vaultAssetAmount: amount, minSharesOut: minSharesOut}));
+        uint256 suppliedAmount = enter(
+            Erc4626SupplyFuseEnterData({vault: vault, vaultAssetAmount: amount, minSharesOut: minSharesOut})
+        );
 
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(suppliedAmount);
@@ -140,7 +139,9 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 amount = TypeConversionLib.toUint256(inputs[1]);
         uint256 maxSharesBurned = TypeConversionLib.toUint256(inputs[2]);
 
-        uint256 shares = exit(Erc4626SupplyFuseExitData({vault: vault, vaultAssetAmount: amount, maxSharesBurned: maxSharesBurned}));
+        uint256 shares = exit(
+            Erc4626SupplyFuseExitData({vault: vault, vaultAssetAmount: amount, maxSharesBurned: maxSharesBurned})
+        );
 
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(shares);

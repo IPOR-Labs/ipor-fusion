@@ -7,7 +7,11 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {VelodromeSuperchainSubstrateLib, VelodromeSuperchainSubstrate, VelodromeSuperchainSubstrateType} from "./VelodromeSuperchainLib.sol";
+import {
+    VelodromeSuperchainSubstrateLib,
+    VelodromeSuperchainSubstrate,
+    VelodromeSuperchainSubstrateType
+} from "./VelodromeSuperchainLib.sol";
 import {IRouter} from "./ext/IRouter.sol";
 
 /// @notice Data structure used for entering a liquidity provision operation

@@ -78,12 +78,7 @@ contract EulerV2SwapRegistryFuse is IFuseCommon {
         // Routed through the EVC on behalf of eulerAccount: the registry is an EVCUtil contract enforcing
         // the caller authority over the pool's eulerAccount. No value is forwarded — the PlasmaVault cannot
         // source native ETH for a bond, nor receive a refund, so registration is always zero-bond.
-        EVC.call(
-            address(REGISTRY),
-            eulerAccount,
-            0,
-            abi.encodeCall(IEulerV2SwapRegistry.registerPool, (data_.pool))
-        );
+        EVC.call(address(REGISTRY), eulerAccount, 0, abi.encodeCall(IEulerV2SwapRegistry.registerPool, (data_.pool)));
 
         emit EulerV2SwapRegistryFuseEnter(VERSION, data_.pool, eulerAccount);
     }

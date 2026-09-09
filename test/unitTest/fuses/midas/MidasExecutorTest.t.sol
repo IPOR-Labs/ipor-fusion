@@ -190,7 +190,12 @@ contract MidasExecutorTest is Test {
         mToken.mint(address(executor), amount);
 
         // when
-        uint256 requestId = executor.redeemRequest(address(mToken), amount, address(tokenOut), address(redemptionVault));
+        uint256 requestId = executor.redeemRequest(
+            address(mToken),
+            amount,
+            address(tokenOut),
+            address(redemptionVault)
+        );
 
         // then: return value
         assertEq(requestId, 99, "requestId should match mock return value");
@@ -201,9 +206,17 @@ contract MidasExecutorTest is Test {
 
         // then: approve lifecycle on mToken
         assertEq(mToken.approveCallCount(), 2, "approve should be called twice (set + cleanup)");
-        assertEq(mToken.approveSpenders(0), address(redemptionVault), "first approve spender should be redemptionVault");
+        assertEq(
+            mToken.approveSpenders(0),
+            address(redemptionVault),
+            "first approve spender should be redemptionVault"
+        );
         assertEq(mToken.approveAmounts(0), amount, "first approve amount should be the redeem amount");
-        assertEq(mToken.approveSpenders(1), address(redemptionVault), "second approve spender should be redemptionVault");
+        assertEq(
+            mToken.approveSpenders(1),
+            address(redemptionVault),
+            "second approve spender should be redemptionVault"
+        );
         assertEq(mToken.approveAmounts(1), 0, "second approve should reset to zero");
     }
 
@@ -277,10 +290,7 @@ contract MidasExecutorTest is Test {
             address(differentTokenOut),
             "redemptionVault must receive tokenOut, not mToken"
         );
-        assertTrue(
-            redemptionVault.lastTokenOut() != address(mToken),
-            "tokenOut and mToken must not be confused"
-        );
+        assertTrue(redemptionVault.lastTokenOut() != address(mToken), "tokenOut and mToken must not be confused");
     }
 
     // ============ 4. claimAssets Tests ============
@@ -449,7 +459,11 @@ contract MidasExecutorTest is Test {
         } else {
             // then: no transfer for zero balance
             assertEq(tokenIn.balanceOf(address(executor)), 0, "executor stays at 0 for zero balance");
-            assertEq(tokenIn.balanceOf(plasmaVault), plasmaVaultBefore, "PLASMA_VAULT balance unchanged for zero balance");
+            assertEq(
+                tokenIn.balanceOf(plasmaVault),
+                plasmaVaultBefore,
+                "PLASMA_VAULT balance unchanged for zero balance"
+            );
         }
     }
 

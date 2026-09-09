@@ -54,9 +54,7 @@ contract DIAPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
         uint8 diaDecimals_,
         uint8 priceFeedDecimals_
     ) external returns (address priceFeed) {
-        priceFeed = address(
-            new DIAPriceFeed(diaOracle_, key_, maxStalePeriod_, diaDecimals_, priceFeedDecimals_)
-        );
+        priceFeed = address(new DIAPriceFeed(diaOracle_, key_, maxStalePeriod_, diaDecimals_, priceFeedDecimals_));
         emit DIAPriceFeedCreated(priceFeed, diaOracle_, key_, maxStalePeriod_, diaDecimals_, priceFeedDecimals_);
     }
 

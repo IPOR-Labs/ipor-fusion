@@ -7,8 +7,15 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {CompoundV2BalanceFuse} from "../../../contracts/fuses/compound_v2/CompoundV2BalanceFuse.sol";
-import {CompoundV2SupplyFuse, CompoundV2SupplyFuseExitData, CompoundV2SupplyFuseEnterData} from "../../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    CompoundV2SupplyFuse,
+    CompoundV2SupplyFuseExitData,
+    CompoundV2SupplyFuseEnterData
+} from "../../../contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";

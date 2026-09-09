@@ -64,7 +64,12 @@ contract ExternalStateUnpauseFuse is IFuseCommon {
 
         bytes32 digest = keccak256(
             abi.encodePacked(
-                address(this), MARKET_ID, data_.confirmedTotalBalance, data_.nonce, data_.expirationTime, block.chainid
+                address(this),
+                MARKET_ID,
+                data_.confirmedTotalBalance,
+                data_.nonce,
+                data_.expirationTime,
+                block.chainid
             )
         );
         // ECDSA.recover rejects high-s signatures (EIP-2) and malformed inputs by reverting.
@@ -74,10 +79,10 @@ contract ExternalStateUnpauseFuse is IFuseCommon {
         // resolves without touching the fallback — getAccessManagerAddress() lives only on
         // PlasmaVaultGovernance behind the fallback, which rejects callbacks during execute().
         address accessManager = IAccessManaged(address(this)).authority();
-        (bool isMember,) = IAccessManager(accessManager).hasRole(Roles.ATOMIST_ROLE, signer);
+        (bool isMember, ) = IAccessManager(accessManager).hasRole(Roles.ATOMIST_ROLE, signer);
         if (!isMember) revert ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist(signer);
 
-        (uint256 currentTotal,,) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (uint256 currentTotal, , ) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
         if (currentTotal != data_.confirmedTotalBalance) {
             revert ExternalStateErrors.ExternalStateUnpauseBalanceMismatch(data_.confirmedTotalBalance, currentTotal);
         }

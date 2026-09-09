@@ -340,12 +340,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         );
 
         int256 collateralValue = collateralSum.toInt256();
-        int256 debtValue = _debtValueWadForServicer(
-            servicer_,
-            plasmaVault_,
-            priceOracleMiddleware_,
-            collateralValue
-        );
+        int256 debtValue = _debtValueWadForServicer(servicer_, plasmaVault_, priceOracleMiddleware_, collateralValue);
 
         return collateralValue + debtValue;
     }
@@ -564,10 +559,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         // Always query the oracle when storage has entries. A failed oracle on a tracked
         // servicer is a NAV-blocking signal regardless of whether a live offer can be
         // confirmed on the locker (tracked gate + offers-asymmetry follow-up).
-        (bool priceOk, uint256 price, uint256 priceDecimals) = _tryGetAssetPrice(
-            priceOracleMiddleware_,
-            purchaseToken
-        );
+        (bool priceOk, uint256 price, uint256 priceDecimals) = _tryGetAssetPrice(priceOracleMiddleware_, purchaseToken);
         if (!priceOk) return (false, 0, hasAnyPosition);
 
         uint256 priceCombinedDecimals = uint256(IERC20Metadata(purchaseToken).decimals()) + priceDecimals;
@@ -1197,9 +1189,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param servicer_ Servicer substrate.
     /// @return ok True if the call succeeded.
     /// @return endTimestamp End-of-repurchase-window unix timestamp (0 on failure).
-    function _tryReadEndOfRepurchaseWindow(
-        address servicer_
-    ) internal view returns (bool ok, uint256 endTimestamp) {
+    function _tryReadEndOfRepurchaseWindow(address servicer_) internal view returns (bool ok, uint256 endTimestamp) {
         try IExtTermRepoServicer(servicer_).endOfRepurchaseWindow() returns (uint256 ts) {
             return (true, ts);
         } catch {
@@ -1212,9 +1202,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @return ok True if the call succeeded.
     /// @return collateralManager Paired collateral manager address (zero on failure or when the
     ///         servicer legitimately reports no manager).
-    function _tryReadCollateralManager(
-        address servicer_
-    ) internal view returns (bool ok, address collateralManager) {
+    function _tryReadCollateralManager(address servicer_) internal view returns (bool ok, address collateralManager) {
         try IExtTermRepoServicer(servicer_).termRepoCollateralManager() returns (address cm) {
             return (true, cm);
         } catch {
@@ -1226,9 +1214,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param collateralManager_ Collateral manager to query.
     /// @return ok True if the call succeeded.
     /// @return count Reported accepted-collateral-token count (0 on failure).
-    function _tryReadAcceptedCollateralCount(
-        address collateralManager_
-    ) internal view returns (bool ok, uint8 count) {
+    function _tryReadAcceptedCollateralCount(address collateralManager_) internal view returns (bool ok, uint8 count) {
         try IExtTermRepoCollateralManager(collateralManager_).numOfAcceptedCollateralTokens() returns (uint8 n) {
             return (true, n);
         } catch {
@@ -1338,10 +1324,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param bidId_ Pending bid id.
     /// @return ok True if the staticcall succeeded.
     /// @return isLive True iff the bid is still live per the canonical predicate.
-    function _tryReadLockedBidIsLive(
-        address bidLocker_,
-        bytes32 bidId_
-    ) internal view returns (bool ok, bool isLive) {
+    function _tryReadLockedBidIsLive(address bidLocker_, bytes32 bidId_) internal view returns (bool ok, bool isLive) {
         try IExtTermAuctionBidLocker(bidLocker_).lockedBid(bidId_) returns (
             IExtTermAuctionBidLocker.TermAuctionBid memory bid
         ) {
@@ -1368,9 +1351,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @return ok True if the call succeeded.
     /// @return hcut Haircut in 18-dec mantissa.
     function _tryGetRepoRedemptionHaircut(address repoToken_) internal view returns (bool ok, uint256 hcut) {
-        try IExtTermDiscountRateAdapter(DISCOUNT_RATE_ADAPTER).repoRedemptionHaircut(repoToken_) returns (
-            uint256 h
-        ) {
+        try IExtTermDiscountRateAdapter(DISCOUNT_RATE_ADAPTER).repoRedemptionHaircut(repoToken_) returns (uint256 h) {
             return (true, h);
         } catch {
             return (false, 0);
@@ -1413,5 +1394,4 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             return (false, 0, 0);
         }
     }
-
 }

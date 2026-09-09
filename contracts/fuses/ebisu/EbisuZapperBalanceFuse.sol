@@ -8,7 +8,11 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
-import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
+import {
+    EbisuZapperSubstrateLib,
+    EbisuZapperSubstrate,
+    EbisuZapperSubstrateType
+} from "./lib/EbisuZapperSubstrateLib.sol";
 import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
 import {ITroveManager} from "./ext/ITroveManager.sol";
 

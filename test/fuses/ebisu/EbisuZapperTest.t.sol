@@ -3,9 +3,20 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
-import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FeeConfig,
+    FuseAction,
+    PlasmaVault,
+    PlasmaVaultInitData
+} from "../../../contracts/vaults/PlasmaVault.sol";
 
-import {EbisuZapperCreateFuse, EbisuZapperCreateFuseEnterData, EbisuZapperCreateFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
+import {
+    EbisuZapperCreateFuse,
+    EbisuZapperCreateFuseEnterData,
+    EbisuZapperCreateFuseExitData
+} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
 
 import {EbisuAdjustInterestRateFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol";
 import {EbisuAdjustTroveFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol";
@@ -28,13 +39,25 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {EbisuWethEthAdapterAddressReader} from "../../../contracts/readers/EbisuWethEthAdapterAddressReader.sol";
 import {UniversalReader, ReadResult} from "../../../contracts/universal_reader/UniversalReader.sol";
-import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {
+    UniversalTokenSwapperFuse,
+    UniversalTokenSwapperData,
+    UniversalTokenSwapperEnterData
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 
-import {EbisuZapperLeverModifyFuse, EbisuZapperLeverModifyFuseEnterData, EbisuZapperLeverModifyFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol";
+import {
+    EbisuZapperLeverModifyFuse,
+    EbisuZapperLeverModifyFuseEnterData,
+    EbisuZapperLeverModifyFuseExitData
+} from "../../../contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol";
 import {WethEthAdapterStorageLib} from "../../../contracts/fuses/ebisu/lib/WethEthAdapterStorageLib.sol";
-import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "../../../contracts/fuses/ebisu/lib/EbisuZapperSubstrateLib.sol";
+import {
+    EbisuZapperSubstrateLib,
+    EbisuZapperSubstrate,
+    EbisuZapperSubstrateType
+} from "../../../contracts/fuses/ebisu/lib/EbisuZapperSubstrateLib.sol";
 import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 import {TransientStorageSetterFuse} from "../../test_helpers/TransientStorageSetterFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";

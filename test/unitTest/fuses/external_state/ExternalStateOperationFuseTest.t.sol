@@ -8,9 +8,15 @@ import {
     ExternalStateOperationFuseEnterData,
     ExternalStateOperationFuseExitData
 } from "../../../../contracts/fuses/external_state/ExternalStateOperationFuse.sol";
-import {IExternalStateExecutor, ExternalStateExecutorAction} from "../../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
+import {
+    IExternalStateExecutor,
+    ExternalStateExecutorAction
+} from "../../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
 import {ExternalStateExecutorStorageLib} from "../../../../contracts/fuses/external_state/lib/ExternalStateExecutorStorageLib.sol";
-import {ExternalStateSubstrateLib, ExternalStateSubstrateType} from "../../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
+import {
+    ExternalStateSubstrateLib,
+    ExternalStateSubstrateType
+} from "../../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
 import {ExternalStateErrors} from "../../../../contracts/fuses/external_state/errors/ExternalStateErrors.sol";
 import {IporFusionMarkets} from "../../../../contracts/libraries/IporFusionMarkets.sol";
 
@@ -111,7 +117,10 @@ contract ExternalStateOperationFuseTest is Test {
 
     function test_enter_revertsOnEmptyAssetAndEmptyActions() public {
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(0), amount: 0, balanceAccount: address(0), actions: new ExternalStateExecutorAction[](0)
+            asset: address(0),
+            amount: 0,
+            balanceAccount: address(0),
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateEmptyAssetAndActions.selector));
         _delegate(abi.encodeCall(fuse.enter, (d)));
@@ -123,7 +132,10 @@ contract ExternalStateOperationFuseTest is Test {
         stray.mint(address(vault), 100e6);
 
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(stray), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(stray),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -139,7 +151,10 @@ contract ExternalStateOperationFuseTest is Test {
         address rogue = makeAddr("rogue");
         asset6.mint(address(vault), 100e6);
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: rogue, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: rogue,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -157,7 +172,10 @@ contract ExternalStateOperationFuseTest is Test {
         ExternalStateExecutorAction[] memory acts = new ExternalStateExecutorAction[](1);
         acts[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeWithSelector(wrongSel)});
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: acts
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: acts
         });
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -174,9 +192,14 @@ contract ExternalStateOperationFuseTest is Test {
         ExternalStateExecutorAction[] memory acts = new ExternalStateExecutorAction[](1);
         acts[0] = ExternalStateExecutorAction({target: address(target), data: hex"0102"});
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: acts
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: acts
         });
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateActionDataTooShort.selector, uint256(0), uint256(2)));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateActionDataTooShort.selector, uint256(0), uint256(2))
+        );
         _delegate(abi.encodeCall(fuse.enter, (d)));
     }
 
@@ -187,7 +210,10 @@ contract ExternalStateOperationFuseTest is Test {
 
         asset6.mint(address(vault), 100e6);
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         _delegate(abi.encodeCall(fuse.enter, (d))); // must not revert
     }
@@ -199,13 +225,16 @@ contract ExternalStateOperationFuseTest is Test {
     function test_enter_transferOnly_noActions() public {
         asset6.mint(address(vault), 100e6);
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         _delegate(abi.encodeCall(fuse.enter, (d)));
 
         address e = _readExecutor();
         assertEq(asset6.balanceOf(e), 100e6);
-        (uint256 total,,) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
         assertEq(total, 100e6);
     }
 
@@ -214,9 +243,16 @@ contract ExternalStateOperationFuseTest is Test {
         _delegate(abi.encodeCall(fuse.createExecutor, ()));
 
         ExternalStateExecutorAction[] memory acts = new ExternalStateExecutorAction[](1);
-        acts[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.noop, ())});
-        ExternalStateOperationFuseEnterData memory d =
-            ExternalStateOperationFuseEnterData({asset: address(0), amount: 0, balanceAccount: address(0), actions: acts});
+        acts[0] = ExternalStateExecutorAction({
+            target: address(target),
+            data: abi.encodeCall(MockExternalStateTarget.noop, ())
+        });
+        ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
+            asset: address(0),
+            amount: 0,
+            balanceAccount: address(0),
+            actions: acts
+        });
         _delegate(abi.encodeCall(fuse.enter, (d)));
         assertEq(target.callsLength(), 1);
     }
@@ -224,9 +260,15 @@ contract ExternalStateOperationFuseTest is Test {
     function test_enter_transferAndActions() public {
         asset6.mint(address(vault), 100e6);
         ExternalStateExecutorAction[] memory acts = new ExternalStateExecutorAction[](1);
-        acts[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.noop, ())});
+        acts[0] = ExternalStateExecutorAction({
+            target: address(target),
+            data: abi.encodeCall(MockExternalStateTarget.noop, ())
+        });
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: acts
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: acts
         });
         _delegate(abi.encodeCall(fuse.enter, (d)));
         assertEq(target.callsLength(), 1);
@@ -238,7 +280,10 @@ contract ExternalStateOperationFuseTest is Test {
         asset6.mint(address(vault), 100e6);
         assertEq(_readExecutor(), address(0));
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         _delegate(abi.encodeCall(fuse.enter, (d)));
         assertTrue(_readExecutor() != address(0));
@@ -247,12 +292,15 @@ contract ExternalStateOperationFuseTest is Test {
     function test_enter_convertsAssetToUnderlyingViaOracle() public {
         asset6.mint(address(vault), 1_000e6);
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 1_000e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 1_000e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         _delegate(abi.encodeCall(fuse.enter, (d)));
 
         address e = _readExecutor();
-        (uint256 total,,) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
         // 1_000e6 of a 1:1 USD asset → 1_000e6 of 6-decimal underlying
         assertEq(total, 1_000e6);
     }
@@ -263,11 +311,14 @@ contract ExternalStateOperationFuseTest is Test {
         oracle.setPrice(address(underlying), 1e8, 8);
         asset18.mint(address(vault), 1e18);
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset18), amount: 1e18, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset18),
+            amount: 1e18,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         _delegate(abi.encodeCall(fuse.enter, (d)));
         address e = _readExecutor();
-        (uint256 total,,) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
         assertEq(total, 2e6);
     }
 
@@ -275,7 +326,10 @@ contract ExternalStateOperationFuseTest is Test {
         vault.setPriceOracleMiddleware(address(0));
         asset6.mint(address(vault), 100e6);
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStatePriceOracleNotSet.selector));
         _delegate(abi.encodeCall(fuse.enter, (d)));
@@ -285,19 +339,34 @@ contract ExternalStateOperationFuseTest is Test {
         oracle.setPrice(address(asset6), 0, 8);
         asset6.mint(address(vault), 100e6);
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateInvalidPrice.selector, address(asset6)));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateInvalidPrice.selector, address(asset6))
+        );
         _delegate(abi.encodeCall(fuse.enter, (d)));
     }
 
     function test_enter_emitsExternalStateOperationFuseEnter() public {
         asset6.mint(address(vault), 100e6);
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectEmit(true, true, true, true, address(vault));
-        emit ExternalStateOperationFuse.ExternalStateOperationFuseEnter(address(fuse), address(asset6), 100e6, balanceAccount, 100e6, 0);
+        emit ExternalStateOperationFuse.ExternalStateOperationFuseEnter(
+            address(fuse),
+            address(asset6),
+            100e6,
+            balanceAccount,
+            100e6,
+            0
+        );
         _delegate(abi.encodeCall(fuse.enter, (d)));
     }
 
@@ -310,7 +379,10 @@ contract ExternalStateOperationFuseTest is Test {
         MockERC20ForExternalState stray = new MockERC20ForExternalState("Stray", "S", 6);
         oracle.setPrice(address(stray), 1e8, 8);
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(stray), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(stray),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -326,7 +398,10 @@ contract ExternalStateOperationFuseTest is Test {
         _delegate(abi.encodeCall(fuse.createExecutor, ()));
         address rogue = makeAddr("rogue");
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(asset6), amount: 100e6, balanceAccount: rogue, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: rogue,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -343,8 +418,12 @@ contract ExternalStateOperationFuseTest is Test {
         bytes4 wrongSel = bytes4(keccak256("notGranted()"));
         ExternalStateExecutorAction[] memory acts = new ExternalStateExecutorAction[](1);
         acts[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeWithSelector(wrongSel)});
-        ExternalStateOperationFuseExitData memory d =
-            ExternalStateOperationFuseExitData({asset: address(0), amount: 0, balanceAccount: address(0), actions: acts});
+        ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
+            asset: address(0),
+            amount: 0,
+            balanceAccount: address(0),
+            actions: acts
+        });
         vm.expectRevert(
             abi.encodeWithSelector(
                 ExternalStateErrors.ExternalStateUnsupportedSubstrate.selector,
@@ -357,7 +436,10 @@ contract ExternalStateOperationFuseTest is Test {
 
     function test_exit_revertsWhenExecutorNotDeployed() public {
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateOperationExecutorNotDeployed.selector));
         _delegate(abi.encodeCall(fuse.exit, (d)));
@@ -369,20 +451,30 @@ contract ExternalStateOperationFuseTest is Test {
         _delegate(
             abi.encodeCall(
                 fuse.enter,
-                (ExternalStateOperationFuseEnterData({
+                (
+                    ExternalStateOperationFuseEnterData({
                         asset: address(asset6),
                         amount: 100e6,
                         balanceAccount: balanceAccount,
                         actions: new ExternalStateExecutorAction[](0)
-                    }))
+                    })
+                )
             )
         );
 
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(asset6), amount: 200e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 200e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExitExceedsTrackedBalance.selector, balanceAccount, 200e6, 100e6)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExitExceedsTrackedBalance.selector,
+                balanceAccount,
+                200e6,
+                100e6
+            )
         );
         _delegate(abi.encodeCall(fuse.exit, (d)));
     }
@@ -396,21 +488,29 @@ contract ExternalStateOperationFuseTest is Test {
         _delegate(
             abi.encodeCall(
                 fuse.enter,
-                (ExternalStateOperationFuseEnterData({
+                (
+                    ExternalStateOperationFuseEnterData({
                         asset: address(asset6),
                         amount: 100e6,
                         balanceAccount: balanceAccount,
                         actions: new ExternalStateExecutorAction[](0)
-                    }))
+                    })
+                )
             )
         );
         address e = _readExecutor();
         // preserve balance on executor
 
         ExternalStateExecutorAction[] memory acts = new ExternalStateExecutorAction[](1);
-        acts[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.noop, ())});
+        acts[0] = ExternalStateExecutorAction({
+            target: address(target),
+            data: abi.encodeCall(MockExternalStateTarget.noop, ())
+        });
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: acts
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: acts
         });
         _delegate(abi.encodeCall(fuse.exit, (d)));
 
@@ -418,7 +518,7 @@ contract ExternalStateOperationFuseTest is Test {
         assertEq(target.callsLength(), 1);
         // balance removed and transferred
         assertEq(asset6.balanceOf(address(vault)), 100e6);
-        (uint256 total,,) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
         assertEq(total, 0);
     }
 
@@ -427,17 +527,22 @@ contract ExternalStateOperationFuseTest is Test {
         _delegate(
             abi.encodeCall(
                 fuse.enter,
-                (ExternalStateOperationFuseEnterData({
+                (
+                    ExternalStateOperationFuseEnterData({
                         asset: address(asset6),
                         amount: 100e6,
                         balanceAccount: balanceAccount,
                         actions: new ExternalStateExecutorAction[](0)
-                    }))
+                    })
+                )
             )
         );
 
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(asset6), amount: 100e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 100e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         _delegate(abi.encodeCall(fuse.exit, (d)));
         assertEq(asset6.balanceOf(address(vault)), 100e6);
@@ -446,9 +551,16 @@ contract ExternalStateOperationFuseTest is Test {
     function test_exit_actionsOnly() public {
         _delegate(abi.encodeCall(fuse.createExecutor, ()));
         ExternalStateExecutorAction[] memory acts = new ExternalStateExecutorAction[](1);
-        acts[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.noop, ())});
-        ExternalStateOperationFuseExitData memory d =
-            ExternalStateOperationFuseExitData({asset: address(0), amount: 0, balanceAccount: address(0), actions: acts});
+        acts[0] = ExternalStateExecutorAction({
+            target: address(target),
+            data: abi.encodeCall(MockExternalStateTarget.noop, ())
+        });
+        ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
+            asset: address(0),
+            amount: 0,
+            balanceAccount: address(0),
+            actions: acts
+        });
         _delegate(abi.encodeCall(fuse.exit, (d)));
         assertEq(target.callsLength(), 1);
     }
@@ -461,21 +573,26 @@ contract ExternalStateOperationFuseTest is Test {
         _delegate(
             abi.encodeCall(
                 fuse.enter,
-                (ExternalStateOperationFuseEnterData({
+                (
+                    ExternalStateOperationFuseEnterData({
                         asset: address(asset18),
                         amount: 1e18,
                         balanceAccount: balanceAccount,
                         actions: new ExternalStateExecutorAction[](0)
-                    }))
+                    })
+                )
             )
         );
 
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(asset18), amount: 1e18, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset18),
+            amount: 1e18,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         _delegate(abi.encodeCall(fuse.exit, (d)));
         address e = _readExecutor();
-        (uint256 total,,) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
         assertEq(total, 0); // fully exited
         assertEq(asset18.balanceOf(address(vault)), 1e18);
     }
@@ -485,22 +602,27 @@ contract ExternalStateOperationFuseTest is Test {
         _delegate(
             abi.encodeCall(
                 fuse.enter,
-                (ExternalStateOperationFuseEnterData({
+                (
+                    ExternalStateOperationFuseEnterData({
                         asset: address(asset6),
                         amount: 100e6,
                         balanceAccount: balanceAccount,
                         actions: new ExternalStateExecutorAction[](0)
-                    }))
+                    })
+                )
             )
         );
 
         // exit 40
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(asset6), amount: 40e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 40e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         _delegate(abi.encodeCall(fuse.exit, (d)));
         address e = _readExecutor();
-        (uint256 total,,) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(e).getBalanceFuseSnapshot();
         assertEq(total, 60e6);
         assertEq(asset6.balanceOf(address(vault)), 40e6);
         assertEq(asset6.balanceOf(e), 60e6);
@@ -511,19 +633,31 @@ contract ExternalStateOperationFuseTest is Test {
         _delegate(
             abi.encodeCall(
                 fuse.enter,
-                (ExternalStateOperationFuseEnterData({
+                (
+                    ExternalStateOperationFuseEnterData({
                         asset: address(asset6),
                         amount: 100e6,
                         balanceAccount: balanceAccount,
                         actions: new ExternalStateExecutorAction[](0)
-                    }))
+                    })
+                )
             )
         );
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: address(asset6), amount: 40e6, balanceAccount: balanceAccount, actions: new ExternalStateExecutorAction[](0)
+            asset: address(asset6),
+            amount: 40e6,
+            balanceAccount: balanceAccount,
+            actions: new ExternalStateExecutorAction[](0)
         });
         vm.expectEmit(true, true, true, true, address(vault));
-        emit ExternalStateOperationFuse.ExternalStateOperationFuseExit(address(fuse), address(asset6), 40e6, balanceAccount, 40e6, 0);
+        emit ExternalStateOperationFuse.ExternalStateOperationFuseExit(
+            address(fuse),
+            address(asset6),
+            40e6,
+            balanceAccount,
+            40e6,
+            0
+        );
         _delegate(abi.encodeCall(fuse.exit, (d)));
     }
 

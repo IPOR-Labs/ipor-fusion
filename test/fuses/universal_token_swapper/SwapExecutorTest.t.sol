@@ -6,7 +6,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import {SwapExecutor, SwapExecutorData} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
-import {SwapExecutorRestricted, SwapExecutorData as SwapExecutorDataRestricted} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorRestricted.sol";
+import {
+    SwapExecutorRestricted,
+    SwapExecutorData as SwapExecutorDataRestricted
+} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorRestricted.sol";
 
 /// @title Mock Token for testing
 contract MockERC20 is ERC20 {

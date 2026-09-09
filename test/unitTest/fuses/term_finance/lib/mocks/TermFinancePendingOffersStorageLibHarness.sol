@@ -9,12 +9,7 @@ import {TermFinancePendingOffersStorageLib} from "contracts/fuses/term_finance/l
 ///         but since the library reads from the calling-contract storage via assembly,
 ///         a fresh deployment of the harness gives a fresh slot).
 contract TermFinancePendingOffersStorageLibHarness {
-    function addPendingOffer(
-        address servicer_,
-        address offerLocker_,
-        bytes32 offerId_,
-        uint256 amount_
-    ) external {
+    function addPendingOffer(address servicer_, address offerLocker_, bytes32 offerId_, uint256 amount_) external {
         TermFinancePendingOffersStorageLib.addPendingOffer(servicer_, offerLocker_, offerId_, amount_);
     }
 

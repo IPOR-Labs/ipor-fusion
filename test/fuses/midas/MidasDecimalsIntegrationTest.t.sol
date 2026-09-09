@@ -12,10 +12,22 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 
-import {MidasSupplyFuse, MidasSupplyFuseEnterData, MidasSupplyFuseExitData} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
-import {MidasRequestSupplyFuse, MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {
+    MidasSupplyFuse,
+    MidasSupplyFuseEnterData,
+    MidasSupplyFuseExitData
+} from "../../../contracts/fuses/midas/MidasSupplyFuse.sol";
+import {
+    MidasRequestSupplyFuse,
+    MidasRequestSupplyFuseEnterData,
+    MidasRequestSupplyFuseExitData
+} from "../../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
 import {MidasBalanceFuse} from "../../../contracts/fuses/midas/MidasBalanceFuse.sol";
-import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {
+    MidasSubstrateLib,
+    MidasSubstrate,
+    MidasSubstrateType
+} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 
 import {PlasmaVaultHelper, DeployMinimalPlasmaVaultParams} from "../../test_helpers/PlasmaVaultHelper.sol";
 import {PriceOracleMiddlewareHelper} from "../../test_helpers/PriceOracleMiddlewareHelper.sol";
@@ -202,7 +214,12 @@ contract MidasDecimalsIntegrationTest is Test {
         assertApproxEqRel(totalAssetsAfter, totalAssetsBefore, 0.0001e18, "totalAssets stable after deposit");
         assertEq(exchangeRateAfter, exchangeRateBefore, "exchangeRate stable after deposit");
         assertGt(totalAssetsInMarketAfter, 0, "totalAssetsInMarket should reflect mTBILL holdings");
-        assertApproxEqRel(totalAssetsInMarketAfter, depositAmount, 0.0001e18, "totalAssetsInMarket ~= deposited amount");
+        assertApproxEqRel(
+            totalAssetsInMarketAfter,
+            depositAmount,
+            0.0001e18,
+            "totalAssetsInMarket ~= deposited amount"
+        );
     }
 
     // ============ BUG 2: MidasRequestSupplyFuse.enter() same decimal issue ============

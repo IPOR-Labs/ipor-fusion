@@ -259,7 +259,7 @@ contract PlasmaVaultDepositFeeTest is Test {
         uint256 usdcSpent = userUsdcBefore - userUsdcAfter;
         uint256 userShares = _plasmaVault.balanceOf(_USER);
         uint256 feeShares = _plasmaVault.balanceOf(address(_withdrawManager)) - feeRecipientSharesBefore;
-        uint256 expectedFeeShares = sharesToMint * depositFee / 1e18;
+        uint256 expectedFeeShares = (sharesToMint * depositFee) / 1e18;
 
         // User pays exactly what previewMint() declared
         assertEq(actualAssets, expectedAssets, "actualAssets should match previewMint");
@@ -313,7 +313,7 @@ contract PlasmaVaultDepositFeeTest is Test {
         // User gets exactly the shares they requested
         assertEq(user2SharesAfterMint, sharesToMint, "user should get exactly requested shares");
         // Fee is 10% of requested shares: 90e12 * 10% = 9e12
-        assertEq(feeSharesFromMint, sharesToMint * depositFee / 1e18, "fee shares should be 10% of requested shares");
+        assertEq(feeSharesFromMint, (sharesToMint * depositFee) / 1e18, "fee shares should be 10% of requested shares");
         // Assets spent matches previewMint
         assertEq(assetsFromMint, user2UsdcSpent, "actual cost should match returned assets");
         assertEq(assetsFromMint, _plasmaVault.previewMint(sharesToMint), "actual cost should match previewMint");

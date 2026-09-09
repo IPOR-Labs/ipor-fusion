@@ -40,15 +40,15 @@ contract MockMidasDepositVaultForExecutor is IMidasDepositVault {
     // ---- Unused interface methods (must compile) ----
 
     function depositInstant(
-        address, /* tokenIn */
-        uint256, /* amountToken */
-        uint256, /* minReceiveAmount */
+        address /* tokenIn */,
+        uint256 /* amountToken */,
+        uint256 /* minReceiveAmount */,
         bytes32 /* referrerId */
     ) external pure override {
         revert("MockMidasDepositVaultForExecutor: not implemented");
     }
 
-    function mintRequests(uint256 /* requestId */ ) external pure override returns (Request memory) {
+    function mintRequests(uint256 /* requestId */) external pure override returns (Request memory) {
         revert("MockMidasDepositVaultForExecutor: not implemented");
     }
 

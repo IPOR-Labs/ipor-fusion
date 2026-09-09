@@ -6,10 +6,20 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {PlasmaVault, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    FuseAction,
+    MarketBalanceFuseConfig,
+    MarketSubstratesConfig,
+    PlasmaVaultInitData
+} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
+import {
+    CurveStableswapNGSingleSideSupplyFuse,
+    CurveStableswapNGSingleSideSupplyFuseEnterData,
+    CurveStableswapNGSingleSideSupplyFuseExitData
+} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -209,10 +219,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         );
         (uint256 usdmPrice, uint256 usdmPriceDecimals) = priceOracleMiddlewareProxy.getAssetPrice(USDM);
         uint256 expectedInUnderlying = IporMath.convertWadToAssetDecimals(
-            IporMath.division(
-                expectedProRataBalanceUsd * IporMath.BASIS_OF_POWER ** usdmPriceDecimals,
-                usdmPrice
-            ),
+            IporMath.division(expectedProRataBalanceUsd * IporMath.BASIS_OF_POWER ** usdmPriceDecimals, usdmPrice),
             ERC20(USDM).decimals()
         );
         assertApproxEqAbs(
@@ -419,17 +426,10 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         uint256 balance;
         for (uint256 i; i < nCoins; ++i) {
             address coin = CURVE_STABLESWAP_NG.coins(i);
-            uint256 coinAmount = Math.mulDiv(
-                CURVE_STABLESWAP_NG.balances(i),
-                lpTokenBalance,
-                totalSupply
-            );
+            uint256 coinAmount = Math.mulDiv(CURVE_STABLESWAP_NG.balances(i), lpTokenBalance, totalSupply);
             (uint256 coinPrice, uint256 coinPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
                 .getAssetPrice(coin);
-            balance += IporMath.convertToWad(
-                coinAmount * coinPrice,
-                ERC20(coin).decimals() + coinPriceDecimals
-            );
+            balance += IporMath.convertToWad(coinAmount * coinPrice, ERC20(coin).decimals() + coinPriceDecimals);
         }
         return balance;
     }

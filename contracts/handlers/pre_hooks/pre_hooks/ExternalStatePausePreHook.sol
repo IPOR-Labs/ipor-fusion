@@ -57,8 +57,8 @@ contract ExternalStatePausePreHook is IPreHook {
         // Inline big-change detection: if the executor has received a new custodian update that
         // the balance fuse has not yet processed, check the delta here so user ops are blocked
         // immediately (without waiting for the next balanceOf() call).
-        (uint256 totalBalance, uint256 bigChangeBps, uint256 lastCustodianTs) =
-            IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (uint256 totalBalance, uint256 bigChangeBps, uint256 lastCustodianTs) = IExternalStateExecutor(executor)
+            .getBalanceFuseSnapshot();
         uint256 lastChecked = ExternalStateExecutorStorageLib.getLastCheckedCustodianTimestamp();
 
         if (lastCustodianTs != lastChecked) {
@@ -66,7 +66,11 @@ contract ExternalStatePausePreHook is IPreHook {
             if (prevTotal != 0 && bigChangeBps != 0) {
                 uint256 delta = totalBalance > prevTotal ? totalBalance - prevTotal : prevTotal - totalBalance;
                 if ((delta * 10_000) / prevTotal > bigChangeBps) {
-                    revert ExternalStateErrors.ExternalStatePreHookBigChangeDetected(prevTotal, totalBalance, bigChangeBps);
+                    revert ExternalStateErrors.ExternalStatePreHookBigChangeDetected(
+                        prevTotal,
+                        totalBalance,
+                        bigChangeBps
+                    );
                 }
             }
         }

@@ -14,11 +14,31 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {BalancerBalanceFuse} from "../../../contracts/fuses/balancer/BalancerBalanceFuse.sol";
-import {BalancerGaugeFuse, BalancerGaugeFuseEnterData, BalancerGaugeFuseExitData} from "../../../contracts/fuses/balancer/BalancerGaugeFuse.sol";
-import {BalancerLiquidityProportionalFuse, BalancerLiquidityProportionalFuseEnterData, BalancerLiquidityProportionalFuseExitData} from "../../../contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol";
-import {BalancerLiquidityUnbalancedFuse, BalancerLiquidityUnbalancedFuseEnterData, BalancerLiquidityUnbalancedFuseExitData} from "../../../contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol";
-import {BalancerSingleTokenFuse, BalancerSingleTokenFuseEnterData, BalancerSingleTokenFuseExitData} from "../../../contracts/fuses/balancer/BalancerSingleTokenFuse.sol";
-import {BalancerSubstrateLib, BalancerSubstrate, BalancerSubstrateType} from "../../../contracts/fuses/balancer/BalancerSubstrateLib.sol";
+import {
+    BalancerGaugeFuse,
+    BalancerGaugeFuseEnterData,
+    BalancerGaugeFuseExitData
+} from "../../../contracts/fuses/balancer/BalancerGaugeFuse.sol";
+import {
+    BalancerLiquidityProportionalFuse,
+    BalancerLiquidityProportionalFuseEnterData,
+    BalancerLiquidityProportionalFuseExitData
+} from "../../../contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol";
+import {
+    BalancerLiquidityUnbalancedFuse,
+    BalancerLiquidityUnbalancedFuseEnterData,
+    BalancerLiquidityUnbalancedFuseExitData
+} from "../../../contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol";
+import {
+    BalancerSingleTokenFuse,
+    BalancerSingleTokenFuseEnterData,
+    BalancerSingleTokenFuseExitData
+} from "../../../contracts/fuses/balancer/BalancerSingleTokenFuse.sol";
+import {
+    BalancerSubstrateLib,
+    BalancerSubstrate,
+    BalancerSubstrateType
+} from "../../../contracts/fuses/balancer/BalancerSubstrateLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -31,7 +51,10 @@ import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovern
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
 import {TransientStorageLib} from "../../../contracts/transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 
 contract BalancerTest is Test {
     // balancer pool addresses https://balancer.fi/pools/ethereum/v3/0x6b31a94029fd7840d780191b6d63fa0d269bd883

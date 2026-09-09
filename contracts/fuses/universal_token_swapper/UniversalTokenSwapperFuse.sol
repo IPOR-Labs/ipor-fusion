@@ -288,7 +288,7 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         bytes32 substrate;
         address token;
         address target;
-        
+
         for (uint256 i; i < substratesLength; ++i) {
             substrate = substrates[i];
 

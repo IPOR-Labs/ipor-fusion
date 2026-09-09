@@ -11,7 +11,10 @@ import {FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/v
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {UniswapV3SwapFuse, UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";

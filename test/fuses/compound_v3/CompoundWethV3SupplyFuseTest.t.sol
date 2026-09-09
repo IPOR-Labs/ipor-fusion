@@ -3,7 +3,11 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData, CompoundV3SupplyFuseExitData} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuse,
+    CompoundV3SupplyFuseEnterData,
+    CompoundV3SupplyFuseExitData
+} from "../../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {IComet} from "../../../contracts/fuses/compound_v3/ext/IComet.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
 

@@ -88,13 +88,14 @@ contract TermFinanceOfferRevealFuseTest is Test {
         uint256[] memory prices_,
         uint256[] memory nonces_
     ) internal view returns (TermFinanceOfferRevealFuseEnterData memory) {
-        return TermFinanceOfferRevealFuseEnterData({
-            servicer: address(servicer),
-            offerLocker: address(offerLocker),
-            offerIds: ids_,
-            prices: prices_,
-            nonces: nonces_
-        });
+        return
+            TermFinanceOfferRevealFuseEnterData({
+                servicer: address(servicer),
+                offerLocker: address(offerLocker),
+                offerIds: ids_,
+                prices: prices_,
+                nonces: nonces_
+            });
     }
 
     // ============ constructor ============
@@ -219,7 +220,8 @@ contract TermFinanceOfferRevealFuseTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TermFinanceOfferRevealFuse.TermFinanceOfferRevealFuseOfferLockerNotDeployed.selector, address(spoof)
+                TermFinanceOfferRevealFuse.TermFinanceOfferRevealFuseOfferLockerNotDeployed.selector,
+                address(spoof)
             )
         );
         harness.enter(data);

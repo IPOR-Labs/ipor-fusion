@@ -8,7 +8,11 @@ import {Test} from "forge-std/Test.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {Erc4626SupplyFuse, Erc4626SupplyFuseEnterData, Erc4626SupplyFuseExitData} from "./../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
+import {
+    Erc4626SupplyFuse,
+    Erc4626SupplyFuseEnterData,
+    Erc4626SupplyFuseExitData
+} from "./../../../contracts/fuses/erc4626/Erc4626SupplyFuse.sol";
 import {Erc4626BalanceFuse} from "./../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 
 import {PriceOracleMiddleware} from "./../../../contracts/price_oracle/PriceOracleMiddleware.sol";

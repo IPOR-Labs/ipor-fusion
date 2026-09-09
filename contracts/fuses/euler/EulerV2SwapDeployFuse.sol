@@ -184,10 +184,7 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
     /// @dev Inputs are the ABI-encoded EulerV2SwapDeployFuseEnterData split into bytes32 chunks; the
     ///      deployed pool address is written to outputs[0].
     function enterTransient() external {
-        EulerV2SwapDeployFuseEnterData memory data = abi.decode(
-            _readEncodedInputs(),
-            (EulerV2SwapDeployFuseEnterData)
-        );
+        EulerV2SwapDeployFuseEnterData memory data = abi.decode(_readEncodedInputs(), (EulerV2SwapDeployFuseEnterData));
         address pool = enter(data);
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(pool);

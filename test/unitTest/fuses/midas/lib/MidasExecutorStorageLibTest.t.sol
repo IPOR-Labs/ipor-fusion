@@ -31,8 +31,7 @@ contract MidasExecutorStorageLibHarness {
 
 contract MidasExecutorStorageLibTest is Test {
     /// @dev ERC-7201 slot constant, mirrors the library value for direct comparison
-    bytes32 internal constant MIDAS_EXECUTOR_SLOT =
-        0x70d197bb241b100c004ed80fc4b87ce41500fa5c47b2ad133730792ea68d7d00;
+    bytes32 internal constant MIDAS_EXECUTOR_SLOT = 0x70d197bb241b100c004ed80fc4b87ce41500fa5c47b2ad133730792ea68d7d00;
 
     MidasExecutorStorageLibHarness internal harness;
 
@@ -46,9 +45,8 @@ contract MidasExecutorStorageLibTest is Test {
 
     /// @dev B1 — slot returned by the library matches the ERC-7201 formula.
     function testGetExecutorStorage_SlotMatchesERC7201Calculation() public view {
-        bytes32 expectedSlot = keccak256(
-            abi.encode(uint256(keccak256("io.ipor.midas.Executor")) - 1)
-        ) & ~bytes32(uint256(0xff));
+        bytes32 expectedSlot = keccak256(abi.encode(uint256(keccak256("io.ipor.midas.Executor")) - 1)) &
+            ~bytes32(uint256(0xff));
 
         bytes32 actualSlot = harness.getExecutorStorageSlot();
 
@@ -81,11 +79,7 @@ contract MidasExecutorStorageLibTest is Test {
     function testGetExecutor_ReadsFromCorrectStorageSlot() public {
         address expected = address(0xC0FFEE);
         // Write directly to the ERC-7201 slot inside the harness contract's storage.
-        vm.store(
-            address(harness),
-            MIDAS_EXECUTOR_SLOT,
-            bytes32(uint256(uint160(expected)))
-        );
+        vm.store(address(harness), MIDAS_EXECUTOR_SLOT, bytes32(uint256(uint160(expected))));
 
         assertEq(harness.getExecutor(), expected, "must read from the correct ERC-7201 slot");
     }
@@ -128,11 +122,7 @@ contract MidasExecutorStorageLibTest is Test {
         harness.setExecutor(addr);
 
         bytes32 rawSlot = vm.load(address(harness), MIDAS_EXECUTOR_SLOT);
-        assertEq(
-            rawSlot,
-            bytes32(uint256(uint160(addr))),
-            "setExecutor must write to the correct ERC-7201 slot"
-        );
+        assertEq(rawSlot, bytes32(uint256(uint160(addr))), "setExecutor must write to the correct ERC-7201 slot");
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -172,9 +162,7 @@ contract MidasExecutorStorageLibTest is Test {
 
     /// @dev B9 — reverts when no executor exists and plasmaVault is address(0).
     function testGetOrCreateExecutor_RevertsWhenPlasmaVaultIsZeroAndNoExecutorExists() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(MidasExecutor.MidasExecutorInvalidPlasmaVaultAddress.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(MidasExecutor.MidasExecutorInvalidPlasmaVaultAddress.selector));
         harness.getOrCreateExecutor(address(0));
     }
 
@@ -201,11 +189,7 @@ contract MidasExecutorStorageLibTest is Test {
         assertEq(second, first, "must return the same executor regardless of plasmaVault_ on second call");
 
         // The executor records the first plasmaVault, not the second.
-        assertEq(
-            MidasExecutor(first).PLASMA_VAULT(),
-            plasmaVault1,
-            "PLASMA_VAULT must be the first caller's address"
-        );
+        assertEq(MidasExecutor(first).PLASMA_VAULT(), plasmaVault1, "PLASMA_VAULT must be the first caller's address");
     }
 
     // ══════════════════════════════════════════════════════════════════════════

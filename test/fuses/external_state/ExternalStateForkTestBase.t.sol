@@ -9,12 +9,18 @@ import {
     ExternalStateOperationFuseExitData
 } from "../../../contracts/fuses/external_state/ExternalStateOperationFuse.sol";
 import {ExternalStateBalanceFuse} from "../../../contracts/fuses/external_state/ExternalStateBalanceFuse.sol";
-import {ExternalStateUnpauseFuse, ExternalStateUnpauseData} from "../../../contracts/fuses/external_state/ExternalStateUnpauseFuse.sol";
+import {
+    ExternalStateUnpauseFuse,
+    ExternalStateUnpauseData
+} from "../../../contracts/fuses/external_state/ExternalStateUnpauseFuse.sol";
 import {ExternalStateRescueFuse} from "../../../contracts/fuses/external_state/ExternalStateRescueFuse.sol";
 import {ExternalStatePausePreHook} from "../../../contracts/handlers/pre_hooks/pre_hooks/ExternalStatePausePreHook.sol";
 
 import {ExternalStateExecutor} from "../../../contracts/fuses/external_state/ExternalStateExecutor.sol";
-import {IExternalStateExecutor, ExternalStateExecutorAction} from "../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
+import {
+    IExternalStateExecutor,
+    ExternalStateExecutorAction
+} from "../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
 import {ExternalStateSubstrateLib} from "../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
@@ -32,7 +38,10 @@ import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {MutableValuePriceFeed} from "../../managers/MutableValuePriceFeed.sol";
-import {ExternalStateTestConstants, ExternalStateSlotHelpers} from "../../unitTest/fuses/external_state/ExternalStateTestHelpers.sol";
+import {
+    ExternalStateTestConstants,
+    ExternalStateSlotHelpers
+} from "../../unitTest/fuses/external_state/ExternalStateTestHelpers.sol";
 
 /// @title ExternalStateForkTestBase
 /// @notice Shared fork-test fixture for the ExternalState fuse family, running against a REAL `PlasmaVault`.
@@ -268,7 +277,10 @@ abstract contract ExternalStateForkTestBase is Test {
         subs[3] = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccountB);
         subs[4] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianA);
         subs[5] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianB);
-        subs[6] = ExternalStateSubstrateLib.encodeTargetSubstrate(address(externalStateProtocol), MockExternalStateProtocolForFork.deposit.selector);
+        subs[6] = ExternalStateSubstrateLib.encodeTargetSubstrate(
+            address(externalStateProtocol),
+            MockExternalStateProtocolForFork.deposit.selector
+        );
         subs[7] = ExternalStateSubstrateLib.encodeStalenessMaxSubstrate(STALENESS_MAX_S);
         subs[8] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(BIG_CHANGE_BPS);
         subs[9] = ExternalStateSubstrateLib.encodeDustThresholdSubstrate(DUST_THRESHOLD);
@@ -352,11 +364,17 @@ abstract contract ExternalStateForkTestBase is Test {
         _enter(asset_, amount_, balanceAccount_, new ExternalStateExecutorAction[](0));
     }
 
-    function _enter(address asset_, uint256 amount_, address balanceAccount_, ExternalStateExecutorAction[] memory actions_)
-        internal
-    {
+    function _enter(
+        address asset_,
+        uint256 amount_,
+        address balanceAccount_,
+        ExternalStateExecutorAction[] memory actions_
+    ) internal {
         ExternalStateOperationFuseEnterData memory d = ExternalStateOperationFuseEnterData({
-            asset: asset_, amount: amount_, balanceAccount: balanceAccount_, actions: actions_
+            asset: asset_,
+            amount: amount_,
+            balanceAccount: balanceAccount_,
+            actions: actions_
         });
         _executeFuse(address(opFuse), abi.encodeCall(opFuse.enter, (d)));
     }
@@ -365,11 +383,17 @@ abstract contract ExternalStateForkTestBase is Test {
         _exit(asset_, amount_, balanceAccount_, new ExternalStateExecutorAction[](0));
     }
 
-    function _exit(address asset_, uint256 amount_, address balanceAccount_, ExternalStateExecutorAction[] memory actions_)
-        internal
-    {
+    function _exit(
+        address asset_,
+        uint256 amount_,
+        address balanceAccount_,
+        ExternalStateExecutorAction[] memory actions_
+    ) internal {
         ExternalStateOperationFuseExitData memory d = ExternalStateOperationFuseExitData({
-            asset: asset_, amount: amount_, balanceAccount: balanceAccount_, actions: actions_
+            asset: asset_,
+            amount: amount_,
+            balanceAccount: balanceAccount_,
+            actions: actions_
         });
         _executeFuse(address(opFuse), abi.encodeCall(opFuse.exit, (d)));
     }
@@ -407,14 +431,17 @@ abstract contract ExternalStateForkTestBase is Test {
     }
 
     /// @notice Explicit form used when tests want to pick the proposer / confirmer.
-    function _custodianConfirm(address proposer_, address confirmer_, address balanceAccount_, uint256 newValue_)
-        internal
-    {
+    function _custodianConfirm(
+        address proposer_,
+        address confirmer_,
+        address balanceAccount_,
+        uint256 newValue_
+    ) internal {
         address executor = _executorAddress();
         require(executor != address(0), "executor not deployed");
         vm.prank(proposer_);
         IExternalStateExecutor(executor).proposeBalance(balanceAccount_, newValue_);
-        (,, uint64 proposedAt, uint256 nonce) = ExternalStateExecutor(executor).pendingProposals(balanceAccount_);
+        (, , uint64 proposedAt, uint256 nonce) = ExternalStateExecutor(executor).pendingProposals(balanceAccount_);
         bytes32 h = _proposalHash(executor, balanceAccount_, newValue_, proposer_, proposedAt, nonce);
         vm.prank(confirmer_);
         IExternalStateExecutor(executor).confirmBalance(balanceAccount_, h);
@@ -447,11 +474,11 @@ abstract contract ExternalStateForkTestBase is Test {
     }
 
     /// @notice Builds a valid atomist-signed unpause payload (chain-id + vault-id + market-id bound).
-    function _buildUnpauseData(uint256 confirmedBalance_, uint256 nonce_, uint256 expiration_)
-        internal
-        view
-        returns (ExternalStateUnpauseData memory data)
-    {
+    function _buildUnpauseData(
+        uint256 confirmedBalance_,
+        uint256 nonce_,
+        uint256 expiration_
+    ) internal view returns (ExternalStateUnpauseData memory data) {
         bytes32 digest = keccak256(
             abi.encodePacked(address(vault), MARKET_ID, confirmedBalance_, nonce_, expiration_, block.chainid)
         );

@@ -5,7 +5,11 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
-import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
+import {
+    EbisuZapperSubstrateLib,
+    EbisuZapperSubstrate,
+    EbisuZapperSubstrateType
+} from "./lib/EbisuZapperSubstrateLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 

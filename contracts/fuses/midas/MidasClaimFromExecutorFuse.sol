@@ -44,12 +44,13 @@ contract MidasClaimFromExecutorFuse is IFuseCommon {
             MidasSubstrateLib.substrateToBytes32(
                 MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: data_.token})
             )
-        ) || PlasmaVaultConfigLib.isMarketSubstrateGranted(
-            MARKET_ID,
-            MidasSubstrateLib.substrateToBytes32(
-                MidasSubstrate({substrateType: MidasSubstrateType.ASSET, substrateAddress: data_.token})
-            )
-        );
+        ) ||
+            PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                MidasSubstrateLib.substrateToBytes32(
+                    MidasSubstrate({substrateType: MidasSubstrateType.ASSET, substrateAddress: data_.token})
+                )
+            );
 
         if (!isGranted) {
             revert MidasClaimFromExecutorFuseTokenNotGranted(data_.token);

@@ -9,7 +9,10 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
 import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
 import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
-import {IporFusionAccessManagerInitializationLib, InitializationData} from "./IporFusionAccessManagerInitializationLib.sol";
+import {
+    IporFusionAccessManagerInitializationLib,
+    InitializationData
+} from "./IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../libraries/Roles.sol";
 
 /**

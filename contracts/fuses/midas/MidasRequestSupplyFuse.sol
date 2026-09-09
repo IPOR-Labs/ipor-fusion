@@ -52,7 +52,12 @@ contract MidasRequestSupplyFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 
     event MidasRequestSupplyFuseEnter(
-        address version, address mToken, uint256 amount, address tokenIn, uint256 requestId, address depositVault
+        address version,
+        address mToken,
+        uint256 amount,
+        address tokenIn,
+        uint256 requestId,
+        address depositVault
     );
 
     event MidasRequestSupplyFuseExit(
@@ -112,7 +117,12 @@ contract MidasRequestSupplyFuse is IFuseCommon {
         MidasPendingRequestsStorageLib.addPendingDeposit(data_.depositVault, requestId);
 
         emit MidasRequestSupplyFuseEnter(
-            VERSION, data_.mToken, finalAmount, data_.tokenIn, requestId, data_.depositVault
+            VERSION,
+            data_.mToken,
+            finalAmount,
+            data_.tokenIn,
+            requestId,
+            data_.depositVault
         );
     }
 
@@ -140,7 +150,12 @@ contract MidasRequestSupplyFuse is IFuseCommon {
 
         ERC20(data_.mToken).safeTransfer(executor, finalAmount);
 
-        uint256 requestId = MidasExecutor(executor).redeemRequest(data_.mToken, finalAmount, data_.tokenOut, data_.standardRedemptionVault);
+        uint256 requestId = MidasExecutor(executor).redeemRequest(
+            data_.mToken,
+            finalAmount,
+            data_.tokenOut,
+            data_.standardRedemptionVault
+        );
 
         if (requestId == 0) {
             revert MidasRequestSupplyFuseInvalidRedeemRequestId();
@@ -149,7 +164,12 @@ contract MidasRequestSupplyFuse is IFuseCommon {
         MidasPendingRequestsStorageLib.addPendingRedemption(data_.standardRedemptionVault, requestId);
 
         emit MidasRequestSupplyFuseExit(
-            VERSION, data_.mToken, finalAmount, data_.tokenOut, requestId, data_.standardRedemptionVault
+            VERSION,
+            data_.mToken,
+            finalAmount,
+            data_.tokenOut,
+            requestId,
+            data_.standardRedemptionVault
         );
     }
 

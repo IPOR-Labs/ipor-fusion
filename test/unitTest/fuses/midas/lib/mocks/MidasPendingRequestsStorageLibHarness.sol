@@ -40,11 +40,7 @@ contract MidasPendingRequestsStorageLibHarness {
         MidasPendingRequestsStorageLib.removePendingRedemption(redemptionVault_, requestId_);
     }
 
-    function getPendingRedemptions()
-        external
-        view
-        returns (address[] memory vaults, uint256[][] memory requestIds)
-    {
+    function getPendingRedemptions() external view returns (address[] memory vaults, uint256[][] memory requestIds) {
         return MidasPendingRequestsStorageLib.getPendingRedemptions();
     }
 

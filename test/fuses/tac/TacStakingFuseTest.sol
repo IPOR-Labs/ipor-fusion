@@ -6,8 +6,15 @@ import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {TacStakingDelegateFuse, TacStakingDelegateFuseEnterData, TacStakingDelegateFuseExitData} from "../../../contracts/fuses/tac/TacStakingDelegateFuse.sol";
-import {TacStakingRedelegateFuse, TacStakingRedelegateFuseEnterData} from "../../../contracts/fuses/tac/TacStakingRedelegateFuse.sol";
+import {
+    TacStakingDelegateFuse,
+    TacStakingDelegateFuseEnterData,
+    TacStakingDelegateFuseExitData
+} from "../../../contracts/fuses/tac/TacStakingDelegateFuse.sol";
+import {
+    TacStakingRedelegateFuse,
+    TacStakingRedelegateFuseEnterData
+} from "../../../contracts/fuses/tac/TacStakingRedelegateFuse.sol";
 import {TacStakingEmergencyFuse} from "../../../contracts/fuses/tac/TacStakingEmergencyFuse.sol";
 import {TacStakingBalanceFuse} from "../../../contracts/fuses/tac/TacStakingBalanceFuse.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";

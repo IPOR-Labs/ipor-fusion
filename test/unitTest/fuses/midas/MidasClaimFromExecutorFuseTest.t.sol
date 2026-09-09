@@ -3,7 +3,10 @@ pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
 
-import {MidasClaimFromExecutorFuse, MidasClaimFromExecutorFuseEnterData} from "contracts/fuses/midas/MidasClaimFromExecutorFuse.sol";
+import {
+    MidasClaimFromExecutorFuse,
+    MidasClaimFromExecutorFuseEnterData
+} from "contracts/fuses/midas/MidasClaimFromExecutorFuse.sol";
 import {MidasExecutor} from "contracts/fuses/midas/MidasExecutor.sol";
 import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {Errors} from "contracts/libraries/errors/Errors.sol";
@@ -137,7 +140,8 @@ contract MidasClaimFromExecutorFuseTest is Test {
         // When / Then
         vm.expectRevert(
             abi.encodeWithSelector(
-                MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseTokenNotGranted.selector, address(token)
+                MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseTokenNotGranted.selector,
+                address(token)
             )
         );
         harness.enter(data);
@@ -200,7 +204,8 @@ contract MidasClaimFromExecutorFuseTest is Test {
         // When / Then: DEPOSIT_VAULT type is not M_TOKEN or ASSET → revert
         vm.expectRevert(
             abi.encodeWithSelector(
-                MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseTokenNotGranted.selector, address(token)
+                MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseTokenNotGranted.selector,
+                address(token)
             )
         );
         harness.enter(MidasClaimFromExecutorFuseEnterData({token: address(token)}));
@@ -336,10 +341,7 @@ contract MidasClaimFromExecutorFuseTest is Test {
         // Then: find the ExecutorCreated event and check version field
         bool found;
         for (uint256 i; i < logs.length; ++i) {
-            if (
-                logs[i].topics[0]
-                    == keccak256("MidasClaimFromExecutorFuseExecutorCreated(address,address)")
-            ) {
+            if (logs[i].topics[0] == keccak256("MidasClaimFromExecutorFuseExecutorCreated(address,address)")) {
                 (address version, ) = abi.decode(logs[i].data, (address, address));
                 assertEq(version, fuse.VERSION(), "Event version must equal fuse.VERSION()");
                 assertNotEq(version, address(freshHarness), "Event version must NOT be harness address");
@@ -440,7 +442,8 @@ contract MidasClaimFromExecutorFuseTest is Test {
         // When / Then
         vm.expectRevert(
             abi.encodeWithSelector(
-                MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseTokenNotGranted.selector, weirdToken
+                MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseTokenNotGranted.selector,
+                weirdToken
             )
         );
         harness.enter(MidasClaimFromExecutorFuseEnterData({token: weirdToken}));
@@ -515,7 +518,8 @@ contract MidasClaimFromExecutorFuseTest is Test {
         // When / Then
         vm.expectRevert(
             abi.encodeWithSelector(
-                MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseTokenNotGranted.selector, token_
+                MidasClaimFromExecutorFuse.MidasClaimFromExecutorFuseTokenNotGranted.selector,
+                token_
             )
         );
         freshHarness.enter(MidasClaimFromExecutorFuseEnterData({token: token_}));

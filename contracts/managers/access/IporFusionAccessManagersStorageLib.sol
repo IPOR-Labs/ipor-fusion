@@ -45,7 +45,6 @@ struct InitializationFlag {
  * @custom:security-contact security@ipor.io
  */
 library IporFusionAccessManagersStorageLib {
-
     /// @notice Storage slot for RedemptionLocks
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.managers.access.RedemptionLocks")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant REDEMPTION_LOCKS = 0x5e07febb5bd598f6b55406c9bf939d497fd39a2dbc2b5891f20f6640c3f32500;

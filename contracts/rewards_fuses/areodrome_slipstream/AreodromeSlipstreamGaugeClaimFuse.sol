@@ -6,7 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {ICLGauge} from "../../fuses/aerodrome_slipstream/ext/ICLGauge.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrate, AreodromeSlipstreamSubstrateType} from "../../fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrate,
+    AreodromeSlipstreamSubstrateType
+} from "../../fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 
 /// @title AerodromeSlipstreamGaugeClaimFuse
 /// @notice This contract handles the claiming of rewards from Aerodrome gauges.

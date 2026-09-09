@@ -15,8 +15,14 @@ import {SiloV2BalanceFuse} from "../../../contracts/fuses/silo_v2/SiloV2BalanceF
 import {SiloV2SupplyBorrowableCollateralFuse} from "../../../contracts/fuses/silo_v2/SiloV2SupplyBorrowableCollateralFuse.sol";
 import {SiloV2SupplyNonBorrowableCollateralFuse} from "../../../contracts/fuses/silo_v2/SiloV2SupplyNonBorrowableCollateralFuse.sol";
 import {SiloV2BorrowFuse} from "../../../contracts/fuses/silo_v2/SiloV2BorrowFuse.sol";
-import {SiloV2SupplyCollateralFuseEnterData, SiloV2SupplyCollateralFuseExitData} from "../../../contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol";
-import {SiloV2BorrowFuseEnterData, SiloV2BorrowFuseExitData} from "../../../contracts/fuses/silo_v2/SiloV2BorrowFuse.sol";
+import {
+    SiloV2SupplyCollateralFuseEnterData,
+    SiloV2SupplyCollateralFuseExitData
+} from "../../../contracts/fuses/silo_v2/SiloV2SupplyCollateralFuseAbstract.sol";
+import {
+    SiloV2BorrowFuseEnterData,
+    SiloV2BorrowFuseExitData
+} from "../../../contracts/fuses/silo_v2/SiloV2BorrowFuse.sol";
 import {SiloIndex} from "../../../contracts/fuses/silo_v2/SiloIndex.sol";
 import {ISiloConfig} from "../../../contracts/fuses/silo_v2/ext/ISiloConfig.sol";
 import {IShareToken} from "../../../contracts/fuses/silo_v2/ext/IShareToken.sol";
@@ -31,7 +37,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 // Transient Storage
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 
 // ERC20 Balance Fuse
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";

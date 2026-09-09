@@ -108,7 +108,8 @@ contract DIAPriceFeedTest is Test {
 
         DIAPriceFeed feed = _deploy(DIA_DEC_8, DEC_18);
 
-        (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound) = feed.latestRoundData();
+        (uint80 roundId, int256 price, uint256 startedAt, uint256 time, uint80 answeredInRound) = feed
+            .latestRoundData();
 
         assertEq(roundId, 0, "roundId should be 0");
         assertEq(answeredInRound, 0, "answeredInRound should be 0");
@@ -215,7 +216,11 @@ contract DIAPriceFeedTest is Test {
 
         (, int256 price, , , ) = feed.latestRoundData();
 
-        assertEq(price, int256(uint256(type(uint128).max) * 10 ** 38), "price should equal max DIA value scaled by 10**38");
+        assertEq(
+            price,
+            int256(uint256(type(uint128).max) * 10 ** 38),
+            "price should equal max DIA value scaled by 10**38"
+        );
     }
 
     function _mockDIA(uint128 value, uint128 timestamp) internal {

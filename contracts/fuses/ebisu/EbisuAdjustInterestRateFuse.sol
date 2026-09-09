@@ -6,7 +6,11 @@ import {IBorrowerOperations} from "./ext/IBorrowerOperations.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
-import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
+import {
+    EbisuZapperSubstrateLib,
+    EbisuZapperSubstrate,
+    EbisuZapperSubstrateType
+} from "./lib/EbisuZapperSubstrateLib.sol";
 
 /// @notice Fuse to modify the interest rate of an open trove
 /// since the owner of the trove is the PlasmaVault, a Fuse is necessary to act on it

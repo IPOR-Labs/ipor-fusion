@@ -3,9 +3,16 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {AguaSupplyFuse, AguaSupplyFuseEnterData} from "../../../contracts/fuses/agua/AguaSupplyFuse.sol";
-import {AguaRequestRedemptionFuse, AguaRequestRedemptionFuseEnterData} from "../../../contracts/fuses/agua/AguaRequestRedemptionFuse.sol";
+import {
+    AguaRequestRedemptionFuse,
+    AguaRequestRedemptionFuseEnterData
+} from "../../../contracts/fuses/agua/AguaRequestRedemptionFuse.sol";
 import {AguaBalanceFuse} from "../../../contracts/fuses/agua/AguaBalanceFuse.sol";
-import {AguaSubstrateLib, AguaSubstrate, AguaSubstrateType} from "../../../contracts/fuses/agua/lib/AguaSubstrateLib.sol";
+import {
+    AguaSubstrateLib,
+    AguaSubstrate,
+    AguaSubstrateType
+} from "../../../contracts/fuses/agua/lib/AguaSubstrateLib.sol";
 import {IAguaGlobalCarryVault} from "../../../contracts/fuses/agua/ext/IAguaGlobalCarryVault.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";

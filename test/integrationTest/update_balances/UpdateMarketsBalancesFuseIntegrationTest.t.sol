@@ -6,7 +6,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {UpdateMarketsBalancesFuse} from "../../../contracts/fuses/update_balances/UpdateMarketsBalancesFuse.sol";
-import {IUpdateMarketsBalancesFuse, UpdateMarketsBalancesEnterData} from "../../../contracts/fuses/update_balances/IUpdateMarketsBalancesFuse.sol";
+import {
+    IUpdateMarketsBalancesFuse,
+    UpdateMarketsBalancesEnterData
+} from "../../../contracts/fuses/update_balances/IUpdateMarketsBalancesFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
@@ -22,7 +25,12 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 /// @title UpdateMarketsBalancesFuseIntegrationTest
 /// @notice Fork integration tests for UpdateMarketsBalancesFuse on Ethereum mainnet

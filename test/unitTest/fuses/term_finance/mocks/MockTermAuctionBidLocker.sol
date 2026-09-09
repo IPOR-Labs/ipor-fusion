@@ -128,11 +128,7 @@ contract MockTermAuctionBidLocker {
         }
     }
 
-    function revealBids(
-        bytes32[] calldata ids_,
-        uint256[] calldata prices_,
-        uint256[] calldata nonces_
-    ) external {
+    function revealBids(bytes32[] calldata ids_, uint256[] calldata prices_, uint256[] calldata nonces_) external {
         if (revealBidsReverts) revert("MockBidLocker: revealBids reverts");
         for (uint256 i; i < ids_.length; ++i) {
             IExtTermAuctionBidLocker.TermAuctionBid storage b = bids[ids_[i]];

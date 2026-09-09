@@ -3,7 +3,10 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {PlasmaVaultConfigLib} from "../../../../../contracts/libraries/PlasmaVaultConfigLib.sol";
-import {ExternalStateSubstrateLib, ExternalStateSubstrateType} from "../../../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
+import {
+    ExternalStateSubstrateLib,
+    ExternalStateSubstrateType
+} from "../../../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
 import {ExternalStateErrors} from "../../../../../contracts/fuses/external_state/errors/ExternalStateErrors.sol";
 import {IporFusionMarkets} from "../../../../../contracts/libraries/IporFusionMarkets.sol";
 
@@ -167,7 +170,9 @@ contract ExternalStateSubstrateLibTest is Test {
         uint256 overflow = uint256(type(uint248).max) + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateSubstratePayloadOverflow.selector, uint8(ExternalStateSubstrateType.STALENESS_MAX), overflow
+                ExternalStateErrors.ExternalStateSubstratePayloadOverflow.selector,
+                uint8(ExternalStateSubstrateType.STALENESS_MAX),
+                overflow
             )
         );
         h.encodeStaleness(overflow);
@@ -178,7 +183,9 @@ contract ExternalStateSubstrateLibTest is Test {
         uint256 overflow = uint256(type(uint248).max) + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateSubstratePayloadOverflow.selector, uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS), overflow
+                ExternalStateErrors.ExternalStateSubstratePayloadOverflow.selector,
+                uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS),
+                overflow
             )
         );
         h.encodeBigChange(overflow);
@@ -189,7 +196,9 @@ contract ExternalStateSubstrateLibTest is Test {
         uint256 overflow = uint256(type(uint248).max) + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateSubstratePayloadOverflow.selector, uint8(ExternalStateSubstrateType.DUST_THRESHOLD), overflow
+                ExternalStateErrors.ExternalStateSubstratePayloadOverflow.selector,
+                uint8(ExternalStateSubstrateType.DUST_THRESHOLD),
+                overflow
             )
         );
         h.encodeDust(overflow);
@@ -200,7 +209,9 @@ contract ExternalStateSubstrateLibTest is Test {
         uint256 overflow = uint256(type(uint248).max) + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateSubstratePayloadOverflow.selector, uint8(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL), overflow
+                ExternalStateErrors.ExternalStateSubstratePayloadOverflow.selector,
+                uint8(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL),
+                overflow
             )
         );
         h.encodeMinInterval(overflow);
@@ -214,9 +225,15 @@ contract ExternalStateSubstrateLibTest is Test {
     // ---------- 1.11 ----------
     function test_decodeSubstrateType_recognizesAllEightTypes() public view {
         assertEq(uint8(h.decodeType(h.encodeAsset(address(0x01)))), uint8(ExternalStateSubstrateType.ASSET));
-        assertEq(uint8(h.decodeType(h.encodeTarget(address(0x02), bytes4(0x11223344)))), uint8(ExternalStateSubstrateType.TARGET));
+        assertEq(
+            uint8(h.decodeType(h.encodeTarget(address(0x02), bytes4(0x11223344)))),
+            uint8(ExternalStateSubstrateType.TARGET)
+        );
         assertEq(uint8(h.decodeType(h.encodeCustodian(address(0x03)))), uint8(ExternalStateSubstrateType.CUSTODIAN));
-        assertEq(uint8(h.decodeType(h.encodeBalanceAccount(address(0x04)))), uint8(ExternalStateSubstrateType.BALANCE_ACCOUNT));
+        assertEq(
+            uint8(h.decodeType(h.encodeBalanceAccount(address(0x04)))),
+            uint8(ExternalStateSubstrateType.BALANCE_ACCOUNT)
+        );
         assertEq(uint8(h.decodeType(h.encodeStaleness(1))), uint8(ExternalStateSubstrateType.STALENESS_MAX));
         assertEq(uint8(h.decodeType(h.encodeBigChange(1))), uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS));
         assertEq(uint8(h.decodeType(h.encodeDust(1))), uint8(ExternalStateSubstrateType.DUST_THRESHOLD));

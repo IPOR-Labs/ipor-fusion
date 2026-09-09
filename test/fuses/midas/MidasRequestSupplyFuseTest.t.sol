@@ -4,10 +4,18 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {MidasRequestSupplyFuse, MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "../../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {
+    MidasRequestSupplyFuse,
+    MidasRequestSupplyFuseEnterData,
+    MidasRequestSupplyFuseExitData
+} from "../../../contracts/fuses/midas/MidasRequestSupplyFuse.sol";
 import {IMidasDepositVault} from "../../../contracts/fuses/midas/ext/IMidasDepositVault.sol";
 import {IMidasRedemptionVault} from "../../../contracts/fuses/midas/ext/IMidasRedemptionVault.sol";
-import {MidasSubstrateLib, MidasSubstrate, MidasSubstrateType} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
+import {
+    MidasSubstrateLib,
+    MidasSubstrate,
+    MidasSubstrateType
+} from "../../../contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {MidasPendingRequestsStorageLib} from "../../../contracts/fuses/midas/lib/MidasPendingRequestsStorageLib.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
@@ -143,14 +151,16 @@ contract MidasRequestSupplyFuseTest is Test {
         uint256 usdcBefore = IERC20(USDC).balanceOf(address(vault));
 
         // Midas depositRequest on mainnet may require KYC whitelisting
-        try vault.enterMidasRequestSupply(
-            MidasRequestSupplyFuseEnterData({
-                mToken: MTBILL_TOKEN,
-                tokenIn: USDC,
-                amount: usdcAmount,
-                depositVault: MTBILL_DEPOSIT_VAULT
-            })
-        ) {
+        try
+            vault.enterMidasRequestSupply(
+                MidasRequestSupplyFuseEnterData({
+                    mToken: MTBILL_TOKEN,
+                    tokenIn: USDC,
+                    amount: usdcAmount,
+                    depositVault: MTBILL_DEPOSIT_VAULT
+                })
+            )
+        {
             uint256 usdcAfter = IERC20(USDC).balanceOf(address(vault));
             assertLt(usdcAfter, usdcBefore, "USDC balance should decrease after deposit request");
 
@@ -309,7 +319,12 @@ contract MidasRequestSupplyFuseTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit MidasRequestSupplyFuse.MidasRequestSupplyFuseEnter(
-            fuse.VERSION(), MTBILL_TOKEN, usdcAmount, USDC, mockRequestId, MTBILL_DEPOSIT_VAULT
+            fuse.VERSION(),
+            MTBILL_TOKEN,
+            usdcAmount,
+            USDC,
+            mockRequestId,
+            MTBILL_DEPOSIT_VAULT
         );
 
         vault.enterMidasRequestSupply(
@@ -428,14 +443,16 @@ contract MidasRequestSupplyFuseTest is Test {
         uint256 mTokenBefore = IERC20(MTBILL_TOKEN).balanceOf(address(vault));
 
         // Midas redeemRequest on mainnet may require KYC whitelisting
-        try vault.exitMidasRequestSupply(
-            MidasRequestSupplyFuseExitData({
-                mToken: MTBILL_TOKEN,
-                amount: 100e18,
-                tokenOut: USDC,
-                standardRedemptionVault: MTBILL_REDEMPTION_VAULT
-            })
-        ) {
+        try
+            vault.exitMidasRequestSupply(
+                MidasRequestSupplyFuseExitData({
+                    mToken: MTBILL_TOKEN,
+                    amount: 100e18,
+                    tokenOut: USDC,
+                    standardRedemptionVault: MTBILL_REDEMPTION_VAULT
+                })
+            )
+        {
             uint256 mTokenAfter = IERC20(MTBILL_TOKEN).balanceOf(address(vault));
             assertLt(mTokenAfter, mTokenBefore, "mToken balance should decrease after redemption request");
 
@@ -565,7 +582,12 @@ contract MidasRequestSupplyFuseTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit MidasRequestSupplyFuse.MidasRequestSupplyFuseExit(
-            fuse.VERSION(), MTBILL_TOKEN, mTokenAmount, USDC, mockRequestId, MTBILL_REDEMPTION_VAULT
+            fuse.VERSION(),
+            MTBILL_TOKEN,
+            mTokenAmount,
+            USDC,
+            mockRequestId,
+            MTBILL_REDEMPTION_VAULT
         );
 
         vault.exitMidasRequestSupply(

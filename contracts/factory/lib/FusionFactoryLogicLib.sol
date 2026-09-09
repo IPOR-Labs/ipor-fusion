@@ -16,7 +16,11 @@ import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {FeeAccount} from "../../managers/fee/FeeAccount.sol";
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
 import {PlasmaVaultInitData} from "../../vaults/PlasmaVault.sol";
-import {IporFusionAccessManagerInitializerLibV1, DataForInitialization, PlasmaVaultAddress} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IporFusionMarkets} from "../../libraries/IporFusionMarkets.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {IPlasmaVaultGovernance} from "../../interfaces/IPlasmaVaultGovernance.sol";
@@ -93,9 +97,7 @@ library FusionFactoryLogicLib {
         bool withAdmin_,
         uint256 daoFeePackageIndex_
     ) public returns (FusionInstance memory) {
-        FusionFactoryStorageLib.FeePackage memory daoFeePackage = _validateAndGetDaoFeePackage(
-            daoFeePackageIndex_
-        );
+        FusionFactoryStorageLib.FeePackage memory daoFeePackage = _validateAndGetDaoFeePackage(daoFeePackageIndex_);
 
         fusionAddresses = _cloneManagers(fusionAddresses, redemptionDelayInSeconds_);
 

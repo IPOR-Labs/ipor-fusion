@@ -12,21 +12,39 @@ import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contract
 import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
 import {EulerV2SupplyFuse, EulerV2SupplyFuseEnterData} from "../../../contracts/fuses/euler/EulerV2SupplyFuse.sol";
 import {EulerV2BalanceFuse} from "../../../contracts/fuses/euler/EulerV2BalanceFuse.sol";
-import {EulerV2SwapDeployFuse, EulerV2SwapDeployFuseEnterData, EulerV2SwapDeployFuseExitData} from "../../../contracts/fuses/euler/EulerV2SwapDeployFuse.sol";
-import {EulerV2SwapReconfigureFuse, EulerV2SwapReconfigureFuseEnterData} from "../../../contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol";
+import {
+    EulerV2SwapDeployFuse,
+    EulerV2SwapDeployFuseEnterData,
+    EulerV2SwapDeployFuseExitData
+} from "../../../contracts/fuses/euler/EulerV2SwapDeployFuse.sol";
+import {
+    EulerV2SwapReconfigureFuse,
+    EulerV2SwapReconfigureFuseEnterData
+} from "../../../contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol";
 import {IEulerV2Swap} from "../../../contracts/fuses/euler/ext/IEulerV2Swap.sol";
 import {IEulerV2SwapFactory} from "../../../contracts/fuses/euler/ext/IEulerV2SwapFactory.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FuseAction, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    FuseAction,
+    FeeConfig
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
@@ -182,9 +200,7 @@ contract EulerV2SwapForkTest is Test {
 
     function _setupFuses() private returns (address[] memory fuses) {
         _eulerSupplyFuse = address(new EulerV2SupplyFuse(IporFusionMarkets.EULER_V2, _EVC));
-        _eulerSwapDeployFuse = address(
-            new EulerV2SwapDeployFuse(IporFusionMarkets.EULER_V2, _EVC, _EULERSWAP_FACTORY)
-        );
+        _eulerSwapDeployFuse = address(new EulerV2SwapDeployFuse(IporFusionMarkets.EULER_V2, _EVC, _EULERSWAP_FACTORY));
         _eulerSwapReconfigureFuse = address(
             new EulerV2SwapReconfigureFuse(IporFusionMarkets.EULER_V2, _EVC, _EULERSWAP_FACTORY)
         );
@@ -384,16 +400,13 @@ contract EulerV2SwapForkTest is Test {
     //   14 bits of the address must equal EXACTLY the OR of those flags (all other hook bits zero).
     // Verified empirically against the live Base pool 0x4687...a8a8 whose low 14 bits == 0x28A8.
     uint160 private constant _HOOK_FLAG_MASK = uint160((1 << 14) - 1); // 0x3FFF
-    uint160 private constant _HOOK_FLAG_REQUIRED =
-        uint160((1 << 13) | (1 << 11) | (1 << 7) | (1 << 5) | (1 << 3)); // 0x28A8
+    uint160 private constant _HOOK_FLAG_REQUIRED = uint160((1 << 13) | (1 << 11) | (1 << 7) | (1 << 5) | (1 << 3)); // 0x28A8
 
     /// @dev Mines a CREATE2 salt whose deterministic pool address satisfies the Uniswap-v4 hook-flag
     ///      constraint (low 14 bits == 0x28A8) and is not already deployed. The factory derives the pool
     ///      address from (staticParams, salt) via CREATE2 over a MetaProxy, so computePoolAddress lets us
     ///      mine the salt cheaply with a bitmask predicate.
-    function _mineSalt(
-        IEulerV2Swap.StaticParams memory sp
-    ) private view returns (bytes32 salt, address predictedPool) {
+    function _mineSalt(IEulerV2Swap.StaticParams memory sp) private view returns (bytes32 salt, address predictedPool) {
         for (uint256 i; i < 200000; ++i) {
             salt = bytes32(i);
             predictedPool = IEulerV2SwapFactory(_EULERSWAP_FACTORY).computePoolAddress(sp, salt);
@@ -407,10 +420,7 @@ contract EulerV2SwapForkTest is Test {
         revert("salt mining failed");
     }
 
-    function _deployPoolAction(
-        bytes32 salt,
-        address predictedPool
-    ) private view returns (FuseAction memory action) {
+    function _deployPoolAction(bytes32 salt, address predictedPool) private view returns (FuseAction memory action) {
         EulerV2SwapDeployFuseEnterData memory data = EulerV2SwapDeployFuseEnterData({
             staticParams: _staticParams(),
             dynamicParams: _dynamicParams(),
@@ -605,7 +615,10 @@ contract EulerV2SwapForkTest is Test {
         address pool = _supplyAndDeploy();
         assertTrue(IEVC(_EVC).isAccountOperatorAuthorized(_eulerAccount, pool), "operator before");
 
-        EulerV2SwapDeployFuseExitData memory data = EulerV2SwapDeployFuseExitData({pool: pool, subAccount: _SUB_ACCOUNT});
+        EulerV2SwapDeployFuseExitData memory data = EulerV2SwapDeployFuseExitData({
+            pool: pool,
+            subAccount: _SUB_ACCOUNT
+        });
 
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({

@@ -72,10 +72,7 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
 
             dolomiteMarketId = dolomiteMargin.getMarketIdByTokenAddress(substrate.asset);
 
-            accountInfo = IDolomiteMargin.AccountInfo({
-                owner: plasmaVault,
-                number: uint256(substrate.subAccountId)
-            });
+            accountInfo = IDolomiteMargin.AccountInfo({owner: plasmaVault, number: uint256(substrate.subAccountId)});
 
             balance = dolomiteMargin.getAccountWei(accountInfo, dolomiteMarketId);
 

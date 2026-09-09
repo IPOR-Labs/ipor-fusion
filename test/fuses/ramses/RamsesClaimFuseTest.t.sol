@@ -15,12 +15,19 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RamsesV2Balance} from "../../../contracts/fuses/ramses/RamsesV2Balance.sol";
-import {RamsesV2NewPositionFuse, RamsesV2NewPositionFuseEnterData} from "../../../contracts/fuses/ramses/RamsesV2NewPositionFuse.sol";
+import {
+    RamsesV2NewPositionFuse,
+    RamsesV2NewPositionFuseEnterData
+} from "../../../contracts/fuses/ramses/RamsesV2NewPositionFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {RamsesClaimFuse} from "../../../contracts/rewards_fuses/ramses/RamsesClaimFuse.sol";
-import {IporFusionAccessManagerInitializerLibV1, PlasmaVaultAddress, InitializationData} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    PlasmaVaultAddress,
+    InitializationData
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {DataForInitialization} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 

@@ -17,8 +17,14 @@ import {
     ExternalStateOperationFuseEnterData
 } from "../../../../contracts/fuses/external_state/ExternalStateOperationFuse.sol";
 import {ExternalStateBalanceFuse} from "../../../../contracts/fuses/external_state/ExternalStateBalanceFuse.sol";
-import {ExternalStateUnpauseFuse, ExternalStateUnpauseData} from "../../../../contracts/fuses/external_state/ExternalStateUnpauseFuse.sol";
-import {IExternalStateExecutor, ExternalStateExecutorAction} from "../../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
+import {
+    ExternalStateUnpauseFuse,
+    ExternalStateUnpauseData
+} from "../../../../contracts/fuses/external_state/ExternalStateUnpauseFuse.sol";
+import {
+    IExternalStateExecutor,
+    ExternalStateExecutorAction
+} from "../../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
 import {ExternalStateErrors} from "../../../../contracts/fuses/external_state/errors/ExternalStateErrors.sol";
 import {ExternalStateSubstrateLib} from "../../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
 
@@ -131,7 +137,10 @@ contract ExternalStateRealVaultExecuteTest is Test {
         substrates[2] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianA);
         substrates[3] = ExternalStateSubstrateLib.encodeStalenessMaxSubstrate(STALENESS_MAX_S);
         substrates[4] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(BIG_CHANGE_BPS);
-        substrates[5] = ExternalStateSubstrateLib.encodeTargetSubstrate(address(target), MockExternalStateTarget.noop.selector);
+        substrates[5] = ExternalStateSubstrateLib.encodeTargetSubstrate(
+            address(target),
+            MockExternalStateTarget.noop.selector
+        );
 
         vm.startPrank(atomist);
         PlasmaVaultGovernance(address(vault)).addFuses(fuses);
@@ -160,20 +169,34 @@ contract ExternalStateRealVaultExecuteTest is Test {
         assertEq(IExternalStateExecutor(executor).stalenessMax(), STALENESS_MAX_S, "stalenessMax cached");
         assertEq(IExternalStateExecutor(executor).VAULT(), address(vault), "bound to real vault");
         assertEq(ExternalStateExecutorCacheReader(executor).custodians(0), custodianA, "custodian cached");
-        assertEq(ExternalStateExecutorCacheReader(executor).balanceAccounts(0), balanceAccount, "balance account cached");
+        assertEq(
+            ExternalStateExecutorCacheReader(executor).balanceAccounts(0),
+            balanceAccount,
+            "balance account cached"
+        );
         assertEq(ExternalStateExecutorCacheReader(executor).assets(0), address(underlying), "asset cached");
     }
 
     function test_execute_enter_implicitBootstrap_actionsOnly() public {
         ExternalStateExecutorAction[] memory actions = new ExternalStateExecutorAction[](1);
-        actions[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.noop, ())});
+        actions[0] = ExternalStateExecutorAction({
+            target: address(target),
+            data: abi.encodeCall(MockExternalStateTarget.noop, ())
+        });
 
         FuseAction[] memory calls = new FuseAction[](1);
         calls[0] = FuseAction({
             fuse: address(opFuse),
             data: abi.encodeCall(
                 opFuse.enter,
-                (ExternalStateOperationFuseEnterData({asset: address(0), amount: 0, balanceAccount: address(0), actions: actions}))
+                (
+                    ExternalStateOperationFuseEnterData({
+                        asset: address(0),
+                        amount: 0,
+                        balanceAccount: address(0),
+                        actions: actions
+                    })
+                )
             )
         });
 
@@ -191,7 +214,7 @@ contract ExternalStateRealVaultExecuteTest is Test {
         address executor = _readExecutor();
         assertEq(underlying.balanceOf(executor), amount, "tokens moved vault -> executor");
 
-        (uint256 totalBalance,,) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
+        (uint256 totalBalance, , ) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
         assertEq(totalBalance, amount, "balance account credited 1:1 (price 1e18)");
         assertEq(vault.totalAssetsInMarket(MARKET_ID), amount, "market balance updated via balance fuse");
     }
@@ -204,7 +227,7 @@ contract ExternalStateRealVaultExecuteTest is Test {
         address executor2 = _readExecutor();
 
         assertEq(executor1, executor2, "executor address stable across executes");
-        (uint256 totalBalance,,) = IExternalStateExecutor(_readExecutor()).getBalanceFuseSnapshot();
+        (uint256 totalBalance, , ) = IExternalStateExecutor(_readExecutor()).getBalanceFuseSnapshot();
         assertEq(totalBalance, 150e18, "balances accumulate on the same executor");
     }
 
@@ -234,7 +257,9 @@ contract ExternalStateRealVaultExecuteTest is Test {
         calls[0] = FuseAction({fuse: address(unpauseFuse), data: abi.encodeCall(unpauseFuse.unpause, (d))});
 
         vm.prank(alpha);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, stranger));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateUnpauseSignerNotAtomist.selector, stranger)
+        );
         vault.execute(calls);
 
         assertTrue(ExternalStateSlotHelpers.readPaused(address(vault)), "vault stays paused");
@@ -256,7 +281,10 @@ contract ExternalStateRealVaultExecuteTest is Test {
         substrates[2] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianA);
         substrates[3] = ExternalStateSubstrateLib.encodeStalenessMaxSubstrate(2 days);
         substrates[4] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(BIG_CHANGE_BPS);
-        substrates[5] = ExternalStateSubstrateLib.encodeTargetSubstrate(address(target), MockExternalStateTarget.noop.selector);
+        substrates[5] = ExternalStateSubstrateLib.encodeTargetSubstrate(
+            address(target),
+            MockExternalStateTarget.noop.selector
+        );
         vm.prank(atomist);
         PlasmaVaultGovernance(address(vault)).grantMarketSubstrates(MARKET_ID, substrates);
 
@@ -289,17 +317,21 @@ contract ExternalStateRealVaultExecuteTest is Test {
     }
 
     function _readExecutor() internal view returns (address) {
-        bytes32 slot = bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.EXECUTOR_SLOT_OFFSET);
+        bytes32 slot = bytes32(
+            uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.EXECUTOR_SLOT_OFFSET
+        );
         return address(uint160(uint256(vm.load(address(vault), slot))));
     }
 
-    function _signedUnpauseData(uint256 balance_, uint256 nonce_, uint256 expiration_, uint256 pk_)
-        internal
-        view
-        returns (ExternalStateUnpauseData memory d)
-    {
-        bytes32 digest =
-            keccak256(abi.encodePacked(address(vault), MARKET_ID, balance_, nonce_, expiration_, block.chainid));
+    function _signedUnpauseData(
+        uint256 balance_,
+        uint256 nonce_,
+        uint256 expiration_,
+        uint256 pk_
+    ) internal view returns (ExternalStateUnpauseData memory d) {
+        bytes32 digest = keccak256(
+            abi.encodePacked(address(vault), MARKET_ID, balance_, nonce_, expiration_, block.chainid)
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk_, digest);
         d = ExternalStateUnpauseData({
             confirmedTotalBalance: balance_,

@@ -2,7 +2,11 @@
 pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
-import {MidasRequestSupplyFuse, MidasRequestSupplyFuseEnterData, MidasRequestSupplyFuseExitData} from "contracts/fuses/midas/MidasRequestSupplyFuse.sol";
+import {
+    MidasRequestSupplyFuse,
+    MidasRequestSupplyFuseEnterData,
+    MidasRequestSupplyFuseExitData
+} from "contracts/fuses/midas/MidasRequestSupplyFuse.sol";
 import {MidasSubstrateLib, MidasSubstrateType} from "contracts/fuses/midas/lib/MidasSubstrateLib.sol";
 import {Errors} from "contracts/libraries/errors/Errors.sol";
 import {MidasRequestSupplyFuseHarness} from "./mocks/MidasRequestSupplyFuseHarness.sol";
@@ -29,9 +33,9 @@ contract MidasRequestSupplyFuseTest is Test {
     MidasRequestSupplyFuse fuse;
     MidasRequestSupplyFuseHarness harness;
 
-    MockERC20Midas tokenIn;   // USDC-like deposit token
-    MockERC20Midas mToken;    // mTBILL-like receipt token
-    MockERC20Midas tokenOut;  // USDC-like redemption output token
+    MockERC20Midas tokenIn; // USDC-like deposit token
+    MockERC20Midas mToken; // mTBILL-like receipt token
+    MockERC20Midas tokenOut; // USDC-like redemption output token
 
     MockMidasDepositVault depositVault;
     MockMidasRedemptionVaultFuse redemptionVault;
@@ -216,7 +220,11 @@ contract MidasRequestSupplyFuseTest is Test {
 
         // Then
         vm.expectRevert(
-            abi.encodeWithSelector(MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector, uint8(2), address(depositVault))
+            abi.encodeWithSelector(
+                MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector,
+                uint8(2),
+                address(depositVault)
+            )
         );
 
         // When
@@ -289,7 +297,10 @@ contract MidasRequestSupplyFuseTest is Test {
         assertEq(mockExecutor.lastDepositAmount(), 100e6, "Executor should receive exactly amount=100e6");
         assertEq(tokenIn.lastTransferAmount(), 100e6, "Transfer should be 100e6");
         assertEq(tokenIn.lastTransferTo(), address(mockExecutor), "Transfer should go to executor");
-        assertTrue(harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1), "Request 1 should be pending");
+        assertTrue(
+            harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1),
+            "Request 1 should be pending"
+        );
     }
 
     /// @dev Branch E7: balance < amount, uses balance (partial deposit)
@@ -471,7 +482,10 @@ contract MidasRequestSupplyFuseTest is Test {
 
         // Then: request 5 removed, new request 1 added
         assertFalse(harness.isDepositPending(address(depositVault), 5), "Request 5 should be cleaned up");
-        assertTrue(harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1), "New request should be added");
+        assertTrue(
+            harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1),
+            "New request should be added"
+        );
     }
 
     // ============ Exit Tests ============
@@ -556,7 +570,11 @@ contract MidasRequestSupplyFuseTest is Test {
 
         // Then
         vm.expectRevert(
-            abi.encodeWithSelector(MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector, uint8(3), address(redemptionVault))
+            abi.encodeWithSelector(
+                MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector,
+                uint8(3),
+                address(redemptionVault)
+            )
         );
 
         // When
@@ -577,7 +595,11 @@ contract MidasRequestSupplyFuseTest is Test {
 
         // Then
         vm.expectRevert(
-            abi.encodeWithSelector(MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector, uint8(5), address(tokenOut))
+            abi.encodeWithSelector(
+                MidasSubstrateLib.MidasFuseUnsupportedSubstrate.selector,
+                uint8(5),
+                address(tokenOut)
+            )
         );
 
         // When
@@ -664,7 +686,9 @@ contract MidasRequestSupplyFuseTest is Test {
         });
 
         // Then
-        vm.expectRevert(abi.encodeWithSelector(MidasRequestSupplyFuse.MidasRequestSupplyFuseInvalidRedeemRequestId.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(MidasRequestSupplyFuse.MidasRequestSupplyFuseInvalidRedeemRequestId.selector)
+        );
 
         // When
         harness.exit(data);
@@ -741,7 +765,10 @@ contract MidasRequestSupplyFuseTest is Test {
 
         // Then: request 5 removed, new request 3 added
         assertFalse(harness.isRedemptionPending(address(redemptionVault), 5), "Request 5 should be cleaned up");
-        assertTrue(harness.isRedemptionPending(address(redemptionVault), REDEEM_REQUEST_ID_3), "New request should be added");
+        assertTrue(
+            harness.isRedemptionPending(address(redemptionVault), REDEEM_REQUEST_ID_3),
+            "New request should be added"
+        );
     }
 
     // ============ cleanupPendingDeposits Tests ============
@@ -808,7 +835,11 @@ contract MidasRequestSupplyFuseTest is Test {
         // Then: both removed
         assertFalse(harness.isDepositPending(address(depositVault), 5), "Request 5 should be removed");
         assertFalse(harness.isDepositPending(address(depositVault), 6), "Request 6 should be removed");
-        assertEq(harness.getPendingDepositsForVault(address(depositVault)).length, 0, "Vault should have 0 pending deposits");
+        assertEq(
+            harness.getPendingDepositsForVault(address(depositVault)).length,
+            0,
+            "Vault should have 0 pending deposits"
+        );
     }
 
     /// @dev Branch CD5: maxIterations_ limits processing
@@ -904,9 +935,9 @@ contract MidasRequestSupplyFuseTest is Test {
         harness.seedPendingRedemption(address(redemptionVault), 1);
         harness.seedPendingRedemption(address(redemptionVault), 2);
         harness.seedPendingRedemption(address(redemptionVault), 3);
-        redemptionVault.setRequestStatus(1, 1);   // processed
+        redemptionVault.setRequestStatus(1, 1); // processed
         // 2 stays pending
-        redemptionVault.setRequestStatus(3, 2);   // canceled
+        redemptionVault.setRequestStatus(3, 2); // canceled
 
         // When
         harness.cleanupPendingRedemptions(address(redemptionVault), 0);
@@ -1020,7 +1051,11 @@ contract MidasRequestSupplyFuseTest is Test {
         harness.exit(data);
 
         // Then: all 3 removed
-        assertEq(harness.getPendingRedemptionsForVault(address(redemptionVault)).length, 0, "All redemptions should be cleaned");
+        assertEq(
+            harness.getPendingRedemptionsForVault(address(redemptionVault)).length,
+            0,
+            "All redemptions should be cleaned"
+        );
     }
 
     /// @dev Branch ID1: empty pending list graceful
@@ -1075,11 +1110,7 @@ contract MidasRequestSupplyFuseTest is Test {
         harness.enter(data);
 
         // Then: executor received min(balance, amount)
-        assertEq(
-            mockExecutor.lastDepositAmount(),
-            expectedFinalAmount,
-            "Executor should receive min(balance, amount)"
-        );
+        assertEq(mockExecutor.lastDepositAmount(), expectedFinalAmount, "Executor should receive min(balance, amount)");
     }
 
     /// @dev Fuzz: finalAmount = min(balance, amount) for exit
@@ -1104,11 +1135,7 @@ contract MidasRequestSupplyFuseTest is Test {
         harness.exit(data);
 
         // Then
-        assertEq(
-            mockExecutor.lastRedeemAmount(),
-            expectedFinalAmount,
-            "Executor should receive min(balance, amount)"
-        );
+        assertEq(mockExecutor.lastRedeemAmount(), expectedFinalAmount, "Executor should receive min(balance, amount)");
     }
 
     // ============ Edge Case / Boundary Tests ============
@@ -1285,8 +1312,14 @@ contract MidasRequestSupplyFuseTest is Test {
         harness.enter(data);
 
         // Then: both requestIds in pending storage
-        assertTrue(harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1), "Request 1 should be pending");
-        assertTrue(harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_2), "Request 2 should be pending");
+        assertTrue(
+            harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1),
+            "Request 1 should be pending"
+        );
+        assertTrue(
+            harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_2),
+            "Request 2 should be pending"
+        );
     }
 
     /// @dev Multiple deposits to different vaults are tracked independently
@@ -1302,27 +1335,40 @@ contract MidasRequestSupplyFuseTest is Test {
 
         // When: enter vaultA
         mockExecutor.setNextDepositRequestId(DEPOSIT_REQUEST_ID_1);
-        harness.enter(MidasRequestSupplyFuseEnterData({
-            mToken: address(mToken),
-            tokenIn: address(tokenIn),
-            amount: 100e6,
-            depositVault: address(depositVault)
-        }));
+        harness.enter(
+            MidasRequestSupplyFuseEnterData({
+                mToken: address(mToken),
+                tokenIn: address(tokenIn),
+                amount: 100e6,
+                depositVault: address(depositVault)
+            })
+        );
 
         // Enter vaultB
         mockExecutor.setNextDepositRequestId(DEPOSIT_REQUEST_ID_2);
-        harness.enter(MidasRequestSupplyFuseEnterData({
-            mToken: address(mToken),
-            tokenIn: address(tokenIn),
-            amount: 50e6,
-            depositVault: address(vaultB)
-        }));
+        harness.enter(
+            MidasRequestSupplyFuseEnterData({
+                mToken: address(mToken),
+                tokenIn: address(tokenIn),
+                amount: 50e6,
+                depositVault: address(vaultB)
+            })
+        );
 
         // Then: each vault tracks its own requests independently
-        assertTrue(harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1), "VaultA request should be pending");
+        assertTrue(
+            harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1),
+            "VaultA request should be pending"
+        );
         assertTrue(harness.isDepositPending(address(vaultB), DEPOSIT_REQUEST_ID_2), "VaultB request should be pending");
-        assertFalse(harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_2), "VaultA should not have request 2");
-        assertFalse(harness.isDepositPending(address(vaultB), DEPOSIT_REQUEST_ID_1), "VaultB should not have request 1");
+        assertFalse(
+            harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_2),
+            "VaultA should not have request 2"
+        );
+        assertFalse(
+            harness.isDepositPending(address(vaultB), DEPOSIT_REQUEST_ID_1),
+            "VaultB should not have request 1"
+        );
     }
 
     /// @dev Multiple redemptions to same vault accumulate
@@ -1333,25 +1379,35 @@ contract MidasRequestSupplyFuseTest is Test {
         mockExecutor.setNextRedeemRequestId(REDEEM_REQUEST_ID_3);
 
         // When: first exit
-        harness.exit(MidasRequestSupplyFuseExitData({
-            mToken: address(mToken),
-            amount: 50e18,
-            tokenOut: address(tokenOut),
-            standardRedemptionVault: address(redemptionVault)
-        }));
+        harness.exit(
+            MidasRequestSupplyFuseExitData({
+                mToken: address(mToken),
+                amount: 50e18,
+                tokenOut: address(tokenOut),
+                standardRedemptionVault: address(redemptionVault)
+            })
+        );
 
         // Second exit
         mockExecutor.setNextRedeemRequestId(REDEEM_REQUEST_ID_4);
-        harness.exit(MidasRequestSupplyFuseExitData({
-            mToken: address(mToken),
-            amount: 50e18,
-            tokenOut: address(tokenOut),
-            standardRedemptionVault: address(redemptionVault)
-        }));
+        harness.exit(
+            MidasRequestSupplyFuseExitData({
+                mToken: address(mToken),
+                amount: 50e18,
+                tokenOut: address(tokenOut),
+                standardRedemptionVault: address(redemptionVault)
+            })
+        );
 
         // Then: both pending
-        assertTrue(harness.isRedemptionPending(address(redemptionVault), REDEEM_REQUEST_ID_3), "Request 3 should be pending");
-        assertTrue(harness.isRedemptionPending(address(redemptionVault), REDEEM_REQUEST_ID_4), "Request 4 should be pending");
+        assertTrue(
+            harness.isRedemptionPending(address(redemptionVault), REDEEM_REQUEST_ID_3),
+            "Request 3 should be pending"
+        );
+        assertTrue(
+            harness.isRedemptionPending(address(redemptionVault), REDEEM_REQUEST_ID_4),
+            "Request 4 should be pending"
+        );
     }
 
     /// @dev Enter then exit for same market tracks deposit and redemption independently
@@ -1364,25 +1420,35 @@ contract MidasRequestSupplyFuseTest is Test {
 
         // When: enter (deposit)
         mockExecutor.setNextDepositRequestId(DEPOSIT_REQUEST_ID_1);
-        harness.enter(MidasRequestSupplyFuseEnterData({
-            mToken: address(mToken),
-            tokenIn: address(tokenIn),
-            amount: 100e6,
-            depositVault: address(depositVault)
-        }));
+        harness.enter(
+            MidasRequestSupplyFuseEnterData({
+                mToken: address(mToken),
+                tokenIn: address(tokenIn),
+                amount: 100e6,
+                depositVault: address(depositVault)
+            })
+        );
 
         // exit (redeem)
         mockExecutor.setNextRedeemRequestId(REDEEM_REQUEST_ID_3);
-        harness.exit(MidasRequestSupplyFuseExitData({
-            mToken: address(mToken),
-            amount: 50e18,
-            tokenOut: address(tokenOut),
-            standardRedemptionVault: address(redemptionVault)
-        }));
+        harness.exit(
+            MidasRequestSupplyFuseExitData({
+                mToken: address(mToken),
+                amount: 50e18,
+                tokenOut: address(tokenOut),
+                standardRedemptionVault: address(redemptionVault)
+            })
+        );
 
         // Then: both tracked independently
-        assertTrue(harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1), "Deposit request should be pending");
-        assertTrue(harness.isRedemptionPending(address(redemptionVault), REDEEM_REQUEST_ID_3), "Redemption request should be pending");
+        assertTrue(
+            harness.isDepositPending(address(depositVault), DEPOSIT_REQUEST_ID_1),
+            "Deposit request should be pending"
+        );
+        assertTrue(
+            harness.isRedemptionPending(address(redemptionVault), REDEEM_REQUEST_ID_3),
+            "Redemption request should be pending"
+        );
     }
 
     /// @dev Mixed statuses processed in reverse order
@@ -1436,12 +1502,14 @@ contract MidasRequestSupplyFuseTest is Test {
         );
 
         // When
-        harness.enter(MidasRequestSupplyFuseEnterData({
-            mToken: address(mToken),
-            tokenIn: address(tokenIn),
-            amount: 100e6,
-            depositVault: address(depositVault)
-        }));
+        harness.enter(
+            MidasRequestSupplyFuseEnterData({
+                mToken: address(mToken),
+                tokenIn: address(tokenIn),
+                amount: 100e6,
+                depositVault: address(depositVault)
+            })
+        );
     }
 
     /// @dev Cleanup event emitted BEFORE exit event
@@ -1468,12 +1536,14 @@ contract MidasRequestSupplyFuseTest is Test {
         );
 
         // When
-        harness.exit(MidasRequestSupplyFuseExitData({
-            mToken: address(mToken),
-            amount: 100e18,
-            tokenOut: address(tokenOut),
-            standardRedemptionVault: address(redemptionVault)
-        }));
+        harness.exit(
+            MidasRequestSupplyFuseExitData({
+                mToken: address(mToken),
+                amount: 100e18,
+                tokenOut: address(tokenOut),
+                standardRedemptionVault: address(redemptionVault)
+            })
+        );
     }
 
     /// @dev 3 cleanup events emitted for deposit cleanup

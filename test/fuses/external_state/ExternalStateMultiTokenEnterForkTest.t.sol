@@ -3,7 +3,10 @@ pragma solidity 0.8.30;
 
 import {ExternalStateForkTestBase} from "./ExternalStateForkTestBase.t.sol";
 import {ExternalStateErrors} from "../../../contracts/fuses/external_state/errors/ExternalStateErrors.sol";
-import {ExternalStateSubstrateLib, ExternalStateSubstrateType} from "../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
+import {
+    ExternalStateSubstrateLib,
+    ExternalStateSubstrateType
+} from "../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
 import {IExternalStateExecutor} from "../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
 
 /// @dev Mainnet USDT does not return a bool from `transfer` — declare a non-standard interface
@@ -32,7 +35,7 @@ contract ExternalStateMultiTokenEnterForkTest is ExternalStateForkTestBase {
         _enter(USDC, 100e6, balanceAccountA);
         _enter(USDT, 50e6, balanceAccountA);
 
-        (uint256 total,,) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
         assertEq(total, 150e6, "both assets credited");
     }
 
@@ -46,7 +49,7 @@ contract ExternalStateMultiTokenEnterForkTest is ExternalStateForkTestBase {
         deal(DAI, address(vault), 100e18);
         _enter(DAI, 100e18, balanceAccountA);
 
-        (uint256 total,,) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
         assertEq(total, 100e6, "DAI -> USDC underlying converted");
     }
 
@@ -60,7 +63,7 @@ contract ExternalStateMultiTokenEnterForkTest is ExternalStateForkTestBase {
         deal(DAI, address(vault), 100e18);
         _enter(DAI, 100e18, balanceAccountA);
 
-        (uint256 total,,) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
+        (uint256 total, , ) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
         assertEq(total, 110e6, "oracle price applied to DAI -> USDC conversion");
     }
 
@@ -95,8 +98,10 @@ contract ExternalStateMultiTokenEnterForkTest is ExternalStateForkTestBase {
         subs[4] = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccountB);
         subs[5] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianA);
         subs[6] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianB);
-        subs[7] =
-            ExternalStateSubstrateLib.encodeTargetSubstrate(address(externalStateProtocol), bytes4(keccak256("deposit(address,uint256)")));
+        subs[7] = ExternalStateSubstrateLib.encodeTargetSubstrate(
+            address(externalStateProtocol),
+            bytes4(keccak256("deposit(address,uint256)"))
+        );
         subs[8] = ExternalStateSubstrateLib.encodeStalenessMaxSubstrate(STALENESS_MAX_S);
         subs[9] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(BIG_CHANGE_BPS);
         subs[10] = ExternalStateSubstrateLib.encodeDustThresholdSubstrate(DUST_THRESHOLD);

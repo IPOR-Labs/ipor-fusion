@@ -18,10 +18,25 @@ import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactor
 import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AerodromeBalanceFuse} from "../../../contracts/fuses/aerodrome/AerodromeBalanceFuse.sol";
-import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "../../../contracts/fuses/aerodrome/AreodromeLib.sol";
-import {AerodromeClaimFeesFuse, AerodromeClaimFeesFuseEnterData} from "../../../contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol";
-import {AerodromeLiquidityFuse, AerodromeLiquidityFuseEnterData, AerodromeLiquidityFuseExitData} from "../../../contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol";
-import {AerodromeGaugeFuse, AerodromeGaugeFuseEnterData, AerodromeGaugeFuseExitData} from "../../../contracts/fuses/aerodrome/AerodromeGaugeFuse.sol";
+import {
+    AerodromeSubstrateLib,
+    AerodromeSubstrate,
+    AerodromeSubstrateType
+} from "../../../contracts/fuses/aerodrome/AreodromeLib.sol";
+import {
+    AerodromeClaimFeesFuse,
+    AerodromeClaimFeesFuseEnterData
+} from "../../../contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol";
+import {
+    AerodromeLiquidityFuse,
+    AerodromeLiquidityFuseEnterData,
+    AerodromeLiquidityFuseExitData
+} from "../../../contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol";
+import {
+    AerodromeGaugeFuse,
+    AerodromeGaugeFuseEnterData,
+    AerodromeGaugeFuseExitData
+} from "../../../contracts/fuses/aerodrome/AerodromeGaugeFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IRouter} from "../../../contracts/fuses/aerodrome/ext/IRouter.sol";

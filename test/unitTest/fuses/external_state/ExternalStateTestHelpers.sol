@@ -32,7 +32,9 @@ library ExternalStateSlotHelpers {
     /// @param vault_ The vault address whose ERC-7201 slot to update.
     /// @param value_ The new paused flag.
     function setPaused(address vault_, bool value_) internal {
-        bytes32 slot = bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.PAUSED_SLOT_OFFSET);
+        bytes32 slot = bytes32(
+            uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.PAUSED_SLOT_OFFSET
+        );
         _VM.store(vault_, slot, bytes32(uint256(value_ ? 1 : 0)));
     }
 
@@ -40,7 +42,9 @@ library ExternalStateSlotHelpers {
     /// @param vault_ The vault address whose ERC-7201 slot to inspect.
     /// @return Value of the paused flag.
     function readPaused(address vault_) internal view returns (bool) {
-        bytes32 slot = bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.PAUSED_SLOT_OFFSET);
+        bytes32 slot = bytes32(
+            uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.PAUSED_SLOT_OFFSET
+        );
         return _VM.load(vault_, slot) != bytes32(0);
     }
 
@@ -48,7 +52,9 @@ library ExternalStateSlotHelpers {
     /// @param vault_ The vault address whose ERC-7201 slot to update.
     /// @param executor_ The executor address to store.
     function setExecutor(address vault_, address executor_) internal {
-        bytes32 slot = bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.EXECUTOR_SLOT_OFFSET);
+        bytes32 slot = bytes32(
+            uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.EXECUTOR_SLOT_OFFSET
+        );
         _VM.store(vault_, slot, bytes32(uint256(uint160(executor_))));
     }
 
@@ -56,7 +62,10 @@ library ExternalStateSlotHelpers {
     /// @param vault_ The vault address whose ERC-7201 slot to update.
     /// @param value_ The new cached total balance.
     function setLastTotalBalance(address vault_, uint256 value_) internal {
-        bytes32 slot = bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.LAST_TOTAL_BALANCE_SLOT_OFFSET);
+        bytes32 slot = bytes32(
+            uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) +
+                ExternalStateTestConstants.LAST_TOTAL_BALANCE_SLOT_OFFSET
+        );
         _VM.store(vault_, slot, bytes32(value_));
     }
 
@@ -64,8 +73,10 @@ library ExternalStateSlotHelpers {
     /// @param vault_ The vault address whose ERC-7201 slot to update.
     /// @param value_ The new cached custodian timestamp.
     function setLastCheckedCustodianTimestamp(address vault_, uint256 value_) internal {
-        bytes32 slot =
-            bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.LAST_CHECKED_CUSTODIAN_TS_SLOT_OFFSET);
+        bytes32 slot = bytes32(
+            uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) +
+                ExternalStateTestConstants.LAST_CHECKED_CUSTODIAN_TS_SLOT_OFFSET
+        );
         _VM.store(vault_, slot, bytes32(value_));
     }
 }

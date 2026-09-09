@@ -6,7 +6,11 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {TestAddresses} from "../../test_helpers/TestAddresses.sol";
-import {EulerV2BatchFuse, EulerV2BatchItem, EulerV2BatchFuseData} from "../../../contracts/fuses/euler/EulerV2BatchFuse.sol";
+import {
+    EulerV2BatchFuse,
+    EulerV2BatchItem,
+    EulerV2BatchFuseData
+} from "../../../contracts/fuses/euler/EulerV2BatchFuse.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";

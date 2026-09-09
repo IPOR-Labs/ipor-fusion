@@ -92,12 +92,7 @@ contract TermFinanceRepurchaseFuse is IFuseCommon {
     /// @param remainingObligation Outstanding face-value debt for the vault after the payment,
     ///        read via `IExtTermRepoServicer.getBorrowerRepurchaseObligation(vault)`. Zero on a
     ///        full repayment.
-    event TermFinanceRepurchased(
-        address version,
-        address servicer,
-        uint256 amountPaid,
-        uint256 remainingObligation
-    );
+    event TermFinanceRepurchased(address version, address servicer, uint256 amountPaid, uint256 remainingObligation);
 
     /// @notice Reverts when the PlasmaVault has no WithdrawManager configured.
     /// @dev Codifies the non-functional requirement: a vault without a WithdrawManager
@@ -220,9 +215,7 @@ contract TermFinanceRepurchaseFuse is IFuseCommon {
         // enforced fuse-side and does not rely on the Term servicer impl capping the pull
         // itself (its NatSpec leaves "excess refunded OR rejected" impl-defined). A vault with
         // no debt has nothing to repurchase.
-        uint256 obligationBefore = IExtTermRepoServicer(data_.servicer).getBorrowerRepurchaseObligation(
-            address(this)
-        );
+        uint256 obligationBefore = IExtTermRepoServicer(data_.servicer).getBorrowerRepurchaseObligation(address(this));
         if (obligationBefore == 0) revert TermFinanceRepurchaseFuseNoObligation(data_.servicer);
         uint256 payAmount = data_.amount > obligationBefore ? obligationBefore : data_.amount;
 

@@ -11,10 +11,7 @@ import {PlasmaVaultConfigLib} from "contracts/libraries/PlasmaVaultConfigLib.sol
 ///      storage slot is poked directly from the test using `vm.store` (see
 ///      `TermFinanceCollateralFuseTest._setWithdrawManager`).
 contract TermFinanceCollateralFuseHarness is TermFinanceCollateralFuse {
-    constructor(
-        uint256 marketId_,
-        address termController_
-    ) TermFinanceCollateralFuse(marketId_, termController_) {}
+    constructor(uint256 marketId_, address termController_) TermFinanceCollateralFuse(marketId_, termController_) {}
 
     function setMarketSubstrates(uint256 marketId_, bytes32[] memory substrates_) external {
         PlasmaVaultConfigLib.grantMarketSubstrates(marketId_, substrates_);

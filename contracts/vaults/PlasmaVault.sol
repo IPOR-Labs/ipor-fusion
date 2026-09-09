@@ -313,7 +313,10 @@ contract PlasmaVault is
 
         // Extension-specific functions (ERC20VotesUpgradeable)
         // Note: _transferVotingUnits is internal in OpenZeppelin, so it's not included here
-        if (sig_ == IPlasmaVaultVotesPlugin.numCheckpoints.selector || sig_ == IPlasmaVaultVotesPlugin.checkpoints.selector) {
+        if (
+            sig_ == IPlasmaVaultVotesPlugin.numCheckpoints.selector ||
+            sig_ == IPlasmaVaultVotesPlugin.checkpoints.selector
+        ) {
             return true;
         }
 

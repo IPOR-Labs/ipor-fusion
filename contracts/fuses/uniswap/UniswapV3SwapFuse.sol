@@ -103,8 +103,7 @@ contract UniswapV3SwapFuse is IFuseCommon {
 
         if (_hasMultiplePools(pathCalldata)) {
             numberOfTokens =
-                ((pathCalldata.length.toInt256() - ADDR_SIZE.toInt256()).toUint256() / NEXT_V3_POOL_OFFSET) +
-                1;
+                ((pathCalldata.length.toInt256() - ADDR_SIZE.toInt256()).toUint256() / NEXT_V3_POOL_OFFSET) + 1;
             tokens = new address[](numberOfTokens);
             for (uint256 i; i < numberOfTokens; ++i) {
                 tokens[i] = _decodeFirstToken(pathCalldata);

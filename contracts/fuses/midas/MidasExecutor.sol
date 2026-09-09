@@ -78,7 +78,8 @@ contract MidasExecutor {
         address tokenOut,
         address redemptionVault
     ) external onlyPlasmaVault returns (uint256 requestId) {
-        if (mToken == address(0) || tokenOut == address(0) || redemptionVault == address(0)) revert MidasExecutorZeroAddress();
+        if (mToken == address(0) || tokenOut == address(0) || redemptionVault == address(0))
+            revert MidasExecutorZeroAddress();
         ERC20(mToken).forceApprove(redemptionVault, amount);
 
         requestId = IMidasRedemptionVault(redemptionVault).redeemRequest(tokenOut, amount);

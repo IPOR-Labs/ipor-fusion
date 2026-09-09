@@ -15,10 +15,17 @@ import {RewardsManagerFactory} from "../../../contracts/factory/RewardsManagerFa
 import {WithdrawManagerFactory} from "../../../contracts/factory/WithdrawManagerFactory.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {BurnRequestFeeFuse} from "../../../contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {YieldBasisLtBalanceFuse} from "../../../contracts/fuses/yield_basis/YieldBasisLtBalanceFuse.sol";
-import {YieldBasisLtSupplyFuse, YieldBasisLtSupplyFuseEnterData, YieldBasisLtSupplyFuseExitData} from "../../../contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol";
+import {
+    YieldBasisLtSupplyFuse,
+    YieldBasisLtSupplyFuseEnterData,
+    YieldBasisLtSupplyFuseExitData
+} from "../../../contracts/fuses/yield_basis/YieldBasisLtSupplyFuse.sol";
 import {IYieldBasisLT} from "../../../contracts/fuses/yield_basis/ext/IYieldBasisLT.sol";
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";

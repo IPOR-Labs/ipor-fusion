@@ -2,7 +2,10 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {UniversalTokenSwapperSubstrateLib, UniversalTokenSwapperSubstrateType} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
+import {
+    UniversalTokenSwapperSubstrateLib,
+    UniversalTokenSwapperSubstrateType
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 
 /// @title UniversalTokenSwapperSubstrateLibTest
 /// @notice Unit tests for UniversalTokenSwapperSubstrateLib encoding/decoding
@@ -37,8 +40,14 @@ contract UniversalTokenSwapperSubstrateLibTest is Test {
         bytes32 slippageSubstrate = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(1e16);
 
         assertTrue(UniversalTokenSwapperSubstrateLib.isTokenSubstrate(tokenSubstrate), "Should be token substrate");
-        assertFalse(UniversalTokenSwapperSubstrateLib.isTokenSubstrate(targetSubstrate), "Should not be token substrate");
-        assertFalse(UniversalTokenSwapperSubstrateLib.isTokenSubstrate(slippageSubstrate), "Should not be token substrate");
+        assertFalse(
+            UniversalTokenSwapperSubstrateLib.isTokenSubstrate(targetSubstrate),
+            "Should not be token substrate"
+        );
+        assertFalse(
+            UniversalTokenSwapperSubstrateLib.isTokenSubstrate(slippageSubstrate),
+            "Should not be token substrate"
+        );
     }
 
     function testFuzzEncodeDecodeToken(address token_) public {
@@ -74,9 +83,15 @@ contract UniversalTokenSwapperSubstrateLibTest is Test {
         bytes32 targetSubstrate = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(TEST_TARGET);
         bytes32 slippageSubstrate = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(1e16);
 
-        assertFalse(UniversalTokenSwapperSubstrateLib.isTargetSubstrate(tokenSubstrate), "Should not be target substrate");
+        assertFalse(
+            UniversalTokenSwapperSubstrateLib.isTargetSubstrate(tokenSubstrate),
+            "Should not be target substrate"
+        );
         assertTrue(UniversalTokenSwapperSubstrateLib.isTargetSubstrate(targetSubstrate), "Should be target substrate");
-        assertFalse(UniversalTokenSwapperSubstrateLib.isTargetSubstrate(slippageSubstrate), "Should not be target substrate");
+        assertFalse(
+            UniversalTokenSwapperSubstrateLib.isTargetSubstrate(slippageSubstrate),
+            "Should not be target substrate"
+        );
     }
 
     function testFuzzEncodeDecodeTarget(address target_) public {
@@ -114,9 +129,18 @@ contract UniversalTokenSwapperSubstrateLibTest is Test {
         bytes32 targetSubstrate = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(TEST_TARGET);
         bytes32 slippageSubstrate = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(1e16);
 
-        assertFalse(UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(tokenSubstrate), "Should not be slippage substrate");
-        assertFalse(UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(targetSubstrate), "Should not be slippage substrate");
-        assertTrue(UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(slippageSubstrate), "Should be slippage substrate");
+        assertFalse(
+            UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(tokenSubstrate),
+            "Should not be slippage substrate"
+        );
+        assertFalse(
+            UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(targetSubstrate),
+            "Should not be slippage substrate"
+        );
+        assertTrue(
+            UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(slippageSubstrate),
+            "Should be slippage substrate"
+        );
     }
 
     function testSlippageSubstrateMaxValue() public pure {
@@ -147,7 +171,10 @@ contract UniversalTokenSwapperSubstrateLibTest is Test {
         bytes32 encoded = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(slippage);
         uint256 decoded = UniversalTokenSwapperSubstrateLib.decodeSlippage(encoded);
         assertEq(decoded, slippage, "Fuzz: Decoded slippage should match original");
-        assertTrue(UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(encoded), "Fuzz: Should be slippage substrate");
+        assertTrue(
+            UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(encoded),
+            "Fuzz: Should be slippage substrate"
+        );
     }
 
     // ==================== Substrate Type Tests ====================
@@ -222,17 +249,20 @@ contract UniversalTokenSwapperSubstrateLibTest is Test {
         bytes32 encoded = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(0);
         uint256 decoded = UniversalTokenSwapperSubstrateLib.decodeSlippage(encoded);
         assertEq(decoded, 0, "Zero slippage should be preserved");
-        assertTrue(UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(encoded), "Should still be slippage substrate");
+        assertTrue(
+            UniversalTokenSwapperSubstrateLib.isSlippageSubstrate(encoded),
+            "Should still be slippage substrate"
+        );
     }
 
     function testCommonSlippageValues() public pure {
         // Test common slippage values used in DeFi
         uint256[] memory slippages = new uint256[](5);
-        slippages[0] = 1e15;  // 0.1%
-        slippages[1] = 5e15;  // 0.5%
-        slippages[2] = 1e16;  // 1%
-        slippages[3] = 5e16;  // 5%
-        slippages[4] = 1e17;  // 10%
+        slippages[0] = 1e15; // 0.1%
+        slippages[1] = 5e15; // 0.5%
+        slippages[2] = 1e16; // 1%
+        slippages[3] = 5e16; // 5%
+        slippages[4] = 1e17; // 10%
 
         for (uint256 i; i < slippages.length; ++i) {
             bytes32 encoded = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(slippages[i]);
