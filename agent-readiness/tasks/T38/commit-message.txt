@@ -1,0 +1,11 @@
+docs(debugging): T38 add factory and vault troubleshooting
+
+Add docs/troubleshooting.md: the concrete errors this repository's tools and
+tests actually produce — RPC and archive state, implementation and version drift,
+an ABI that no longer matches the deployed fuse, missing roles, fee package
+disagreement, substrates, market limits, price sources, and the four transaction
+outcomes — each with the command that confirms the cause.
+
+Every symptom comes from a real run recorded in the readiness tasks, and every
+diagnostic command was executed against the pinned Ethereum block or a local
+fork. The page reports causes and never prescribes a fix.
