@@ -50,7 +50,7 @@ forge build
 Run a local factory suite that does not require RPC credentials:
 
 ```bash
-forge test --match-path test/factory/FusionFactory.t.sol
+npm run test:unit
 ```
 
 Fork tests read provider names from the ignored `.env` file. Copy [.env.example](.env.example), supply only your own RPC

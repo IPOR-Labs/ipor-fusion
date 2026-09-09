@@ -85,6 +85,17 @@ Test smart contracts using:
 forge test -vvv --ffi
 ```
 
+Run the classified local factory suite without RPC credentials, FFI or
+filesystem permissions:
+
+```bash
+npm run test:unit
+```
+
+The command validates the suite catalog first and exits non-zero when the
+selection is empty or Forge fails. Its current coverage is documented in
+[`docs/testing.md`](./docs/testing.md).
+
 ## Pre-commit hooks
 
 ### requirements

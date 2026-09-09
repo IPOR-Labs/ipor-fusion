@@ -20,8 +20,8 @@ krok 0 i 5) oraz Pete po commicie.
 | T11 | Instrukcje pracy nad fabrykami | P0 | T08, T10 | committed `a92080a` | 2026-09-08 | `contracts/factory/AGENTS.md` i `docs/factories.md`: wybór factory, aktywna wersja, pełny flow oraz rozdzielenie czterech trybów testów |
 | T12 | Instrukcje pracy nad fuse'ami | P1 | T08, T09 | committed `4771509` | 2026-09-08 | `contracts/fuses/AGENTS.md`: cztery części integracji, ścieżka `execute` przez delegatecall, substrates jako pełne zastąpienie listy, balance fuse i wycena w WAD, dobór testów; przejście ERC-4626 od źródła do testu (23 passed) |
 | T13 | Katalog testów dla pilotażu | P0 | T04, T11 | committed `2b3e415` | 2026-09-08 | `config/test-suites.json` + schemat + walidator (`npm run validate:test-suites`), `test/AGENTS.md`, `docs/testing.md`; 7 suit `test/factory/`, reszta jawnie niesklasyfikowana; żadna suita nie jest `deployed-usage` |
-| T14 | Jawne profile testów | P0 | T13 | ready-for-commit | 2026-09-09 | Jawne profile `ci`, `factory_local`, `factory_ethereum` i `arbitrum`; profile pilotażu bez FFI i dostępu do plików, bez zmiany kompilatora, optimizera ani EVM |
-| T15 | Lokalny zestaw bez RPC | P0 | T13, T14 | todo | | |
+| T14 | Jawne profile testów | P0 | T13 | committed `212a6e6` | 2026-09-09 | Jawne profile `ci`, `factory_local`, `factory_ethereum` i `arbitrum`; profile pilotażu bez FFI i dostępu do plików, bez zmiany kompilatora, optimizera ani EVM |
+| T15 | Lokalny zestaw bez RPC | P0 | T13, T14 | ready-for-commit | 2026-09-09 | `npm run test:unit` waliduje katalog i uruchamia 5 lokalnych suit (129 testów) bez RPC, FFI i dostępu do plików; pusta selekcja i błąd Forge są błędami |
 | T16 | Runner jednego zestawu na forku | P0 | T13, T14 | todo | | |
 | T17 | agent:doctor lokalny | P0 | T03, T04, T13 | todo | | |
 | T18 | agent:doctor RPC | P0 | T16, T17 | todo | | |

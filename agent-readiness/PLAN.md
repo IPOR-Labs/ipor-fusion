@@ -359,7 +359,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T15 — Lokalny zestaw bez RPC
 
-- [ ] **P0 · M · Zależności: T13, T14.**
+- [x] **P0 · M · Zależności: T13, T14.**
 - **Zakres:** zaimplementować `npm run test:unit` dla zweryfikowanego podzbioru testów i opisać jego pokrycie. Nie przemieszczać wszystkich testów.
 - **Odbiór:** zestaw działa bez RPC po instalacji zależności; pusta selekcja lub błąd Forge daje niezerowy kod wyjścia.
 - **Commit:** `test(runner): T15 add an RPC-free unit suite`.

@@ -1,0 +1,22 @@
+T15 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run test:unit:runner
+  2 passed; 0 failed
+  - a valid fork-only catalog exits 1 with "no RPC-free local-deployment suites"
+  - FORGE_BIN=/bin/false exits 1, reports the profile failure and never prints PASS
+
+PASS npm run test:unit
+  catalog validation: 7 classified suites
+  selected: 5 local-deployment suites under factory_local
+  provider variables from the catalog masked with http://127.0.0.1:1 in Forge only
+  Forge: 129 passed; 0 failed; 0 skipped
+  runner: PASS (5 suites)
+
+PASS npm run validate:test-suites
+  valid: config/test-suites.json (7 suite(s) classified)
+
+PASS node --check tools/run-unit-tests.mjs
+PASS node --check tools/test-run-unit-tests.mjs
+PASS local Markdown link check for README.md, docs/testing.md, test/AGENTS.md and AGENTS.md
+PASS Prettier check for T15 JSON, JavaScript and Markdown files
+PASS git diff --check

@@ -71,12 +71,30 @@ deployed factory works is wrong.
 Local, no credentials required — 129 tests across five suites:
 
 ```bash
-forge build
-forge test --match-path 'test/factory/FusionFactory.t.sol'
-forge test --match-path 'test/factory/FusionFactoryBusinessClientFeePackagesTest.t.sol'
-forge test --match-path 'test/factory/FuseManagerTimelockCancelTest.t.sol'
-forge test --match-path 'test/factory/WrappedPlasmaVaultFactory.t.sol'
-forge test --match-path 'test/factory/WhitelistWrappedPlasmaVaultFactory.t.sol'
+npm run test:unit
+```
+
+This command validates the catalog, selects every `local-deployment` entry and
+runs entries grouped by the profile recorded in each one. It overrides the
+catalogued provider variables with an unreachable loopback endpoint in the
+Forge child process, so an accidental RPC dependency fails instead of using
+credentials from the caller's environment or `.env`. An empty selection,
+invalid catalog or Forge failure returns a non-zero exit code.
+
+The current scope is intentionally narrow: the five top-level factory suites
+below, covering local FusionFactory composition and access control, DAO and
+business-client fee-package logic, fuse-manager timelock cancellation, and the
+plain and whitelist wrapper factories. It does not cover any unclassified test,
+fork behavior, real deployment, price-feed factory or protocol integration.
+
+Equivalent individual Forge commands for diagnosis are:
+
+```bash
+FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/FusionFactory.t.sol'
+FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/FusionFactoryBusinessClientFeePackagesTest.t.sol'
+FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/FuseManagerTimelockCancelTest.t.sol'
+FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/WrappedPlasmaVaultFactory.t.sol'
+FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/WhitelistWrappedPlasmaVaultFactory.t.sol'
 ```
 
 Fork, requires an archive-capable Ethereum endpoint — 10 tests across two

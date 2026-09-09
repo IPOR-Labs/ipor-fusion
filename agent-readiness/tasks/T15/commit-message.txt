@@ -1,0 +1,9 @@
+test(runner): T15 add an RPC-free unit suite
+
+Add npm run test:unit as the catalog-driven entry point for the five classified
+local factory suites. It validates the catalog, uses each recorded restricted
+profile, masks catalogued RPC variables with an unreachable loopback endpoint,
+and propagates empty selections and Forge failures.
+
+Document the exact 129-test scope and add runner tests for both required failure
+paths.

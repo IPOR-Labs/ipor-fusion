@@ -49,7 +49,7 @@ the same change and record the run that produced the numbers.
 
 ```bash
 forge build
-FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/FusionFactory.t.sol'
+npm run test:unit
 npm run validate:test-suites
 ```
 
@@ -57,6 +57,10 @@ Use the exact `profile` named by the catalog. The two factory pilot profiles
 deny FFI and filesystem access because the classified suites need neither.
 Do not silently fall back to `default`: that would make the test pass with more
 capabilities than its catalog entry promises.
+
+`npm run test:unit` is the canonical credential-free entry point for the
+classified local subset. It does not mean every unit-looking directory in the
+repository is included; read its exact coverage in `docs/testing.md`.
 
 Suites with `"rpc": null` in the catalog need no credentials. Suites with a
 provider variable need your own archive-capable endpoint; Foundry reads the
