@@ -11892,6 +11892,155 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-liquity-market-29",
+            "protocol": "liquity",
+            "chainId": 1,
+            "market": {
+                "id": 29,
+                "constant": "LIQUITY_V2",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/liquity/LiquityStabilityPoolFuse.sol",
+                "balanceFuse": "contracts/fuses/liquity/LiquityBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "LiquityStabilityPoolFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "registry",
+                            "type": "address",
+                            "meaning": "the Liquity V2 AddressesRegistry of one collateral branch; it must be a granted substrate of this market and resolves the stability pool and the BOLD token"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of BOLD to provide to the branch's stability pool (provideToSP without claiming collateral gains), in BOLD smallest units (18 decimals); 0 only emits the event"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "LiquityStabilityPoolFuseExitData",
+                    "fields": [
+                        {
+                            "name": "registry",
+                            "type": "address",
+                            "meaning": "the Liquity V2 AddressesRegistry of one collateral branch; it must be a granted substrate of this market and resolves the stability pool and the BOLD token"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of BOLD to withdraw from the stability pool (withdrawFromSP with all collateral gains claimed), in BOLD smallest units; 0 claims all collateral gains only when the Plasma Vault has no deposit, otherwise it only emits the event"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:96",
+                    "sources": {
+                        "contracts/fuses/liquity/LiquityStabilityPoolFuse.sol": "0xfac088901d976f40c4775ec3d66feea71cd49634ea0ae533383d3ad1a427b5de",
+                        "contracts/fuses/liquity/LiquityBalanceFuse.sol": "0xb6d53872bb019a753fc816cf321437c89473b871a37efd0cfd228324b72e9d10"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "LiquityStabilityPoolFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/liquity/LiquityStabilityPoolFuse.sol:22",
+                            "fields": [
+                                {
+                                    "name": "registry",
+                                    "type": "address",
+                                    "source": "contracts/fuses/liquity/LiquityStabilityPoolFuse.sol:23"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/liquity/LiquityStabilityPoolFuse.sol:24"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "LiquityStabilityPoolFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/liquity/LiquityStabilityPoolFuse.sol:38",
+                            "fields": [
+                                {
+                                    "name": "registry",
+                                    "type": "address",
+                                    "source": "contracts/fuses/liquity/LiquityStabilityPoolFuse.sol:39"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/liquity/LiquityStabilityPoolFuse.sol:40"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Liquity V2 AddressesRegistry addresses, one per collateral branch (WETH, wstETH, rETH, ...), whose stability pools this market may provide BOLD to and withdraw from. The action fuse checks data.registry on enter and exit; the balance fuse iterates the list and takes the BOLD token from the first registry, so every registry must share the same BOLD token.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "per registry: the Plasma Vault's compounded BOLD deposit plus its pending BOLD yield gain (getDepositorYieldGainWithPending), priced as BOLD, and its stashed collateral plus unrealized collateral gain (stashedColl, getDepositorCollGain), priced as the branch's collateral token",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(), i.e. the vault's PriceOracleMiddlewareManager falling back to the PriceOracleMiddleware it points at; needs a price for BOLD and for every branch's collateral token",
+                "unit": "USD normalized to WAD (18 decimals) through IporMath.convertToWad over token decimals plus price decimals"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/liquity/LiquityStabilityPoolFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "StabilityPoolFuseLiquity",
+                    "address": "0x5f0E7454F0AF81141806ec3B31D972401Bae3Edb",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xa955eae8751820cf76e96394e694074aead5aeec94fe08544a9f75bbd65e7c2f",
+                    "observedMarketId": 29,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 29 at the observed block; runtime code (3063 bytes) contains enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8, matching this checkout's two-field structs",
+                        "VERSION() reverted, while this checkout's LiquityStabilityPoolFuse.sol exposes it (and the enterTransient/exitTransient path built on it); the deployed contract is therefore an older version of this fuse — the enter/exit ABI is the same, the transient-storage entry points must not be assumed"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseLiquity",
+                    "address": "0xF713395A26400c2ECd4af9fAF0f6AD7c569DAa97",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xe8c79a9e3ec6ee048d8b741d3690dd6391af543421e4541a32352aaefb4daf7d",
+                    "observedMarketId": 29,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 29 and balanceOf() 0x722713f7 is present in the runtime code (2839 bytes)",
+                        "VERSION() reverted, which is consistent with this checkout: LiquityBalanceFuse.sol declares no VERSION",
+                        "bytecode equivalence with this checkout's LiquityBalanceFuse.sol was not established"
+                    ]
+                }
+            }
         }
     ]
 }
