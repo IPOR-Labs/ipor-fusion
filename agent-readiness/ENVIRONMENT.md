@@ -1,15 +1,16 @@
 # Środowisko wykonania — fakty zweryfikowane
 
-Aktualizuj ten plik, gdy coś się zmieni. Data ostatniej weryfikacji: **2026-09-07**.
+Aktualizuj ten plik, gdy coś się zmieni. Data ostatniej weryfikacji: **2026-09-09** (sekcja Git), reszta **2026-09-07**.
 
 ## Git
 
 - Repo: `/Users/piotrrzonsowski/repos/ipor-fusion` (w VM też jako `/home/ipor/repos/ipor-fusion`).
 - Branch roboczy: `feature/agents-support`. Plan pisany na `6e1fd02`, HEAD przy starcie `a1f79d6`
   (6e1fd02 jest przodkiem — plan pozostaje aktualny).
-- **W VM katalog `.git` jest zamontowany read-only** (9p, host-enforced). `git status`, `git log`,
-  `git diff` działają; `git add/commit/stash/checkout` nie. Commity robi Pete ręcznie na hoście
-  na podstawie `tasks/Txx/COMMIT.md`.
+- **`.git` jest zapisywalny z VM** (sprawdzone 2026-09-09: zapis do `.git/`, `git add`,
+  `git commit` działają). Wcześniejszy zapis mówił, że katalog jest zamontowany read-only
+  (9p, host-enforced) — to już nieaktualne. Domyślnie i tak commituje Pete na podstawie
+  `tasks/Txx/COMMIT.md`; agent commituje tylko na wyraźną prośbę.
 - Brak poświadczeń GitHub w VM. `gh` nie działa.
 
 ## Toolchain
