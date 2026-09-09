@@ -1,0 +1,47 @@
+{
+    "capturedAt": "2026-09-09",
+    "timezone": "Europe/Warsaw",
+    "source": {
+        "server": "ipor-fusion-dev",
+        "sdkVersion": "3.6.7",
+        "repository": "https://github.com/IPOR-Labs/ipor-fusion.py",
+        "tool": "fusion_address_lookup"
+    },
+    "queries": [
+        {
+            "query": "FusionFactory",
+            "chainId": 1,
+            "queryType": "name",
+            "matchCount": 2,
+            "matches": [
+                {
+                    "chainId": 1,
+                    "chain": "ethereum",
+                    "name": "IporFusionFactoryImpl",
+                    "address": "0xf19C1E9f6616F6056AF1e322A86fDaAaAf0263f5"
+                },
+                {
+                    "chainId": 1,
+                    "chain": "ethereum",
+                    "name": "IporFusionFactoryProxy",
+                    "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852"
+                }
+            ]
+        },
+        {
+            "query": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+            "chainIdArgument": 1,
+            "chainIdArgumentIgnoredForAddressQueries": true,
+            "queryType": "address",
+            "matchCount": 1,
+            "matches": [
+                {
+                    "chainId": 1,
+                    "chain": "ethereum",
+                    "name": "IporFusionFactoryProxy",
+                    "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852"
+                }
+            ]
+        }
+    ]
+}

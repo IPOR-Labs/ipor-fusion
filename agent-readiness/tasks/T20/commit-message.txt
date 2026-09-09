@@ -1,0 +1,9 @@
+docs(deployments): T20 select the factory pilot and address sources
+
+Select the Ethereum FusionFactory proxy as the first candidate using exact
+fusion_address_lookup results from the IPOR Fusion SDK deployment dataset.
+Capture the companion implementation row and the non-secret lookup evidence.
+
+Document which facts come from upstream discovery, verified explorer
+source/ABI, future local manifests and block-specific RPC reads. Keep deployment
+transaction, proxy slot, hashes and ABI provenance explicitly unresolved.

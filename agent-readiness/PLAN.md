@@ -396,7 +396,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T20 — Ustalenie źródła adresów i wybór pilotażu
 
-- [ ] **P0 · S · Zależności: T11.**
+- [x] **P0 · S · Zależności: T11.**
 - **Zakres:** sprawdzić `ipor-abi`/`fusion_address_lookup`, zapisać źródła i wybrać jedną parę sieć–FusionFactory w `docs/deployments.md`. Nie dopisywać zgadywanych adresów.
 - **Odbiór:** kandydat ma pochodzenie i jawny status niezweryfikowany; ustalono, które dane odtwarzamy z istniejącego rejestru, a które utrzymujemy lokalnie.
 - **Commit:** `docs(deployments): T20 select the factory pilot and address sources`.

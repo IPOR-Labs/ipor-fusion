@@ -25,8 +25,8 @@ krok 0 i 5) oraz Pete po commicie.
 | T16 | Runner jednego zestawu na forku | P0 | T13, T14 | committed `3f68cf7` | 2026-09-09 | `test:fork -- --chain 1 --suite factory --block …`; blok trafia przez `FUSION_FORK_BLOCK` do obu fixture'ów i jest asertywnie sprawdzany; nazwane błędy wejścia/RPC/selekcji |
 | T17 | agent:doctor lokalny | P0 | T03, T04, T13 | committed `4660699` | 2026-09-09 | Offline text/JSON: wersje Node/npm/Foundry, dependencies, submoduły i wyłącznie obecność nazw RPC; brak dependencies daje `npm ci` i exit 1 |
 | T18 | agent:doctor RPC | P0 | T16, T17 | committed `5f70266` | 2026-09-09 | Opt-in `--rpc --chain 1 --block …`: chain ID + `eth_getCode` przy katalogowym probe; osobne `RPC_UNAVAILABLE`, `CHAIN_MISMATCH` i `HISTORICAL_STATE_UNAVAILABLE`, bez ujawniania URL |
-| T19 | test:affected | P1 | T13, T15, T16 | ready-for-commit | 2026-09-09 | `test:affected -- --base …` łączy diff committed/staged/unstaged/untracked, graf importów i granice ryzyka; unknown rozszerza do 7 suit z powodem; default wykonuje local+fork |
-| T20 | Źródło adresów i wybór pilotażu | P0 | T11 | todo | | wymaga MCP `fusion_address_lookup` / ipor-abi |
+| T19 | test:affected | P1 | T13, T15, T16 | committed `8fbf2d2` | 2026-09-09 | `test:affected -- --base …` łączy diff committed/staged/unstaged/untracked, graf importów i granice ryzyka; unknown rozszerza do 7 suit z powodem; default wykonuje local+fork |
+| T20 | Źródło adresów i wybór pilotażu | P0 | T11 | ready-for-commit | 2026-09-09 | `fusion_address_lookup` SDK 3.6.7 potwierdza Ethereum proxy `0xcd05…b852` i companion impl `0xf19C…63f5`; pilot wybrany jako candidate, jawne braki tx/bloku/proxy slot/ABI |
 | T21 | Schemat i walidator manifestów | P0 | T20 | todo | | |
 | T22 | ABI jednej wdrożonej wersji | P0 | T20, T21 | todo | | |
 | T23 | Manifest pierwszego kandydata | P0 | T21, T22 | todo | | |
