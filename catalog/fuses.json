@@ -2685,6 +2685,990 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-euler-v2-market-11",
+            "protocol": "euler-v2",
+            "chainId": 1,
+            "market": {
+                "id": 11,
+                "constant": "EULER_V2",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/euler/EulerV2SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/euler/EulerV2BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,bytes1))",
+                    "selector": "0xa1572961",
+                    "struct": "EulerV2SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "eulerVault",
+                            "type": "address",
+                            "meaning": "the Euler V2 EVault (ERC4626) address; together with subAccount it must match a granted EulerSubstrate of this market"
+                        },
+                        {
+                            "name": "maxAmount",
+                            "type": "uint256",
+                            "meaning": "amount of the EVault's underlying asset to deposit, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance and returns 0 when the cap is 0. Requires EulerFuseLib.canSupply (vault + subAccount granted)"
+                        },
+                        {
+                            "name": "subAccount",
+                            "type": "bytes1",
+                            "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,bytes1))",
+                    "selector": "0xe2527de9",
+                    "struct": "EulerV2SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "eulerVault",
+                            "type": "address",
+                            "meaning": "the Euler V2 EVault to withdraw from; exit performs no substrate check by design so an existing position stays withdrawable after a substrate change"
+                        },
+                        {
+                            "name": "maxAmount",
+                            "type": "uint256",
+                            "meaning": "amount of underlying asset to withdraw, in the asset's smallest unit, capped at the sub-account's convertToAssets(balanceOf); instant withdrawals additionally require the substrate to have isCollateral == false and canBorrow == false (EulerFuseLib.canInstantWithdraw)"
+                        },
+                        {
+                            "name": "subAccount",
+                            "type": "bytes1",
+                            "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:34",
+                    "sources": {
+                        "contracts/fuses/euler/EulerV2SupplyFuse.sol": "0x5f0ba1547bf49c593abbd998c9ebd85629e9183e59ebcd395fce1fd00a6f8e2b",
+                        "contracts/fuses/euler/EulerV2BalanceFuse.sol": "0xaf4a289b333014ebb88ab3f5ee9d3fbe3cd39fcf78f919b5c508270343e66f4f"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "EulerV2SupplyFuseEnterData",
+                            "signature": "enter((address,uint256,bytes1))",
+                            "selector": "0xa1572961",
+                            "source": "contracts/fuses/euler/EulerV2SupplyFuse.sol:21",
+                            "fields": [
+                                {
+                                    "name": "eulerVault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/euler/EulerV2SupplyFuse.sol:22"
+                                },
+                                {
+                                    "name": "maxAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/euler/EulerV2SupplyFuse.sol:23"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "source": "contracts/fuses/euler/EulerV2SupplyFuse.sol:24"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "EulerV2SupplyFuseExitData",
+                            "signature": "exit((address,uint256,bytes1))",
+                            "selector": "0xe2527de9",
+                            "source": "contracts/fuses/euler/EulerV2SupplyFuse.sol:31",
+                            "fields": [
+                                {
+                                    "name": "eulerVault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/euler/EulerV2SupplyFuse.sol:32"
+                                },
+                                {
+                                    "name": "maxAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/euler/EulerV2SupplyFuse.sol:33"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "source": "contracts/fuses/euler/EulerV2SupplyFuse.sol:34"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/euler/EulerV2BorrowFuse.sol",
+                    "purpose": "borrows the EVault's asset to the Plasma Vault (enter) and repays up to maxAssetAmount (exit) on behalf of a sub-account; both directions require EulerFuseLib.canBorrow on the substrate",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,bytes1))",
+                            "selector": "0xa1572961",
+                            "struct": "EulerV2BorrowFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "eulerVault",
+                                    "type": "address",
+                                    "meaning": "the borrowable EVault; the substrate for it and subAccount must carry canBorrow == true"
+                                },
+                                {
+                                    "name": "assetAmount",
+                                    "type": "uint256",
+                                    "meaning": "asset amount to borrow, in the asset's smallest unit; 0 is a no-op"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,bytes1))",
+                            "selector": "0xe2527de9",
+                            "struct": "EulerV2BorrowFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "eulerVault",
+                                    "type": "address",
+                                    "meaning": "the EVault whose debt is repaid; canBorrow substrate check applies"
+                                },
+                                {
+                                    "name": "maxAssetAmount",
+                                    "type": "uint256",
+                                    "meaning": "upper bound of asset to repay, in the asset's smallest unit; capped at the outstanding debt and the Plasma Vault's balance"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/euler/EulerV2BorrowFuse.sol": "0x2bd9e1c21e6ae749b76d5adffd86df37e708e4368b527258183e2b90df92ee06"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EulerV2BorrowFuseEnterData",
+                                    "signature": "enter((address,uint256,bytes1))",
+                                    "selector": "0xa1572961",
+                                    "source": "contracts/fuses/euler/EulerV2BorrowFuse.sol:19",
+                                    "fields": [
+                                        {
+                                            "name": "eulerVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2BorrowFuse.sol:20"
+                                        },
+                                        {
+                                            "name": "assetAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/euler/EulerV2BorrowFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2BorrowFuse.sol:22"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "EulerV2BorrowFuseExitData",
+                                    "signature": "exit((address,uint256,bytes1))",
+                                    "selector": "0xe2527de9",
+                                    "source": "contracts/fuses/euler/EulerV2BorrowFuse.sol:29",
+                                    "fields": [
+                                        {
+                                            "name": "eulerVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2BorrowFuse.sol:30"
+                                        },
+                                        {
+                                            "name": "maxAssetAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/euler/EulerV2BorrowFuse.sol:31"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2BorrowFuse.sol:32"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "BorrowFuseEulerV2",
+                        "address": "0x6B339a926328B9a5A5705fD051aA5028D9f7f2F6",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x65ecb746365f7788415f990f47b7e50919453e671bb3b750cc87f1f6bb0f1e64",
+                        "observedMarketId": 11,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 11 and VERSION() returned its own address at the observed block",
+                            "runtime code contains enter((address,uint256,bytes1)) 0xa1572961 and exit((address,uint256,bytes1)) 0xe2527de9, the checkout's selectors"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/euler/EulerV2CollateralFuse.sol",
+                    "purpose": "enables (enter) or disables (exit) an EVault as collateral for a sub-account through EVC.enableCollateral / disableCollateral; enter requires EulerFuseLib.canCollateral (isCollateral == true)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,bytes1))",
+                            "selector": "0x8653ba01",
+                            "struct": "EulerV2CollateralFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "eulerVault",
+                                    "type": "address",
+                                    "meaning": "the EVault to enable as collateral; its substrate must carry isCollateral == true"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,bytes1))",
+                            "selector": "0xa82f288a",
+                            "struct": "EulerV2CollateralFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "eulerVault",
+                                    "type": "address",
+                                    "meaning": "the EVault to disable as collateral; no substrate check"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/euler/EulerV2CollateralFuse.sol": "0x5f83e47a5ba385a5ac82279687cafd1c977d0cea2d6341ec0470c6c50dd3c62e"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EulerV2CollateralFuseEnterData",
+                                    "signature": "enter((address,bytes1))",
+                                    "selector": "0x8653ba01",
+                                    "source": "contracts/fuses/euler/EulerV2CollateralFuse.sol:14",
+                                    "fields": [
+                                        {
+                                            "name": "eulerVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2CollateralFuse.sol:15"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2CollateralFuse.sol:16"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "EulerV2CollateralFuseExitData",
+                                    "signature": "exit((address,bytes1))",
+                                    "selector": "0xa82f288a",
+                                    "source": "contracts/fuses/euler/EulerV2CollateralFuse.sol:22",
+                                    "fields": [
+                                        {
+                                            "name": "eulerVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2CollateralFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2CollateralFuse.sol:24"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "CollateralFuseEulerV2",
+                        "address": "0x07d80997d57AD9489a4c48f6134dF91822e36514",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x851b8c25a69fe2faeabbf4f10da0529cbf21cbdfa8323af887f4c399bd878d4c",
+                        "observedMarketId": 11,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 11 and VERSION() returned its own address at the observed block",
+                            "runtime code contains enter((address,bytes1)) 0x8653ba01 and exit((address,bytes1)) 0xa82f288a, the checkout's selectors"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/euler/EulerV2ControllerFuse.sol",
+                    "purpose": "enables an EVault as the sub-account's controller (enter, requires canBorrow) or disables it through EVC.call → EVault.disableController (exit, requires canSupply and a zero debt)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,bytes1))",
+                            "selector": "0x8653ba01",
+                            "struct": "EulerV2ControllerFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "eulerVault",
+                                    "type": "address",
+                                    "meaning": "the EVault to enable as controller; its substrate must carry canBorrow == true"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,bytes1))",
+                            "selector": "0xa82f288a",
+                            "struct": "EulerV2ControllerFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "eulerVault",
+                                    "type": "address",
+                                    "meaning": "the controller EVault to disable; the substrate must be granted (canSupply)"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/euler/EulerV2ControllerFuse.sol": "0x86f5dc8a359eaf33528fa44ca3f9b6ed0ee7d40399eb963ce83e352ea07db5fa"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EulerV2ControllerFuseEnterData",
+                                    "signature": "enter((address,bytes1))",
+                                    "selector": "0x8653ba01",
+                                    "source": "contracts/fuses/euler/EulerV2ControllerFuse.sol:14",
+                                    "fields": [
+                                        {
+                                            "name": "eulerVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2ControllerFuse.sol:15"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2ControllerFuse.sol:16"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "EulerV2ControllerFuseExitData",
+                                    "signature": "exit((address,bytes1))",
+                                    "selector": "0xa82f288a",
+                                    "source": "contracts/fuses/euler/EulerV2ControllerFuse.sol:22",
+                                    "fields": [
+                                        {
+                                            "name": "eulerVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2ControllerFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2ControllerFuse.sol:24"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ControllerFuseEulerV2",
+                        "address": "0x4bFEa07593844155c0BD5ee656cE54e864cA9B55",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x7666fdb6829d1870e1946248a3071759b685333de44862c1e3432cdf7b834ae8",
+                        "observedMarketId": 11,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 11 and VERSION() returned its own address at the observed block",
+                            "runtime code contains the checkout's enter/exit selectors 0x8653ba01 / 0xa82f288a"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/euler/EulerV2BatchFuse.sol",
+                    "purpose": "executes a validated EVC.batch of deposit/withdraw/borrow/repay/enableCollateral/enableController calls in one action, each item checked against the substrates (canSupply/canBorrow/canCollateral) and the sub-account derivation; flash loans are rejected; exit() always reverts UnsupportedOperation",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter(((address,bytes1,bytes)[],address[],address[]))",
+                            "selector": "0x07ecc3ff",
+                            "struct": "EulerV2BatchFuseData",
+                            "fields": [
+                                {
+                                    "name": "batchItems",
+                                    "type": "EulerV2BatchItem[]",
+                                    "meaning": "EVC batch items: targetContract (EVault or EVC), onBehalfOfAccount (sub-account byte, 0x00 = the Plasma Vault itself) and the encoded call; every selector is validated against the substrates before execution"
+                                },
+                                {
+                                    "name": "assetsForApprovals",
+                                    "type": "address[]",
+                                    "meaning": "tokens to forceApprove(type(uint256).max) to the matching entry of eulerVaultsForApprovals before the batch; same length as eulerVaultsForApprovals"
+                                },
+                                {
+                                    "name": "eulerVaultsForApprovals",
+                                    "type": "address[]",
+                                    "meaning": "EVaults receiving the approvals; must be granted substrates"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit()",
+                            "selector": "0xe9fad8ee",
+                            "struct": null,
+                            "fields": []
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/euler/EulerV2BatchFuse.sol": "0x6af3f5d108eea911a2dd1f014146cc4957fdebb8010df39d6e2de81db147ae32"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EulerV2BatchFuseData",
+                                    "signature": "enter(((address,bytes1,bytes)[],address[],address[]))",
+                                    "selector": "0x07ecc3ff",
+                                    "source": "contracts/fuses/euler/EulerV2BatchFuse.sol:22",
+                                    "fields": [
+                                        {
+                                            "name": "batchItems",
+                                            "type": "EulerV2BatchItem[]",
+                                            "source": "contracts/fuses/euler/EulerV2BatchFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "assetsForApprovals",
+                                            "type": "address[]",
+                                            "source": "contracts/fuses/euler/EulerV2BatchFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "eulerVaultsForApprovals",
+                                            "type": "address[]",
+                                            "source": "contracts/fuses/euler/EulerV2BatchFuse.sol:25"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": null,
+                                    "signature": "exit()",
+                                    "selector": "0xe9fad8ee",
+                                    "source": "contracts/fuses/euler/EulerV2BatchFuse.sol:104",
+                                    "fields": []
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "EulerV2BatchFuse",
+                        "address": "0x45F3bf4F5318D9683357fA8f9f4442263F7DdA6F",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x1d15d52d9ac3e0498d10d9c8414ace8f27d17ff05c9d656320751975f817b257",
+                        "observedMarketId": 11,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 11 and VERSION() returned its own address at the observed block",
+                            "runtime code contains enter(((address,bytes1,bytes)[],address[],address[])) 0x07ecc3ff and exit() 0xe9fad8ee"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol",
+                    "purpose": "deploys an EulerSwap v2 pool owned by a sub-account through the EulerSwap factory (enter; supply vaults must be canSupply substrates, borrow vaults canBorrow; eulerAccount and feeRecipient must be the sub-account, predictedPool must match the CREATE2 address) and uninstalls it (exit); calls go via EVC.call because the factory is EVCUtil-gated",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter(((address,address,address,address,address,address),(uint112,uint112,uint112,uint112,uint80,uint80,uint64,uint64,uint64,uint64,uint40,uint8,address),(uint112,uint112),bytes32,address,bytes1))",
+                            "selector": "0xa4495570",
+                            "struct": "EulerV2SwapDeployFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "staticParams",
+                                    "type": "IEulerV2Swap.StaticParams",
+                                    "meaning": "supplyVault0/1, borrowVault0/1, eulerAccount, feeRecipient; eulerAccount and feeRecipient must equal the derived sub-account"
+                                },
+                                {
+                                    "name": "dynamicParams",
+                                    "type": "IEulerV2Swap.DynamicParams",
+                                    "meaning": "equilibrium and minimum reserves (uint112), priceX/priceY (uint80), concentrationX/Y and fee0/fee1 (uint64, 1e18 scale per EulerSwap), expiration (uint40 timestamp), swapHookedOperations, swapHook"
+                                },
+                                {
+                                    "name": "initialState",
+                                    "type": "IEulerV2Swap.InitialState",
+                                    "meaning": "reserve0 and reserve1 the pool starts with"
+                                },
+                                {
+                                    "name": "salt",
+                                    "type": "bytes32",
+                                    "meaning": "CREATE2 salt for the pool"
+                                },
+                                {
+                                    "name": "predictedPool",
+                                    "type": "address",
+                                    "meaning": "expected pool address; enter reverts EulerV2SwapDeployFusePoolAddressMismatch if the factory computes or returns a different one"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,bytes1))",
+                            "selector": "0xa82f288a",
+                            "struct": "EulerV2SwapDeployFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "meaning": "the EulerSwap pool to uninstall from the sub-account"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/euler/EulerV2SwapDeployFuse.sol": "0xe74e43a4d5b063537b5d8cecc83f0f323360b8d558e6edd1b956dde650d4dc5f"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EulerV2SwapDeployFuseEnterData",
+                                    "signature": "enter(((address,address,address,address,address,address),(uint112,uint112,uint112,uint112,uint80,uint80,uint64,uint64,uint64,uint64,uint40,uint8,address),(uint112,uint112),bytes32,address,bytes1))",
+                                    "selector": "0xa4495570",
+                                    "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:20",
+                                    "fields": [
+                                        {
+                                            "name": "staticParams",
+                                            "type": "IEulerV2Swap.StaticParams",
+                                            "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "dynamicParams",
+                                            "type": "IEulerV2Swap.DynamicParams",
+                                            "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "initialState",
+                                            "type": "IEulerV2Swap.InitialState",
+                                            "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "salt",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "predictedPool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:26"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "EulerV2SwapDeployFuseExitData",
+                                    "signature": "exit((address,bytes1))",
+                                    "selector": "0xa82f288a",
+                                    "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:32",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:33"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2SwapDeployFuse.sol:34"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SwapDeployFuseEulerV2",
+                        "address": "0x6A1E8Cef962AEb714A3e6FEcdB89ae6183cc0165",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x61e966ec2a27ef5bb82b414a58a3cc8b0e21a782c1f19f972a5753d4380549e6",
+                        "observedMarketId": 11,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 11 and VERSION() returned its own address at the observed block",
+                            "runtime code contains the checkout's enter 0xa4495570 and exit((address,bytes1)) 0xa82f288a"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol",
+                    "purpose": "reconfigures the dynamic parameters and reserves of an EulerSwap pool owned by a sub-account (enter, via EVC.call; the pool's vaults are re-checked against the substrates); exit() always reverts UnsupportedOperation",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,bytes1,(uint112,uint112,uint112,uint112,uint80,uint80,uint64,uint64,uint64,uint64,uint40,uint8,address),(uint112,uint112)))",
+                            "selector": "0x72cebabf",
+                            "struct": "EulerV2SwapReconfigureFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "meaning": "an EulerSwap pool deployed by the factory and owned by the derived sub-account"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                },
+                                {
+                                    "name": "dynamicParams",
+                                    "type": "IEulerV2Swap.DynamicParams",
+                                    "meaning": "new dynamic parameters (see EulerV2SwapDeployFuse)"
+                                },
+                                {
+                                    "name": "initialState",
+                                    "type": "IEulerV2Swap.InitialState",
+                                    "meaning": "new reserve0 and reserve1"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit()",
+                            "selector": "0xe9fad8ee",
+                            "struct": null,
+                            "fields": []
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol": "0x44c2df6300b3abfa5eacdcba8fc40c75889563b8af38b745ec6cd1317db8849f"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EulerV2SwapReconfigureFuseEnterData",
+                                    "signature": "enter((address,bytes1,(uint112,uint112,uint112,uint112,uint80,uint80,uint64,uint64,uint64,uint64,uint40,uint8,address),(uint112,uint112)))",
+                                    "selector": "0x72cebabf",
+                                    "source": "contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol:17",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "dynamicParams",
+                                            "type": "IEulerV2Swap.DynamicParams",
+                                            "source": "contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol:20"
+                                        },
+                                        {
+                                            "name": "initialState",
+                                            "type": "IEulerV2Swap.InitialState",
+                                            "source": "contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol:21"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": null,
+                                    "signature": "exit()",
+                                    "selector": "0xe9fad8ee",
+                                    "source": "contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol:121",
+                                    "fields": []
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SwapReconfigureFuseEulerV2",
+                        "address": "0xd8c2DE8ddA805a8Bdc731A3f8c6EBAD99850005F",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x05cdcf92d04aa642aae73661d3252384e1a27150b262a799cd67fc0012059336",
+                        "observedMarketId": 11,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 11 and VERSION() returned its own address at the observed block",
+                            "runtime code contains the checkout's enter 0x72cebabf and exit() 0xe9fad8ee"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/euler/EulerV2SwapRegistryFuse.sol",
+                    "purpose": "registers (enter) or unregisters (exit) a sub-account's EulerSwap pool in the EulerSwap registry for discoverability; ownership of the pool by the sub-account is checked, no control is transferred",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,bytes1))",
+                            "selector": "0x8653ba01",
+                            "struct": "EulerV2SwapRegistryFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "meaning": "the pool to register; must be owned by the derived sub-account"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,bytes1))",
+                            "selector": "0xa82f288a",
+                            "struct": "EulerV2SwapRegistryFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "meaning": "the pool to unregister; reverts EulerV2SwapRegistryFuseNotRegistered when the sub-account has no registered pool"
+                                },
+                                {
+                                    "name": "subAccount",
+                                    "type": "bytes1",
+                                    "meaning": "one-byte sub-account id; the acting account is PlasmaVault XOR uint8(subAccount) (EulerFuseLib.generateSubAccountAddress), and every call is routed through EVC.call on behalf of that account"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/euler/EulerV2SwapRegistryFuse.sol": "0x1df21fb47c075bf53e9ac044f93221962f45a81162208eaaeb951312e4f31589"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "EulerV2SwapRegistryFuseEnterData",
+                                    "signature": "enter((address,bytes1))",
+                                    "selector": "0x8653ba01",
+                                    "source": "contracts/fuses/euler/EulerV2SwapRegistryFuse.sol:15",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2SwapRegistryFuse.sol:16"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2SwapRegistryFuse.sol:17"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "EulerV2SwapRegistryFuseExitData",
+                                    "signature": "exit((address,bytes1))",
+                                    "selector": "0xa82f288a",
+                                    "source": "contracts/fuses/euler/EulerV2SwapRegistryFuse.sol:23",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/euler/EulerV2SwapRegistryFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "subAccount",
+                                            "type": "bytes1",
+                                            "source": "contracts/fuses/euler/EulerV2SwapRegistryFuse.sol:25"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SwapRegistryFuseEulerV2",
+                        "address": "0xcb7Ac645dA075a2b0391BA7102b8c383D4211fdC",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x1f723bdeb093037e3bc36ce1b44ddf7b5076a6971bfe6bad50944e410ed4f4ef",
+                        "observedMarketId": 11,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 11 and VERSION() returned its own address at the observed block",
+                            "runtime code contains the checkout's enter/exit selectors 0x8653ba01 / 0xa82f288a"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol",
+                    "purpose": "reward fuse: withdraws vested rEUL locks as EUL to the RewardsClaimManager (rEUL.withdrawToByLockTimestamps); executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards after FUSE_MANAGER_ROLE registered it with addRewardFuses; it has no MARKET_ID and performs no substrate check",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim((uint256[],bool))",
+                            "selector": "0x56476679",
+                            "struct": "ClaimData",
+                            "fields": [
+                                {
+                                    "name": "lockTimestamps",
+                                    "type": "uint256[]",
+                                    "meaning": "normalized rEUL lock timestamps of the Plasma Vault to withdraw"
+                                },
+                                {
+                                    "name": "allowRemainderLoss",
+                                    "type": "bool",
+                                    "meaning": "true forfeits the unvested remainder of immature locks; false reverts on them in rEUL (use claimAll(bool) to skip immature locks instead)"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol": "0x9595b6b4aeff2a8272e263ed0795ed76edc1bc3fada433f9929ec1d66aa7549b"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": "ClaimData",
+                                    "signature": "claim((uint256[],bool))",
+                                    "selector": "0x56476679",
+                                    "source": "contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol:17",
+                                    "fields": [
+                                        {
+                                            "name": "lockTimestamps",
+                                            "type": "uint256[]",
+                                            "source": "contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "allowRemainderLoss",
+                                            "type": "bool",
+                                            "source": "contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol:19"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "RewardEulerTokenClaimFuse",
+                        "address": "0xFfBfB992487290E5DA9dE4C06BFfD2d42eaAe2bA",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x7ae7cd8a5f7620377187bd6ed19a5283985f0a2d858fd076e19d83fb14de2602",
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "runtime code of 2634 bytes at the observed block contains claim((uint256[],bool)) 0x56476679 and claimAll(bool) 0x1acbf854",
+                            "MARKET_ID() and VERSION() revert because the source declares neither; a reward fuse serves every market of the vault",
+                            "bytecode equivalence with this checkout's RewardEulerTokenClaimFuse.sol was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "one bytes32 per (EVault, sub-account) pair packed by EulerFuseLib.substrateToBytes32: eulerVault (bits 96..255), isCollateral (bit 88), canBorrow (bit 80), subAccounts (bits 72..79, one sub-account id). The supply fuse and the batch fuse require the pair to be granted (canSupply); collateral operations require isCollateral, borrow/controller operations require canBorrow; instant withdrawal requires both flags false. The balance fuse iterates the same list and derives the sub-account address from each entry.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (bytes32-shaped, encode with EulerFuseLib.substrateToBytes32)",
+                "checkFunction": "EulerFuseLib.canSupply / canCollateral / canBorrow / canInstantWithdraw over PlasmaVaultConfigLib.getMarketSubstrates",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every substrate: the EVault's underlying asset, valued as convertToAssets of the sub-account's EVault shares minus the sub-account's debtOf in that EVault; the sum can go negative per entry and is clamped to zero in total",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(): IPriceOracleMiddleware.getAssetPrice(asset) for each EVault underlying asset (reverts UnsupportedQuoteCurrencyFromOracle on a zero price)",
+                "unit": "USD normalized to WAD (18 decimals) via IporMath.convertToWad(amount * price, assetDecimals + priceDecimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action; the reward fuse is executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards instead",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse; the reward fuse is added to the RewardsClaimManager with addRewardFuses by FUSE_MANAGER_ROLE",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's bytes32 substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each EVault underlying asset"
+            },
+            "tests": [
+                "test/fuses/euler/EulerV2SupplyFuseTest.t.sol",
+                "test/fuses/euler/EulerV2SupplyFuseInstantWithdrawTest.t.sol",
+                "test/fuses/euler/EulerFuseLibTest.t.sol",
+                "test/fuses/euler/EulerFuseLibCanInstantWithdrawTest.t.sol",
+                "test/fuses/euler/EulerV2SwapDeployFuseTest.t.sol",
+                "test/fuses/euler/EulerV2SwapReconfigureFuseTest.t.sol",
+                "test/fuses/euler/EulerV2SwapRegistryFuseTest.t.sol",
+                "test/fuses/euler/EulerV2CreditMarket.t.sol",
+                "test/fuses/euler/EulerV2Batch.t.sol",
+                "test/fuses/euler/EulerV2BatchFlashLoan.t.sol",
+                "test/fuses/euler/EulerV2SwapForkTest.t.sol",
+                "test/fuses/euler/EulerV2SwapRegistryForkTest.t.sol",
+                "test/fuses/euler/RewardEulerTokenClaimFuseTest.t.sol",
+                "test/integrationTest/euler/EulerV2SupplyFuseInstantWithdrawIntegrationTest.t.sol",
+                "test/integrationTest/eulerV2Ethereum/EulerV2SupplyUSDCVault.t.sol",
+                "test/integrationTest/eulerV2Ethereum/EulerV2SupplyWETHVault.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyEulerFlashLoanMorpho.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseEulerV2",
+                    "address": "0x9425Cc51E61F04942008B7cAFf129C2c6e57F217",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xf36677baad7745f06957c484aedcf3782e0a57474ee8b2137cd77d089d1929d3",
+                    "observedMarketId": 11,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 11 and VERSION() returned its own address at the observed block",
+                        "runtime code contains enter((address,uint256,bytes1)) 0xa1572961 and exit((address,uint256,bytes1)) 0xe2527de9, the checkout's selectors",
+                        "bytecode equivalence with this checkout's EulerV2SupplyFuse.sol was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseEulerV2",
+                    "address": "0xAE9a37DD9229687662834e6696e396e7837BAABD",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xd362b2d0e5a20eb7d14ec36ab0388d129e7921bce168651d733cb877d73c5f40",
+                    "observedMarketId": 11,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 11 at the observed block",
+                        "VERSION() reverted, while this checkout's EulerV2BalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse",
+                        "runtime code contains balanceOf() 0x722713f7"
+                    ]
+                }
+            }
         }
     ]
 }
