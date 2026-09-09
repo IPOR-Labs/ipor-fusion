@@ -10454,6 +10454,634 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ink-velodrome-superchain-slipstream-market-32",
+            "protocol": "velodrome_superchain_slipstream",
+            "chainId": 57073,
+            "market": {
+                "id": 32,
+                "constant": "VELODROME_SUPERCHAIN_SLIPSTREAM",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol",
+                "balanceFuse": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,int24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint160))",
+                    "selector": "0x92b2d1ad",
+                    "struct": "VelodromeSuperchainSlipstreamNewPositionFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "token0",
+                            "type": "address",
+                            "meaning": "token0 of the CL pool; the pool is resolved with ICLFactory.getPool(token0, token1, tickSpacing) and must be a granted Pool substrate"
+                        },
+                        {
+                            "name": "token1",
+                            "type": "address",
+                            "meaning": "token1 of the CL pool"
+                        },
+                        {
+                            "name": "tickSpacing",
+                            "type": "int24",
+                            "meaning": "tick spacing that identifies the pool for the pair"
+                        },
+                        {
+                            "name": "tickLower",
+                            "type": "int24",
+                            "meaning": "lower tick of the position range"
+                        },
+                        {
+                            "name": "tickUpper",
+                            "type": "int24",
+                            "meaning": "upper tick of the position range"
+                        },
+                        {
+                            "name": "amount0Desired",
+                            "type": "uint256",
+                            "meaning": "token0 to deposit, in token0's smallest unit; approved to the NonfungiblePositionManager and reset to 0 afterwards"
+                        },
+                        {
+                            "name": "amount1Desired",
+                            "type": "uint256",
+                            "meaning": "token1 to deposit, in token1's smallest unit"
+                        },
+                        {
+                            "name": "amount0Min",
+                            "type": "uint256",
+                            "meaning": "slippage floor on token0 actually used, enforced by the position manager"
+                        },
+                        {
+                            "name": "amount1Min",
+                            "type": "uint256",
+                            "meaning": "slippage floor on token1 actually used"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds after which mint reverts"
+                        },
+                        {
+                            "name": "sqrtPriceX96",
+                            "type": "uint160",
+                            "meaning": "initial sqrt price (Q64.96) passed to mint; only used when the pool has to be initialized"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256[]))",
+                    "selector": "0x608c7500",
+                    "struct": "VelodromeSuperchainSlipstreamNewPositionFuseExitData",
+                    "fields": [
+                        {
+                            "name": "tokenIds",
+                            "type": "uint256[]",
+                            "meaning": "position NFTs to burn; each must already have zero liquidity and collected fees, and is removed from the curated FuseStorageLib token-id list before burn"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:105",
+                    "sources": {
+                        "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol": "0xe76a3b834a25f49ba3632660a2f9de151723eb0071913fa3d1547c535f61827c",
+                        "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamBalanceFuse.sol": "0xc0cf5bc5962f39750f4b3ff9e02b64e8e5759a16b64415f55d2fc174d026046d"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "VelodromeSuperchainSlipstreamNewPositionFuseEnterData",
+                            "signature": "enter((address,address,int24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint160))",
+                            "selector": "0x92b2d1ad",
+                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:18",
+                            "fields": [
+                                {
+                                    "name": "token0",
+                                    "type": "address",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:20"
+                                },
+                                {
+                                    "name": "token1",
+                                    "type": "address",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:22"
+                                },
+                                {
+                                    "name": "tickSpacing",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:23"
+                                },
+                                {
+                                    "name": "tickLower",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:25"
+                                },
+                                {
+                                    "name": "tickUpper",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:27"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:29"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:31"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:33"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:35"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:37"
+                                },
+                                {
+                                    "name": "sqrtPriceX96",
+                                    "type": "uint160",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:38"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "VelodromeSuperchainSlipstreamNewPositionFuseExitData",
+                            "signature": "exit((uint256[]))",
+                            "selector": "0x608c7500",
+                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:41",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamNewPositionFuse.sol:42"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol",
+                    "purpose": "increases (enter) and decreases (exit) liquidity of an existing position NFT; the pool derived from the position's token0, token1 and tickSpacing must be a granted Pool substrate",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x7f61ea0b",
+                            "struct": "VelodromeSuperchainSlipstreamModifyPositionFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "token0",
+                                    "type": "address",
+                                    "meaning": "token0 of the position, approved to the NonfungiblePositionManager for amount0Desired and reset afterwards"
+                                },
+                                {
+                                    "name": "token1",
+                                    "type": "address",
+                                    "meaning": "token1 of the position"
+                                },
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "position NFT to add liquidity to; its pool must be a granted Pool substrate"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "meaning": "token0 to add, in token0's smallest unit"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "meaning": "token1 to add, in token1's smallest unit"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 actually used"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 actually used"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds after which increaseLiquidity reverts"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((uint256,uint128,uint256,uint256,uint256))",
+                            "selector": "0x06ce4991",
+                            "struct": "VelodromeSuperchainSlipstreamModifyPositionFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "position NFT to remove liquidity from; its pool must be a granted Pool substrate"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint128",
+                                    "meaning": "liquidity units to burn; the freed tokens stay owed to the position until the collect fuse runs"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 accounted for the burned liquidity"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 accounted for the burned liquidity"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds after which decreaseLiquidity reverts"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol": "0x6c8aaeb11470620a7e3d631191a19e9a3bb043571219b539e48a126720f2daf6"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "VelodromeSuperchainSlipstreamModifyPositionFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                                    "selector": "0x7f61ea0b",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:19",
+                                    "fields": [
+                                        {
+                                            "name": "token0",
+                                            "type": "address",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "token1",
+                                            "type": "address",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "amount0Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "amount1Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:29"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:31"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:33"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:35"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "VelodromeSuperchainSlipstreamModifyPositionFuseExitData",
+                                    "signature": "exit((uint256,uint128,uint256,uint256,uint256))",
+                                    "selector": "0x06ce4991",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:39",
+                                    "fields": [
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:41"
+                                        },
+                                        {
+                                            "name": "liquidity",
+                                            "type": "uint128",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:43"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:45"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:47"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamModifyPositionFuse.sol:49"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ModifyPossitionFuseVelodromeSuperchainSlipstream",
+                        "address": "0x23B08f0013361A080b7B471D4c6dcC5E9B2E75ad",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 55449764,
+                        "runtimeCodeHash": "0xf5c7a1e7a4ceadd37313137bd95a84e0c868f797022aab5973124edfc0aa0f3c",
+                        "observedMarketId": 32,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 32 and VERSION() returned its own address at the observed block",
+                            "runtime code contains enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256)) 0x7f61ea0b and exit((uint256,uint128,uint256,uint256,uint256)) 0x06ce4991",
+                            "the registry key is spelled ModifyPossition; the earlier deployment is VelodromeSuperchainSlipstreamModifyPositionFuse 0xcA3e5E7ad17fD5eCF5C36B4c4C772A1A46B5e7cb, same size, market id and selectors"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol",
+                    "purpose": "collects owed fees and decreased-liquidity amounts of the listed position NFTs to the vault (enter only); performs no substrate check, the position manager only pays out positions the vault owns",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((uint256[]))",
+                            "selector": "0xdd15f123",
+                            "struct": "VelodromeSuperchainSlipstreamCollectFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "meaning": "position NFTs to collect from, with amount0Max and amount1Max set to type(uint128).max; an empty list returns zero amounts"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol": "0x19458f1e7cfe9698afdf3e78eda9974b6a288d82ba76e4085fcd59effabe3c6a"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "VelodromeSuperchainSlipstreamCollectFuseEnterData",
+                                    "signature": "enter((uint256[]))",
+                                    "selector": "0xdd15f123",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol:14",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIds",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamCollectFuse.sol:15"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "CollectFuseVelodromeSuperchainSlipstream",
+                        "address": "0x86F88E616C43AEC2f9Bb3AfBf09dd4489E6D7c68",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 55449764,
+                        "runtimeCodeHash": "0xed4c366747498ccd5200ec725e78a0ed4c4cbba6c3e91185e2bc19023070cffa",
+                        "observedMarketId": 32,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 32 and VERSION() returned its own address at the observed block",
+                            "runtime code contains enter((uint256[])) 0xdd15f123",
+                            "the earlier deployment is VelodromeSuperchainSlipstreamCollectFuse 0xf14aE70027340dDC46a3f426808F381DdCe0BfE4, same size, market id and selector"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol",
+                    "purpose": "stakes (enter) and unstakes (exit) a position NFT in a granted Gauge substrate (a LeafCLGauge); approves the gauge on the position manager before deposit and revokes it after withdraw",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the LeafCLGauge; must be a granted Gauge substrate"
+                                },
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "position NFT to stake; 0 emits the event and returns without depositing"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "struct": "VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the LeafCLGauge; must be a granted Gauge substrate"
+                                },
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "position NFT to withdraw back to the vault"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol": "0x6046a18030f2d10c43055e67e3c3ad7c0c6d5d1107a01260820aa3124eccf646"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol:20",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol:22"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "VelodromeSuperchainSlipstreamLeafCLGaugeFuseExitData",
+                                    "signature": "exit((address,uint256))",
+                                    "selector": "0x92876ac8",
+                                    "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol:29",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol:30"
+                                        },
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamLeafCLGaugeFuse.sol:31"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "LeafCLGaugeFuseVelodromeSuperchainSlipstream",
+                        "address": "0x0d500B505dE7667b9Fd0B0944796A5d1eEBe6C2e",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 55449764,
+                        "runtimeCodeHash": "0x735d9c85629eebb0623e827434aa11a4cd9d1ddd7f2ac10e866a3cd621feb8da",
+                        "observedMarketId": 32,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 32 and VERSION() returned its own address at the observed block",
+                            "runtime code contains enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8; these selectors coincide with the deployed ERC4626 pilot fuse's older two-field signatures because the tuple shapes are the same",
+                            "the earlier deployment is VelodromeSuperchainSlipstreamLeafCLGaugeFuse 0xF11627F3e45220BB6F0d1b6fd5e9C3610C377bd0, same size, market id and selectors"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainSlipstreamGaugeClaimFuse.sol",
+                    "purpose": "reward claim fuse run by RewardsClaimManager.claimRewards (CLAIM_REWARDS_ROLE 600); for every granted Gauge substrate in the list it calls ILeafCLGauge.getReward per staked position NFT and forwards the reward token to the RewardsClaimManager; it encodes the substrate with the non-Slipstream VelodromeSuperchainSubstrateLib, whose packing is identical",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(address[])",
+                            "selector": "0x318d9e5d",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "gauges_",
+                                    "type": "address[]",
+                                    "meaning": "LeafCLGauges to claim from; every one must be a granted Gauge substrate, an empty list reverts; a gauge with no staked positions is skipped"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainSlipstreamGaugeClaimFuse.sol": "0x4c8be33da8c0f0623108d391d5b71e13d9b48e44e40dfc49a6554db28a8fea26"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(address[])",
+                                    "selector": "0x318d9e5d",
+                                    "source": "contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainSlipstreamGaugeClaimFuse.sol:46",
+                                    "fields": [
+                                        {
+                                            "name": "gauges_",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainSlipstreamGaugeClaimFuse.sol:46"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsGaugeFuseVelodromeSuperchainSlipstream",
+                        "address": "0xdE913c2438Aa7Ed5BeDc597bB79969c1e4374D30",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 55449764,
+                        "runtimeCodeHash": "0x202cd956aecdb4ffb8fdaa876ec70f5c33d053a980bc59c72e5c4edb8c9db128",
+                        "observedMarketId": 32,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 32 and VERSION() returned its own address at the observed block",
+                            "runtime code contains claim(address[]) 0x318d9e5d",
+                            "the earlier deployment is VelodromeSuperchainSlipstreamGaugeClaimFuse 0x56E626c5538402BF5A60e58A06fdF0D3D741FBaA, same size, market id and selector"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values packed by VelodromeSuperchainSlipstreamSubstrateLib: address | (substrateType << 160), with substrateType 1 = Gauge (a LeafCLGauge) and 2 = Pool (a Slipstream CL pool). The new-position and modify-position fuses check the Pool entry of ICLFactory.getPool(token0, token1, tickSpacing) (reverting with PoolNotDeployed when the factory has none); the gauge fuse and the claim fuse check the Gauge entry; the collect fuse checks nothing; the balance fuse iterates the whole list.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with values from VelodromeSuperchainSlipstreamSubstrateLib.substrateToBytes32",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "token0 and token1 of every Pool substrate (principal and uncollected fees of the position NFTs recorded in FuseStorageLib that belong to that pool, computed by SlipstreamSugar.principal/fees at the pool's current sqrtPriceX96) and of every Gauge substrate (principal only of the NFTs staked there, read from ILeafCLGauge.stakedValues). balanceOf reverts with TooManyPositions above MAX_POSITIONS_PER_SUBSTRATE. Emissions are not counted; they are claimed through the RewardsClaimManager.",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware), getAssetPrice for each pool token",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse; reward claim fuses are added to the RewardsClaimManager with RewardsClaimManager.addRewardFuses",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates (bytes32 values packed by the substrate library)",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for token0 and token1 of every pool"
+            },
+            "tests": [
+                "test/fuses/velodrome/VelodromeSuperchainSlipstreamTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "NewPositionFuseVelodromeSuperchainSlipstream",
+                    "address": "0xF5e9B006E10815e870f0E96569a332EBE5338d26",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 55449764,
+                    "runtimeCodeHash": "0xf07462e81bda2e6fca4616ba7af475feec43388bc90d1267d7e9a51f634f452e",
+                    "observedMarketId": 32,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 32, VERSION() returned its own address and NONFUNGIBLE_POSITION_MANAGER() returned 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702 (registry name VelodromeSuperchainSlipstreamNFTPositionMgr) at the observed block",
+                        "runtime code contains enter((address,address,int24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint160)) 0x92b2d1ad and exit((uint256[])) 0x608c7500",
+                        "whether the deployed code records minted token ids in FuseStorageLib as this checkout does was not established; the earlier deployment is VelodromeSuperchainSlipstreamNewPositionFuse 0x8B67350b0EDf00481e6EaBc46EfFcDbea75c76da, same size, market id and selectors"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseVelodromeSuperchainSlipstream",
+                    "address": "0x175D196Efed174AD74b247c2fA2c63AEDc5afE20",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 55449764,
+                    "runtimeCodeHash": "0xa973eec886b485c3f0ae77b179bf31da4099395109a0c1ded65eb3b5c039148a",
+                    "observedMarketId": 32,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 32, NONFUNGIBLE_POSITION_MANAGER() returned 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702 (registry name VelodromeSuperchainSlipstreamNFTPositionMgr) and SLIPSTREAM_SUPERCHAIN_SUGAR() returned 0x222ed297aF0560030136AE652d39fa40E1B72818 (registry name VelodromeSuperchainSlipstreamSuperchainSugar) at the observed block",
+                        "VERSION() and MAX_POSITIONS_PER_SUBSTRATE() reverted and both selectors are absent from the runtime code, while this checkout's VelodromeSuperchainSlipstreamBalanceFuse.sol exposes them; the deployed contract is an older version without the curated token-id list and the positions cap",
+                        "the earlier deployment is VelodromeSuperchainSlipstreamBalanceFuse 0xDc2d9dA62f9c25e646A25B372a913E708b0b6f43 (4435 bytes), also without those selectors"
+                    ]
+                }
+            }
         }
     ]
 }
