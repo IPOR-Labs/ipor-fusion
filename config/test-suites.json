@@ -349,7 +349,7 @@
             "rpc": "ETHEREUM_PROVIDER_URL",
             "block": 25937526,
             "ffi": false,
-            "tests": 5,
+            "tests": 6,
             "setUp": {
                 "deploys": [],
                 "mutations": [

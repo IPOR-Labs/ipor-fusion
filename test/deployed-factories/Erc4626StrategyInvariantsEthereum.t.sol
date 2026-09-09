@@ -236,6 +236,25 @@ contract Erc4626StrategyInvariantsEthereumTest is Test {
         assertApproxEqAbs(IERC4626(instance.plasmaVault).totalAssets(), DEPOSIT, TOLERANCE, "total assets drifted");
     }
 
+    /// @dev P2: only ALPHA_ROLE can execute fuse actions.
+    function testP2ShouldRefuseExecuteFromAnAddressWithoutAlphaRole() public {
+        _deposit();
+        FuseAction[] memory enter = new FuseAction[](1);
+        enter[0] = FuseAction(
+            SUPPLY_FUSE,
+            abi.encodeWithSignature("enter((address,uint256))", DeployedSupplyFuseData(STEAKHOUSE_USDC, SUPPLIED))
+        );
+        address intruder = makeAddr("notAlpha");
+        vm.prank(intruder);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, intruder));
+        IPlasmaVault(instance.plasmaVault).execute(enter);
+
+        // The owner, who configured everything, is not the alpha either.
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, owner));
+        IPlasmaVault(instance.plasmaVault).execute(enter);
+    }
+
     function _deposit() private returns (uint256 shares) {
         // Test-only: the depositor's USDC is dealt, never acquired on a market.
         deal(USDC, depositor, DEPOSIT);
