@@ -123,6 +123,7 @@ chain; the entry itself carries the block, code hash and notes.
 | `arbitrum-ramses-market-18`                      | Arbitrum | 18 `RAMSES_V2_POSITIONS`         | `RamsesV2NewPositionFuse`               | `RamsesV2ModifyPositionFuse`, `RamsesV2CollectFuse`, `RamsesClaimFuse`                                                                                                                   | observed / observed                   |
 | `base-aerodrome-market-30`                       | Base     | 30 `AERODROME`                   | `AerodromeLiquidityFuse`                | `AerodromeGaugeFuse`, `AerodromeClaimFeesFuse`, `AerodromeGaugeClaimFuse`                                                                                                                | observed / observed                   |
 | `base-aerodrome-slipstream-market-33`            | Base     | 33 `AREODROME_SLIPSTREAM`        | `AreodromeSlipstreamNewPositionFuse`    | `AreodromeSlipstreamModifyPositionFuse`, `AreodromeSlipstreamCollectFuse`, `AreodromeSlipstreamCLGaugeFuse`, `AreodromeSlipstreamGaugeClaimFuse`                                         | observed / observed                   |
+| `ink-velodrome-superchain-market-31`             | Ink      | 31 `VELODROME_SUPERCHAIN`        | `VelodromeSuperchainLiquidityFuse`      | `VelodromeSuperchainGaugeFuse`, `VelodromeSuperchainGaugeClaimFuse`                                                                                                                      | observed / observed (older)           |
 
 ## The pilot entry
 

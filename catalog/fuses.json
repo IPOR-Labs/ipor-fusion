@@ -10018,6 +10018,442 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ink-velodrome-superchain-market-31",
+            "protocol": "velodrome_superchain",
+            "chainId": 57073,
+            "market": {
+                "id": 31,
+                "constant": "VELODROME_SUPERCHAIN",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol",
+                "balanceFuse": "contracts/fuses/velodrome_superchain/VelodromeSuperchainBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))",
+                    "selector": "0x41610b12",
+                    "struct": "VelodromeSuperchainLiquidityFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenA",
+                            "type": "address",
+                            "meaning": "first token of the pair; the pool is resolved with IRouter.poolFor(tokenA, tokenB, stable) and must be a granted Pool substrate"
+                        },
+                        {
+                            "name": "tokenB",
+                            "type": "address",
+                            "meaning": "second token of the pair"
+                        },
+                        {
+                            "name": "stable",
+                            "type": "bool",
+                            "meaning": "true for a stable pool, false for a volatile pool"
+                        },
+                        {
+                            "name": "amountADesired",
+                            "type": "uint256",
+                            "meaning": "tokenA to add, in tokenA's smallest unit; approved to the router with forceApprove and reset to 0 afterwards; both desired amounts 0 returns without calling the router"
+                        },
+                        {
+                            "name": "amountBDesired",
+                            "type": "uint256",
+                            "meaning": "tokenB to add, in tokenB's smallest unit"
+                        },
+                        {
+                            "name": "amountAMin",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenA actually added, enforced by the router"
+                        },
+                        {
+                            "name": "amountBMin",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenB actually added, enforced by the router"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds after which the router reverts"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,address,bool,uint256,uint256,uint256,uint256))",
+                    "selector": "0xf0b0f12e",
+                    "struct": "VelodromeSuperchainLiquidityFuseExitData",
+                    "fields": [
+                        {
+                            "name": "tokenA",
+                            "type": "address",
+                            "meaning": "first token of the pair; the pool is resolved with IRouter.poolFor and must be a granted Pool substrate"
+                        },
+                        {
+                            "name": "tokenB",
+                            "type": "address",
+                            "meaning": "second token of the pair"
+                        },
+                        {
+                            "name": "stable",
+                            "type": "bool",
+                            "meaning": "true for a stable pool, false for a volatile pool"
+                        },
+                        {
+                            "name": "liquidity",
+                            "type": "uint256",
+                            "meaning": "LP tokens to burn, in LP smallest unit (18 decimals); approved to the router and reset afterwards"
+                        },
+                        {
+                            "name": "amountAMin",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenA received"
+                        },
+                        {
+                            "name": "amountBMin",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenB received"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds after which the router reverts"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:101",
+                    "sources": {
+                        "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol": "0x752c2f64196564c58f7356489bff8eb36962503ba76036553afb96ded9f3ee67",
+                        "contracts/fuses/velodrome_superchain/VelodromeSuperchainBalanceFuse.sol": "0x974ff6e39aca8ced964c1ace3e57996b8ed4a9a96e30b734d1d07fa1bc3bcb44"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "VelodromeSuperchainLiquidityFuseEnterData",
+                            "signature": "enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x41610b12",
+                            "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:26",
+                            "fields": [
+                                {
+                                    "name": "tokenA",
+                                    "type": "address",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:27"
+                                },
+                                {
+                                    "name": "tokenB",
+                                    "type": "address",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:28"
+                                },
+                                {
+                                    "name": "stable",
+                                    "type": "bool",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:29"
+                                },
+                                {
+                                    "name": "amountADesired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:30"
+                                },
+                                {
+                                    "name": "amountBDesired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:31"
+                                },
+                                {
+                                    "name": "amountAMin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:32"
+                                },
+                                {
+                                    "name": "amountBMin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:33"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:34"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "VelodromeSuperchainLiquidityFuseExitData",
+                            "signature": "exit((address,address,bool,uint256,uint256,uint256,uint256))",
+                            "selector": "0xf0b0f12e",
+                            "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:45",
+                            "fields": [
+                                {
+                                    "name": "tokenA",
+                                    "type": "address",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:46"
+                                },
+                                {
+                                    "name": "tokenB",
+                                    "type": "address",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:47"
+                                },
+                                {
+                                    "name": "stable",
+                                    "type": "bool",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:48"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:49"
+                                },
+                                {
+                                    "name": "amountAMin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:50"
+                                },
+                                {
+                                    "name": "amountBMin",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:51"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainLiquidityFuse.sol:52"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol",
+                    "purpose": "stakes (enter) and unstakes (exit) LP tokens in a granted Gauge substrate; the amount is capped at the available balance and minAmount is a floor on the amount actually moved",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "struct": "VelodromeSuperchainGaugeFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the LeafGauge to deposit into; must be a granted Gauge substrate; its stakingToken() is the LP token"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "LP tokens to stake, in LP smallest unit; capped at the vault's LP balance; 0 returns without action"
+                                },
+                                {
+                                    "name": "minAmount",
+                                    "type": "uint256",
+                                    "meaning": "reverts with VelodromeSuperchainGaugeFuseMinAmountNotMet when the capped amount is below it"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "struct": "VelodromeSuperchainGaugeFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the LeafGauge to withdraw from; must be a granted Gauge substrate"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "LP tokens to unstake, in LP smallest unit; capped at the staked balance; 0 reverts with VelodromeSuperchainGaugeFuseInvalidAmount"
+                                },
+                                {
+                                    "name": "minAmount",
+                                    "type": "uint256",
+                                    "meaning": "reverts with VelodromeSuperchainGaugeFuseMinAmountNotMet when the capped amount is below it"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol": "0x288ec937e9060712c5c9a30cee230b13a56c53459d0a01cb766ece50efa2a5f7"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "VelodromeSuperchainGaugeFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256))",
+                                    "selector": "0x41b11ae7",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol:22",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "minAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol:25"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "VelodromeSuperchainGaugeFuseExitData",
+                                    "signature": "exit((address,uint256,uint256))",
+                                    "selector": "0x8467bd30",
+                                    "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol:32",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol:33"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "minAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/velodrome_superchain/VelodromeSuperchainGaugeFuse.sol:35"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "GaugeFuseVelodromeSuperchain",
+                        "address": "0x7c21eB05e02A908B61eB213eB1B4dbEA354444e5",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 55449764,
+                        "runtimeCodeHash": "0xb36c3b68b83eebf5ca990819622e4237c5da0aa0aa04175701ddc757fa85ccf0",
+                        "observedMarketId": 31,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 31 and VERSION() returned its own address at the observed block",
+                            "runtime code contains enter((address,uint256,uint256)) 0x41b11ae7 and exit((address,uint256,uint256)) 0x8467bd30",
+                            "the registry also lists VelodromeSuperchainGaugeFuse 0x3688B96dED3662992902F5Ca794A5c5BEd4cd2eA, an earlier deployment of the same size with the same market id and selectors"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainGaugeClaimFuse.sol",
+                    "purpose": "reward claim fuse run by RewardsClaimManager.claimRewards (CLAIM_REWARDS_ROLE 600); calls ILeafGauge.getReward on every granted gauge in the list and transfers the reward token to the RewardsClaimManager",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(address[])",
+                            "selector": "0x318d9e5d",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "gauges_",
+                                    "type": "address[]",
+                                    "meaning": "LeafGauges to claim from; every one must be a granted Gauge substrate, an empty list reverts; each gauge's rewardToken() balance delta is forwarded to the RewardsClaimManager"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainGaugeClaimFuse.sol": "0x4eb56d62ce8d771cf4bc152a7e62579605df686aac6e5fd0b1a732a6c741cd42"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(address[])",
+                                    "selector": "0x318d9e5d",
+                                    "source": "contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainGaugeClaimFuse.sol:46",
+                                    "fields": [
+                                        {
+                                            "name": "gauges_",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/velodrome_superchain/VelodromeSuperchainGaugeClaimFuse.sol:46"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsGaugeFuseVelodromeSuperchain",
+                        "address": "0xa5EF4Afb79A50b0F0069815729658F395A2C17a6",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 55449764,
+                        "runtimeCodeHash": "0xda5d06dbf87b7832602199de0ff11ac95d15dbde468d980cc6e89a0d6f7c44ab",
+                        "observedMarketId": 31,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 31 and VERSION() returned its own address at the observed block",
+                            "runtime code contains claim(address[]) 0x318d9e5d",
+                            "the registry also lists VelodromeSuperchainGaugeClaimFuse 0xD309D21BdD090B997BF99928d0dfc092Bbc07f70, an earlier deployment of the same size with the same market id and selector"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values packed by VelodromeSuperchainSubstrateLib: address | (substrateType << 160), with substrateType 1 = Gauge (a LeafGauge) and 2 = Pool (a Velodrome V2 pool). The liquidity fuse checks the Pool entry of IRouter.poolFor(tokenA, tokenB, stable); the gauge fuse and the claim fuse check the Gauge entry of the gauge they are given; the balance fuse iterates the whole list and values Pool entries (LP balance plus claimable fees) and Gauge entries (staked LP only).",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with values from VelodromeSuperchainSubstrateLib.substrateToBytes32",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "token0 and token1 of every Pool substrate (the vault's LP share of the reserves, plus claimable0/claimable1 fees including the index delta not yet checkpointed) and of every Gauge substrate (the staked LP share of the reserves, no fees). VELO emissions are not counted; they are claimed through the RewardsClaimManager.",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware), getAssetPrice for each pool token",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse; reward claim fuses are added to the RewardsClaimManager with RewardsClaimManager.addRewardFuses",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates (bytes32 values packed by the substrate library)",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for token0 and token1 of every pool"
+            },
+            "tests": [
+                "test/fuses/velodrome/VelodromeSuperchainFuseTests.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "LiquidityFuseVelodromeSuperchain",
+                    "address": "0x497831DF4a422D1edcf0bb210E237AD41aFAE6E3",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 55449764,
+                    "runtimeCodeHash": "0x803874f493d06950d614a90498fed8cd8a29a3408a5bb7b076a5b4df91b89172",
+                    "observedMarketId": 31,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 31, VERSION() returned its own address and VELODROME_ROUTER() returned 0x3a63171DD9BebF4D07BC782FECC7eb0b890C2A45 (registry name VelodromeSuperchainRouter) at the observed block",
+                        "runtime code contains enter((address,address,bool,uint256,uint256,uint256,uint256,uint256)) 0x41610b12 and exit((address,address,bool,uint256,uint256,uint256,uint256)) 0xf0b0f12e",
+                        "the registry also lists VelodromeSuperchainLiquidityFuse 0xEAc973C278436dc23dEeF8a925F809A8ad977624, an earlier deployment of the same size, router, market id and selectors",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseVelodromeSuperchain",
+                    "address": "0x9eC558254A50c2658a2Eb5906EB2D384077bbF95",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ink-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 55449764,
+                    "runtimeCodeHash": "0xd007e0e8908ff05fc2b41c272b82c497e1100819ef80bdbfe31c5ce2fe8381b0",
+                    "observedMarketId": 31,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 31 at the observed block",
+                        "VERSION() reverted and the selector is absent from the runtime code, while this checkout's VelodromeSuperchainBalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse",
+                        "the registry also lists VelodromeSuperchainBalanceFuse 0xd255d98CE8fdce515346c25b60291DBf52457EE1, an earlier deployment of the same size, also without VERSION()"
+                    ]
+                }
+            }
         }
     ]
 }
