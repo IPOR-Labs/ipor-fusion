@@ -1,10 +1,17 @@
 # Integracje do skatalogowania — lista TODO
 
-Stan na 2026-09-09 (branch `feature/agents-support`, po commicie `b5775ed`). Lista wynika z
-punktu 4 propozycji „dalsze usprawnienia” po zamknięciu T00–T52: katalog `catalog/fuses.json`
-ma dziś **jeden** wpis (ERC4626, T33), a w kodzie jest 47 katalogów pod `contracts/fuses/`,
-3 integracje chain-specific i 14 reward fuse'ów. Każdą robimy osobno, jeden wpis = jeden
-commit, tym samym standardem co T33/T36.
+Lista powstała 2026-09-09 (branch `feature/agents-support`, po commicie `b5775ed`) z punktu 4
+propozycji „dalsze usprawnienia” po zamknięciu T00–T52: katalog `catalog/fuses.json` miał wtedy
+**jeden** wpis (ERC4626, T33), a w kodzie jest 47 katalogów pod `contracts/fuses/`, 3 integracje
+chain-specific i 14 reward fuse'ów. Każdą zrobiono osobno, jeden wpis = jeden commit, tym
+samym standardem co T33/T36.
+
+**Zamknięta 2026-09-09**: 66 wpisów w katalogu (48 katalogów + reward fuse'y; `whitelist` to
+nie fuse), 27 nowych README, 3 rozbieżności ABI w `docs/troubleshooting.md`, 56 suit lokalnych
+w `test:unit`. Rozszerzenia schematu i narzędzi po drodze: `additionalFuses`, operacje bez
+structa i o dowolnych nazwach, `balanceFuse: null`, status `unknown`, rynki bez stałej, id jako
+string dla `type(uint256).max`, structy z importowanych baz, keccak w procesie zamiast `cast sig`.
+Statusy w tabelach; hash commitu: `git log --oneline -- catalog/fuses.json`.
 
 ## Definicja „zrobione” dla jednej integracji
 
@@ -99,7 +106,7 @@ istnieje; `fork` = pliki `test/fuses/<katalog>/*.t.sol`; `local` = pliki
 | 44  | `update_balances`                     | –                                                                                                    | 2    | 2   | –      | 1    | 0     | P3   | done                                                                             | ZERO_BALANCE_MARKET; brak wdrożenia na Ethereum/Arbitrum/Base/Ink w ipor-abi (tylko Avalanche/Botanix/Flare/HyperEVM/Katana/Monad/Robinhood) → unknown; test lokalny 5/5; README dodane                                                                                                |
 | 45  | `maintenance`                         | –                                                                                                    | 2    | 0   | –      | 1    | 0     | P3   | done                                                                             | oba fuse'y observed na Ethereum (MARKET_ID = ZERO_BALANCE_MARKET), selektory zgodne; exit(bytes) z nienazwanym parametrem; README dodane                                                                                                                                               |
 | 46  | `burn_request_fee`                    | –                                                                                                    | 2    | 0   | –      | 2    | 0     | P3   | done                                                                             | V2 observed z enter/exit/enterTransient/exitTransient; starszy BurnRequestFeeFuse 0x79e8… bez wejść transient (klienckie katalogi rejestru wskazują ten starszy); RequestFeeRefundFuse i ZeroBalanceFuse observed; test lokalny 12/12; README dodane                                   |
-| 47  | `whitelist`                           | –                                                                                                    | 3    | 0   | –      | 1    | 0     | P3   | todo                                                                             |                                                                                                                                                                                                                                                                                        |
+| 47  | `whitelist`                           | –                                                                                                    | 3    | 0   | –      | 1    | 0     | P3   | n/a (nie jest fuse'em)                                                           | rejestr FuseWhitelist (UUPS proxy 0xF3d8…2867 / impl 0xfB86…C9dD na Ethereum, odczyt @25939091); bez enter/exit i rynku, więc bez wpisu w katalogu; README dodane; 87 testów lokalnych w test:unit                                                                                     |
 | 48  | `plasma_vault`                        | –                                                                                                    | 2    | 0   | –      | 1    | 0     | P3   | done                                                                             | MARKET_ID z konstruktora, wdrożenia i test używają ERC4626_0001 (100001); Ethereum: RequestShares V2 observed (Market1 i RedeemFromRequest starsze — bez enterTransient); balance = Erc4626BalanceFuse rynku 100001; README dodane                                                     |
 | 49  | `transient_storage`                   | –                                                                                                    | 3    | 0   | –      | 3    | 0     | P3   | done                                                                             | 2 wpisy: SetInputs+ChainReader na ERC20_VAULT_BALANCE (7, bez własnego balance fuse'a), Mapper na ZERO_BALANCE_MARKET (id jako string); brak wdrożeń w rejestrze; 3 suity lokalne (151 testów zielone), nie fork; README dodane                                                        |
 
@@ -140,9 +147,24 @@ ustalić przy wpisach Morpho i TAC, czy są martwe.
   Wpływa na graf importów w `test:affected` i na wyszukiwanie testów przez agenta.
 - `UNIVERSAL_TOKEN_SWAPPER` = 12, `UNIVERSAL_TOKEN_SWAPPER_V2` = `12_02` = 1202 (nie ten sam ID, jak
   pierwotnie zapisano w tej liście).
-- `aave_v2`, `compound_v2`, `lido` nie mają stałej w `IporFusionMarkets.sol`.
-- Suity lokalne (`midas`, `term_finance`, `external_state`) nie są w
-  `config/test-suites.json`, więc `test:unit` ich nie uruchamia.
+- `aave_v2`, `compound_v2`, `lido` nie mają stałej w `IporFusionMarkets.sol`; testy `aave_v2`,
+  `compound_v2`, `spark`, `litepsm` i `curve_stableswap_ng` konstruują fuse'y z market id `1`
+  (= `AAVE_V3`).
+- Suity lokalne (`midas`, `term_finance`, `external_state` i 9 innych integracji) — **zrobione**,
+  grupa `fuses-local` w `config/test-suites.json` (`d55d792`).
+- `contracts/fuses/whitelist/` nie jest fuse'em (rejestr UUPS), a `contracts/fuses/erc20/` ma
+  tylko balance fuse; oba mylą wyszukiwanie „fuse'ów” po katalogu.
+- Rejestr `ipor-abi` trzyma część fuse'ów poza katalogami `*-fusion` (`mainnet-ethereum`:
+  Compound V3, Spark, Aave V3 balance; `mainnet-arbitrum`: Gearbox; `mainnet-arbitrum-clearstar`:
+  Ramses) — szukać we wszystkich katalogach sieci.
+- Rejestr ma `EModeFuseAaveV4` (Ethereum) bez źródła w repo; `contracts/fuses/ebisu/README.md`
+  mówi „market 38”, stała `EBISU` = 39; komentarze w `RamsesV2NewPositionFuse` mówią o Uniswap V3.
+- Fuse'y TAC są w źródle oznaczone jako deprecated, a ich testy wyłączone (`stest*`); `SPOL_UNSTAKE`
+  (424243) nie jest nigdzie używane.
+- Poprawka IL-8048 (revoke allowance) nie jest widoczna w `contracts/fuses/enso/` — do sprawdzenia.
+- Wdrożone starsze wersje bez `enterTransient`/`VERSION()` (Morpho balance, Aave V3 balance
+  rynku 1, Euler balance, Moonwell, SparkLend, Liquity, Fluid, Gearbox, Lido, UTS rynku 12,
+  Async action, Burn request fee V1 …) — katalog ma `matchesCurrentSource: false` z notatką.
 
 ## Proces
 
