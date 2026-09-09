@@ -19597,6 +19597,254 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-transient-storage-market-7",
+            "protocol": "transient-storage",
+            "chainId": 1,
+            "market": {
+                "id": 7,
+                "constant": "ERC20_VAULT_BALANCE",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol",
+                "balanceFuse": null
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address[],bytes32[][]))",
+                    "selector": "0xcd1df474",
+                    "struct": "TransientStorageSetInputsFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "fuse",
+                            "type": "address[]",
+                            "meaning": "addresses of the fuses whose transient inputs are being set (each later read by that fuse's enterTransient/exitTransient through TransientStorageLib.getInputs(VERSION)); a zero address reverts with WrongFuseAddress"
+                        },
+                        {
+                            "name": "inputsByFuse",
+                            "type": "bytes32[][]",
+                            "meaning": "one bytes32 array per fuse in the same order, the ABI-agnostic inputs (values packed with TypeConversionLib.toBytes32); lengths must match and no inner array may be empty, otherwise WrongInputsLength"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:22",
+                    "sources": {
+                        "contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol": "0x3f0904dce7b25e3e995a6b43b32c454cf8c15f858071e9328268557ab6ddba08"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "TransientStorageSetInputsFuseEnterData",
+                            "signature": "enter((address[],bytes32[][]))",
+                            "selector": "0xcd1df474",
+                            "source": "contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol:9",
+                            "fields": [
+                                {
+                                    "name": "fuse",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol:11"
+                                },
+                                {
+                                    "name": "inputsByFuse",
+                                    "type": "bytes32[][]",
+                                    "source": "contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol:13"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/transient_storage/TransientStorageChainReaderFuse.sol",
+                    "purpose": "performs read-only external calls (functionStaticCall) and stores selected slices of the responses, converted per DataType, as this fuse's transient outputs for a mapper or another fuse to consume later in the same execute call; enter only",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter(bytes)",
+                            "selector": "0xd4734f4a",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "data_",
+                                    "type": "bytes",
+                                    "meaning": "abi.encode(ExternalCalls): calls[] of {target, targetCalldata, readers[]} where each reader {dataType, bytesStart, bytesEnd} extracts at most 32 bytes of the return data (bytesEnd exclusive, DataTooLong/OutOfBounds otherwise), plus responseLength = the total number of readers, which sizes the output array"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/transient_storage/TransientStorageChainReaderFuse.sol": "0xc74ef88b8451c2dee07eee9242bb9664e157479e8c872629bbfaea45239af519"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": null,
+                                    "signature": "enter(bytes)",
+                                    "selector": "0xd4734f4a",
+                                    "source": "contracts/fuses/transient_storage/TransientStorageChainReaderFuse.sol:45",
+                                    "fields": [
+                                        {
+                                            "name": "data_",
+                                            "type": "bytes",
+                                            "source": "contracts/fuses/transient_storage/TransientStorageChainReaderFuse.sol:45"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "no fuse named like TransientStorage*, SetInputs, Mapper or ChainReader in any mainnet/*/addresses.json of IPOR-Labs/ipor-abi at a0089cf (all chains searched)",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "none: neither fuse reads the substrate list of market 7. They share the ERC20_VAULT_BALANCE market id only so that they can be registered on a vault without a market of their own; the substrates of market 7 are the ERC20 tokens the Erc20BalanceFuse values (see the erc20 integration).",
+                "grantFunction": "not used by these fuses",
+                "checkFunction": "none: no substrate check is performed",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: these fuses move data, not tokens, and hold no position; the market's balance is whatever the Erc20BalanceFuse registered for ERC20_VAULT_BALANCE reports for the vault's idle ERC20 balances (a separate integration)",
+                "priceSource": "none in these fuses",
+                "unit": "not applicable"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "not applicable: these fuses read no substrates",
+                "configureLimits": "not applicable in practice: the market holds no position, so AssetDistributionProtectionLib has nothing to limit (ATOMIST_ROLE 100 could still set one)",
+                "configurePriceSources": "not applicable: nothing is priced by these fuses"
+            },
+            "tests": [
+                "test/fuses/transient_storage/TransientStorageSetInputsFuse.t.sol",
+                "test/fuses/transient_storage/TransientStorageChainReaderFuse.t.sol",
+                "test/transient_storage/TransientStorageLib.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no fuse named like TransientStorage*, SetInputs, Mapper or ChainReader in any mainnet/*/addresses.json of IPOR-Labs/ipor-abi at a0089cf (all chains searched)",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": null
+            }
+        },
+        {
+            "id": "ethereum-transient-storage-mapper-market-zero-balance",
+            "protocol": "transient-storage",
+            "chainId": 1,
+            "market": {
+                "id": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                "constant": "ZERO_BALANCE_MARKET",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/transient_storage/TransientStorageMapperFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter(((uint8,address,uint256,uint8,uint256,address,uint256,uint8,uint256)[]))",
+                    "selector": "0xf250ffa1",
+                    "struct": "TransientStorageMapperEnterData",
+                    "fields": [
+                        {
+                            "name": "items",
+                            "type": "TransientStorageMapperItem[]",
+                            "meaning": "up to 256 mapping instructions (TransientStorageMapperFuseItemsArrayTooLarge above), each {paramType (INPUTS_BY_FUSE or OUTPUTS_BY_FUSE of dataFromAddress), dataFromAddress, dataFromIndex, dataFromType, dataFromDecimals, dataToAddress, dataToIndex, dataToType, dataToDecimals}: reads one transient value of a source fuse, converts it between DataType kinds and decimal scales (INT*/BOOL to ADDRESS and ADDRESS to INT* are rejected, out-of-range and negative-to-unsigned values revert, decimal difference above 77 reverts, UNKNOWN passes the raw value through) and writes it as input dataToIndex of dataToAddress, which must already hold at least dataToIndex + 1 inputs"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:466",
+                    "sources": {
+                        "contracts/fuses/transient_storage/TransientStorageMapperFuse.sol": "0x0c02417de1beb2fdb8ea8d12245508cccf08bb9a310eb8763c4a0444cc6b1c36",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "TransientStorageMapperEnterData",
+                            "signature": "enter(((uint8,address,uint256,uint8,uint256,address,uint256,uint8,uint256)[]))",
+                            "selector": "0xf250ffa1",
+                            "source": "contracts/fuses/transient_storage/TransientStorageMapperFuse.sol:32",
+                            "fields": [
+                                {
+                                    "name": "items",
+                                    "type": "TransientStorageMapperItem[]",
+                                    "source": "contracts/fuses/transient_storage/TransientStorageMapperFuse.sol:34"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "none: the mapper reads no substrates; it uses ZERO_BALANCE_MARKET (type(uint256).max), the market reserved for fuses that hold no position, so it is registered together with a ZeroBalanceFuse.",
+                "grantFunction": "not used by this fuse",
+                "checkFunction": "none: no substrate check is performed",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: ZeroBalanceFuse.balanceOf() always returns 0",
+                "priceSource": "none",
+                "unit": "not applicable"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "not applicable: these fuses read no substrates",
+                "configureLimits": "not applicable in practice: the market holds no position, so AssetDistributionProtectionLib has nothing to limit (ATOMIST_ROLE 100 could still set one)",
+                "configurePriceSources": "not applicable: nothing is priced by these fuses"
+            },
+            "tests": [
+                "test/fuses/transient_storage/TransientStorageMapperFuse.t.sol",
+                "test/transient_storage/TransientStorageLib.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no fuse named like TransientStorage*, SetInputs, Mapper or ChainReader in any mainnet/*/addresses.json of IPOR-Labs/ipor-abi at a0089cf (all chains searched)",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no ZeroBalanceFuse registered for ZERO_BALANCE_MARKET under that name in mainnet/mainnet-ethereum*/addresses.json of IPOR-Labs/ipor-abi at a0089cf (only ZeroBalanceFuseLitePSM and ZeroBalanceFuseNapier, which carry other market ids); vault factories deploy their own ZeroBalanceFuse per vault",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
         }
     ]
 }
