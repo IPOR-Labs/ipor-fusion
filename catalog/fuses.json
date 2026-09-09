@@ -5889,6 +5889,150 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-aave-v2-market-1",
+            "protocol": "aave_v2",
+            "chainId": 1,
+            "market": {
+                "id": 1,
+                "constant": null,
+                "constantSource": null,
+                "origin": "constructor argument marketId_ of both fuses; IporFusionMarkets.sol has no Aave V2 constant. The value 1 is what test/fuses/aave_v2/AaveV2SupplyFuseTest.t.sol and AaveV2BalanceFuseTest.t.sol deploy with; it collides with AAVE_V3 = 1. No deployment was found to confirm a production value."
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/aave_v2/AaveV2SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/aave_v2/AaveV2BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "AaveV2SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the reserve asset to deposit into the Aave V2 LendingPool; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to deposit, in the asset's smallest unit; 0 is a no-op"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "AaveV2SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the reserve asset to withdraw; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to withdraw, in the asset's smallest unit; capped at the Plasma Vault's aToken balance, read from the hard-coded mainnet LendingPool AaveConstantsEthereum.AAVE_LENDING_POOL_V2 rather than the pool given to the constructor"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": null,
+                    "sources": {
+                        "contracts/fuses/aave_v2/AaveV2SupplyFuse.sol": "0xde8eee4b58219573319d673bf0ef81f207a5f26618f402c4bb04a684ecb77be4",
+                        "contracts/fuses/aave_v2/AaveV2BalanceFuse.sol": "0x3fa2d1ded71548d481ffc18c6785c84244d8e8919e99d291348bfb3d225e88fb"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "AaveV2SupplyFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/aave_v2/AaveV2SupplyFuse.sol:16",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aave_v2/AaveV2SupplyFuse.sol:18"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v2/AaveV2SupplyFuse.sol:20"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "AaveV2SupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/aave_v2/AaveV2SupplyFuse.sol:24",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aave_v2/AaveV2SupplyFuse.sol:26"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v2/AaveV2SupplyFuse.sol:28"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "Aave V2 reserve asset addresses (the underlying tokens, not aTokens). The supply fuse checks data.asset on enter and exit; the balance fuse iterates the list and reads the aToken, stable-debt and variable-debt balances of each reserve",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every substrate reserve: aToken balance minus stable-debt and variable-debt token balances, read from the mainnet LendingPool 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9 hard-coded in AaveConstantsEthereum",
+                "priceSource": "the Aave V2 price oracle hard-coded in AaveConstantsEthereum (0x54586bE62E3c3580375aE3723C145253060Ca0C2, USD base, 8 decimals); the vault's PriceOracleMiddleware is not consulted, and both fuses only work on Ethereum mainnet because of those constants",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "none for the balance: prices come from the Aave V2 oracle; PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) still needs a source for any asset the vault holds idle"
+            },
+            "tests": [
+                "test/fuses/aave_v2/AaveV2SupplyFuseTest.t.sol",
+                "test/fuses/aave_v2/AaveV2BalanceFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf: every mainnet/*/addresses.json contains no AaveV2 fuse (only Aave V3/V4 fuses and the AAVE token); captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf: every mainnet/*/addresses.json contains no AaveV2 fuse (only Aave V3/V4 fuses and the AAVE token); captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
         }
     ]
 }

@@ -112,6 +112,7 @@ chain; the entry itself carries the block, code hash and notes.
 | `arbitrum-gearbox-farm-dtoken-v3-market-4`       | Arbitrum | 4 `GEARBOX_FARM_DTOKEN_V3`       | `GearboxV3FarmSupplyFuse`               | GearboxV3FarmDTokenClaimFuse                                                                                                                                                             | observed / observed                   |
 | `base-moonwell-market-21`                        | Base     | 21 `MOONWELL`                    | `MoonwellSupplyFuse`                    | `MoonwellBorrowFuse`, `MoonwellEnableMarketFuse`, `MoonwellClaimFuse`                                                                                                                    | observed / observed                   |
 | `ethereum-aave-v4-market-49`                     | Ethereum | 49 `AAVE_V4`                     | `AaveV4SupplyFuse`                      | `AaveV4BorrowFuse`, `AaveV4CollateralFuse`                                                                                                                                               | observed / observed                   |
+| `ethereum-aave-v2-market-1`                      | Ethereum | 1 (constructor, no constant)     | `AaveV2SupplyFuse`                      | –                                                                                                                                                                                        | unknown / unknown                     |
 
 ## The pilot entry
 
