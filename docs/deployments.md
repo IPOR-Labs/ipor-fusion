@@ -102,10 +102,11 @@ Validate the schema, references and cross-field rules with:
 npm run validate:deployments
 ```
 
-Until T23 adds the first production manifest, that command validates the
-synthetic candidate under `test/fixtures/deployments/` and reports
-`0 production`. Fixtures may reference fixture ABIs; production manifests must
-reference `abi/`.
+The first production manifest is
+[`../deployments/1/factories.json`](../deployments/1/factories.json). The
+validator also retains the synthetic candidate under
+`test/fixtures/deployments/`. Fixtures may reference fixture ABIs; production
+manifests must reference `abi/`.
 
 Schema validity is necessary but not sufficient. The validator checks file
 existence and ABI hashes, rejects chain/directory disagreement and refuses
@@ -117,7 +118,7 @@ the reviewable evidence.
 
 The address lookup response did not include a deployment transaction, deployment
 block, proxy type, runtime hashes, ABI provenance or a verification block hash.
-Do not invent those values. The schema above preserves them as explicit
-nullable fields; T22 binds an ABI to the deployed code, T23 creates a
-`candidate` manifest, and T24 performs the direct on-chain
-identity/configuration read. Promotion to `verified` waits for T25 and T26.
+Do not invent those values. The schema and candidate manifest preserve them as
+explicit nullable fields; T22 binds an ABI to the deployed code, and T24
+performs the direct on-chain identity/configuration read. Promotion to
+`verified` waits for T25 and T26.

@@ -417,7 +417,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T23 — Manifest pierwszego kandydata
 
-- [ ] **P0 · S · Zależności: T21, T22.**
+- [x] **P0 · S · Zależności: T21, T22.**
 - **Zakres:** dodać jeden manifest `candidate` z siecią, adresem, ABI, znanymi komponentami i pochodzeniem danych.
 - **Odbiór:** walidator przechodzi; dane nieustalone są jawne; status nadal nie sugeruje gotowości operacyjnej.
 - **Commit:** `feat(deployments): T23 register the pilot factory candidate`.
