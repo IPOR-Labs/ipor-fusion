@@ -18627,6 +18627,197 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-async-action-market-40",
+            "protocol": "async_action",
+            "chainId": 1,
+            "market": {
+                "id": 40,
+                "constant": "ASYNC_ACTION",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/async_action/AsyncActionFuse.sol",
+                "balanceFuse": "contracts/fuses/async_action/AsyncActionBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,address[],bytes[],uint256[],address[]))",
+                    "selector": "0x024688f2",
+                    "struct": "AsyncActionFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenOut",
+                            "type": "address",
+                            "meaning": "token transferred from the vault to the AsyncExecutor before the calls; must have an ALLOWED_AMOUNT_TO_OUTSIDE substrate, non-zero"
+                        },
+                        {
+                            "name": "amountOut",
+                            "type": "uint256",
+                            "meaning": "amount of tokenOut in its smallest unit, at most the substrate's allowed amount (uint88); transferred only when the executor's tracked balance is 0, otherwise a non-zero amount reverts with AsyncActionFuseBalanceNotZero"
+                        },
+                        {
+                            "name": "targets",
+                            "type": "address[]",
+                            "meaning": "contracts the executor calls in order; each (target, first 4 bytes of the matching calldata) must be an ALLOWED_TARGETS substrate"
+                        },
+                        {
+                            "name": "callDatas",
+                            "type": "bytes[]",
+                            "meaning": "calldata per target, at least 4 bytes each; same length as targets"
+                        },
+                        {
+                            "name": "ethAmounts",
+                            "type": "uint256[]",
+                            "meaning": "ETH value (wei) forwarded with each call; same length as targets"
+                        },
+                        {
+                            "name": "tokensDustToCheck",
+                            "type": "address[]",
+                            "meaning": "declared but unused by this implementation (enterTransient always passes an empty array)"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address[],bytes[]))",
+                    "selector": "0x5445599c",
+                    "struct": "AsyncActionFuseExitData",
+                    "fields": [
+                        {
+                            "name": "assets",
+                            "type": "address[]",
+                            "meaning": "tokens the executor fetches back to the vault (AsyncExecutor.fetchAssets), valued through the price oracle against the executor's tracked balance with the ALLOWED_EXIT_SLIPPAGE substrate as tolerance; an empty list is a no-op"
+                        },
+                        {
+                            "name": "fetchCallDatas",
+                            "type": "bytes[]",
+                            "meaning": "calldata validated as (asset, selector) pairs against ALLOWED_TARGETS substrates before fetching; same length as assets"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:183",
+                    "sources": {
+                        "contracts/fuses/async_action/AsyncActionFuse.sol": "0x6c241ab8f6cb02851416418594b2148d249f033c3c9510ed2e119025e8d7b912",
+                        "contracts/fuses/async_action/AsyncActionBalanceFuse.sol": "0xee3a401b26fc0d008856b969db98f93910fb5caa353d62d8f4cd5b641aff5970"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "AsyncActionFuseEnterData",
+                            "signature": "enter((address,uint256,address[],bytes[],uint256[],address[]))",
+                            "selector": "0x024688f2",
+                            "source": "contracts/fuses/async_action/AsyncActionFuse.sol:22",
+                            "fields": [
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "source": "contracts/fuses/async_action/AsyncActionFuse.sol:23"
+                                },
+                                {
+                                    "name": "amountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/async_action/AsyncActionFuse.sol:24"
+                                },
+                                {
+                                    "name": "targets",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/async_action/AsyncActionFuse.sol:25"
+                                },
+                                {
+                                    "name": "callDatas",
+                                    "type": "bytes[]",
+                                    "source": "contracts/fuses/async_action/AsyncActionFuse.sol:26"
+                                },
+                                {
+                                    "name": "ethAmounts",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/async_action/AsyncActionFuse.sol:27"
+                                },
+                                {
+                                    "name": "tokensDustToCheck",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/async_action/AsyncActionFuse.sol:28"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "AsyncActionFuseExitData",
+                            "signature": "exit((address[],bytes[]))",
+                            "selector": "0x5445599c",
+                            "source": "contracts/fuses/async_action/AsyncActionFuse.sol:33",
+                            "fields": [
+                                {
+                                    "name": "assets",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/async_action/AsyncActionFuse.sol:34"
+                                },
+                                {
+                                    "name": "fetchCallDatas",
+                                    "type": "bytes[]",
+                                    "source": "contracts/fuses/async_action/AsyncActionFuse.sol:35"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values typed in the most significant byte by AsyncActionFuseLib: ALLOWED_AMOUNT_TO_OUTSIDE (0: address in the upper 160 bits of the 31-byte payload, uint88 max amount in the lower 88 bits — one token the vault may send to its executor and the cap per enter), ALLOWED_TARGETS (1: target address and bytes4 selector — one external call the executor may make), ALLOWED_EXIT_SLIPPAGE (2: uint248 slippage tolerance applied by AsyncExecutor.fetchAssets). The action fuse decodes the whole list on enter and exit; the balance fuse does not read substrates.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with bytes32 values built by AsyncActionFuseLib.encodeAsyncActionFuseSubstrate",
+                "checkFunction": "AsyncActionFuseLib.decodeAsyncActionFuseSubstrates over PlasmaVaultConfigLib.getMarketSubstrates, then in-fuse matching of token/amount and target/selector",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the executor's cached balance, expressed in the vault's underlying asset units by AsyncExecutor (set on execute from the sent token's USD value, reduced on fetchAssets), priced as the underlying; 0 when no executor exists for the vault",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice for the underlying",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/async_action/AsyncActionFuseTest.t.sol",
+                "test/fuses/async_action/AsyncActionFuseLibTest.t.sol",
+                "test/fuses/async_action/AsyncExecutorTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "AsyncActionFuse",
+                    "address": "0x04Bd1E6CaF008Ed831f888ced406cd616C671870",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xfe2c368485a6179b77e1e079612e1af75d7e85b9fb7f961115f201a1bcc2b2fc",
+                    "observedMarketId": 40,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 40 and VERSION() returned its own address at the observed block",
+                        "enter 0x024688f2 and exit 0x5445599c are present in the deployed runtime code (12717 bytes), so the data structs match this checkout",
+                        "enterTransient() 0xadea8fa0 and exitTransient() 0x1db205df, which this checkout's AsyncActionFuse.sol exposes, are absent: the deployed contract is an older version without the transient-storage entry points"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "AsyncActionBalanceFuse",
+                    "address": "0x37fb994757856Ec994203D01b54Adb7ae092Bf6f",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x6d495acf670fb3d9c17f6dcc06e1105f7f4995e880ec25d5967dc7894e7f0711",
+                    "observedMarketId": 40,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 40 at the observed block; VERSION() reverted, which is consistent with this checkout's AsyncActionBalanceFuse.sol, which declares no VERSION",
+                        "bytecode equivalence with this checkout's source was not established"
+                    ]
+                }
+            }
         }
     ]
 }
