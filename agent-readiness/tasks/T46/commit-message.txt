@@ -1,0 +1,13 @@
+ci(deployments): T46 detect pilot factory drift
+
+Add deployments:drift, which compares the verified pilot deployment against a
+finalized block: the implementation behind the proxy, both runtime code hashes,
+the reported version, and every component the verification report named — that
+the factory still uses it and that its code is unchanged.
+
+Unchanged, drift and an unusable comparison are three distinct exit codes, and
+the scheduled workflow turns the last two into different CI errors, because an
+upgrade and a dead provider call for different actions.
+
+The report is uploaded as an artifact. Nothing here promotes a version, rewrites
+a manifest or re-pins the blocks historical fixtures use. Verified with 6 tests.

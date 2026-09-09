@@ -1,0 +1,36 @@
+T46 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run deployments:drift -- --block finalized --out drift-report.json
+  unchanged for ethereum-fusion-factory-cd05909c
+  confirmed at block 25937526, observed at finalized block 25938401, 0 differences
+
+PASS npm run deployments:drift:test
+  tests 6, pass 6, fail 0
+
+  The tests build a synthetic confirmed state (a temporary registry via
+  FUSION_DEPLOYMENTS_DIR plus a report whose hashes are the hashes of the fake
+  chain's code), so every difference they then introduce is a real difference
+  from a real recorded state:
+
+    matching chain                          status unchanged, exit 0
+    another implementation behind the proxy status drift, exit 1, fields
+                                            proxy.implementation and
+                                            implementation.runtimeCodeHash
+    a base component whose code changed     drift on component.<id>.runtimeCodeHash
+    a factory slot the factory dropped      drift, observed "no longer used by the factory"
+    reported version 9                      drift on factoryVersion only
+    provider unset                          RPC_UNAVAILABLE, exit 2
+    provider that serves no block           BLOCK_UNAVAILABLE, exit 2
+    provider on chain 42161                 CHAIN_MISMATCH, exit 2
+    unknown deployment id                   UNKNOWN_DEPLOYMENT, exit 2
+
+  The unchanged run also asserts that the provider URL and its token appear
+  nowhere in the report.
+
+Workflow (parsed with PyYAML): pilot-drift.yml, job "drift", 8 steps, triggered
+by schedule (daily) and workflow_dispatch only, permissions contents: read. The
+report is uploaded with if: always(), and exit codes 1 and 2 emit different
+::error annotations.
+
+Nothing in this task changed the manifest, the verification report or any pinned
+fixture block.

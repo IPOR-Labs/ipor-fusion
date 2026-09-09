@@ -1,0 +1,80 @@
+# Scheduled drift detection for the verified pilot deployment.
+#
+# It reads a live network, so it needs the RPC secret and must never run an
+# untrusted pull request's code: it is triggered only by the schedule and by a
+# manual dispatch on this repository's own default branch.
+#
+# The job reports; it never rewrites the manifest, never promotes a new version
+# and never touches the pinned blocks that historical fixtures use.
+name: Pilot deployment drift
+
+on:
+    schedule:
+        # Once a day. Raise the frequency only if the upgrade process warrants
+        # the RPC cost.
+        - cron: "17 6 * * *"
+    workflow_dispatch:
+        inputs:
+            block:
+                description: "Block to read (number, finalized or latest)"
+                type: string
+                default: "finalized"
+                required: false
+
+permissions:
+    contents: read
+
+jobs:
+    drift:
+        name: Pilot factory against its confirmed state
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              # from tag: v4.2.2
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+            - name: Setup Node.js
+              # from tag: v4.2.0
+              uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
+              with:
+                  node-version: 20.17.0
+
+            - name: Setup Foundry
+              # from tag: v1.9.1
+              uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09
+              with:
+                  version: v1.7.1
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Compare the pilot factory with its confirmed state
+              id: drift
+              env:
+                  ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
+              # 0 unchanged, 1 drift, 2 the comparison could not be made.
+              run: |
+                  set +e
+                  npm run deployments:drift -- --block ${{ inputs.block || 'finalized' }} --out drift-report.json
+                  echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+
+            - name: Upload the drift report
+              if: always()
+              # from tag: v4.6.0
+              uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+              with:
+                  name: pilot-drift-report
+                  path: drift-report.json
+                  if-no-files-found: ignore
+
+            - name: Fail on drift, and say so distinctly
+              if: steps.drift.outputs.exit-code == '1'
+              run: |
+                  echo "::error title=Pilot deployment drift::The verified pilot deployment no longer matches its confirmed state. Review the artifact, re-verify and update the manifest by hand — nothing here promotes a new version."
+                  exit 1
+
+            - name: Fail on an unusable comparison, separately
+              if: steps.drift.outputs.exit-code == '2'
+              run: |
+                  echo "::error title=Drift check unavailable::The comparison could not be made (provider, block or artifact). This is not evidence that the deployment changed; see docs/troubleshooting.md."
+                  exit 1
