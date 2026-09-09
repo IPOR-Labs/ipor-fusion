@@ -1,0 +1,14 @@
+feat(price-feed): T49 support one deployed feed factory
+
+Register the deployed Ethereum ERC4626 price feed factory as a second verified
+entry: its verified ABI with provenance, a manifest entry naming the price oracle
+middleware as a required dependency, and a verification report pinned to block
+25937526.
+
+Add a deployed-usage test that creates a feed for Steakhouse USDC through the
+unchanged factory and checks that it points at that vault, reports 18 decimals
+and returns a price equal to the value recomputed from convertToAssets and the
+middleware's USDC price, while a non-ERC4626 address is rejected.
+
+The entry records what is not known: this factory has no version getter, and the
+implementation's verified compiler metadata was not captured.

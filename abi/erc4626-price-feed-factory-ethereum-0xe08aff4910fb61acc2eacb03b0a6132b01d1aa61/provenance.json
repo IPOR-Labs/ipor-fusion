@@ -1,0 +1,46 @@
+{
+    "schemaVersion": 1,
+    "capturedAt": "2026-09-09",
+    "timezone": "Europe/Warsaw",
+    "chainId": 1,
+    "proxy": {
+        "address": "0xf58Fcce9370aBa552032d3EA47baA486F70c0FdC",
+        "contractName": "ERC1967Proxy",
+        "compilerVersion": "v0.8.26+commit.8a97fa7a",
+        "optimizerEnabled": true,
+        "optimizerRuns": 1000000,
+        "evmVersion": "cancun",
+        "explorerProxyFlag": true,
+        "explorerImplementation": "0xe08aff4910fb61acc2eacb03b0a6132b01d1aa61"
+    },
+    "implementation": {
+        "address": "0xe08AfF4910Fb61AcC2EacB03b0a6132B01D1aa61",
+        "contractName": "ERC4626PriceFeedFactory",
+        "compilerVersion": null,
+        "optimizerEnabled": null,
+        "optimizerRuns": null,
+        "evmVersion": null,
+        "explorerProxyFlag": false,
+        "note": "The implementation's own verified compiler metadata was not captured in this task; only its verified ABI was. Do not assume the proxy's settings apply to it."
+    },
+    "source": {
+        "server": "ipor-fusion-dev",
+        "sdkVersion": "3.6.7",
+        "repository": "https://github.com/IPOR-Labs/ipor-fusion.py",
+        "sourceTool": "contract_source",
+        "abiTool": "contract_abi",
+        "upstream": "verified explorer source (proxy) and verified explorer ABI (implementation)"
+    },
+    "abi": {
+        "path": "abi/erc4626-price-feed-factory-ethereum-0xe08aff4910fb61acc2eacb03b0a6132b01d1aa61/ERC4626PriceFeedFactory.abi.json",
+        "sha256": "cc884bb616093591542ca4f30b37829e946a92716e7af8d51aed27957b0ea03d",
+        "entries": 30,
+        "contractName": "ERC4626PriceFeedFactory"
+    },
+    "creationOperation": {
+        "signature": "create(address,address)",
+        "selector": "0x3e68680a",
+        "adapter": null,
+        "adapterReason": "The deployed implementation's runtime code contains 0x3e68680a and the checkout's ERC4626PriceFeedFactory.create has the same signature. Behavioural equivalence was not established; the deployed-usage test is the evidence that it works."
+    }
+}

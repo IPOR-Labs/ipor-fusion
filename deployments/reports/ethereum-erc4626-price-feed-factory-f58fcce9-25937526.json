@@ -1,0 +1,94 @@
+{
+    "schemaVersion": 1,
+    "reportKind": "factory-verification",
+    "deploymentId": "ethereum-erc4626-price-feed-factory-f58fcce9",
+    "chainId": 1,
+    "network": "ethereum",
+    "blockNumber": 25937526,
+    "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+    "checkedAt": "2026-09-09T08:07:42Z",
+    "verdict": "verified",
+    "manifestPath": "deployments/1/factories.json",
+    "toolchain": {
+        "forge": "1.7.1",
+        "cast": "1.7.1",
+        "foundryCommit": "4072e48705af9d93e3c0f6e29e93b5e9a40caed8",
+        "node": "v24.16.0",
+        "npm": "11.13.0",
+        "foundryProfile": "factory_ethereum",
+        "providerVariable": "ETHEREUM_PROVIDER_URL"
+    },
+    "reproduce": {
+        "compatibilityTest": "npm run test:fork -- --chain 1 --suite deployed-price-feed-factory --block 25937526",
+        "implementationSlot": "cast storage --rpc-url \"$ETHEREUM_PROVIDER_URL\" --block 25937526 0xf58Fcce9370aBa552032d3EA47baA486F70c0FdC 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+        "code": "cast code --rpc-url \"$ETHEREUM_PROVIDER_URL\" --block 25937526 <address>",
+        "manifest": "npm run validate:deployments"
+    },
+    "identity": {
+        "proxy": {
+            "address": "0xf58Fcce9370aBa552032d3EA47baA486F70c0FdC",
+            "type": "erc1967",
+            "runtimeCodeHash": "0xa76a49b530f622d74e88da3105c2ba168b4fda315bd90afbd8d460e08b212742"
+        },
+        "implementation": {
+            "address": "0xe08AfF4910Fb61AcC2EacB03b0a6132B01D1aa61",
+            "slot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+            "runtimeCodeHash": "0x3623e0eb271085e55e10a0e960ef5cc46c011804508c6f797458c674946286d7",
+            "matchesManifest": true
+        },
+        "abi": {
+            "path": "abi/erc4626-price-feed-factory-ethereum-0xe08aff4910fb61acc2eacb03b0a6132b01d1aa61/ERC4626PriceFeedFactory.abi.json",
+            "sha256": "cc884bb616093591542ca4f30b37829e946a92716e7af8d51aed27957b0ea03d",
+            "entries": 30,
+            "creationOperation": "create(address,address)",
+            "creationSelector": "0x3e68680a"
+        },
+        "reportedFactoryVersion": null,
+        "owner": "0xa9622a0f359EFf9c253F0Be861C480B03e610392"
+    },
+    "reads": {
+        "reproducedAt": "2026-09-09T08:07:42Z",
+        "ownerReadFrom": "owner() on the proxy",
+        "note": "This factory exposes no version getter; its identity is the implementation address, its runtime code hash and its verified ABI.",
+        "components": {
+            "count": 1,
+            "allHaveCode": true,
+            "entries": [
+                {
+                    "id": "price-oracle-middleware",
+                    "kind": "middleware",
+                    "address": "0xC9F32d65a278b012371858fD3cdE315B12d664c6",
+                    "runtimeCodeSize": 176,
+                    "runtimeCodeHash": "0xa76a49b530f622d74e88da3105c2ba168b4fda315bd90afbd8d460e08b212742"
+                }
+            ]
+        }
+    },
+    "compatibilityTest": {
+        "path": "test/deployed-factories/Erc4626PriceFeedFactoryEthereum.t.sol",
+        "sha256": "08f86a68325201bfe4339fdebc111b76e1802143868a76bbfc84aac5c29fda9c",
+        "suite": "deployed-price-feed-factory",
+        "fixture": "deployed-usage",
+        "test": "Erc4626PriceFeedFactoryEthereumTest",
+        "result": "pass",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "gas": 1378798,
+        "usedUpgradeOrCodeReplacement": false,
+        "grantedRoles": false,
+        "broadcast": false,
+        "proves": [
+            "a permissionless caller can create a feed for Steakhouse USDC through the unchanged proxy",
+            "the created feed points at that vault and reports 18 decimals (WAD)",
+            "its price, read as the middleware, equals the value recomputed from the vault's convertToAssets and the middleware's USDC price, to within 1 wei",
+            "a non-ERC4626 address is rejected by the factory"
+        ]
+    },
+    "warnings": [
+        "reads are observations at block 25937526, not permanent constants",
+        "the implementation's own verified compiler metadata was not captured; the ABI is verified, the build settings are unknown",
+        "the price feed reads the asset price from msg.sender, so only a price oracle middleware or its manager gets a meaningful answer",
+        "re-read the implementation slot before relying on this entry; an upgrade invalidates this report"
+    ]
+}
