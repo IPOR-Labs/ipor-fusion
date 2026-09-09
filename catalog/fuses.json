@@ -4660,6 +4660,372 @@
                 },
                 "balanceFuse": null
             }
+        },
+        {
+            "id": "arbitrum-gearbox-pool-v3-market-3",
+            "protocol": "gearbox_v3",
+            "chainId": 42161,
+            "market": {
+                "id": 3,
+                "constant": "GEARBOX_POOL_V3",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/erc4626/Erc4626BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256))",
+                    "selector": "0x41b11ae7",
+                    "struct": "Erc4626SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "vault",
+                            "type": "address",
+                            "meaning": "the ERC4626 vault to deposit into; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "vaultAssetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of that vault's underlying asset to supply, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance"
+                        },
+                        {
+                            "name": "minSharesOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor: fewer shares than this reverts with Erc4626SupplyFuseInsufficientShares"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,uint256))",
+                    "selector": "0x8467bd30",
+                    "struct": "Erc4626SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "vault",
+                            "type": "address",
+                            "meaning": "the ERC4626 vault to withdraw from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "vaultAssetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of underlying asset to withdraw, in the asset's smallest unit"
+                        },
+                        {
+                            "name": "maxSharesBurned",
+                            "type": "uint256",
+                            "meaning": "slippage ceiling on burned shares; 0 means no limit, and burning more reverts with Erc4626SupplyFuseExcessiveSharesBurned"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:14",
+                    "sources": {
+                        "contracts/fuses/erc4626/Erc4626SupplyFuse.sol": "0x07ba27f4965eca0dec68cbbf3fcda89c7a809cec88716d4f45fd79b77728aea4",
+                        "contracts/fuses/erc4626/Erc4626BalanceFuse.sol": "0xf464cf33bbc430e8d4a3aa44c07c35dde38669ecaca8cfcb9883b02887e6c511"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "Erc4626SupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:16",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:18"
+                                },
+                                {
+                                    "name": "vaultAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:20"
+                                },
+                                {
+                                    "name": "minSharesOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:22"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "Erc4626SupplyFuseExitData",
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:26",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:28"
+                                },
+                                {
+                                    "name": "vaultAssetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:30"
+                                },
+                                {
+                                    "name": "maxSharesBurned",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/erc4626/Erc4626SupplyFuse.sol:32"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "Gearbox V3 pool dToken addresses (ERC4626 vaults, e.g. dUSDCV3); the market has no fuse of its own and reuses the generic ERC4626 fuses, so the action fuse checks data.vault on enter and exit and the balance fuse iterates the list. Farming of the dToken is a separate market (GEARBOX_FARM_DTOKEN_V3 = 4) whose balance depends on this one.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the underlying asset of every dToken in the substrate list, after convertToAssets on the dToken shares the Plasma Vault holds (shares staked in market 4 are valued there)",
+                "priceSource": "the vault's PriceOracleMiddlewareManager, falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/integrationTest/gearboxV3Arbitrum/GearboxV3USDCArbitrum.t.sol",
+                "test/integrationTest/gearboxV3Arbitrum/GearboxV3FarmdUSDCArbitrum.t.sol",
+                "test/integrationTest/gearboxV3Arbitrum/GearboxV3FarmdUSDCBalanceArbitrum.t.sol",
+                "test/integrationTest/gearboxV3Arbitrum/GearboxV3FarmdUSDCClaimRewards.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseGearboxV3DToken",
+                    "address": "0x07cD27531ee9dF28292B26Eeba3f457609DeAe07",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 503330505,
+                    "runtimeCodeHash": "0x586eacafa7c063b57cbacb00f4b6d834e322510f9c0ea7cb12d21d148d22e0cb",
+                    "observedMarketId": 3,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 3 and VERSION() returned its own address at Arbitrum block 503330505",
+                        "the deployed contract exposes enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8, not this checkout's three-field structs with minSharesOut/maxSharesBurned (0x41b11ae7 / 0x8467bd30 absent); callers must encode the deployed signatures — the same older ERC4626 fuse as the Ethereum pilot",
+                        "an Ethereum deployment SupplyFuseGearboxV3DToken 0x95acDF1C8f4447E655a097aEa3F92FB15035485D exists in mainnet/mainnet-ethereum/addresses.json and was not read"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseGearboxV3DToken",
+                    "address": "0xd347F4BB96531b01c8fAB953CF8E920419193a8c",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 503330505,
+                    "runtimeCodeHash": "0x95edc442e93b333a6f8bed58add6d107e7849d6efd1f42235d980b0ad4768f25",
+                    "observedMarketId": 3,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 3 at Arbitrum block 503330505; balanceOf() present",
+                        "VERSION() reverted, while this checkout's Erc4626BalanceFuse.sol exposes it; the deployed contract is an older version"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "arbitrum-gearbox-farm-dtoken-v3-market-4",
+            "protocol": "gearbox_v3",
+            "chainId": 42161,
+            "market": {
+                "id": 4,
+                "constant": "GEARBOX_FARM_DTOKEN_V3",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/gearbox_v3/GearboxV3FarmBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((uint256,address))",
+                    "selector": "0xa63e3c73",
+                    "struct": "GearboxV3FarmdSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "dTokenAmount",
+                            "type": "uint256",
+                            "meaning": "maximum amount of dToken to stake into the farm, in dToken units; capped at the Plasma Vault's dToken balance; 0 is a no-op"
+                        },
+                        {
+                            "name": "farmdToken",
+                            "type": "address",
+                            "meaning": "Gearbox farming pool (farmdToken) to stake into; it must be a granted substrate of this market, otherwise GearboxV3FarmdSupplyFuseUnsupportedFarmdToken"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256,address))",
+                    "selector": "0x537d3b27",
+                    "struct": "GearboxV3FarmdSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "dTokenAmount",
+                            "type": "uint256",
+                            "meaning": "amount of staked dToken to withdraw, in dToken units; capped at the vault's farm balance"
+                        },
+                        {
+                            "name": "farmdToken",
+                            "type": "address",
+                            "meaning": "farming pool to withdraw from; it must be a granted substrate of this market"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:16",
+                    "sources": {
+                        "contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol": "0x8416dfc0e8e9844427faffa1b0d7019ddc18051a2390d8e71816d7ab5b42a181",
+                        "contracts/fuses/gearbox_v3/GearboxV3FarmBalanceFuse.sol": "0xec3862a34e41d855ff5f4a7f5ad9accd2544de8344029eae7c554c7b0f7eb8b5"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "GearboxV3FarmdSupplyFuseEnterData",
+                            "signature": "enter((uint256,address))",
+                            "selector": "0xa63e3c73",
+                            "source": "contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol:20",
+                            "fields": [
+                                {
+                                    "name": "dTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol:24"
+                                },
+                                {
+                                    "name": "farmdToken",
+                                    "type": "address",
+                                    "source": "contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol:27"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "GearboxV3FarmdSupplyFuseExitData",
+                            "signature": "exit((uint256,address))",
+                            "selector": "0x537d3b27",
+                            "source": "contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol:34",
+                            "fields": [
+                                {
+                                    "name": "dTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol:38"
+                                },
+                                {
+                                    "name": "farmdToken",
+                                    "type": "address",
+                                    "source": "contracts/fuses/gearbox_v3/GearboxV3FarmSupplyFuse.sol:41"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/rewards_fuses/gearbox_v3/GearboxV3FarmDTokenClaimFuse.sol",
+                    "purpose": "reward claim fuse: for every granted farmdToken calls claim() and transfers the farmed rewards token to the RewardsClaimManager; registered in RewardsClaimManager by FUSE_MANAGER_ROLE (300) and executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim()",
+                            "selector": "0x4e71d92d",
+                            "struct": null,
+                            "fields": []
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/gearbox_v3/GearboxV3FarmDTokenClaimFuse.sol": "0x792b5a3749a0cad945a9330179196fd63622fcaf1f99c405d80cdd2a2397ab6a"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim()",
+                                    "selector": "0x4e71d92d",
+                                    "source": "contracts/rewards_fuses/gearbox_v3/GearboxV3FarmDTokenClaimFuse.sol:34",
+                                    "fields": []
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsFuseGearboxV3FarmDToken",
+                        "address": "0xFa209140BBA92a64b1038649e7385fa860405099",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 503330505,
+                        "runtimeCodeHash": "0x71148a9cf048e18ad6a12cc6bce55b358c089cec3f78f8ba983866a73aa584af",
+                        "observedMarketId": 4,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 4 and VERSION() returned its own address at Arbitrum block 503330505; claim() 0x4e71d92d present",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "Gearbox V3 farming pool (farmdToken) addresses, each staking one dToken. The action fuse checks data.farmdToken on enter and exit; the claim fuse reads the whole list; the balance fuse values ONLY the first substrate, so a market with several farms under-reports.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted (action fuse); the balance fuse reads getMarketSubstrates and takes index 0",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the farm balance (farmdToken, 1:1 with dToken) in the first granted farm, converted with the dToken's convertToAssets to the underlying asset and priced there; farmed rewards are not counted. The source notes that a vault with this market needs a dependency-balance graph to GEARBOX_POOL_V3.",
+                "priceSource": "the vault's PriceOracleMiddlewareManager, falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/integrationTest/gearboxV3Arbitrum/GearboxV3FarmdUSDCArbitrum.t.sol",
+                "test/integrationTest/gearboxV3Arbitrum/GearboxV3FarmdUSDCBalanceArbitrum.t.sol",
+                "test/integrationTest/gearboxV3Arbitrum/GearboxV3FarmdUSDCClaimRewards.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseGearboxV3FarmDToken",
+                    "address": "0xB0FBF6B7D0586C0a5Bc1C3b8a98773f4eD02c983",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 503330505,
+                    "runtimeCodeHash": "0x34db9fe778e3622c95805350a8572ef35bf54ba4eb1d8dd9363d1d5361b24be3",
+                    "observedMarketId": 4,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 4 and VERSION() returned its own address at Arbitrum block 503330505",
+                        "enter((uint256,address)) 0xa63e3c73, exit((uint256,address)) 0x537d3b27 and instantWithdraw(bytes32[]) present; enterTransient() 0xadea8fa0 absent, so the deployment predates the transient-storage entry points of this checkout",
+                        "bytecode equivalence with this checkout was not established; an Ethereum deployment SupplyFuseGearboxV3FarmDToken 0xF6016A183745C86Dd584488c9E75c00BBD61C34E exists and was not read"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseGearboxV3FarmDToken",
+                    "address": "0xAa6C8DB1DA40f685e02564dE92Bc2276C12729f6",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-arbitrum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 503330505,
+                    "runtimeCodeHash": "0x5b7c70d86fa3593c420cfb1a652c812667898be33a7d6fbfe3ef455d839c8247",
+                    "observedMarketId": 4,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 4 at Arbitrum block 503330505; balanceOf() present",
+                        "VERSION() reverted, while this checkout's GearboxV3FarmBalanceFuse.sol exposes it; the deployed contract is an older version"
+                    ]
+                }
+            }
         }
     ]
 }
