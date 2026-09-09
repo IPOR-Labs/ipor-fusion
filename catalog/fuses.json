@@ -16543,6 +16543,116 @@
                 },
                 "balanceFuse": null
             }
+        },
+        {
+            "id": "ethereum-syrup-rewards-claim",
+            "protocol": "syrup",
+            "chainId": 1,
+            "market": {
+                "id": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                "constant": null,
+                "constantSource": null,
+                "origin": "SyrupClaimFuse declares no MARKET_ID and reads no substrates; it is registered only in the RewardsClaimManager (addRewardFuses), never in a market. The catalog needs an id, so the value of ZERO_BALANCE_MARKET (type(uint256).max) is used as a placeholder for 'no market'; no vault registers this fuse or a balance fuse under any market for it"
+            },
+            "source": {
+                "actionFuse": "contracts/rewards_fuses/syrup/SyrupClaimFuse.sol",
+                "balanceFuse": null
+            },
+            "interface": {
+                "claim": {
+                    "signature": "claim(uint256,uint256,bytes32[])",
+                    "selector": "0xae0b51df",
+                    "struct": null,
+                    "fields": [
+                        {
+                            "name": "id_",
+                            "type": "uint256",
+                            "meaning": "identifier of the token allocation in the Syrup reward distributor's Merkle tree; an allocation can be claimed once and only before its deadline"
+                        },
+                        {
+                            "name": "claimAmount_",
+                            "type": "uint256",
+                            "meaning": "amount to claim, in the smallest unit of the distributor's asset(); 0 reverts with SyrupClaimFuseClaimAmountZero"
+                        },
+                        {
+                            "name": "proof_",
+                            "type": "bytes32[]",
+                            "meaning": "Merkle proof that (id, account = Plasma Vault, claimAmount) is part of the allocation tree"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": null,
+                    "sources": {
+                        "contracts/rewards_fuses/syrup/SyrupClaimFuse.sol": "0x0e48613a0318a2285d1622ef21dd5ae67eb68ef3bb980357d3a88da4102e4698"
+                    },
+                    "operations": {
+                        "claim": {
+                            "struct": null,
+                            "signature": "claim(uint256,uint256,bytes32[])",
+                            "selector": "0xae0b51df",
+                            "source": "contracts/rewards_fuses/syrup/SyrupClaimFuse.sol:66",
+                            "fields": [
+                                {
+                                    "name": "id_",
+                                    "type": "uint256",
+                                    "source": "contracts/rewards_fuses/syrup/SyrupClaimFuse.sol:66"
+                                },
+                                {
+                                    "name": "claimAmount_",
+                                    "type": "uint256",
+                                    "source": "contracts/rewards_fuses/syrup/SyrupClaimFuse.sol:66"
+                                },
+                                {
+                                    "name": "proof_",
+                                    "type": "bytes32[]",
+                                    "source": "contracts/rewards_fuses/syrup/SyrupClaimFuse.sol:66"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "none: the fuse reads no substrates. The reward distributor is bound at construction (REWARD_DISTRIBUTOR) and the reward token is read from it (asset()); the claimed delta is transferred to the RewardsClaimManager",
+                "grantFunction": "not applicable (no substrate is read)",
+                "checkFunction": "not applicable (no substrate is read)",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: no balance fuse exists and none is needed; claimed tokens go to the RewardsClaimManager and are valued by its vesting logic",
+                "priceSource": "none (no balance fuse)",
+                "unit": "not applicable"
+            },
+            "roles": {
+                "execute": "CLAIM_REWARDS_ROLE (600) calls RewardsClaimManager.claimRewards with the claim action; the manager (TECH_REWARDS_CLAIM_MANAGER_ROLE 601) calls PlasmaVault.claimRewards, which delegatecalls the fuse",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the claim fuse with RewardsClaimManager.addRewardFuses; no balance fuse is registered",
+                "configureSubstrates": "not applicable: the fuse reads no substrates",
+                "configureLimits": "not applicable: the market holds no position and AssetDistributionProtectionLib never sees it",
+                "configurePriceSources": "not applicable: nothing in this market is priced; claimed tokens are valued by the RewardsClaimManager's vesting logic"
+            },
+            "tests": [
+                "test/fuses/syrup/SyrupClaimFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SyrupClaimFuse",
+                    "address": "0x5b1a6B2E6Af64E74275015A65687de0ca941f537",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x7fec777828daf709d08b9ce9732cf6bf89cc301ec1ecd42ef123c2fa6a394c6b",
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() reverted because the source declares no MARKET_ID; VERSION() returned its own address at the observed block; REWARD_DISTRIBUTOR() returned 0x509712F368255E92410893Ba2E488f40f7E986EA (SyrupRewardDistributor in the same registry)",
+                        "the runtime code (2381 bytes) contains claim(uint256,uint256,bytes32[]) 0xae0b51df; bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": null
+            }
         }
     ]
 }
