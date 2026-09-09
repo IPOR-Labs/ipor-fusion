@@ -29,7 +29,8 @@
         "test:affected": "node tools/run-affected-tests.mjs",
         "test:affected:runner": "node --test tools/test-affected-tests.mjs",
         "validate:deployments": "node tools/validate-deployments.mjs",
-        "validate:deployments:test": "node --test tools/test-validate-deployments.mjs"
+        "validate:deployments:test": "node --test tools/test-validate-deployments.mjs",
+        "validate:pilot-abi": "node tools/validate-pilot-factory-abi.mjs"
     },
     "dependencies": {
         "@chainlink/contracts": "1.2.0",

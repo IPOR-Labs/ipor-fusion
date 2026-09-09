@@ -55,6 +55,32 @@ reproducible verification report. It will not copy the whole upstream address
 database. The upstream lookup remains the discovery source and should be
 queried again when adding a network or deployment.
 
+## Pilot ABI
+
+The verified explorer source links the selected proxy to implementation
+`0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5`. The implementation is named
+`FusionFactory` and was compiled with Solidity `0.8.30`, optimizer enabled at
+`200` runs and Cancun EVM. These are deployment facts; they deliberately differ
+from the current repository's optimizer settings.
+
+Its 78-entry ABI and provenance are versioned by implementation identity:
+
+- [`FusionFactory.abi.json`](../abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/FusionFactory.abi.json)
+- [`provenance.json`](../abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/provenance.json)
+
+Validate the recorded SHA-256 and the required creation operation:
+
+```bash
+npm run validate:pilot-abi
+```
+
+The check finds exactly one
+`clone(string,string,address,uint256,address,uint256)` entry, verifies selector
+`0x8697b10a`, encodes representative calldata with Foundry `cast`, and decodes
+it back to all six inputs. No adapter is needed for this operation because the
+deployed ABI and current source expose the same signature. That statement is
+limited to the signature; it does not claim behavioral compatibility.
+
 ## Manifest contract
 
 The machine-readable schema is

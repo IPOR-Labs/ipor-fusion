@@ -1,0 +1,45 @@
+{
+    "schemaVersion": 1,
+    "capturedAt": "2026-09-09",
+    "timezone": "Europe/Warsaw",
+    "chainId": 1,
+    "proxy": {
+        "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+        "contractName": "ERC1967Proxy",
+        "compilerVersion": "v0.8.26+commit.8a97fa7a",
+        "optimizerEnabled": true,
+        "optimizerRuns": 100,
+        "evmVersion": "cancun",
+        "explorerProxyFlag": true,
+        "explorerImplementation": "0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5"
+    },
+    "implementation": {
+        "address": "0xf19C1E9f6616F6056AF1e322A86fDaAaAf0263f5",
+        "contractName": "FusionFactory",
+        "compilerVersion": "v0.8.30+commit.73712a01",
+        "optimizerEnabled": true,
+        "optimizerRuns": 200,
+        "evmVersion": "cancun",
+        "explorerProxyFlag": false
+    },
+    "source": {
+        "server": "ipor-fusion-dev",
+        "sdkVersion": "3.6.7",
+        "repository": "https://github.com/IPOR-Labs/ipor-fusion.py",
+        "sourceTool": "contract_source",
+        "abiTool": "contract_abi",
+        "upstream": "verified explorer source and ABI"
+    },
+    "abi": {
+        "path": "abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/FusionFactory.abi.json",
+        "sha256": "6d2da724f6c057439455b6a01cbc153c4b6e076cc72f6f7ef1b12ebd202c019f",
+        "entries": 78,
+        "contractName": "FusionFactory"
+    },
+    "creationOperation": {
+        "signature": "clone(string,string,address,uint256,address,uint256)",
+        "selector": "0x8697b10a",
+        "adapter": null,
+        "adapterReason": "The deployed ABI and current checkout expose the same required clone signature."
+    }
+}

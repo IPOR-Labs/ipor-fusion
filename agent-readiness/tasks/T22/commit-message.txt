@@ -1,0 +1,9 @@
+feat(abi): T22 add the pilot factory interface
+
+Version the verified Ethereum FusionFactory ABI by its implementation address
+with source provenance, compiler metadata and a SHA-256 digest. Record the
+explorer-confirmed link from the selected proxy to that implementation.
+
+Validate the deployed clone signature and selector, then encode and decode all
+six creation inputs with the pinned Foundry cast tool. Keep behavioral
+compatibility and manifest verification as later evidence.

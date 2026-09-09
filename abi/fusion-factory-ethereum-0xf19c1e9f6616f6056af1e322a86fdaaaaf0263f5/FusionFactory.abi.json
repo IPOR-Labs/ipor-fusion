@@ -1,0 +1,1693 @@
+[
+    {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "inputs": [],
+        "name": "AccessControlBadConfirmation",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "neededRole",
+                "type": "bytes32"
+            }
+        ],
+        "name": "AccessControlUnauthorizedAccount",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+            }
+        ],
+        "name": "AddressEmptyCode",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "BusinessClientAddressZero",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "length",
+                "type": "uint256"
+            }
+        ],
+        "name": "DaoFeePackageIndexOutOfBounds",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "DaoFeePackagesArrayEmpty",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "implementation",
+                "type": "address"
+            }
+        ],
+        "name": "ERC1967InvalidImplementation",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "ERC1967NonPayable",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "FailedInnerCall",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "fee",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "maxFee",
+                "type": "uint256"
+            }
+        ],
+        "name": "FeeExceedsMaximum",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "FeeRecipientZeroAddress",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidAddress",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidFactoryAddress",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidInitialization",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidWithdrawWindow",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NotInitializing",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "UUPSUnauthorizedCallContext",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "slot",
+                "type": "bytes32"
+            }
+        ],
+        "name": "UUPSUnsupportedProxiableUUID",
+        "type": "error"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "version",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newPlasmaVaultCoreBase",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newAccessManagerBase",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newPriceManagerBase",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newWithdrawManagerBase",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newRewardsManagerBase",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newContextManagerBase",
+                "type": "address"
+            }
+        ],
+        "name": "BaseAddressesUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newBurnRequestFeeBalanceFuse",
+                "type": "address"
+            }
+        ],
+        "name": "BurnRequestFeeBalanceFuseUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newBurnRequestFeeFuse",
+                "type": "address"
+            }
+        ],
+        "name": "BurnRequestFeeFuseUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "client",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "removedBy",
+                "type": "address"
+            }
+        ],
+        "name": "BusinessClientFeePackagesRemoved",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "client",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "managementFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "performanceFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeRecipient",
+                        "type": "address"
+                    }
+                ],
+                "indexed": false,
+                "internalType": "struct FusionFactoryStorageLib.FeePackage[]",
+                "name": "packages",
+                "type": "tuple[]"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "updatedBy",
+                "type": "address"
+            }
+        ],
+        "name": "BusinessClientFeePackagesSet",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "managementFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "performanceFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeRecipient",
+                        "type": "address"
+                    }
+                ],
+                "indexed": false,
+                "internalType": "struct FusionFactoryStorageLib.FeePackage[]",
+                "name": "packages",
+                "type": "tuple[]"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "updatedBy",
+                "type": "address"
+            }
+        ],
+        "name": "DaoFeePackagesUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "version",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "accessManagerFactory",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "plasmaVaultFactory",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "feeManagerFactory",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "withdrawManagerFactory",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "rewardsManagerFactory",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "contextManagerFactory",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "priceManagerFactory",
+                "type": "address"
+            }
+        ],
+        "name": "FactoryAddressesUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint64",
+                "name": "version",
+                "type": "uint64"
+            }
+        ],
+        "name": "Initialized",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newPlasmaVaultBase",
+                "type": "address"
+            }
+        ],
+        "name": "PlasmaVaultBaseUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newPriceOracleMiddleware",
+                "type": "address"
+            }
+        ],
+        "name": "PriceOracleMiddlewareUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "previousAdminRole",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "newAdminRole",
+                "type": "bytes32"
+            }
+        ],
+        "name": "RoleAdminChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "RoleGranted",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "RoleRevoked",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "implementation",
+                "type": "address"
+            }
+        ],
+        "name": "Upgraded",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newVestingPeriodInSeconds",
+                "type": "uint256"
+            }
+        ],
+        "name": "VestingPeriodInSecondsUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newWithdrawWindowInSeconds",
+                "type": "uint256"
+            }
+        ],
+        "name": "WithdrawWindowInSecondsUpdated",
+        "type": "event"
+    },
+    {
+        "inputs": [],
+        "name": "DAO_FEE_MANAGER_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "DEFAULT_ADMIN_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "MAINTENANCE_MANAGER_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "PAUSE_MANAGER_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "UPGRADE_INTERFACE_VERSION",
+        "outputs": [
+            {
+                "internalType": "string",
+                "name": "",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "string",
+                "name": "assetName_",
+                "type": "string"
+            },
+            {
+                "internalType": "string",
+                "name": "assetSymbol_",
+                "type": "string"
+            },
+            {
+                "internalType": "address",
+                "name": "underlyingToken_",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "redemptionDelayInSeconds_",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "owner_",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "daoFeePackageIndex_",
+                "type": "uint256"
+            }
+        ],
+        "name": "clone",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "index",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "version",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "assetName",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "assetSymbol",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint8",
+                        "name": "assetDecimals",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "underlyingToken",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "underlyingTokenSymbol",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint8",
+                        "name": "underlyingTokenDecimals",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "initialOwner",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "plasmaVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "plasmaVaultBase",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "accessManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rewardsManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "withdrawManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "contextManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceManager",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryLogicLib.FusionInstance",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "string",
+                "name": "assetName_",
+                "type": "string"
+            },
+            {
+                "internalType": "string",
+                "name": "assetSymbol_",
+                "type": "string"
+            },
+            {
+                "internalType": "address",
+                "name": "underlyingToken_",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "redemptionDelayInSeconds_",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "owner_",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "daoFeePackageIndex_",
+                "type": "uint256"
+            }
+        ],
+        "name": "cloneSupervised",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "index",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "version",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "assetName",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "assetSymbol",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint8",
+                        "name": "assetDecimals",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "underlyingToken",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "underlyingTokenSymbol",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint8",
+                        "name": "underlyingTokenDecimals",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "initialOwner",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "plasmaVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "plasmaVaultBase",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "accessManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rewardsManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "withdrawManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "contextManager",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceManager",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryLogicLib.FusionInstance",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getBaseAddresses",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "plasmaVaultCoreBase",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "accessManagerBase",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceManagerBase",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "withdrawManagerBase",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rewardsManagerBase",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "contextManagerBase",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.BaseAddresses",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getBurnRequestFeeBalanceFuseAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getBurnRequestFeeFuseAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "client_",
+                "type": "address"
+            }
+        ],
+        "name": "getBusinessClientFeePackages",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "managementFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "performanceFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeRecipient",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.FeePackage[]",
+                "name": "packages",
+                "type": "tuple[]"
+            },
+            {
+                "internalType": "bool",
+                "name": "isCustom",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "index_",
+                "type": "uint256"
+            }
+        ],
+        "name": "getDaoFeePackage",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "managementFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "performanceFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeRecipient",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.FeePackage",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getDaoFeePackages",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "managementFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "performanceFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeRecipient",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.FeePackage[]",
+                "name": "",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getDaoFeePackagesLength",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getFactoryAddresses",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "accessManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "plasmaVaultFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "withdrawManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rewardsManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "contextManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceManagerFactory",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.FactoryAddresses",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getFusionFactoryIndex",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getFusionFactoryVersion",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getPlasmaVaultBaseAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getPriceOracleMiddleware",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getRoleAdmin",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
+            }
+        ],
+        "name": "getRoleMember",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getRoleMemberCount",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getVestingPeriodInSeconds",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getWithdrawWindowInSeconds",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "grantRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "hasRole",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "initialFactoryAdmin_",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "accessManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "plasmaVaultFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "withdrawManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rewardsManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "contextManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceManagerFactory",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.FactoryAddresses",
+                "name": "factoryAddresses_",
+                "type": "tuple"
+            },
+            {
+                "internalType": "address",
+                "name": "plasmaVaultBase_",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "priceOracleMiddleware_",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "burnRequestFeeFuse_",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "burnRequestFeeBalanceFuse_",
+                "type": "address"
+            }
+        ],
+        "name": "initialize",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "proxiableUUID",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "client_",
+                "type": "address"
+            }
+        ],
+        "name": "removeBusinessClientFeePackages",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "callerConfirmation",
+                "type": "address"
+            }
+        ],
+        "name": "renounceRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "revokeRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "client_",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "managementFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "performanceFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeRecipient",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.FeePackage[]",
+                "name": "packages_",
+                "type": "tuple[]"
+            }
+        ],
+        "name": "setBusinessClientFeePackages",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "managementFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "performanceFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeRecipient",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.FeePackage[]",
+                "name": "packages_",
+                "type": "tuple[]"
+            }
+        ],
+        "name": "setDaoFeePackages",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes4",
+                "name": "interfaceId",
+                "type": "bytes4"
+            }
+        ],
+        "name": "supportsInterface",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "version_",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "newPlasmaVaultCoreBase_",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "newAccessManagerBase_",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "newPriceManagerBase_",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "newWithdrawManagerBase_",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "newRewardsManagerBase_",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "newContextManagerBase_",
+                "type": "address"
+            }
+        ],
+        "name": "updateBaseAddresses",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newBurnRequestFeeBalanceFuse_",
+                "type": "address"
+            }
+        ],
+        "name": "updateBurnRequestFeeBalanceFuse",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newBurnRequestFeeFuse_",
+                "type": "address"
+            }
+        ],
+        "name": "updateBurnRequestFeeFuse",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "version_",
+                "type": "uint256"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "accessManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "plasmaVaultFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "feeManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "withdrawManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rewardsManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "contextManagerFactory",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceManagerFactory",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct FusionFactoryStorageLib.FactoryAddresses",
+                "name": "newFactoryAddresses_",
+                "type": "tuple"
+            }
+        ],
+        "name": "updateFactoryAddresses",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newPlasmaVaultBase_",
+                "type": "address"
+            }
+        ],
+        "name": "updatePlasmaVaultBase",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newPriceOracleMiddleware_",
+                "type": "address"
+            }
+        ],
+        "name": "updatePriceOracleMiddleware",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "newVestingPeriodInSeconds_",
+                "type": "uint256"
+            }
+        ],
+        "name": "updateVestingPeriodInSeconds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "newWithdrawWindowInSeconds_",
+                "type": "uint256"
+            }
+        ],
+        "name": "updateWithdrawWindowInSeconds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newImplementation",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "upgradeToAndCall",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    }
+]

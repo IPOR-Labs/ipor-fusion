@@ -12,9 +12,10 @@ control, and assets managed on-chain, so prefer evidence from code and tests ove
 - Use [docs/architecture.md](docs/architecture.md) for the current vault map; the more detailed
   [contracts/vaults/README.md](contracts/vaults/README.md) is supplementary and may describe historical components.
 - Treat source code, tests, and tracked artifacts as repository truth. Private notes or agent memory are not required.
-- A deployment schema is tracked, but no production manifest, versioned ABI directory, vault config, or factory recipe
-  is tracked yet. Their rollout is planned in [agent-readiness/PLAN.md](agent-readiness/PLAN.md); do not invent missing
-  addresses, ABIs, or status. Validate manifest work with `npm run validate:deployments`.
+- A deployment schema and one implementation-bound pilot ABI are tracked, but no production manifest, vault config, or
+  factory recipe is tracked yet. Their rollout is planned in [agent-readiness/PLAN.md](agent-readiness/PLAN.md); do not
+  invent missing addresses, ABIs, or status. Validate manifest work with `npm run validate:deployments` and the pilot
+  ABI with `npm run validate:pilot-abi`.
 - Absence from this checkout does not prove that a contract is not deployed. Use a maintained registry or an on-chain
   read, and record its source, network, and block when deployment identity matters.
 

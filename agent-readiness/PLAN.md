@@ -410,7 +410,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T22 — ABI jednej wdrożonej wersji
 
-- [ ] **P0 · M · Zależności: T20, T21.**
+- [x] **P0 · M · Zależności: T20, T21.**
 - **Zakres:** pozyskać ABI pilotażowej implementacji do `abi/<version>/` wraz z pochodzeniem i hashem. Dodać minimalny interfejs/adapter, jeśli bieżący kontrakt ma inny interfejs.
 - **Odbiór:** potwierdzono powiązanie ABI z kodem implementacji; test kodowania/dekodowania obejmuje operację potrzebną do utworzenia vaulta. Brak źródła wersji blokuje zadanie.
 - **Commit:** `feat(abi): T22 add the pilot factory interface`.
