@@ -15180,6 +15180,874 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-napier-market-46",
+            "protocol": "napier",
+            "chainId": 1,
+            "market": {
+                "id": 46,
+                "constant": "NAPIER",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/napier/NapierSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint256,uint256))",
+                    "selector": "0x2242c270",
+                    "struct": "NapierSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "principalToken",
+                            "type": "IPrincipalToken",
+                            "meaning": "the Napier V2 Principal Token to issue PT/YT from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "tokenIn",
+                            "type": "address",
+                            "meaning": "asset to issue with (the PT's underlying yield-bearing token or its vault asset); it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amountIn",
+                            "type": "uint256",
+                            "meaning": "amount of tokenIn to supply, in its smallest unit; the fuse caps it at the vault balance"
+                        },
+                        {
+                            "name": "minPrincipalsAmount",
+                            "type": "uint256",
+                            "meaning": "slippage floor on PT/YT received, in PT smallest units; less reverts with NapierFuseInsufficientAmount"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:221",
+                    "sources": {
+                        "contracts/fuses/napier/NapierSupplyFuse.sol": "0xd6769a4d517e9ca1f8893c4e01369329e0ee646cba8df59804f6c3a55bfcf86d",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "NapierSupplyFuseEnterData",
+                            "signature": "enter((address,address,uint256,uint256))",
+                            "selector": "0x2242c270",
+                            "source": "contracts/fuses/napier/NapierSupplyFuse.sol:20",
+                            "fields": [
+                                {
+                                    "name": "principalToken",
+                                    "type": "IPrincipalToken",
+                                    "source": "contracts/fuses/napier/NapierSupplyFuse.sol:21"
+                                },
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "source": "contracts/fuses/napier/NapierSupplyFuse.sol:22"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/napier/NapierSupplyFuse.sol:23"
+                                },
+                                {
+                                    "name": "minPrincipalsAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/napier/NapierSupplyFuse.sol:24"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/napier/NapierRedeemFuse.sol",
+                    "purpose": "redeems PT for tokenOut after maturity through the universal router",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256))",
+                            "selector": "0x2242c270",
+                            "struct": "NapierRedeemFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "principalToken",
+                                    "type": "IPrincipalToken",
+                                    "meaning": "the Principal Token to redeem; it must be a granted substrate"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "token received for the PT; it must be a granted substrate"
+                                },
+                                {
+                                    "name": "principals",
+                                    "type": "uint256",
+                                    "meaning": "exact PT amount to redeem, in PT smallest units"
+                                },
+                                {
+                                    "name": "minTokenOutAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on tokenOut, in its smallest unit"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/napier/NapierRedeemFuse.sol": "0x401f6c87090dd82f8aeaa71dacdf8d7f2a8c84c81ba65031c573bf806db3eabf"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "NapierRedeemFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256))",
+                                    "selector": "0x2242c270",
+                                    "source": "contracts/fuses/napier/NapierRedeemFuse.sol:20",
+                                    "fields": [
+                                        {
+                                            "name": "principalToken",
+                                            "type": "IPrincipalToken",
+                                            "source": "contracts/fuses/napier/NapierRedeemFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/napier/NapierRedeemFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "principals",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierRedeemFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "minTokenOutAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierRedeemFuse.sol:24"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "NapierRedeemFuse",
+                        "address": "0xcea2E1e1cf7a1A518c877986bAE93A7E7a7bf94e",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x50d282039f5e2f480727cf032f102858dea46b2b09a13f8ee9693a10a58a3ca5",
+                        "observedMarketId": 46,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 46 and VERSION() returned its own address at the observed block",
+                            "enter((address,address,uint256,uint256)) 0x2242c270 present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/napier/NapierCombineFuse.sol",
+                    "purpose": "early redemption: burns equal amounts of PT and YT for tokenOut, before or after maturity",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256))",
+                            "selector": "0x2242c270",
+                            "struct": "NapierCombineFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "principalToken",
+                                    "type": "IPrincipalToken",
+                                    "meaning": "the Principal Token whose PT/YT pair is combined; PT and its YT must be granted substrates"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "token received; it must be a granted substrate"
+                                },
+                                {
+                                    "name": "principals",
+                                    "type": "uint256",
+                                    "meaning": "amount of PT and of YT to burn, in PT smallest units"
+                                },
+                                {
+                                    "name": "minTokenOutAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on tokenOut, in its smallest unit"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/napier/NapierCombineFuse.sol": "0xd03ace576477d430590813d4f8d02455af21c5d26f07c65a6d5cb895756cd15b"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "NapierCombineFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256))",
+                                    "selector": "0x2242c270",
+                                    "source": "contracts/fuses/napier/NapierCombineFuse.sol:20",
+                                    "fields": [
+                                        {
+                                            "name": "principalToken",
+                                            "type": "IPrincipalToken",
+                                            "source": "contracts/fuses/napier/NapierCombineFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/napier/NapierCombineFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "principals",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierCombineFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "minTokenOutAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierCombineFuse.sol:24"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "NapierCombineFuse",
+                        "address": "0x1e17d11750E11B4a179b56595167a3e7b46C2154",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x07b71c562fc55c7ff831e3d9f2a0008a4dbcefdba6b52de46cb2d703dfd19b18",
+                        "observedMarketId": 46,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 46 and VERSION() returned its own address at the observed block",
+                            "enter((address,address,uint256,uint256)) 0x2242c270 present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/napier/NapierCollectFuse.sol",
+                    "purpose": "collects accrued interest and external rewards of the vault's YT; every reward token must itself be a granted substrate",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address))",
+                            "selector": "0x7e890317",
+                            "struct": "NapierCollectFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "principalToken",
+                                    "type": "IPrincipalToken",
+                                    "meaning": "the Principal Token whose Yield Token accrual is collected; it must be a granted substrate"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/napier/NapierCollectFuse.sol": "0xf98a78856b770bd4c6187a47b6ff3a645a67c47257e6198fb796aed0c1035d8b"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "NapierCollectFuseEnterData",
+                                    "signature": "enter((address))",
+                                    "selector": "0x7e890317",
+                                    "source": "contracts/fuses/napier/NapierCollectFuse.sol:12",
+                                    "fields": [
+                                        {
+                                            "name": "principalToken",
+                                            "type": "IPrincipalToken",
+                                            "source": "contracts/fuses/napier/NapierCollectFuse.sol:13"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "NapierCollectFuse",
+                        "address": "0x957BEAc5216D4556821B2D441C1e70f73B8A8Dba",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x41caab4445cf60a7381e63643c320d72939658fa8f14b20eceb89162500a354c",
+                        "observedMarketId": 46,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 46 and VERSION() returned its own address at the observed block",
+                            "enter((address)) 0x7e890317 present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/napier/NapierDepositFuse.sol",
+                    "purpose": "adds (enter) and removes (exit) proportional liquidity of underlying and PT in a TokiHook pool",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256,uint256))",
+                            "selector": "0x7b3445a5",
+                            "struct": "NapierDepositFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "ITokiPoolToken",
+                                    "meaning": "the Napier V2 toki pool; the pool, its underlying (currency0) and its PT (currency1) must be granted substrates"
+                                },
+                                {
+                                    "name": "amount0In",
+                                    "type": "uint256",
+                                    "meaning": "currency0 (underlying) amount to deposit, in its smallest unit"
+                                },
+                                {
+                                    "name": "amount1In",
+                                    "type": "uint256",
+                                    "meaning": "currency1 (PT) amount to deposit, in PT smallest units"
+                                },
+                                {
+                                    "name": "minLiquidity",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on pool liquidity tokens received"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256,uint256))",
+                            "selector": "0x73ed602f",
+                            "struct": "NapierDepositFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "ITokiPoolToken",
+                                    "meaning": "the Napier V2 toki pool; pool, underlying and PT must be granted substrates"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint256",
+                                    "meaning": "pool liquidity tokens to burn"
+                                },
+                                {
+                                    "name": "amount0OutMin",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on currency0 received"
+                                },
+                                {
+                                    "name": "amount1OutMin",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on currency1 received"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/napier/NapierDepositFuse.sol": "0x0385710ba86f9ad2f7cbcda02b5202396d65798f3edc5e2b8df51cfff67d541f"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "NapierDepositFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256,uint256))",
+                                    "selector": "0x7b3445a5",
+                                    "source": "contracts/fuses/napier/NapierDepositFuse.sol:21",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "ITokiPoolToken",
+                                            "source": "contracts/fuses/napier/NapierDepositFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "amount0In",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierDepositFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "amount1In",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierDepositFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "minLiquidity",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierDepositFuse.sol:25"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "NapierDepositFuseExitData",
+                                    "signature": "exit((address,uint256,uint256,uint256))",
+                                    "selector": "0x73ed602f",
+                                    "source": "contracts/fuses/napier/NapierDepositFuse.sol:32",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "ITokiPoolToken",
+                                            "source": "contracts/fuses/napier/NapierDepositFuse.sol:33"
+                                        },
+                                        {
+                                            "name": "liquidity",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierDepositFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "amount0OutMin",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierDepositFuse.sol:35"
+                                        },
+                                        {
+                                            "name": "amount1OutMin",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierDepositFuse.sol:36"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "NapierDepositFuse",
+                        "address": "0x601A3566998dEb19025aC55C440828Dd0064e8dA",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x5b4dd1d0f11506dcaabf78959538b77f6710c3f187541820416f082a9bb1f64a",
+                        "observedMarketId": 46,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 46 and VERSION() returned its own address at the observed block",
+                            "enter 0x7b3445a5 and exit 0x73ed602f present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/napier/NapierZapDepositFuse.sol",
+                    "purpose": "zap: splits currency1 into PT and YT, keeps the YT and adds PT plus remaining currency1 as liquidity (enter); removes liquidity back to currency1 (exit); the YT leg has its own slippage floor since IL-8044",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "struct": "NapierZapDepositFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "ITokiPoolToken",
+                                    "meaning": "the Napier V2 toki pool; pool, underlying, PT and YT must be granted substrates"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "currency1 amount to zap, in its smallest unit"
+                                },
+                                {
+                                    "name": "minLiquidity",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on pool liquidity tokens received"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "struct": "NapierZapDepositFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "ITokiPoolToken",
+                                    "meaning": "the Napier V2 toki pool; pool, underlying and PT must be granted substrates"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint256",
+                                    "meaning": "pool liquidity tokens to burn"
+                                },
+                                {
+                                    "name": "amount1OutMin",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on currency1 received"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/napier/NapierZapDepositFuse.sol": "0x7103ccce0f24b98f95b0b77713366e1b6f4a1cdbf08ccfbdc5c19a965778a5b6"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "NapierZapDepositFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256))",
+                                    "selector": "0x41b11ae7",
+                                    "source": "contracts/fuses/napier/NapierZapDepositFuse.sol:24",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "ITokiPoolToken",
+                                            "source": "contracts/fuses/napier/NapierZapDepositFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierZapDepositFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "minLiquidity",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierZapDepositFuse.sol:27"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "NapierZapDepositFuseExitData",
+                                    "signature": "exit((address,uint256,uint256))",
+                                    "selector": "0x8467bd30",
+                                    "source": "contracts/fuses/napier/NapierZapDepositFuse.sol:33",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "ITokiPoolToken",
+                                            "source": "contracts/fuses/napier/NapierZapDepositFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "liquidity",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierZapDepositFuse.sol:35"
+                                        },
+                                        {
+                                            "name": "amount1OutMin",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierZapDepositFuse.sol:36"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "NapierZapDepositFuse",
+                        "address": "0xE067Eb9E64470b5707B305C4925671DFA50e7C67",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x089263e2573ce4debd95433a5dcc4556683535e285c96c8a4cdb82d574f1c553",
+                        "observedMarketId": 46,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 46 and VERSION() returned its own address at the observed block",
+                            "enter 0x41b11ae7 and exit 0x8467bd30 present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/napier/NapierSwapPtFuse.sol",
+                    "purpose": "swaps underlying for PT (enter) and PT for underlying (exit) through the pool",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "struct": "NapierSwapPtFuseData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "ITokiPoolToken",
+                                    "meaning": "the Napier V2 toki pool; pool and both currencies must be granted substrates"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "amount of the token sold, in its smallest unit"
+                                },
+                                {
+                                    "name": "minimumAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on the token bought"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "struct": "NapierSwapPtFuseData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "ITokiPoolToken",
+                                    "meaning": "the Napier V2 toki pool; pool and both currencies must be granted substrates"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "PT amount sold, in PT smallest units"
+                                },
+                                {
+                                    "name": "minimumAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on underlying received"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/napier/NapierSwapPtFuse.sol": "0x7fbb280e91c019f9f83550c5d55141a589e82c0bf661db9a53b0a6172be91959"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "NapierSwapPtFuseData",
+                                    "signature": "enter((address,uint256,uint256))",
+                                    "selector": "0x41b11ae7",
+                                    "source": "contracts/fuses/napier/NapierSwapPtFuse.sol:22",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "ITokiPoolToken",
+                                            "source": "contracts/fuses/napier/NapierSwapPtFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierSwapPtFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "minimumAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierSwapPtFuse.sol:25"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "NapierSwapPtFuseData",
+                                    "signature": "exit((address,uint256,uint256))",
+                                    "selector": "0x8467bd30",
+                                    "source": "contracts/fuses/napier/NapierSwapPtFuse.sol:22",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "ITokiPoolToken",
+                                            "source": "contracts/fuses/napier/NapierSwapPtFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierSwapPtFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "minimumAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierSwapPtFuse.sol:25"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "NapierSwapPtFuse",
+                        "address": "0xBa6A8B1DB7f1dCb93A101d2CfF78C7a37a9059c6",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xc53a2ef52654d1d23f9fafc0fdc36661e519b7861ac42c7a8c694eef50329ef4",
+                        "observedMarketId": 46,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 46 and VERSION() returned its own address at the observed block",
+                            "enter 0x41b11ae7 and exit 0x8467bd30 present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/napier/NapierSwapYtFuse.sol",
+                    "purpose": "buys YT with underlying via the router's flash-issue binary search (enter) and sells YT for underlying (exit)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256,(int256,int256,uint256)))",
+                            "selector": "0xff1304dd",
+                            "struct": "NapierSwapYtEnterFuseData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "ITokiPoolToken",
+                                    "meaning": "the Napier V2 toki pool; pool, underlying and YT must be granted substrates"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "underlying amount spent, in its smallest unit"
+                                },
+                                {
+                                    "name": "minimumAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on YT received"
+                                },
+                                {
+                                    "name": "approxParams",
+                                    "type": "ApproximationParams",
+                                    "meaning": "binary-search bounds guessMin, guessMax (int256) and tolerance eps; eps 0 uses the router defaults"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "struct": "NapierSwapYtExitFuseData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "ITokiPoolToken",
+                                    "meaning": "the Napier V2 toki pool; pool, YT and underlying must be granted substrates"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "YT amount sold, in YT smallest units"
+                                },
+                                {
+                                    "name": "minimumAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on underlying received"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/napier/NapierSwapYtFuse.sol": "0x4f2eef6defbea0f10c5bcb1d96dc0ba0a06bd02cedf77a817bf9aab74c6fd26b"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "NapierSwapYtEnterFuseData",
+                                    "signature": "enter((address,uint256,uint256,(int256,int256,uint256)))",
+                                    "selector": "0xff1304dd",
+                                    "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:23",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "ITokiPoolToken",
+                                            "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "minimumAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "approxParams",
+                                            "type": "ApproximationParams",
+                                            "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:27"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "NapierSwapYtExitFuseData",
+                                    "signature": "exit((address,uint256,uint256))",
+                                    "selector": "0x8467bd30",
+                                    "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:30",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "ITokiPoolToken",
+                                            "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:31"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:32"
+                                        },
+                                        {
+                                            "name": "minimumAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/napier/NapierSwapYtFuse.sol:33"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "NapierSwapYtFuse",
+                        "address": "0x0Cd25aCbCE15bAC7bb2B129B69B452A70692F8C4",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xfac6e502c5130fd6ab6ac54bcf16f6149a2587356b9c6d71986c0bedcc71fb39",
+                        "observedMarketId": 46,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 46 and VERSION() returned its own address at the observed block",
+                            "enter 0xff1304dd (the four-field struct with approxParams) and exit 0x8467bd30; the three-field enter 0x41b11ae7 is absent present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "one flat allowlist of addresses for every Napier fuse: Principal Tokens, their Yield Tokens, the underlying yield-bearing tokens and vault assets used as tokenIn/tokenOut, the TokiHook pools, and every reward token the Collect fuse may receive. Each fuse checks the specific addresses it touches with isSubstrateAsAssetGranted",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing in this market: the balance fuse registered for market 46 is a ZeroBalanceFuse. PT, YT and pool liquidity tokens the vault holds are valued in market 7 (ERC20_VAULT_BALANCE) by Erc20BalanceFuse, each granted there and priced by NapierPtLpPriceFeed (PT and LP, contracts/price_oracle/price_feed/NapierPtLpPriceFeed.sol, created through NapierPriceFeedFactory) or NapierYtLinearPriceFeed (YT)",
+                "priceSource": "the vault's PriceOracleMiddleware, with one Napier price feed per PT, YT and LP token; a dependency balance graph from market 46 to market 7 keeps the ERC20 valuation in step with every action",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses, a ZeroBalanceFuse for market 46 and Erc20BalanceFuse for market 7",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/napier/Napier.t.sol",
+                "test/fuses/napier/NapierHelper.sol",
+                "test/fuses/napier/NapierConstants.sol",
+                "test/price_oracle/price_feed/NapierPriceFeedFactoryTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "NapierSupplyFuse",
+                    "address": "0x5BebfB72D40df444603c041c0179B6d921882F1A",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xf8129b93a368e8268fef3998a947929d8850cc85f00bb27bc8f1ceaf4c3e85ff",
+                    "observedMarketId": 46,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 46 and VERSION() returned its own address at the observed block",
+                        "enter((address,address,uint256,uint256)) 0x2242c270 present in the runtime code",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "ZeroBalanceFuseNapier",
+                    "address": "0xCEa56CDcA4d718E2cf5951cD7Db5f0BbAed0A7c4",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xbf8feef585e2a41ac0c96578dd26e275eef92acb83a252da38aeaa03591d7f73",
+                    "observedMarketId": 46,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 46; VERSION() reverted, which ZeroBalanceFuse does not expose",
+                        "runtime code is 167 bytes, the same size as this checkout's compiled ZeroBalanceFuse, and balanceOf() 0x722713f7 is present",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                }
+            }
         }
     ]
 }
