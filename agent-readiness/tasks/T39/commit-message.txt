@@ -1,0 +1,13 @@
+feat(execution): T39 revalidate plans before execution
+
+Add vault:preflight, which checks a prepared plan against the chain as it is now
+— chain, registry status, input hash, implementation, factory version, component
+addresses, the caller's shape and the fee package resolved for that caller — and
+then re-simulates the plan at the state it just read.
+
+Any of those changing is a stop with the failing check named; a go states what
+was read, and the report keeps the residual risk that the factory cannot enforce
+implementation, version or fees atomically at execution time.
+
+Verified against the pinned Ethereum block with 4 tests, including eight
+tampered plans that each stop on exactly their own check.

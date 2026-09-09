@@ -1,0 +1,32 @@
+T39 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run vault:preflight -- --plan <plan> --block 25937526
+  go, 11 checks, simulation.current success at block 25937526
+
+PASS npm run vault:preflight -- --plan <plan> --skip-simulation   (no --block: chain head)
+  go at block 25938324 — the same plan still holds ~800 blocks after it was built
+
+PASS npm run vault:preflight:test
+  tests 4, pass 4, fail 0
+
+  Each tampered plan stops on exactly one check (exit 1, status "stop"):
+    expected.implementation changed          identity.implementation
+    expected.factoryVersion 7                identity.version
+    managementFeeBps 7                       fees.values
+    another feeRecipient                     fees.recipient
+    feePackage.source business-client        fees.source
+    feePackage.index 9                       fees.index
+    input.sha256 changed                     input.unchanged
+    caller set to the USDC contract          caller.shape
+    --max-age-blocks 10 at block +500        plan.age
+
+  The re-simulation test asserts simulation.status success, the block it ran at
+  and verification true.
+  The secret test asserts the provider URL appears in neither stdout nor stderr
+  while the variable name does.
+
+  Bad arguments exit 2; an artifact that is not a plan exits 1 with INVALID_PLAN
+  before any RPC call.
+
+No signer, no broadcast: the preflight only reads, and delegates re-simulation to
+vault:simulate on an ephemeral anvil fork.
