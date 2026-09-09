@@ -96,6 +96,17 @@ The command validates the suite catalog first and exits non-zero when the
 selection is empty or Forge fails. Its current coverage is documented in
 [`docs/testing.md`](./docs/testing.md).
 
+Run the classified Ethereum factory fork suites at an explicit historical
+block:
+
+```bash
+npm run test:fork -- --chain 1 --suite factory --block 23831825
+```
+
+This requires `ETHEREUM_PROVIDER_URL` in the ignored `.env` file. The runner
+passes the requested block into each fixture; it does not silently use the
+fixture's former hardcoded value.
+
 ## Pre-commit hooks
 
 ### requirements

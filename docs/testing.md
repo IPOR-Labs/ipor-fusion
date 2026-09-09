@@ -14,7 +14,8 @@ fixture actually proves:
 
 | Field                   | Meaning                                                                     |
 | ----------------------- | --------------------------------------------------------------------------- |
-| `path`, `contracts`     | The file and the test contracts it defines.                                 |
+| `group`, `path`         | The CLI suite group and the test file it selects.                           |
+| `contracts`, `chainId`  | Test contracts and their fork network (`null` for local).                   |
 | `fixture`               | What the fixture builds — see the four types below.                         |
 | `profile`               | The Foundry profile the suite runs under.                                   |
 | `rpc`                   | The provider environment **variable name**, or `null` when none is needed.  |
@@ -32,9 +33,9 @@ npm run validate:test-suites
 ```
 
 The validator checks the schema, that every `path` exists in the checkout, that
-ids are unique, that a forking fixture declares both a provider variable and a
-pinned block, and that a local fixture declares neither. It exits non-zero and
-names the offending entry when a rule is broken.
+ids are unique, that a forking fixture declares a chain ID, provider variable
+and pinned block, and that a local fixture declares none of those. It exits
+non-zero and names the offending entry when a rule is broken.
 
 ### What is not classified
 
@@ -97,12 +98,26 @@ FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/WrappedPlasm
 FOUNDRY_PROFILE=factory_local forge test --match-path 'test/factory/WhitelistWrappedPlasmaVaultFactory.t.sol'
 ```
 
-Fork, requires an archive-capable Ethereum endpoint — 10 tests across two
-suites, both pinned to block 23831825:
+Fork, requires an archive-capable Ethereum endpoint — 12 tests across two
+suites. Always provide the intended block explicitly:
 
 ```bash
-forge test --match-path 'test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol'
-forge test --match-path 'test/factory/FusionFactoryBusinessClientFeePackagesForkTest.t.sol'
+npm run test:fork -- --chain 1 --suite factory --block 23831825
+```
+
+The runner validates the catalog, rejects an unsupported chain or suite, checks
+that exactly one provider and profile apply, and fails before Forge when the
+provider variable is absent. It exports `FUSION_FORK_BLOCK`; both fixtures read
+that value when creating the fork and contain a test asserting the selected
+`block.number`. This handshake makes a supplied-but-ignored block a test
+failure. The catalog value remains the reviewed reference block, while the CLI
+argument is the block actually exercised by this invocation.
+
+For diagnosis, the equivalent individual commands are:
+
+```bash
+FUSION_FORK_BLOCK=23831825 FOUNDRY_PROFILE=factory_ethereum forge test --match-path 'test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol'
+FUSION_FORK_BLOCK=23831825 FOUNDRY_PROFILE=factory_ethereum forge test --match-path 'test/factory/FusionFactoryBusinessClientFeePackagesForkTest.t.sol'
 ```
 
 ## Providers, profiles and FFI

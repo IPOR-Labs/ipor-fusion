@@ -9,9 +9,11 @@
     "suites": [
         {
             "id": "factory-fusion-factory",
+            "group": "factory",
             "path": "test/factory/FusionFactory.t.sol",
             "contracts": ["FusionFactoryTest"],
             "fixture": "local-deployment",
+            "chainId": null,
             "profile": "factory_local",
             "rpc": null,
             "block": null,
@@ -37,9 +39,11 @@
         },
         {
             "id": "factory-business-client-fee-packages",
+            "group": "factory",
             "path": "test/factory/FusionFactoryBusinessClientFeePackagesTest.t.sol",
             "contracts": ["FusionFactoryBusinessClientFeePackagesTest"],
             "fixture": "local-deployment",
+            "chainId": null,
             "profile": "factory_local",
             "rpc": null,
             "block": null,
@@ -63,9 +67,11 @@
         },
         {
             "id": "factory-fuse-manager-timelock-cancel",
+            "group": "factory",
             "path": "test/factory/FuseManagerTimelockCancelTest.t.sol",
             "contracts": ["FuseManagerTimelockCancelTest"],
             "fixture": "local-deployment",
+            "chainId": null,
             "profile": "factory_local",
             "rpc": null,
             "block": null,
@@ -89,9 +95,11 @@
         },
         {
             "id": "factory-wrapped-plasma-vault",
+            "group": "factory",
             "path": "test/factory/WrappedPlasmaVaultFactory.t.sol",
             "contracts": ["WrappedPlasmaVaultFactoryTest"],
             "fixture": "local-deployment",
+            "chainId": null,
             "profile": "factory_local",
             "rpc": null,
             "block": null,
@@ -112,9 +120,11 @@
         },
         {
             "id": "factory-whitelist-wrapped-plasma-vault",
+            "group": "factory",
             "path": "test/factory/WhitelistWrappedPlasmaVaultFactory.t.sol",
             "contracts": ["WhitelistWrappedPlasmaVaultFactoryTest"],
             "fixture": "local-deployment",
+            "chainId": null,
             "profile": "factory_local",
             "rpc": null,
             "block": null,
@@ -135,14 +145,16 @@
         },
         {
             "id": "factory-dao-fee-packages-fork",
+            "group": "factory",
             "path": "test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol",
             "contracts": ["FusionFactoryDaoFeePackagesForkTest"],
             "fixture": "fork-fresh-deployment",
+            "chainId": 1,
             "profile": "factory_ethereum",
             "rpc": "ETHEREUM_PROVIDER_URL",
             "block": 23831825,
             "ffi": false,
-            "tests": 8,
+            "tests": 9,
             "setUp": {
                 "deploys": [
                     "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
@@ -174,14 +186,16 @@
         },
         {
             "id": "factory-business-client-fee-packages-fork",
+            "group": "factory",
             "path": "test/factory/FusionFactoryBusinessClientFeePackagesForkTest.t.sol",
             "contracts": ["FusionFactoryBusinessClientFeePackagesForkTest"],
             "fixture": "fork-fresh-deployment",
+            "chainId": 1,
             "profile": "factory_ethereum",
             "rpc": "ETHEREUM_PROVIDER_URL",
             "block": 23831825,
             "ffi": false,
-            "tests": 2,
+            "tests": 3,
             "setUp": {
                 "deploys": [
                     "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",

@@ -366,7 +366,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T16 — Uruchamianie jednego zestawu na forku
 
-- [ ] **P0 · M · Zależności: T13, T14.**
+- [x] **P0 · M · Zależności: T13, T14.**
 - **Zakres:** `test:fork -- --chain … --suite factory --block …`; sprawdzić, czy podany blok rzeczywiście dociera do fixture'a, także gdy test wcześniej miał stałą w `setUp()`.
 - **Odbiór:** jedna sieć i suite działają na zadanym bloku; brak RPC, niewspierana sieć, ignorowany parametr i pusta selekcja są widocznymi błędami.
 - **Commit:** `test(runner): T16 add a pinned factory fork runner`.

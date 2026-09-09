@@ -50,6 +50,7 @@ the same change and record the run that produced the numbers.
 ```bash
 forge build
 npm run test:unit
+npm run test:fork -- --chain 1 --suite factory --block 23831825
 npm run validate:test-suites
 ```
 
@@ -70,6 +71,9 @@ entry, a log or a report — variable names only.
 
 Keep pinned fork blocks as they are unless the task explicitly validates and
 records a new one. Changing a block silently changes what the test measures.
+The catalog-driven fork runner is the required entry point for the classified
+factory fork: it passes the CLI block through `FUSION_FORK_BLOCK`, which each
+fixture consumes and asserts.
 
 ## Writing tests
 

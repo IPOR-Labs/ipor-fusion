@@ -57,7 +57,7 @@ Fork tests read provider names from the ignored `.env` file. Copy [.env.example]
 URLs, and use archive-capable endpoints for pinned historical blocks. For example:
 
 ```bash
-forge test --match-path test/factory/FusionFactoryDaoFeePackagesForkTest.t.sol -vvv
+npm run test:fork -- --chain 1 --suite factory --block 23831825
 ```
 
 Do not interpret a missing provider or unavailable archive state as a passing or failing protocol regression. Report it

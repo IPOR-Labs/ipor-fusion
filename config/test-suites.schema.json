@@ -43,9 +43,11 @@
             "additionalProperties": false,
             "required": [
                 "id",
+                "group",
                 "path",
                 "contracts",
                 "fixture",
+                "chainId",
                 "profile",
                 "rpc",
                 "block",
@@ -58,6 +60,11 @@
             "properties": {
                 "id": {
                     "description": "Stable identifier, unique within the catalog.",
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                },
+                "group": {
+                    "description": "CLI suite group used by catalog-driven runners.",
                     "type": "string",
                     "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                 },
@@ -76,6 +83,11 @@
                     "description": "What the fixture builds, and therefore what a pass is evidence for. local-deployment: everything deployed in the test. fork-fresh-deployment: fork state, but the contract under test is deployed by the fixture. fork-upgrade: an existing proxy on a fork is deliberately upgraded or reconfigured. deployed-usage: an existing deployment is used unchanged, without upgrade, code replacement or self-granted roles.",
                     "type": "string",
                     "enum": ["local-deployment", "fork-fresh-deployment", "fork-upgrade", "deployed-usage"]
+                },
+                "chainId": {
+                    "description": "Network chain ID for a fork suite, or null for a local deployment.",
+                    "type": ["integer", "null"],
+                    "minimum": 1
                 },
                 "profile": {
                     "description": "Foundry profile the suite is run under.",

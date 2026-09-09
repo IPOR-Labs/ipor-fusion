@@ -1,0 +1,9 @@
+test(runner): T16 add a pinned factory fork runner
+
+Add a catalog-driven test:fork command for the Ethereum factory pilot with
+named input, selection and RPC failures. Extend the catalog with suite groups
+and chain IDs so the command does not hardcode test paths.
+
+Pass the requested block into both Solidity fixtures and assert the active fork
+block, preventing a CLI block from being accepted but ignored. Cover the runner
+contract with Node tests and execute all 12 fork tests at the pinned block.

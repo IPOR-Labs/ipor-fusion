@@ -1,0 +1,28 @@
+T16 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run test:fork:runner
+  6 passed; 0 failed
+  - missing RPC -> RPC_UNAVAILABLE without a URL
+  - unsupported chain and unsupported suite are distinct
+  - supported inputs with no matching fork entry -> EMPTY_SELECTION
+  - requested block and both selected paths reach the Forge process
+  - Forge failure is propagated and PASS is not printed
+  - both Solidity fixtures consume and assert FUSION_FORK_BLOCK
+
+PASS npm run test:fork -- --chain 1 --suite factory --block 23831825
+  Ethereum mainnet, pinned catalog block 23831825
+  12 passed; 0 failed; 0 skipped
+  runner: PASS (2 suites, block 23831825)
+
+PASS npm run test:fork -- --chain 1 --suite factory --block 23831824
+  Ethereum mainnet, deliberately adjacent block 23831824
+  12 passed; 0 failed; 0 skipped
+  both testForkRunnerUsesRequestedBlock tests passed, proving the old constant was not used
+
+PASS npm run validate:test-suites
+  valid: config/test-suites.json (7 suite(s) classified)
+
+PASS Node syntax checks and Prettier checks for T16 JSON, JavaScript and Markdown
+PASS Prettier check for FusionFactoryBusinessClientFeePackagesForkTest.t.sol
+INHERITED formatting drift in FusionFactoryDaoFeePackagesForkTest.t.sol at its pre-existing lines 278-282 only; not rewritten
+PASS git diff --check

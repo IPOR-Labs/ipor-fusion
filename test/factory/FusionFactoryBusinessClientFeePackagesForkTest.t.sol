@@ -30,9 +30,11 @@ contract FusionFactoryBusinessClientFeePackagesForkTest is Test {
     address public daoFeeManager;
     address public atomist;
     address public businessClient;
+    uint256 public forkBlock;
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), FORK_BLOCK);
+        forkBlock = vm.envOr("FUSION_FORK_BLOCK", FORK_BLOCK);
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), forkBlock);
 
         owner = makeAddr("owner");
         daoFeeManager = makeAddr("daoFeeManager");
@@ -74,6 +76,10 @@ contract FusionFactoryBusinessClientFeePackagesForkTest is Test {
 
         vm.prank(USDC_HOLDER);
         ERC20(USDC).transfer(businessClient, 100_000e6);
+    }
+
+    function testForkRunnerUsesRequestedBlock() public view {
+        assertEq(block.number, vm.envOr("FUSION_FORK_BLOCK", FORK_BLOCK), "fork runner block was ignored");
     }
 
     function _copyBaseAddresses() internal {

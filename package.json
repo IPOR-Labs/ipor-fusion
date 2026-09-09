@@ -21,7 +21,9 @@
         "format:check": "./node_modules/.bin/prettier --check 'contracts/**/*.sol' 'test/**/*.sol'",
         "validate:test-suites": "node tools/validate-test-suites.mjs",
         "test:unit": "node tools/run-unit-tests.mjs",
-        "test:unit:runner": "node --test tools/test-run-unit-tests.mjs"
+        "test:unit:runner": "node --test tools/test-run-unit-tests.mjs",
+        "test:fork": "node tools/run-fork-tests.mjs",
+        "test:fork:runner": "node --test tools/test-run-fork-tests.mjs"
     },
     "dependencies": {
         "@chainlink/contracts": "1.2.0",

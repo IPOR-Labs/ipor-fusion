@@ -129,10 +129,16 @@ if (Array.isArray(catalog.suites)) {
             suite.fixture === "fork-upgrade" ||
             suite.fixture === "deployed-usage";
         if (forks) {
+            if (suite.chainId === null) fail(where, `fixture "${suite.fixture}" needs a chainId, but chainId is null`);
             if (suite.rpc === null)
                 fail(where, `fixture "${suite.fixture}" needs a provider variable, but rpc is null`);
             if (suite.block === null) fail(where, `fixture "${suite.fixture}" needs a pinned block, but block is null`);
         } else if (suite.fixture === "local-deployment") {
+            if (suite.chainId !== null)
+                fail(
+                    where,
+                    `fixture "local-deployment" must not declare a chainId, got ${JSON.stringify(suite.chainId)}`,
+                );
             if (suite.rpc !== null)
                 fail(where, `fixture "local-deployment" must not declare an rpc, got ${JSON.stringify(suite.rpc)}`);
             if (suite.block !== null)
