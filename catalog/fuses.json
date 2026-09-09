@@ -19417,6 +19417,186 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-plasma-vault-market-100001",
+            "protocol": "plasma-vault",
+            "chainId": 1,
+            "market": {
+                "id": 100001,
+                "constant": "ERC4626_0001",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol",
+                "balanceFuse": "contracts/fuses/erc4626/Erc4626BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((uint256,address))",
+                    "selector": "0xa63e3c73",
+                    "struct": "PlasmaVaultRequestSharesFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "sharesAmount",
+                            "type": "uint256",
+                            "meaning": "number of shares of the target Plasma Vault to place in a withdrawal request, in that vault's share units (its decimals); the fuse clamps it to the shares this vault holds, and 0 or a zero balance is a no-op"
+                        },
+                        {
+                            "name": "plasmaVault",
+                            "type": "address",
+                            "meaning": "the target Plasma Vault whose shares this vault holds; it must be a granted substrate of this market and must have a WithdrawManager set, read through UniversalReader.read(VERSION, getWithdrawManager()), otherwise PlasmaVaultRequestSharesFuseInvalidWithdrawManager"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:358",
+                    "sources": {
+                        "contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol": "0xc72f9a2363dcb6777fac3d15d9fe38276c522f9627d113b015b994c76181d7fb",
+                        "contracts/fuses/erc4626/Erc4626BalanceFuse.sol": "0xf464cf33bbc430e8d4a3aa44c07c35dde38669ecaca8cfcb9883b02887e6c511"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "PlasmaVaultRequestSharesFuseEnterData",
+                            "signature": "enter((uint256,address))",
+                            "selector": "0xa63e3c73",
+                            "source": "contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol:14",
+                            "fields": [
+                                {
+                                    "name": "sharesAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol:16"
+                                },
+                                {
+                                    "name": "plasmaVault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/plasma_vault/PlasmaVaultRequestSharesFuse.sol:18"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol",
+                    "purpose": "redeems shares of the target Plasma Vault that were requested earlier and released by its WithdrawManager, through IPlasmaVault.redeemFromRequest(shares, this vault, this vault); enter only, no exit",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((uint256,address))",
+                            "selector": "0xa63e3c73",
+                            "struct": "PlasmaVaultRedeemFromRequestFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "sharesAmount",
+                                    "type": "uint256",
+                                    "meaning": "number of target-vault shares to redeem from the released request, in that vault's share units; clamped to the shares this vault still holds; 0 is a no-op"
+                                },
+                                {
+                                    "name": "plasmaVault",
+                                    "type": "address",
+                                    "meaning": "the target Plasma Vault; it must be a granted substrate of this market"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol": "0xf40ee36ca2c37152ef79446b212e724fd628a7f2bf26e6178eeb19aee1f803ec"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "PlasmaVaultRedeemFromRequestFuseEnterData",
+                                    "signature": "enter((uint256,address))",
+                                    "selector": "0xa63e3c73",
+                                    "source": "contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol:13",
+                                    "fields": [
+                                        {
+                                            "name": "sharesAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol:15"
+                                        },
+                                        {
+                                            "name": "plasmaVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/plasma_vault/PlasmaVaultRedeemFromRequestFuse.sol:17"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "FuseRedeemFromRequestPlasmaVaultMarket1",
+                        "address": "0x906Af6A42079AdAF1aBD92F924a5d4263653AF0d",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x3bfb07a47ca433bddb479b656823e564405454262ed5bb62f2e31dd2c951eb28",
+                        "observedMarketId": 100001,
+                        "matchesCurrentSource": false,
+                        "notes": [
+                            "MARKET_ID() returned 100001 and VERSION() returned its own address at the observed block",
+                            "enter((uint256,address)) 0xa63e3c73 is present in the deployed runtime code, so the described call encodes correctly",
+                            "enterTransient() 0xadea8fa0 is absent, while this checkout's PlasmaVaultRedeemFromRequestFuse.sol exposes it; the deployed contract is an older version without transient-storage chaining"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "addresses of other Plasma Vaults whose shares this vault holds and may request and redeem. Both action fuses check data.plasmaVault with isSubstrateAsAssetGranted; the balance fuse (the generic ERC4626 balance fuse of the same market) iterates the same list and values the shares with convertToAssets. The market id is a constructor argument of both action fuses; the registry deployments and the fork test use ERC4626_0001 (100001), so a vault that already runs the ERC4626 integration on 100001 shares its substrate list with these fuses.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the underlying asset of every target Plasma Vault in the substrate list, after convertToAssets on the shares this vault holds; shares locked in a pending withdrawal request stay on this vault's balance (requestShares only records the request) and remain valued until redeemFromRequest burns them",
+                "priceSource": "the vault's PriceOracleMiddlewareManager, falling back to the PriceOracleMiddleware it points at",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/plasma_vault/PlasmaVaultRequestSharesTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "FuseRequestSharesPlasmaVaultV2",
+                    "address": "0xD966e091Fd435b82D20952A0F4243B2786b5E379",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x63c36b29123d709fa590382324fc1b0366fc3bed7814edd2db6b58247c94d9d3",
+                    "observedMarketId": 100001,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 100001 and VERSION() returned its own address at the observed block",
+                        "enter((uint256,address)) 0xa63e3c73, enterTransient() 0xadea8fa0 and getWithdrawManager() 0x42022932 are present in the deployed runtime code; bytecode equivalence with this checkout was not established",
+                        "the registry also lists FuseRequestSharesPlasmaVaultMarket1 0x7130383298822097531Cf5cc5e3414dda1e09542 (MARKET_ID 100001, 2181 bytes, keccak 0xf10e1d4ee72ccd19b38a0764b0234643e9d9d2bf3d399ebe29c9961ce17e4ec4) which carries enter and getWithdrawManager but not enterTransient(): an older version of the same fuse"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseErc4626Market1",
+                    "address": "0x2C10C36028C430f445a4bA9f7Dd096a5DcC75d5e",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xa6e5a17d7447e0dc2ee76fcc9a532ae174ce920d5d94b69c649933a3af0d6e4b",
+                    "observedMarketId": 100001,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "the same deployment the ERC4626 pilot entry records: MARKET_ID() returned 100001 at the observed block and balanceOf() 0x722713f7 is present",
+                        "VERSION() reverted, while this checkout's Erc4626BalanceFuse.sol exposes it; the deployed contract is an older version of this fuse"
+                    ]
+                }
+            }
         }
     ]
 }
