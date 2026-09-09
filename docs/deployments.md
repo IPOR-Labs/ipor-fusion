@@ -114,6 +114,36 @@ existence and ABI hashes, rejects chain/directory disagreement and refuses
 those populated values are truthful; the referenced inspection and test are
 the reviewable evidence.
 
+## Inspecting the pilot
+
+Run the read-only inspector with an explicit chain, deployment ID, historical
+block and caller:
+
+```bash
+npm run factory:inspect -- \
+  --chain 1 \
+  --deployment ethereum-fusion-factory-cd05909c \
+  --block 25937526 \
+  --caller 0x1111111111111111111111111111111111111111
+```
+
+The command reads the provider name from the test catalog, resolves its value
+from the environment or ignored `.env`, and never prints that value. It checks
+the provider chain, block hash, proxy and implementation bytecode, ERC-1967
+implementation slot and ABI hash before decoding factory version, components,
+timing and both global and caller-effective fee packages. Failures distinguish
+at least `CHAIN_MISMATCH`, `NO_CODE`, `IMPLEMENTATION_MISMATCH` and
+`UNSUPPORTED_FACTORY_VERSION`.
+
+The captured T24 observation is
+[`../agent-readiness/tasks/T24/factory-inspection.json`](../agent-readiness/tasks/T24/factory-inspection.json).
+It is pinned to Ethereum block `25937526` and caller `0x1111…1111`. The report
+shows factory version 8 and the expected implementation, but intentionally does
+not mutate or promote the candidate manifest. Promotion requires the unchanged
+deployed-factory compatibility test in T25 and the reviewed evidence update in
+T26. An inspection at block `23831825` instead reports an implementation
+mismatch because the proxy still pointed to an older implementation there.
+
 ## Known gaps before registration
 
 The address lookup response did not include a deployment transaction, deployment

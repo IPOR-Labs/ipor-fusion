@@ -29,8 +29,8 @@ krok 0 i 5) oraz Pete po commicie.
 | T20 | Źródło adresów i wybór pilotażu | P0 | T11 | committed `efd2691` | 2026-09-09 | `fusion_address_lookup` SDK 3.6.7 potwierdza Ethereum proxy `0xcd05…b852` i companion impl `0xf19C…63f5`; pilot wybrany jako candidate, jawne braki tx/bloku/proxy slot/ABI |
 | T21 | Schemat i walidator manifestów | P0 | T20 | committed `1d28609` | 2026-09-09 | Schema identity/provenance/proxy/code/ABI/dependencies/verification + walidator ścieżek/hashów/statusu; syntetyczny candidate; 7 testów, m.in. address/chain/ABI/verified proof |
 | T22 | ABI jednej wdrożonej wersji | P0 | T20, T21 | committed `4657eb6` | 2026-09-09 | Explorer source wiąże proxy z impl `0xf19c…63f5`; ABI impl (78 entries), SHA-256 i provenance; `clone(string,string,address,uint256,address,uint256)` selector/encode/decode sprawdzone |
-| T23 | Manifest pierwszego kandydata | P0 | T21, T22 | ready-for-commit | 2026-09-09 | `deployments/1/factories.json`: Ethereum FusionFactory `candidate`; lookup+ABI/compiler znane, tx/blok/hashes/dependencies/verification jawnie null/empty |
-| T24 | factory:inspect | P0 | T18, T23 | todo | | |
+| T23 | Manifest pierwszego kandydata | P0 | T21, T22 | committed `c982350` | 2026-09-09 | `deployments/1/factories.json`: Ethereum FusionFactory `candidate`; lookup+ABI/compiler znane, tx/blok/hashes/dependencies/verification jawnie null/empty |
+| T24 | factory:inspect | P0 | T18, T23 | ready-for-commit | 2026-09-09 | Read-only inspect na bloku Ethereum `25937526`: proxy/impl/code, version 8, komponenty, timing i caller-effective fees; 4 nazwane ścieżki błędów, zapisany JSON, candidate bez promocji |
 | T25 | Test tworzenia przez niezmienioną fabrykę | P0 | T16, T24 | todo | | |
 | T26 | Promocja pilotażu do verified | P0 | T24, T25 | todo | | |
 | T27 | Walidowana konfiguracja vaulta | P0 | T10, T26 | todo | | |

@@ -424,7 +424,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T24 — Odczyt i weryfikacja tożsamości fabryki
 
-- [ ] **P0 · M · Zależności: T18, T23.**
+- [x] **P0 · M · Zależności: T18, T23.**
 - **Zakres:** `factory:inspect` dla pilotażu: chain ID, proxy/implementacja, kod, dostępne gettery, komponenty, caller i efektywne opłaty. Zapis odczytów na jednym bloku w uzgodnionym formacie JSON.
 - **Odbiór:** rzeczywisty odczyt działa; zły chain ID, brak kodu i niezgodna wersja mają różne błędy. Odczyt kandydata nie nadaje mu automatycznie statusu `verified`.
 - **Commit:** `feat(factory): T24 inspect deployed factory identity and configuration`.

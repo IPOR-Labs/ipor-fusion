@@ -1,0 +1,92 @@
+{
+    "schemaVersion": 1,
+    "status": "ok",
+    "chainId": 1,
+    "blockNumber": 25937526,
+    "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+    "deploymentId": "ethereum-fusion-factory-cd05909c",
+    "caller": "0x1111111111111111111111111111111111111111",
+    "result": {
+        "proxy": {
+            "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+            "runtimeCodeHash": "0x201c515279ef89b8de275d50b663541468ed73258d082d86abb7bd46a75539b0",
+            "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+            "implementation": "0xf19C1E9f6616F6056AF1e322A86fDaAaAf0263f5",
+            "implementationRuntimeCodeHash": "0xb49487fa6c5ffc095192f743324872bf77817c49a920c8823e60e1cc86c9926c"
+        },
+        "factoryVersion": 8,
+        "components": {
+            "factories": {
+                "accessManagerFactory": "0x0d60285F0C37d977260d22e23dF7984A0800A740",
+                "plasmaVaultFactory": "0x5a7f49afFBD4d9b1fc3997086b13200c188c46d1",
+                "feeManagerFactory": "0x061D41F63D37231a3c7a4Ed74C7b222E6AC88985",
+                "withdrawManagerFactory": "0x86Ea413c729fde506A443c6a929F735a24b488aE",
+                "rewardsManagerFactory": "0x5d9f02e85cCcEC44450C4C9C5Bc71Fb09bC3c71a",
+                "contextManagerFactory": "0x9A5B39a667e3F80a3661271173b68340C59A9850",
+                "priceManagerFactory": "0x7D49C68cb11f6203178d13B4186D39C454e3fe82"
+            },
+            "bases": {
+                "plasmaVaultCoreBase": "0x967fE60231eA5133F2C6516a3a14aE341c115286",
+                "accessManagerBase": "0x922350D9fF1217b2F2CE63A890bE0d377Deb1d42",
+                "priceManagerBase": "0x45d0e14D946990c5fce42B95195B15F27974c115",
+                "withdrawManagerBase": "0x79f140Cf8ae51880fA00468c9621da125E79BBDb",
+                "rewardsManagerBase": "0xD0e1705CE89B77452EA7184d300b7745E0937901",
+                "contextManagerBase": "0xbA68398Feecb2FE95C1D0D66106aE1d432270317"
+            },
+            "priceOracleMiddleware": "0xC9F32d65a278b012371858fD3cdE315B12d664c6",
+            "burnRequestFeeFuse": "0x79e8B115Bd41baee318c1940F42F1a2d94D29ab4",
+            "burnRequestFeeBalanceFuse": "0xbc2907d76964510a4232878e7aC6E2B18c474EFb"
+        },
+        "timing": {
+            "vestingPeriodSeconds": 604800,
+            "withdrawWindowSeconds": 86400
+        },
+        "fees": {
+            "effectiveForCaller": {
+                "isCustom": false,
+                "packages": [
+                    {
+                        "managementFeeBps": 5,
+                        "performanceFeeBps": 1000,
+                        "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+                    },
+                    {
+                        "managementFeeBps": 30,
+                        "performanceFeeBps": 200,
+                        "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+                    },
+                    {
+                        "managementFeeBps": 50,
+                        "performanceFeeBps": 0,
+                        "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+                    }
+                ]
+            },
+            "globalPackages": [
+                {
+                    "managementFeeBps": 5,
+                    "performanceFeeBps": 1000,
+                    "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+                },
+                {
+                    "managementFeeBps": 30,
+                    "performanceFeeBps": 200,
+                    "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+                },
+                {
+                    "managementFeeBps": 50,
+                    "performanceFeeBps": 0,
+                    "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+                }
+            ]
+        }
+    },
+    "warnings": [
+        "manifest status remains candidate; inspection does not promote it",
+        "configuration and caller-specific fees are observations at one block, not permanent constants"
+    ],
+    "references": {
+        "manifest": "deployments/1/factories.json",
+        "abi": "abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/FusionFactory.abi.json"
+    }
+}
