@@ -1,0 +1,34 @@
+T45 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run validate:docs
+  valid documentation references: 19 file(s), 213 local link(s) checked,
+  5 external link(s) listed and not fetched
+
+PASS npm run validate:docs:test
+  tests 7, pass 7, fail 0
+    the shipped documentation passes
+    a broken relative link                                   exit 1
+    a link to a missing ABI path                             exit 1
+    an anchor that is not a heading in the target            exit 1
+    an anchor that is a heading                              exit 0, and the
+      external link is counted, not fetched (example.invalid would fail if it were)
+    links inside fenced code blocks are examples             exit 0
+    an unreadable input                                      exit 2
+
+Stale artifacts and missing references are covered by the checks this job already
+runs, each proven in its own task:
+  npm run catalog:check          fails with OUT_OF_DATE when the catalog no longer
+                                 matches the Solidity sources (T34, 6 tests)
+  npm run validate:deployments   fails when a manifest's ABI path is missing or its
+                                 SHA-256 does not match (T21/T26, 7 tests)
+  npm run validate:catalog       fails when a source or test path in the catalog
+                                 does not exist (T33, 13 tests)
+
+Scope decision recorded rather than worked around: the first run of the validator
+flagged agent-readiness/tasks/T00/LOG.md, where "[tasks.json](tasks.json)" is a
+quotation of a link that exists in another file. Those per-task logs are process
+records, not shipped documentation, so the default scan covers docs/, README.md,
+every AGENTS.md and evals/ — and the committed log was not edited.
+
+The check makes no network request; example.invalid appears in a test precisely
+because resolving it would fail.
