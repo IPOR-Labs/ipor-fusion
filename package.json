@@ -42,6 +42,7 @@
         "catalog:check": "node tools/generate-catalog.mjs --check",
         "catalog:generate:test": "node --test tools/test-generate-catalog.mjs",
         "validate:catalog:test": "node --test tools/test-validate-catalog.mjs",
+        "keccak:test": "node --test tools/test-keccak.mjs",
         "validate:vault-config": "node tools/validate-vault-config.mjs",
         "validate:vault-config:test": "node --test tools/test-validate-vault-config.mjs",
         "vault:plan": "node tools/plan-vault.mjs",

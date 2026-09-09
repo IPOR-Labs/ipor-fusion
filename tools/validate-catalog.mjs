@@ -11,10 +11,10 @@
 // that does not match its signature, and any deployment presented as usable
 // without having been observed on chain.
 
-import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 import { validateSchema } from "./lib/json-schema.mjs";
+import { selector as selectorOf } from "./lib/keccak.mjs";
 import { findStruct, SolidityReadError } from "./lib/solidity-abi.mjs";
 
 const repoRoot = resolve(import.meta.dirname, "..");
@@ -37,12 +37,6 @@ const errors = [];
 const fail = (where, message) => errors.push(`${where}: ${message}`);
 
 for (const error of validateSchema(catalog, schema)) errors.push(error);
-
-function selectorOf(signature) {
-    const result = spawnSync("cast", ["sig", signature], { cwd: repoRoot, encoding: "utf8" });
-    if (result.status !== 0) return null;
-    return result.stdout.trim();
-}
 
 /// Value of a market constant as written in IporFusionMarkets.sol: a plain
 /// number with optional underscores, or `type(uint256).max - n`.
@@ -83,9 +77,7 @@ function checkInterface(where, fusePath, iface) {
         }
         if (!entry || typeof entry !== "object") continue;
         const selector = selectorOf(entry.signature);
-        if (selector === null) {
-            fail(`${where}.${operation}.signature`, `cast could not hash "${entry.signature}"`);
-        } else if (selector !== entry.selector) {
+        if (selector !== entry.selector) {
             fail(`${where}.${operation}.selector`, `signature hashes to ${selector}, catalog says ${entry.selector}`);
         }
         if (text === null) continue;

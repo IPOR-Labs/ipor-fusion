@@ -13,10 +13,10 @@
 // roles and observed deployments are editorial or evidence and are never
 // touched here.
 
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
+import { selector } from "./lib/keccak.mjs";
 import { canonicalType, findStruct, parseFunctionParams, SolidityReadError } from "./lib/solidity-abi.mjs";
 
 const repoRoot = resolve(import.meta.dirname, "..");
@@ -42,12 +42,6 @@ const catalog = JSON.parse(read(catalogPath));
 
 function sha256(text) {
     return `0x${createHash("sha256").update(text).digest("hex")}`;
-}
-
-function cast(args_) {
-    const result = spawnSync("cast", args_, { cwd: repoRoot, encoding: "utf8" });
-    if (result.status !== 0) die("CAST_FAILED", `cast ${args_.join(" ")}`);
-    return result.stdout.trim();
 }
 
 function guarded(fn) {
@@ -81,7 +75,7 @@ function generateOperations(fusePath, fuseSource, iface) {
         operations[operation] = {
             struct: entry.struct,
             signature,
-            selector: cast(["sig", signature]),
+            selector: selector(signature),
             source: `${parsed.path}:${parsed.declaredAtLine}`,
             fields: parsed.fields.map((field) => ({
                 name: field.name,

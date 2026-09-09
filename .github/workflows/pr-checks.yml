@@ -87,6 +87,7 @@ jobs:
                   npm run validate:deployments:test
                   npm run validate:vault-config:test
                   npm run validate:catalog:test
+                  npm run keccak:test
                   npm run validate:docs:test
                   npm run evals:report:test
                   npm run mcp:deployments:test
