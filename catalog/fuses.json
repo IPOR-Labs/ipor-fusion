@@ -13951,6 +13951,110 @@
                     "notes": []
                 }
             }
+        },
+        {
+            "id": "ethereum-harvest-market-27",
+            "protocol": "harvest",
+            "chainId": 1,
+            "market": {
+                "id": 27,
+                "constant": "HARVEST_HARD_WORK",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/harvest/HarvestDoHardWorkFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address[]))",
+                    "selector": "0x5e047043",
+                    "struct": "HarvestDoHardWorkFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "vaults",
+                            "type": "address[]",
+                            "meaning": "the Harvest vaults to call doHardWork on, through each vault's controller(); every address must be a granted substrate of this market (UnsupportedVault otherwise) and the controller must be nonzero (UnsupportedComptroller)"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:90",
+                    "sources": {
+                        "contracts/fuses/harvest/HarvestDoHardWorkFuse.sol": "0x6dc2f10749554d361cf23c4d68f4ef88ca2931126be33d06fa48e4c803ad6d9d",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "HarvestDoHardWorkFuseEnterData",
+                            "signature": "enter((address[]))",
+                            "selector": "0x5e047043",
+                            "source": "contracts/fuses/harvest/HarvestDoHardWorkFuse.sol:15",
+                            "fields": [
+                                {
+                                    "name": "vaults",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/harvest/HarvestDoHardWorkFuse.sol:19"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Harvest vault addresses this market may trigger doHardWork on. Only the action fuse reads the list (per vault in data.vaults); the market holds no position of its own, the vault's Harvest shares are valued elsewhere (typically an ERC4626 market).",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: the market is registered with a ZeroBalanceFuse (contracts/fuses/ZeroBalanceFuse.sol) and always reports 0; doHardWork changes the share price of Harvest vaults held in other markets",
+                "priceSource": "none",
+                "unit": "USD normalized to WAD (18 decimals), always 0"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/harvest/HarvestDoHardWorkFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "FuseHarvestDoHardWork",
+                    "address": "0xDA45fe8099358bba400554c9b640170246B43e50",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xefdf6215c2aa03ac3e9a5b18a5f08082bcc088f9f3691aa3c6503972ef52aed8",
+                    "observedMarketId": 27,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 27 and VERSION() returned its own address at the observed block",
+                        "the runtime code (1396 bytes) contains the described selector enter((address[])) 0x5e047043",
+                        "bytecode equivalence with this checkout's source was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseHarvestDoHardWork",
+                    "address": "0x759ddf11E56d2915fE10Ea8C4Dbfc44A8D048E6E",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xc901eda5181bd0edc5318c39ad88a7a2623cb08eb7d8ee5595352dc701a31d82",
+                    "observedMarketId": 27,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 27 at the observed block; VERSION() reverted; the runtime code is 167 bytes and contains balanceOf() 0x722713f7, the same size as this checkout's compiled ZeroBalanceFuse, so it is recorded as the ZeroBalanceFuse of this market",
+                        "bytecode equivalence with contracts/fuses/ZeroBalanceFuse.sol was not established"
+                    ]
+                }
+            }
         }
     ]
 }
