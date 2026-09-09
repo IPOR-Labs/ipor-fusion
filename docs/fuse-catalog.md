@@ -100,6 +100,8 @@ chain; the entry itself carries the block, code hash and notes.
 | `ethereum-morpho-flash-loan-market-19`           | Ethereum | 19 `MORPHO_FLASH_LOAN`           | `MorphoFlashLoanFuse`                   | –                                                                        | observed / observed (ZeroBalanceFuse) |
 | `ethereum-morpho-liquidity-in-markets-market-41` | Ethereum | 41 `MORPHO_LIQUIDITY_IN_MARKETS` | `MorphoSupplyFuse`                      | –                                                                        | observed / observed                   |
 | `ethereum-morpho-rewards-market-22`              | Ethereum | 22 `MORPHO_REWARDS`              | `MorphoClaimFuse`                       | –                                                                        | observed / –                          |
+| `ethereum-aave-v3-market-1`                      | Ethereum | 1 `AAVE_V3`                      | `AaveV3SupplyFuse`                      | AaveV3BorrowFuse, AaveV3CollateralFuse, AaveV3RepayWithATokensFuse       | observed / observed (older)           |
+| `ethereum-aave-v3-lido-market-20`                | Ethereum | 20 `AAVE_V3_LIDO`                | `AaveV3SupplyFuse`                      | AaveV3BorrowFuse, AaveV3CollateralFuse, AaveV3RepayWithATokensFuse       | observed / observed                   |
 
 ## The pilot entry
 

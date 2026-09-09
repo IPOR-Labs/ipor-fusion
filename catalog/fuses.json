@@ -1865,6 +1865,826 @@
                 },
                 "balanceFuse": null
             }
+        },
+        {
+            "id": "ethereum-aave-v3-market-1",
+            "protocol": "aave_v3",
+            "chainId": 1,
+            "market": {
+                "id": 1,
+                "constant": "AAVE_V3",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/aave_v3/AaveV3WithPriceOracleMiddlewareBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256))",
+                    "selector": "0x41b11ae7",
+                    "struct": "AaveV3SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "asset to supply; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to supply, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance; 0 is a no-op"
+                        },
+                        {
+                            "name": "userEModeCategoryId",
+                            "type": "uint256",
+                            "meaning": "Aave E-Mode category to set for the vault after the supply; any value above 255 leaves E-Mode untouched, 0 disables it"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "AaveV3SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "asset to withdraw; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to withdraw, in the asset's smallest unit; the fuse caps it at the vault's aToken balance; 0 is a no-op"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:8",
+                    "sources": {
+                        "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol": "0x74dc06e02ef45df27251b6dc6b7aad9ab9b797e3e50b252974b09f4cc797cba6",
+                        "contracts/fuses/aave_v3/AaveV3WithPriceOracleMiddlewareBalanceFuse.sol": "0xc98fa605e80d2c3cadf7ffc592181d6ac0c93a2faf5e38c6f8147d1722fe6116"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "AaveV3SupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:19",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:21"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:23"
+                                },
+                                {
+                                    "name": "userEModeCategoryId",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:25"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "AaveV3SupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:29",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:31"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:33"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol",
+                    "purpose": "borrow a granted asset at variable rate (interestRateMode 2) on behalf of the Plasma Vault (enter) and repay it (exit); the collateral must already be supplied through the supply fuse of this market",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "AaveV3BorrowFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "asset to borrow; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to borrow, in the asset's smallest unit; 0 is a no-op"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "struct": "AaveV3BorrowFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "asset to repay; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to repay, in the asset's smallest unit; the fuse approves exactly this amount to the pool; 0 is a no-op"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol": "0x5081483e8a99e8fb260045e29f0c63253fb03972fe65b2de7a1a702d613e3c0f"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AaveV3BorrowFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:16",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:20"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "AaveV3BorrowFuseExitData",
+                                    "signature": "exit((address,uint256))",
+                                    "selector": "0x92876ac8",
+                                    "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:24",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:28"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "BorrowFuseAaveV3",
+                        "address": "0x820D879Ef89356B93A7c71ADDBf45c40a0dDE453",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xda5980d04c279a2a435566c39db896e6579ca9acc11e08375c960ff1012a9623",
+                        "observedMarketId": 1,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 1 and VERSION() returned its own address at the observed block",
+                            "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol",
+                    "purpose": "enable (enter) or disable (exit) a granted asset as collateral for the Plasma Vault in Aave V3 via setUserUseReserveAsCollateral; plain address parameter, no struct",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter(address)",
+                            "selector": "0xd014c01f",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "assetAddress_",
+                                    "type": "address",
+                                    "meaning": "asset to enable as collateral; it must be a granted substrate of this market"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit(address)",
+                            "selector": "0xb42652e9",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "assetAddress_",
+                                    "type": "address",
+                                    "meaning": "asset to disable as collateral; it must be a granted substrate of this market"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol": "0xf771fdc830dddd98de23ef2644661435cc50b2384e807e2d47c98dfab582313c"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": null,
+                                    "signature": "enter(address)",
+                                    "selector": "0xd014c01f",
+                                    "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:54",
+                                    "fields": [
+                                        {
+                                            "name": "assetAddress_",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:54"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": null,
+                                    "signature": "exit(address)",
+                                    "selector": "0xb42652e9",
+                                    "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:83",
+                                    "fields": [
+                                        {
+                                            "name": "assetAddress_",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:83"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "AaveV3CollateralFuse",
+                        "address": "0xc06F56B865F45D4A80707e7d1403767177c44B22",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xf613762c1e4cd13ad382d5256be017e3caf79c8f7dd94cc5f1b7e9c2da9d9765",
+                        "observedMarketId": 1,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 1 and VERSION() returned its own address at the observed block",
+                            "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol",
+                    "purpose": "repay variable debt of a granted asset by burning the vault's aTokens (IPool.repayWithATokens) without withdrawing the underlying; enter only, no inverse operation",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "struct": "AaveV3RepayWithATokensFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "asset whose variable debt is repaid with the vault's aTokens; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "requested repay amount, in the asset's smallest unit; capped at the vault's aToken balance, except type(uint256).max which is forwarded so Aave repays the whole debt; 0 is a no-op"
+                                },
+                                {
+                                    "name": "minAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor: a repaid amount below this reverts with AaveV3RepayWithATokensFuseRepaidAmountBelowMinimum"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol": "0x4c455fa70c1bdd520bd16686e9b518335a89fdab4bda478f5e19b421079d5953"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AaveV3RepayWithATokensFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256))",
+                                    "selector": "0x41b11ae7",
+                                    "source": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol:14",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol:16"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "minAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol:22"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "no name containing \"Aave\" in IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09 resolves to this contract; the only registry deployment found is RepayWithATokensFuseAaveV3 0x8330D7e3a2690A3D69E6FD39c70691aBB62D27A4 in mainnet/mainnet-base-fusion/addresses.json (chain 8453), not read on chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Aave V3 reserve (underlying asset) addresses this market may supply, borrow, repay and use as collateral. Every action fuse checks its asset with isSubstrateAsAssetGranted, and the balance fuse iterates the list, reading the aToken and debt token of each reserve from the pool data provider. The fuses resolve the Aave main-market pool through AAVE_V3_POOL_ADDRESSES_PROVIDER fixed at deployment (AaveV3PoolAddressesProvider in the registry).",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "per granted reserve: aToken balance minus stable and variable debt token balances of the Plasma Vault, signed; the total is clamped to a uint256 so a net-negative sum reverts. AaveV3WithPriceOracleMiddlewareBalanceFuse prices through the vault's middleware; the alternative AaveV3BalanceFuse (same source directory, same arithmetic) prices through Aave's own price oracle at 8 decimals and is what the registry deploys as BalanceFuseAaveV3Lido",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice per reserve (AaveV3WithPriceOracleMiddlewareBalanceFuse); IPoolAddressesProvider.getPriceOracle for AaveV3BalanceFuse",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/aave_v3/AaveV3SupplyFuseTest.t.sol",
+                "test/fuses/aave_v3/AaveV3BalanceFuseTest.t.sol",
+                "test/fuses/aave_v3/AaveV3RepayWithATokensFuseTest.t.sol",
+                "test/fuses/aave_v3/AaveV3WithPriceOracleMiddlewareBalanceFuseTest.t.sol",
+                "test/fuses/aave_v3/AaveV3SupplyFuseArbitrumTest.t.sol",
+                "test/fuses/aave_v3/AaveV3BalanceFuseArbitrumTest.t.sol",
+                "test/integrationTest/aaveV3Ethereum/AaveV3BorrowAgainstIsolatedCollateralEthereum.t.sol",
+                "test/integrationTest/aaveV3Ethereum/AaveV3WstETHBorrowEthereum.t.sol",
+                "test/integrationTest/aaveV3Arbitrum/AaveV3USDCArbitrum.t.sol",
+                "test/looping/ethereum/LoopingBorrowSupplyAaveV3FlashLoanMorpho.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseAaveV3",
+                    "address": "0x7b3957B38b1c91057755D71701247905b48D6063",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x355e68aa037ba706536b0869e56cbe241f56918b0741d2303996d70fc4dcf7ae",
+                    "observedMarketId": 1,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 1 and VERSION() returned its own address at the observed block",
+                        "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "AaveV3WithPriceOracleMiddlewareBalanceFuse",
+                    "address": "0xB12D9640A809543615F221f3609eA34BB1F10b25",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xbbb6479b19ea9b82c11cb657c4012d70bbcd497ae34c920c057da694c077d8e6",
+                    "observedMarketId": 1,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 1 at the observed block",
+                        "VERSION() reverted, while this checkout's AaveV3WithPriceOracleMiddlewareBalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse",
+                        "a second balance fuse for market 1, BalanceFuseAaveV3 0x05bCb16a50DaFE0526FB7b3941B81B1B74a7877e, is listed only in the ipor-abi README (not in addresses.json); it answered MARKET_ID() 1 and reverted on VERSION() at the same block, code hash 0x1505e3d94c6e6da9646507f9a5f51d95b3472bc0547bb6666e88c75f1bb45ccd, consistent with an older AaveV3BalanceFuse"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-aave-v3-lido-market-20",
+            "protocol": "aave_v3",
+            "chainId": 1,
+            "market": {
+                "id": 20,
+                "constant": "AAVE_V3_LIDO",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/aave_v3/AaveV3WithPriceOracleMiddlewareBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256))",
+                    "selector": "0x41b11ae7",
+                    "struct": "AaveV3SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "asset to supply; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to supply, in the asset's smallest unit; the fuse caps it at the Plasma Vault's balance; 0 is a no-op"
+                        },
+                        {
+                            "name": "userEModeCategoryId",
+                            "type": "uint256",
+                            "meaning": "Aave E-Mode category to set for the vault after the supply; any value above 255 leaves E-Mode untouched, 0 disables it"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "AaveV3SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "asset to withdraw; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount to withdraw, in the asset's smallest unit; the fuse caps it at the vault's aToken balance; 0 is a no-op"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:70",
+                    "sources": {
+                        "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol": "0x74dc06e02ef45df27251b6dc6b7aad9ab9b797e3e50b252974b09f4cc797cba6",
+                        "contracts/fuses/aave_v3/AaveV3WithPriceOracleMiddlewareBalanceFuse.sol": "0xc98fa605e80d2c3cadf7ffc592181d6ac0c93a2faf5e38c6f8147d1722fe6116"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "AaveV3SupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:19",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:21"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:23"
+                                },
+                                {
+                                    "name": "userEModeCategoryId",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:25"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "AaveV3SupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:29",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:31"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aave_v3/AaveV3SupplyFuse.sol:33"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol",
+                    "purpose": "borrow a granted asset at variable rate (interestRateMode 2) on behalf of the Plasma Vault (enter) and repay it (exit); the collateral must already be supplied through the supply fuse of this market",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "AaveV3BorrowFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "asset to borrow; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to borrow, in the asset's smallest unit; 0 is a no-op"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "struct": "AaveV3BorrowFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "asset to repay; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount to repay, in the asset's smallest unit; the fuse approves exactly this amount to the pool; 0 is a no-op"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol": "0x5081483e8a99e8fb260045e29f0c63253fb03972fe65b2de7a1a702d613e3c0f"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AaveV3BorrowFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:16",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:20"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "AaveV3BorrowFuseExitData",
+                                    "signature": "exit((address,uint256))",
+                                    "selector": "0x92876ac8",
+                                    "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:24",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3BorrowFuse.sol:28"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "BorrowFuseAaveV3Lido",
+                        "address": "0xF020b954e02D8B8419cF5625D4371F16a678d884",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xbd5624b1c7818b68a73ed179fc3a9acd8057053b09fb16c1d71ea3ee67a2d141",
+                        "observedMarketId": 20,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 20 and VERSION() returned its own address at the observed block",
+                            "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol",
+                    "purpose": "enable (enter) or disable (exit) a granted asset as collateral for the Plasma Vault in Aave V3 via setUserUseReserveAsCollateral; plain address parameter, no struct",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter(address)",
+                            "selector": "0xd014c01f",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "assetAddress_",
+                                    "type": "address",
+                                    "meaning": "asset to enable as collateral; it must be a granted substrate of this market"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit(address)",
+                            "selector": "0xb42652e9",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "assetAddress_",
+                                    "type": "address",
+                                    "meaning": "asset to disable as collateral; it must be a granted substrate of this market"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol": "0xf771fdc830dddd98de23ef2644661435cc50b2384e807e2d47c98dfab582313c"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": null,
+                                    "signature": "enter(address)",
+                                    "selector": "0xd014c01f",
+                                    "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:54",
+                                    "fields": [
+                                        {
+                                            "name": "assetAddress_",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:54"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": null,
+                                    "signature": "exit(address)",
+                                    "selector": "0xb42652e9",
+                                    "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:83",
+                                    "fields": [
+                                        {
+                                            "name": "assetAddress_",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3CollateralFuse.sol:83"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "AaveV3CollateralFuseLido",
+                        "address": "0x8A898B69E553D452f5653E457725797282017f27",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xd69d9ef0232d7f55ff5b1c389fd6337d6f69318d048998a5815a77b37f9f9830",
+                        "observedMarketId": 20,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 20 and VERSION() returned its own address at the observed block",
+                            "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol",
+                    "purpose": "repay variable debt of a granted asset by burning the vault's aTokens (IPool.repayWithATokens) without withdrawing the underlying; enter only, no inverse operation",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "struct": "AaveV3RepayWithATokensFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "asset whose variable debt is repaid with the vault's aTokens; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "requested repay amount, in the asset's smallest unit; capped at the vault's aToken balance, except type(uint256).max which is forwarded so Aave repays the whole debt; 0 is a no-op"
+                                },
+                                {
+                                    "name": "minAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor: a repaid amount below this reverts with AaveV3RepayWithATokensFuseRepaidAmountBelowMinimum"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol": "0x4c455fa70c1bdd520bd16686e9b518335a89fdab4bda478f5e19b421079d5953"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AaveV3RepayWithATokensFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256))",
+                                    "selector": "0x41b11ae7",
+                                    "source": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol:14",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol:16"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "minAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aave_v3/AaveV3RepayWithATokensFuse.sol:22"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "no name containing \"Aave\" in IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09 resolves to this contract; the only registry deployment found is RepayWithATokensFuseAaveV3 0x8330D7e3a2690A3D69E6FD39c70691aBB62D27A4 in mainnet/mainnet-base-fusion/addresses.json (chain 8453), not read on chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Aave V3 reserve (underlying asset) addresses this market may supply, borrow, repay and use as collateral. Every action fuse checks its asset with isSubstrateAsAssetGranted, and the balance fuse iterates the list, reading the aToken and debt token of each reserve from the pool data provider. Same fuse sources as market 1, deployed with marketId 20 and the Aave Lido-market pool addresses provider (AaveV3LidoPoolAddressesProvider 0xcfBf336fe147D643B9Cb705648500e101504B16d in the registry, not read on chain) fixed at deployment.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "per granted reserve: aToken balance minus stable and variable debt token balances of the Plasma Vault, signed; the total is clamped to a uint256 so a net-negative sum reverts. AaveV3WithPriceOracleMiddlewareBalanceFuse prices through the vault's middleware; the alternative AaveV3BalanceFuse (same source directory, same arithmetic) prices through Aave's own price oracle at 8 decimals and is what the registry deploys as BalanceFuseAaveV3Lido",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice per reserve (AaveV3WithPriceOracleMiddlewareBalanceFuse); IPoolAddressesProvider.getPriceOracle for AaveV3BalanceFuse",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": ["test/looping/ethereum/LoopingBorrowSupplyAaveV3LidoFlashLoanMorpho.t.sol"],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseAaveV3Lido",
+                    "address": "0x05c090ffB794abcAc1d0EFa8ebf321E862b75f66",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xc9ff36c685d24bd7f22f3582d0c31df1a59607be2f6b11305d54c4b442202d31",
+                    "observedMarketId": 20,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 20 and VERSION() returned its own address at the observed block",
+                        "enter and exit selectors of this checkout are present in the deployed runtime code; bytecode equivalence with the checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "AaveV3WithPriceOracleMiddlewareBalanceLidoFuse",
+                    "address": "0x366aDb1F9a0743830d2C3Dc3fF0905A28Ca6F789",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x99b851b3157a1a0c117927a0bb9e86e5fc057281a3423ae46c971da748d594aa",
+                    "observedMarketId": 20,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 20 and VERSION() returned its own address at the observed block; bytecode equivalence with the checkout was not established",
+                        "two older balance fuses for market 20 are also in the registry and answered MARKET_ID() 20 with VERSION() reverting: AaveV3LidoWithPriceOracleMiddlewareBalanceFuse 0xc9eeEE3Ae20e9c5dB213a57eF102E4063FA12612 (code hash 0xcb08bddd4b0622805963d7723974bba44d899eff2c55e1310543271ffb7b2ea7, same size as the market-1 middleware balance fuse) and BalanceFuseAaveV3Lido 0x6755249F348611a65FbABc6413FbD19eF3799B57 (code hash 0x65d27e217e9ee6ed87eaf0028d46c59c08546de2b191d1e8cac779d20e7b446b, consistent with AaveV3BalanceFuse)"
+                    ]
+                }
+            }
         }
     ]
 }
