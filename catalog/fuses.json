@@ -13626,6 +13626,331 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "arbitrum-curve-gauge-market-17",
+            "protocol": "curve_gauge",
+            "chainId": 42161,
+            "market": {
+                "id": 17,
+                "constant": "CURVE_LP_GAUGE",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "CurveChildLiquidityGaugeSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "childLiquidityGauge",
+                            "type": "address",
+                            "meaning": "the Curve child liquidity gauge to stake into; it must be a granted substrate of this market; the LP token is read from gauge.lp_token()"
+                        },
+                        {
+                            "name": "lpTokenAmount",
+                            "type": "uint256",
+                            "meaning": "amount of LP tokens to stake (18 decimals); capped at the Plasma Vault's LP token balance; 0 is a no-op"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "CurveChildLiquidityGaugeSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "childLiquidityGauge",
+                            "type": "address",
+                            "meaning": "the Curve child liquidity gauge to unstake from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "lpTokenAmount",
+                            "type": "uint256",
+                            "meaning": "amount of staked LP tokens to withdraw (18 decimals); capped at the vault's gauge balance; 0 is a no-op. exit() reverts on a failing gauge withdraw, while instantWithdraw catches it"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:62",
+                    "sources": {
+                        "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol": "0x37624b5ac3276ab7d19fea57c9e9ff68fe3005eccfe8541b829741726c1791eb",
+                        "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeBalanceFuse.sol": "0x3a4cefae81f6e46bedcc495bfc19a40d5aecb7164303b6480bf1c5b9ada3488a"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "CurveChildLiquidityGaugeSupplyFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:15",
+                            "fields": [
+                                {
+                                    "name": "childLiquidityGauge",
+                                    "type": "address",
+                                    "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:17"
+                                },
+                                {
+                                    "name": "lpTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:19"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "CurveChildLiquidityGaugeSupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:24",
+                            "fields": [
+                                {
+                                    "name": "childLiquidityGauge",
+                                    "type": "address",
+                                    "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:26"
+                                },
+                                {
+                                    "name": "lpTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:28"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/rewards_fuses/curve_gauges/CurveGaugeTokenClaimFuse.sol",
+                    "purpose": "reward claim fuse: for every substrate gauge reads reward_count()/reward_tokens()/claimable_reward(), calls claim_rewards and transfers each claimed token to the RewardsClaimManager; it is registered in RewardsClaimManager by FUSE_MANAGER_ROLE and executed through RewardsClaimManager.claimRewards by CLAIM_REWARDS_ROLE (600), not through PlasmaVault.execute",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim()",
+                            "selector": "0x4e71d92d",
+                            "struct": null,
+                            "fields": []
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/curve_gauges/CurveGaugeTokenClaimFuse.sol": "0x9256e3f474c1b3cb0860bb07f8f1dbf38e3f61c21857f4f9affe18cf76f70b2b"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim()",
+                                    "selector": "0x4e71d92d",
+                                    "source": "contracts/rewards_fuses/curve_gauges/CurveGaugeTokenClaimFuse.sol:30",
+                                    "fields": []
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "no gauge fuse in IPOR-Labs/ipor-abi at a0089cf: searched every mainnet/mainnet-*-fusion/addresses.json for 'ChildLiquidity', 'CurveGauge', 'CurveLp' and 'Curve' (only the two StableSwap-NG fuses on Ethereum match); captured 2026-09-09",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Curve child liquidity gauge addresses (staked LP token contracts) this market may stake into and unstake from. The action fuse checks data.childLiquidityGauge on enter, exit and instantWithdraw; the balance fuse and the claim fuse iterate the same list. The LP token staked in each gauge is expected to be a Curve StableSwap-NG pool that contains the Plasma Vault's underlying asset (market 16 CURVE_POOL supplies it).",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the Plasma Vault's underlying asset only: for each substrate gauge, the staked balance is converted with the pool's calc_withdraw_one_coin(stakedBalance, index of the vault asset in the pool) and priced; it reverts with AssetNotFoundInCurvePool if the pool does not hold the vault asset; gauge rewards are not included",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware) via getAssetPrice for the vault's underlying asset",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/integrationTest/curveGaugesArbitrum/CurveUSDMUSDCStakeLPGaugeArbitrum.t.sol",
+                "test/integrationTest/curveGaugesArbitrum/CurveUSDMUSDCClaimLPGaugeArbitrum.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no gauge fuse in IPOR-Labs/ipor-abi at a0089cf: searched every mainnet/mainnet-*-fusion/addresses.json for 'ChildLiquidity', 'CurveGauge', 'CurveLp' and 'Curve' (only the two StableSwap-NG fuses on Ethereum match); captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no gauge fuse in IPOR-Labs/ipor-abi at a0089cf: searched every mainnet/mainnet-*-fusion/addresses.json for 'ChildLiquidity', 'CurveGauge', 'CurveLp' and 'Curve' (only the two StableSwap-NG fuses on Ethereum match); captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
+        },
+        {
+            "id": "arbitrum-curve-gauge-erc4626-market-25",
+            "protocol": "curve_gauge",
+            "chainId": 42161,
+            "market": {
+                "id": 25,
+                "constant": "CURVE_GAUGE_ERC4626",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeErc4626BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "CurveChildLiquidityGaugeSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "childLiquidityGauge",
+                            "type": "address",
+                            "meaning": "the Curve child liquidity gauge to stake into; it must be a granted substrate of this market; the LP token is read from gauge.lp_token()"
+                        },
+                        {
+                            "name": "lpTokenAmount",
+                            "type": "uint256",
+                            "meaning": "amount of LP tokens to stake (18 decimals); capped at the Plasma Vault's LP token balance; 0 is a no-op"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "CurveChildLiquidityGaugeSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "childLiquidityGauge",
+                            "type": "address",
+                            "meaning": "the Curve child liquidity gauge to unstake from; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "lpTokenAmount",
+                            "type": "uint256",
+                            "meaning": "amount of staked LP tokens to withdraw (18 decimals); capped at the vault's gauge balance; 0 is a no-op. exit() reverts on a failing gauge withdraw, while instantWithdraw catches it"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:85",
+                    "sources": {
+                        "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol": "0x37624b5ac3276ab7d19fea57c9e9ff68fe3005eccfe8541b829741726c1791eb",
+                        "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeErc4626BalanceFuse.sol": "0xcd1927f96df770139550517985eb6a434b07f0d705663bf7c39258f774341b34"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "CurveChildLiquidityGaugeSupplyFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:15",
+                            "fields": [
+                                {
+                                    "name": "childLiquidityGauge",
+                                    "type": "address",
+                                    "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:17"
+                                },
+                                {
+                                    "name": "lpTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:19"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "CurveChildLiquidityGaugeSupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:24",
+                            "fields": [
+                                {
+                                    "name": "childLiquidityGauge",
+                                    "type": "address",
+                                    "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:26"
+                                },
+                                {
+                                    "name": "lpTokenAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/curve_gauge/CurveChildLiquidityGaugeSupplyFuse.sol:28"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Curve child liquidity gauge addresses whose lp_token() is an ERC4626 vault (for example a Curve lending vault entered through market ERC4626_0001). The action fuse checks data.childLiquidityGauge on enter, exit and instantWithdraw (instantWithdraw uses previewWithdraw on the ERC4626 LP token); the balance fuse iterates the same list.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the Plasma Vault's underlying asset only: for each substrate gauge, gauge.balanceOf(vault) (1:1 with LP tokens) is converted with the ERC4626 LP token's convertToAssets and priced; gauge rewards are not included",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware) via getAssetPrice for the vault's underlying asset",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/strategies/curve_arbitrum/CurveIntegrationTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no gauge fuse in IPOR-Labs/ipor-abi at a0089cf: searched every mainnet/mainnet-*-fusion/addresses.json for 'ChildLiquidity', 'CurveGauge', 'CurveLp' and 'Curve' (only the two StableSwap-NG fuses on Ethereum match); captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "no gauge fuse in IPOR-Labs/ipor-abi at a0089cf: searched every mainnet/mainnet-*-fusion/addresses.json for 'ChildLiquidity', 'CurveGauge', 'CurveLp' and 'Curve' (only the two StableSwap-NG fuses on Ethereum match); captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
         }
     ]
 }
