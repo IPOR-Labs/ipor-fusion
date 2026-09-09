@@ -1,0 +1,36 @@
+T48 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run evals:report
+  "no runs recorded yet (evals/agent-readiness/runs does not exist)" and a pointer
+  to the protocol — an honest empty state, not an empty table.
+
+PASS npm run evals:report:test
+  tests 10, pass 10, fail 0
+
+  What the tests prove, on synthetic run records:
+    a missing or empty runs directory                  exit 0, "no runs recorded yet"
+    one run with 6 pass, 1 fail, 1 blocked             success rate 0.857 (blocked left
+                                                       out of the denominator),
+                                                       interventions 8, tokens 320000,
+                                                       median time-to-first-test 12 min,
+                                                       evidence 2.0
+    a hard fail                                        printed as "HARD FAIL E4: …"
+    two runs differing in model and commit             comparable false, conditionsChanged
+                                                       ["commit","model"], and the text
+                                                       output says a difference here is a
+                                                       difference in conditions
+    two runs differing only in commit                  compared: interventions -8,
+                                                       tokens -80000, success rate +0
+  Rejections (exit 1): a missing task, a blocked task without blockedBy, a task
+  outside the suite, a memoryMode the schema forbids, evidenceQuality above 3.
+
+PASS npm run validate:docs   (229 local links, including the new baseline section)
+
+Conditions stay the ones T00 defined: the schema requires commit, model,
+toolsAvailable, workBudgetMinutes, networkAccess, memoryMode and repeats, and
+memoryMode "private-memory" is recorded as such rather than passed off as a
+repository baseline.
+
+Not done here, and not claimable: no measurement was run. That needs sessions
+without private memory (claude --bare requires an API key that this environment
+does not have), which is the open part of T00.

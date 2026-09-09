@@ -40,6 +40,41 @@ E1, E3 and E8 need no network fixture; E1 is anchored on the existing
 `PlasmaVault.UnsupportedFuse()` revert and E8 on a pair of tests under `test/factory/`
 that the operator selects once and then keeps.
 
+## Recording a run as data
+
+Since T48 a run is also written as one JSON file under
+`evals/agent-readiness/runs/<run-id>.json`, validated against
+[`results.schema.json`](results.schema.json), so that runs can be compared
+without re-reading prose:
+
+```bash
+npm run evals:report                       # every recorded run
+npm run evals:report -- --compare run-2    # run-2 against the earlier run
+npm run evals:report -- --json
+```
+
+The record carries the run's conditions (commit, model, tools, budget, network
+access, memory mode, repeats), the pinned fixtures, and for each of the eight
+tasks its score and metrics. The reporter:
+
+- computes the success rate with **blocked tasks left out of the denominator** —
+  a correctly reported missing prerequisite is neither a pass nor a failure of
+  the repository, and a blocked task must name what was missing or the record is
+  rejected;
+- sums human interventions and token cost, and reports the median time to the
+  first relevant test and the average evidence quality;
+- surfaces every hard fail by task instead of averaging it away;
+- **refuses to compare** two runs whose conditions differ in anything but the
+  commit, and names the fields that changed. A better score after a model or
+  memory change is a difference in conditions, not in this repository.
+
+A record is rejected if a task is missing, repeated, unknown to the suite, or if
+any field is outside the schema. Exit codes: `0` reported, `1` an invalid record
+or an impossible comparison, `2` nothing to read.
+
+No run has been recorded yet — the measurement itself is still the open part of
+T00, and `npm run evals:report` says so rather than showing an empty table.
+
 ## Run 1 — baseline (not executed yet)
 
 ### Conditions
