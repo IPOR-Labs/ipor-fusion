@@ -14055,6 +14055,875 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-term-finance-market-52",
+            "protocol": "term_finance",
+            "chainId": 1,
+            "market": {
+                "id": 52,
+                "constant": "TERM_FINANCE",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol",
+                "balanceFuse": "contracts/fuses/term_finance/TermFinanceBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint256,bytes32,bytes32))",
+                    "selector": "0xbc6d2f27",
+                    "struct": "TermFinanceOfferFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "servicer",
+                            "type": "address",
+                            "meaning": "substrate key: the TermRepoServicer proxy of the target Term Repo; must be a granted SERVICER substrate of this market"
+                        },
+                        {
+                            "name": "offerLocker",
+                            "type": "address",
+                            "meaning": "the auction-paired TermAuctionOfferLocker proxy that receives the sealed offer"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "purchase-token amount to lend, in the token's smallest unit; approved to the servicer's TermRepoLocker inside the same call"
+                        },
+                        {
+                            "name": "offerPriceHash",
+                            "type": "bytes32",
+                            "meaning": "keccak256(abi.encode(price, nonce)) commit-phase hash of the offered rate"
+                        },
+                        {
+                            "name": "existingOfferId",
+                            "type": "bytes32",
+                            "meaning": "0x0 for a fresh offer; a non-zero id edits an existing locked offer"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,address,bytes32[]))",
+                    "selector": "0x73da84e6",
+                    "struct": "TermFinanceOfferFuseExitData",
+                    "fields": [
+                        {
+                            "name": "servicer",
+                            "type": "address",
+                            "meaning": "substrate key: the TermRepoServicer proxy the offers belong to"
+                        },
+                        {
+                            "name": "offerLocker",
+                            "type": "address",
+                            "meaning": "the TermAuctionOfferLocker holding the offers"
+                        },
+                        {
+                            "name": "offerIds",
+                            "type": "bytes32[]",
+                            "meaning": "ids of locked offers to cancel before the reveal phase; the purchase token returns to the vault"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:306",
+                    "sources": {
+                        "contracts/fuses/term_finance/TermFinanceOfferFuse.sol": "0x86b6d6dbec49c7d32f6d1fbecfcb8aa0379aa3377e97bcd0c5ebb39716bf46a1",
+                        "contracts/fuses/term_finance/TermFinanceBalanceFuse.sol": "0x9836081ba51493f4274d620614b4b7320e452e7c9f3c2a4e115360465eeb4ba7"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "TermFinanceOfferFuseEnterData",
+                            "signature": "enter((address,address,uint256,bytes32,bytes32))",
+                            "selector": "0xbc6d2f27",
+                            "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:22",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:23"
+                                },
+                                {
+                                    "name": "offerLocker",
+                                    "type": "address",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:24"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:25"
+                                },
+                                {
+                                    "name": "offerPriceHash",
+                                    "type": "bytes32",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:26"
+                                },
+                                {
+                                    "name": "existingOfferId",
+                                    "type": "bytes32",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:27"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "TermFinanceOfferFuseExitData",
+                            "signature": "exit((address,address,bytes32[]))",
+                            "selector": "0x73da84e6",
+                            "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:31",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:32"
+                                },
+                                {
+                                    "name": "offerLocker",
+                                    "type": "address",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:33"
+                                },
+                                {
+                                    "name": "offerIds",
+                                    "type": "bytes32[]",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferFuse.sol:34"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/term_finance/TermFinanceOfferRevealFuse.sol",
+                    "purpose": "lender side: reveals committed offers during the reveal window (no exit, a reveal cannot be undone)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,bytes32[],uint256[],uint256[]))",
+                            "selector": "0x947c3863",
+                            "struct": "TermFinanceOfferRevealFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "meaning": "substrate key: the TermRepoServicer proxy paired with the locker"
+                                },
+                                {
+                                    "name": "offerLocker",
+                                    "type": "address",
+                                    "meaning": "the TermAuctionOfferLocker on which the offers are revealed"
+                                },
+                                {
+                                    "name": "offerIds",
+                                    "type": "bytes32[]",
+                                    "meaning": "ids of locked offers to reveal"
+                                },
+                                {
+                                    "name": "prices",
+                                    "type": "uint256[]",
+                                    "meaning": "plaintext rates as 18-decimal mantissas, parallel to offerIds"
+                                },
+                                {
+                                    "name": "nonces",
+                                    "type": "uint256[]",
+                                    "meaning": "nonces used in the commit hash, parallel to offerIds"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/term_finance/TermFinanceOfferRevealFuse.sol": "0x9a60492222c27a0b589499681833f9cb4160743f73bec6e6ba46a5bd6d2ce543"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "TermFinanceOfferRevealFuseEnterData",
+                                    "signature": "enter((address,address,bytes32[],uint256[],uint256[]))",
+                                    "selector": "0x947c3863",
+                                    "source": "contracts/fuses/term_finance/TermFinanceOfferRevealFuse.sol:17",
+                                    "fields": [
+                                        {
+                                            "name": "servicer",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceOfferRevealFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "offerLocker",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceOfferRevealFuse.sol:19"
+                                        },
+                                        {
+                                            "name": "offerIds",
+                                            "type": "bytes32[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceOfferRevealFuse.sol:20"
+                                        },
+                                        {
+                                            "name": "prices",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceOfferRevealFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "nonces",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceOfferRevealFuse.sol:22"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/term_finance/TermFinanceRedeemFuse.sol",
+                    "purpose": "lender side: burns TermRepoToken after maturity and receives the purchase token, minus any default haircut the servicer applies",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "TermFinanceRedeemFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "meaning": "substrate key: the TermRepoServicer proxy whose TermRepoToken is redeemed"
+                                },
+                                {
+                                    "name": "amountToRedeem",
+                                    "type": "uint256",
+                                    "meaning": "TermRepoToken amount to burn, in its smallest unit (decimals match the purchase token by Term design)"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/term_finance/TermFinanceRedeemFuse.sol": "0x3299eb26dbcf92227fda87abc657bc8a864ccc344d748804a63d00e9f6e2f2e2"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "TermFinanceRedeemFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/term_finance/TermFinanceRedeemFuse.sol:16",
+                                    "fields": [
+                                        {
+                                            "name": "servicer",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceRedeemFuse.sol:17"
+                                        },
+                                        {
+                                            "name": "amountToRedeem",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/term_finance/TermFinanceRedeemFuse.sol:18"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol",
+                    "purpose": "borrower side: locks (enter) and unlocks (exit) collateral ERC20 in a TermRepoCollateralManager; the (servicer, collateralToken) pair must be a granted COLLATERAL_TOKEN substrate",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,address,uint256))",
+                            "selector": "0x95b26ca8",
+                            "struct": "TermFinanceCollateralFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "meaning": "substrate key: the TermRepoServicer proxy of the target Term Repo"
+                                },
+                                {
+                                    "name": "collateralManager",
+                                    "type": "address",
+                                    "meaning": "TermRepoCollateralManager proxy; validated against servicer.termRepoCollateralManager()"
+                                },
+                                {
+                                    "name": "collateralToken",
+                                    "type": "address",
+                                    "meaning": "collateral token; validated against the (servicer, token) substrate pair and the manager's accepted-collateral list"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "collateral amount to lock, in the token's smallest unit"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,address,address,uint256))",
+                            "selector": "0x39e166de",
+                            "struct": "TermFinanceCollateralFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "meaning": "substrate key: the TermRepoServicer proxy of the target Term Repo"
+                                },
+                                {
+                                    "name": "collateralManager",
+                                    "type": "address",
+                                    "meaning": "TermRepoCollateralManager proxy; validated against servicer.termRepoCollateralManager()"
+                                },
+                                {
+                                    "name": "collateralToken",
+                                    "type": "address",
+                                    "meaning": "collateral token; validated against the (servicer, token) substrate pair and the manager's accepted-collateral list"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "collateral amount to unlock, in the token's smallest unit"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol": "0x3e4a2b65324b4b3787eb3ee914d316c58e0605999a443f3e92d5740236522ac0"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "TermFinanceCollateralFuseEnterData",
+                                    "signature": "enter((address,address,address,uint256))",
+                                    "selector": "0x95b26ca8",
+                                    "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:25",
+                                    "fields": [
+                                        {
+                                            "name": "servicer",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "collateralManager",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "collateralToken",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:28"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:29"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "TermFinanceCollateralFuseExitData",
+                                    "signature": "exit((address,address,address,uint256))",
+                                    "selector": "0x39e166de",
+                                    "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:41",
+                                    "fields": [
+                                        {
+                                            "name": "servicer",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:42"
+                                        },
+                                        {
+                                            "name": "collateralManager",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:43"
+                                        },
+                                        {
+                                            "name": "collateralToken",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:44"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCollateralFuse.sol:45"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/term_finance/TermFinanceBidFuse.sol",
+                    "purpose": "borrower side: submits sealed borrower bids with collateral (enter) and cancels them before reveal (exit)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,address,uint256,bytes32,bytes32,address[],uint256[]))",
+                            "selector": "0x1fc4b71d",
+                            "struct": "TermFinanceBidFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "meaning": "substrate key: the TermRepoServicer proxy of the target Term Repo"
+                                },
+                                {
+                                    "name": "bidLocker",
+                                    "type": "address",
+                                    "meaning": "the auction-paired TermAuctionBidLocker proxy"
+                                },
+                                {
+                                    "name": "collateralManager",
+                                    "type": "address",
+                                    "meaning": "TermRepoCollateralManager proxy; validated against servicer.termRepoCollateralManager()"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "purchase-token amount to borrow, in the token's smallest unit"
+                                },
+                                {
+                                    "name": "bidPriceHash",
+                                    "type": "bytes32",
+                                    "meaning": "keccak256(abi.encode(price, nonce)) commit-phase hash of the bid rate"
+                                },
+                                {
+                                    "name": "existingBidId",
+                                    "type": "bytes32",
+                                    "meaning": "0x0 for a fresh bid; a non-zero id edits an existing locked bid"
+                                },
+                                {
+                                    "name": "collateralTokens",
+                                    "type": "address[]",
+                                    "meaning": "collateral tokens to lock, each validated as a (servicer, token) COLLATERAL_TOKEN substrate; parallel to collateralAmounts"
+                                },
+                                {
+                                    "name": "collateralAmounts",
+                                    "type": "uint256[]",
+                                    "meaning": "collateral amounts to lock per token, in each token's smallest unit"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,address,bytes32[]))",
+                            "selector": "0x73da84e6",
+                            "struct": "TermFinanceBidFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "meaning": "substrate key: the TermRepoServicer proxy the bids belong to"
+                                },
+                                {
+                                    "name": "bidLocker",
+                                    "type": "address",
+                                    "meaning": "the TermAuctionBidLocker holding the bids"
+                                },
+                                {
+                                    "name": "bidIds",
+                                    "type": "bytes32[]",
+                                    "meaning": "ids of locked bids to cancel before the reveal phase; locked collateral returns to the vault"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/term_finance/TermFinanceBidFuse.sol": "0xb0aebfbe9a4b3ed1743e3530fc60e0caa3ad81ad038d5f7b60750b7fe5d36bdc"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "TermFinanceBidFuseEnterData",
+                                    "signature": "enter((address,address,address,uint256,bytes32,bytes32,address[],uint256[]))",
+                                    "selector": "0x1fc4b71d",
+                                    "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:29",
+                                    "fields": [
+                                        {
+                                            "name": "servicer",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:30"
+                                        },
+                                        {
+                                            "name": "bidLocker",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:31"
+                                        },
+                                        {
+                                            "name": "collateralManager",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:32"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:33"
+                                        },
+                                        {
+                                            "name": "bidPriceHash",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "existingBidId",
+                                            "type": "bytes32",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:35"
+                                        },
+                                        {
+                                            "name": "collateralTokens",
+                                            "type": "address[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "collateralAmounts",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:37"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "TermFinanceBidFuseExitData",
+                                    "signature": "exit((address,address,bytes32[]))",
+                                    "selector": "0x73da84e6",
+                                    "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:44",
+                                    "fields": [
+                                        {
+                                            "name": "servicer",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:45"
+                                        },
+                                        {
+                                            "name": "bidLocker",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:46"
+                                        },
+                                        {
+                                            "name": "bidIds",
+                                            "type": "bytes32[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidFuse.sol:47"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/term_finance/TermFinanceBidRevealFuse.sol",
+                    "purpose": "borrower side: reveals committed bids during the reveal window (no exit); the servicer is resolved from the locker",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,bytes32[],uint256[],uint256[]))",
+                            "selector": "0xbb5791a0",
+                            "struct": "TermFinanceBidRevealFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "bidLocker",
+                                    "type": "address",
+                                    "meaning": "the TermAuctionBidLocker on which the bids are revealed; its servicer must be a granted substrate"
+                                },
+                                {
+                                    "name": "bidIds",
+                                    "type": "bytes32[]",
+                                    "meaning": "ids of locked bids to reveal"
+                                },
+                                {
+                                    "name": "bidPrices",
+                                    "type": "uint256[]",
+                                    "meaning": "plaintext rates as 18-decimal mantissas, parallel to bidIds"
+                                },
+                                {
+                                    "name": "bidNonces",
+                                    "type": "uint256[]",
+                                    "meaning": "nonces used in the commit hash, parallel to bidIds"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/term_finance/TermFinanceBidRevealFuse.sol": "0xe35b3a857c6aea0e75b11ff064b97f890aa4574c7541cbba3cf8b7403ebfe03c"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "TermFinanceBidRevealFuseEnterData",
+                                    "signature": "enter((address,bytes32[],uint256[],uint256[]))",
+                                    "selector": "0xbb5791a0",
+                                    "source": "contracts/fuses/term_finance/TermFinanceBidRevealFuse.sol:21",
+                                    "fields": [
+                                        {
+                                            "name": "bidLocker",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidRevealFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "bidIds",
+                                            "type": "bytes32[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidRevealFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "bidPrices",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidRevealFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "bidNonces",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceBidRevealFuse.sol:25"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/term_finance/TermFinanceRepurchaseFuse.sol",
+                    "purpose": "borrower side: repays outstanding repo debt through servicer.submitRepurchasePayment; the servicer caps the pull at the vault's obligation",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "TermFinanceRepurchaseFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "meaning": "substrate key: the TermRepoServicer proxy that holds the vault's repurchase obligation"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "purchase-token amount the alpha intends to repay, in the token's smallest unit; may exceed the obligation, the servicer caps it"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/term_finance/TermFinanceRepurchaseFuse.sol": "0xc8aa3bf6bee720a84814820a47b46fe2538db64d060dceee1652b149061f1f19"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "TermFinanceRepurchaseFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/term_finance/TermFinanceRepurchaseFuse.sol:31",
+                                    "fields": [
+                                        {
+                                            "name": "servicer",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceRepurchaseFuse.sol:32"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/term_finance/TermFinanceRepurchaseFuse.sol:33"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/term_finance/TermFinanceCleanupFuse.sol",
+                    "purpose": "maintenance: prunes stale pending offer and bid entries from the vault's Term Finance storage so the balance fuse stops iterating them",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,bytes32[],bytes32[],bool))",
+                            "selector": "0xfeac25b5",
+                            "struct": "TermFinanceCleanupFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "servicer",
+                                    "type": "address",
+                                    "meaning": "substrate key: the TermRepoServicer proxy whose pending entries are inspected"
+                                },
+                                {
+                                    "name": "offerIds",
+                                    "type": "bytes32[]",
+                                    "meaning": "candidate offer ids to prune; empty means every stored offer id of this servicer"
+                                },
+                                {
+                                    "name": "bidIds",
+                                    "type": "bytes32[]",
+                                    "meaning": "candidate bid ids to prune; empty means every stored bid id of this servicer"
+                                },
+                                {
+                                    "name": "pruneOnLockerRevert",
+                                    "type": "bool",
+                                    "meaning": "false (safe default) keeps an entry whose locker read reverts; true force-prunes it, accepting that a paused-but-live entry is dropped"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/term_finance/TermFinanceCleanupFuse.sol": "0x3c0001a2a4cf66b6d44b54ccd8a86619da9d789469207db4f28327871402e7dc"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "TermFinanceCleanupFuseEnterData",
+                                    "signature": "enter((address,bytes32[],bytes32[],bool))",
+                                    "selector": "0xfeac25b5",
+                                    "source": "contracts/fuses/term_finance/TermFinanceCleanupFuse.sol:24",
+                                    "fields": [
+                                        {
+                                            "name": "servicer",
+                                            "type": "address",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCleanupFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "offerIds",
+                                            "type": "bytes32[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCleanupFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "bidIds",
+                                            "type": "bytes32[]",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCleanupFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "pruneOnLockerRevert",
+                                            "type": "bool",
+                                            "source": "contracts/fuses/term_finance/TermFinanceCleanupFuse.sol:28"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "two typed bytes32 values packed by TermFinanceSubstrateLib: TYPE 0x00 SERVICER holds a TermRepoServicer proxy address (checked as an asset-shaped substrate by every action fuse and iterated by the balance fuse), TYPE 0x01 COLLATERAL_TOKEN holds keccak256(abi.encode(servicer, collateralToken)) in the lower 31 bytes and allowlists one collateral token for one servicer (checked by the Collateral and Bid fuses, skipped by the balance fuse)",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with values from PlasmaVaultConfigLib.addressToBytes32(servicer) and TermFinanceSubstrateLib.collateralPairKey(servicer, token)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, servicer) and PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, TermFinanceSubstrateLib.collateralPairKey(servicer, token))",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "per SERVICER substrate, five signed legs: held TermRepoToken at present value discounted with the TermDiscountRateAdapter, pending offers, locked collateral (each accepted collateral token), collateral inside pending bids, minus the borrower repurchase obligation at present value; each leg is clamped to 1e36 and a net-negative total reverts",
+                "priceSource": "the vault's PriceOracleMiddleware for the purchase token and every collateral token; a failing or zero price on a servicer with tracked exposure reverts the whole balanceOf, on an untracked servicer the leg is zero",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action; Offer, Bid, Collateral, Repurchase and BidReveal revert unless the vault has a WithdrawManager configured",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/unitTest/fuses/term_finance/TermFinanceOfferFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceOfferRevealFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceRedeemFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceBidFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceBidRevealFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceCollateralFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceRepurchaseFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceCleanupFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceBalanceFuseTest.t.sol",
+                "test/unitTest/fuses/term_finance/TermFinanceBalanceFuseDelegatecallTest.t.sol",
+                "test/unitTest/fuses/term_finance/lib/TermFinanceSubstrateLibTest.t.sol",
+                "test/unitTest/fuses/term_finance/lib/TermFinancePresentValueLibTest.t.sol",
+                "test/unitTest/fuses/term_finance/lib/TermFinancePendingOffersStorageLibTest.t.sol",
+                "test/unitTest/fuses/term_finance/lib/TermFinancePendingBidsStorageLibTest.t.sol",
+                "test/integrationTest/termFinanceEthereum/TermFinanceLiveBalanceFork.t.sol",
+                "test/integrationTest/termFinanceEthereum/TermFinanceBorrowerFork.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "searched every mainnet/*-fusion/addresses.json of IPOR-Labs/ipor-abi at a0089cf (2026-09-09) for 'TermFinance', 'Term', 'Repo': no fuse of this integration is registered on any chain",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
         }
     ]
 }
