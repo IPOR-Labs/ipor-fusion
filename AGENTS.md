@@ -34,6 +34,10 @@ control, and assets managed on-chain, so prefer evidence from code and tests ove
 - `docs/`: selectively tracked, team-facing documentation. Follow its index when adding a document.
 - `agent-readiness/`: implementation plan and task evidence, not product or deployment documentation.
 
+Directory-level instructions exist in `contracts/vaults/AGENTS.md`, `contracts/managers/AGENTS.md`,
+`contracts/price_oracle/AGENTS.md`, `contracts/factory/AGENTS.md`, `contracts/fuses/AGENTS.md` and `test/AGENTS.md`. Read
+the one for the directory you are changing before editing.
+
 On first search, exclude `node_modules/`, `lib/`, `out/`, and `cache/` unless the task concerns dependencies or generated
 artifacts. Prefer `rg` and `rg --files` for repository discovery.
 
