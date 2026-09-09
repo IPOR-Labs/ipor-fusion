@@ -1,0 +1,49 @@
+{
+    "schemaVersion": 1,
+    "capturedAt": "2026-09-09",
+    "timezone": "Europe/Warsaw",
+    "chainId": 8453,
+    "proxy": {
+        "address": "0x1455717668fA96534f675856347A973fA907e922",
+        "contractName": "ERC1967Proxy",
+        "implementationReadFrom": "eth_getStorageAt on the ERC-1967 slot at Base block 51000000",
+        "explorerImplementation": "0x610152a79be7f2aa3aa70520c9331c18fe8d33b7",
+        "runtimeCodeHash": "0x201c515279ef89b8de275d50b663541468ed73258d082d86abb7bd46a75539b0",
+        "note": "The proxy's runtime code hash equals the Ethereum pilot proxy's; both are the same ERC1967Proxy bytecode."
+    },
+    "implementation": {
+        "address": "0x610152A79BE7F2Aa3aA70520c9331c18fe8D33b7",
+        "contractName": "FusionFactory",
+        "runtimeCodeHash": "0x945ad1014c2dc5ce3ebdaac188f7deb054f040d5ea08bff7eebe2a81071a104b",
+        "runtimeCodeSize": 15395,
+        "compilerVersion": null,
+        "optimizerEnabled": null,
+        "optimizerRuns": null,
+        "evmVersion": null,
+        "note": "Different bytecode from the Ethereum implementation (which is 22 KB); the reported factory version is 8 on both."
+    },
+    "abi": {
+        "path": "abi/fusion-factory-base-0x610152a79be7f2aa3aa70520c9331c18fe8d33b7/FusionFactory.abi.json",
+        "sha256": "6d2da724f6c057439455b6a01cbc153c4b6e076cc72f6f7ef1b12ebd202c019f",
+        "entries": 78,
+        "contractName": "FusionFactory"
+    },
+    "source": {
+        "kind": "reused-from-sibling-deployment",
+        "reference": "abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/FusionFactory.abi.json",
+        "why": "Both deployments report factory version 8 and expose the same creation operation. The file is byte-identical to the Ethereum one, which came from a verified explorer source.",
+        "compatibilityEvidence": [
+            "getFusionFactoryVersion() returns 8 at Base block 51000000, the same version the Ethereum entry records",
+            "42 of the 43 function selectors in this ABI appear in the Base implementation's runtime code",
+            "the 43rd, getVestingPeriodInSeconds(), was not found by the byte search but answers 604800 when called — a selector probe can miss a dispatch pattern, so absence from the search is not absence from the contract",
+            "the deployed-usage test creates a vault through the unchanged Base proxy with this ABI"
+        ],
+        "limits": "This is not a verified explorer ABI for the Base implementation. It is the same file as the Ethereum entry's, justified by the same reported version and by reads that answered. The bytecode differs between the two networks."
+    },
+    "creationOperation": {
+        "signature": "clone(string,string,address,uint256,address,uint256)",
+        "selector": "0x8697b10a",
+        "adapter": null,
+        "adapterReason": "Same signature as the Ethereum entry; no adapter is needed for the creation path on this network."
+    }
+}

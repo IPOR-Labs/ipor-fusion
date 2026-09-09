@@ -1,0 +1,52 @@
+{
+    "schemaVersion": 1,
+    "chainId": 8453,
+    "network": "base",
+    "deployments": [
+        {
+            "id": "base-fusion-factory-14557176",
+            "chainId": 8453,
+            "kind": "fusion-factory",
+            "status": "verified",
+            "address": "0x1455717668fA96534f675856347A973fA907e922",
+            "proxy": {
+                "type": "erc1967",
+                "implementation": "0x610152A79BE7F2Aa3aA70520c9331c18fe8D33b7",
+                "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+            },
+            "provenance": {
+                "addressSource": {
+                    "kind": "fusion-address-lookup",
+                    "reference": "IPOR Fusion SDK fusion_address_lookup, name query \"IporFusionFactory\" on chain 8453",
+                    "capturedAt": "2026-09-09"
+                },
+                "deploymentTransaction": null,
+                "deploymentBlock": null,
+                "explorerUrl": "https://basescan.org/address/0x1455717668fA96534f675856347A973fA907e922",
+                "confirmedBy": "IPOR Fusion SDK fusion_address_lookup 3.6.7 plus direct reads at Base block 51000000"
+            },
+            "code": {
+                "proxyRuntimeCodeHash": "0x201c515279ef89b8de275d50b663541468ed73258d082d86abb7bd46a75539b0",
+                "implementationRuntimeCodeHash": "0x945ad1014c2dc5ce3ebdaac188f7deb054f040d5ea08bff7eebe2a81071a104b",
+                "sourceCommit": null,
+                "compiler": null
+            },
+            "interface": {
+                "abiPath": "abi/fusion-factory-base-0x610152a79be7f2aa3aa70520c9331c18fe8d33b7/FusionFactory.abi.json",
+                "abiSha256": "6d2da724f6c057439455b6a01cbc153c4b6e076cc72f6f7ef1b12ebd202c019f",
+                "adapter": null,
+                "reportedVersion": "8",
+                "supportedOperations": ["clone(string,string,address,uint256,address,uint256)"]
+            },
+            "dependencies": [],
+            "verification": {
+                "blockNumber": 51000000,
+                "blockHash": "0x69ab4219601632b69396d695630fdbf1abb0f1d1afd739111a6449f30f8f4308",
+                "checkedAt": "2026-09-09T08:30:00Z",
+                "inspectorVersion": "cast 1.7.1 reads plus test/deployed-factories/FusionFactoryBase.t.sol",
+                "reportPath": "deployments/reports/base-fusion-factory-14557176-51000000.json",
+                "compatibilityTestPath": "test/deployed-factories/FusionFactoryBase.t.sol"
+            }
+        }
+    ]
+}

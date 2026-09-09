@@ -39,6 +39,12 @@ fs_permissions = []
 ffi = false
 fs_permissions = []
 
+[profile.factory_base]
+# The classified Base factory pilot reads chain state through its RPC URL only.
+# Compiler, optimizer and EVM version are the default profile's, unchanged.
+ffi = false
+fs_permissions = []
+
 [profile.arbitrum]
 # Arbitrum inherits the default compiler and optimizer configuration. Paris is the
 # only deliberate override for contracts deployed before the network enabled Cancun.

@@ -1,0 +1,94 @@
+{
+    "schemaVersion": 1,
+    "reportKind": "factory-verification",
+    "deploymentId": "base-fusion-factory-14557176",
+    "chainId": 8453,
+    "network": "base",
+    "blockNumber": 51000000,
+    "blockHash": "0x69ab4219601632b69396d695630fdbf1abb0f1d1afd739111a6449f30f8f4308",
+    "checkedAt": "2026-09-09T08:30:00Z",
+    "verdict": "verified",
+    "manifestPath": "deployments/8453/factories.json",
+    "toolchain": {
+        "forge": "1.7.1",
+        "cast": "1.7.1",
+        "foundryCommit": "4072e48705af9d93e3c0f6e29e93b5e9a40caed8",
+        "node": "v24.16.0",
+        "foundryProfile": "factory_base",
+        "providerVariable": "BASE_PROVIDER_URL"
+    },
+    "reproduce": {
+        "compatibilityTest": "npm run test:fork -- --chain 8453 --suite deployed-factory --block 51000000",
+        "implementationSlot": "cast storage --rpc-url \"$BASE_PROVIDER_URL\" --block 51000000 0x1455717668fA96534f675856347A973fA907e922 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+        "version": "cast call --rpc-url \"$BASE_PROVIDER_URL\" --block 51000000 0x1455717668fA96534f675856347A973fA907e922 \"getFusionFactoryVersion()(uint256)\"",
+        "manifest": "npm run validate:deployments"
+    },
+    "identity": {
+        "proxy": {
+            "address": "0x1455717668fA96534f675856347A973fA907e922",
+            "type": "erc1967",
+            "runtimeCodeSize": 163,
+            "runtimeCodeHash": "0x201c515279ef89b8de275d50b663541468ed73258d082d86abb7bd46a75539b0"
+        },
+        "implementation": {
+            "address": "0x610152A79BE7F2Aa3aA70520c9331c18fe8D33b7",
+            "slot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+            "runtimeCodeSize": 15395,
+            "runtimeCodeHash": "0x945ad1014c2dc5ce3ebdaac188f7deb054f040d5ea08bff7eebe2a81071a104b",
+            "matchesManifest": true
+        },
+        "abi": {
+            "path": "abi/fusion-factory-base-0x610152a79be7f2aa3aa70520c9331c18fe8d33b7/FusionFactory.abi.json",
+            "sha256": "6d2da724f6c057439455b6a01cbc153c4b6e076cc72f6f7ef1b12ebd202c019f",
+            "entries": 78,
+            "origin": "byte-identical to the Ethereum entry's verified ABI; reused for the same reported version",
+            "creationOperation": "clone(string,string,address,uint256,address,uint256)",
+            "creationSelector": "0x8697b10a"
+        },
+        "reportedFactoryVersion": "8"
+    },
+    "reads": {
+        "note": "Base has its own addresses and its own token; nothing is shared with the Ethereum entry except the ABI file and the reported version.",
+        "withdrawWindowSeconds": 86400,
+        "vestingPeriodSeconds": 604800,
+        "plasmaVaultBase": "0x53dEFd9d61134847B8dE75385891DcD32b3ad5d4",
+        "daoFeePackages": [
+            { "managementFeeBps": 5, "performanceFeeBps": 1000, "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569" },
+            { "managementFeeBps": 30, "performanceFeeBps": 200, "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569" },
+            { "managementFeeBps": 50, "performanceFeeBps": 0, "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569" }
+        ],
+        "selectorProbe": {
+            "abiFunctions": 43,
+            "foundInRuntimeCode": 42,
+            "notFoundByByteSearch": ["getVestingPeriodInSeconds()"],
+            "resolution": "getVestingPeriodInSeconds() answers 604800 when called, so the byte search missed a dispatch pattern. A probe miss is not proof of absence and was resolved by a call, not by assumption."
+        }
+    },
+    "compatibilityTest": {
+        "path": "test/deployed-factories/FusionFactoryBase.t.sol",
+        "sha256": "4c77f94d57912f9aac18a8817ff974aee98f2dddb655645afdddd911ef62abd0",
+        "suite": "deployed-factory",
+        "fixture": "deployed-usage",
+        "test": "FusionFactoryBaseDeployedUsageTest::testCreateVaultThroughUnchangedBaseFactory",
+        "result": "pass",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "gas": 8902876,
+        "usedUpgradeOrCodeReplacement": false,
+        "grantedRoles": false,
+        "broadcast": false,
+        "proves": [
+            "chain 8453 and the pinned block are the ones the runner selected",
+            "the Base factory address is not the Ethereum one and reports version 8",
+            "a permissionless caller creates a Base USDC vault through the unchanged proxy",
+            "the seven returned components have code, the requested owner holds OWNER_ROLE with no delay, and the fee manager matches the caller-effective package"
+        ]
+    },
+    "warnings": [
+        "the Base implementation's bytecode differs from the Ethereum one although both report version 8; the ABI is reused on that basis, not on a bytecode match",
+        "the implementation's verified compiler metadata was not captured",
+        "reads are observations at Base block 51000000",
+        "factory:inspect is not run against this entry: its component reads are written for the Ethereum pilot's manifest path"
+    ]
+}

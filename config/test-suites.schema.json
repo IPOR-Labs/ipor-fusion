@@ -103,7 +103,7 @@
                 "profile": {
                     "description": "Foundry profile the suite is run under.",
                     "type": "string",
-                    "enum": ["factory_local", "factory_ethereum", "arbitrum"]
+                    "enum": ["factory_local", "factory_ethereum", "factory_base", "arbitrum"]
                 },
                 "rpc": {
                     "description": "Name of the provider environment variable the suite reads, or null when it needs no RPC. Never a URL.",
