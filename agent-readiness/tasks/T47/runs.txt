@@ -1,0 +1,31 @@
+T47 verification — 2026-09-09 (Europe/Warsaw)
+
+Owners are the accounts already in the repository, not invented ones:
+  the previous CODEOWNERS was "* @mario-ipor @pete-ipor"; the new file keeps that
+  default and adds the same two owners for /deployments/, /abi/, /catalog/,
+  /config/, /docs/, /tools/ and /.github/. No new handle was introduced.
+
+PASS npm run validate:docs
+  valid documentation references: 20 file(s), 228 local link(s) checked,
+  5 external link(s) listed and not fetched
+  (this includes every link in docs/release.md, i.e. the pilot artifacts the
+  checklist points at all exist)
+
+The checklist was walked against what the pilot actually produced:
+  step 1–2  abi/fusion-factory-ethereum-0xf19c…63f5/provenance.json  (T20, T22)
+  step 3    deployments/1/factories.json as candidate                (T23)
+  step 4    factory:inspect at block 25937526                        (T24)
+  step 5    deployed-usage suites, classified in config/test-suites.json (T25, T36)
+  step 6    deployments/reports/…-25937526.json and status verified   (T26)
+  step 7    catalog/fuses.json with observed deployments             (T33, T34, T36)
+  step 8    docs/deployments.md and docs/recipes/create-vault.md     (T26, T32)
+  step 9    npm run test:unit / test:fork / deployments:drift        (T15, T16, T46)
+
+Every command named in the checklist exists as an npm script in this checkout:
+  validate:pilot-abi, validate:deployments, factory:inspect, validate:test-suites,
+  test:fork, catalog:generate, validate:catalog, validate:docs, test:unit,
+  deployments:drift.
+
+The document says explicitly that monitoring (the drift job) does not replace
+review, and that historical reports and pinned fixture blocks are kept rather
+than re-pointed.

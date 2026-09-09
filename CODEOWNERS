@@ -1,1 +1,21 @@
+# Default owners for everything in this repository.
 * @mario-ipor @pete-ipor
+
+# Deployment identity and its evidence: manifests, verification reports, and the
+# ABIs bound to a deployed implementation. A change here changes what the tooling
+# is willing to operate against, so it is reviewed as deliberately as contract code.
+/deployments/ @mario-ipor @pete-ipor
+/abi/ @mario-ipor @pete-ipor
+
+# Integration catalog and the inputs operational commands read.
+/catalog/ @mario-ipor @pete-ipor
+/config/ @mario-ipor @pete-ipor
+
+# Operational documentation an agent or a newcomer is expected to trust.
+/docs/ @mario-ipor @pete-ipor
+
+# Tooling that plans, simulates, verifies and executes.
+/tools/ @mario-ipor @pete-ipor
+
+# CI, including which jobs may see a secret.
+/.github/ @mario-ipor @pete-ipor
