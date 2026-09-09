@@ -7179,6 +7179,1211 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-uniswap-market-8",
+            "protocol": "uniswap",
+            "chainId": 1,
+            "market": {
+                "id": 8,
+                "constant": "UNISWAP_SWAP_V3_POSITIONS",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol",
+                "balanceFuse": "contracts/fuses/uniswap/UniswapV3Balance.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
+                    "selector": "0x6a3e6101",
+                    "struct": "UniswapV3NewPositionFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "token0",
+                            "type": "address",
+                            "meaning": "address of token0 of the pool; must be a granted substrate (asset) of the market"
+                        },
+                        {
+                            "name": "token1",
+                            "type": "address",
+                            "meaning": "address of token1 of the pool; must be a granted substrate (asset) of the market"
+                        },
+                        {
+                            "name": "fee",
+                            "type": "uint24",
+                            "meaning": "pool fee tier in hundredths of a bip (500, 3000, 10000)"
+                        },
+                        {
+                            "name": "tickLower",
+                            "type": "int24",
+                            "meaning": "lower tick of the position range"
+                        },
+                        {
+                            "name": "tickUpper",
+                            "type": "int24",
+                            "meaning": "upper tick of the position range"
+                        },
+                        {
+                            "name": "amount0Desired",
+                            "type": "uint256",
+                            "meaning": "token0 to spend, in token0's smallest unit"
+                        },
+                        {
+                            "name": "amount1Desired",
+                            "type": "uint256",
+                            "meaning": "token1 to spend, in token1's smallest unit"
+                        },
+                        {
+                            "name": "amount0Min",
+                            "type": "uint256",
+                            "meaning": "slippage floor on token0 actually spent, in token0's smallest unit"
+                        },
+                        {
+                            "name": "amount1Min",
+                            "type": "uint256",
+                            "meaning": "slippage floor on token1 actually spent, in token1's smallest unit"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds after which the position manager reverts"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256[]))",
+                    "selector": "0x608c7500",
+                    "struct": "UniswapV3NewPositionFuseExitData",
+                    "fields": [
+                        {
+                            "name": "tokenIds",
+                            "type": "uint256[]",
+                            "meaning": "position NFT ids to burn; each must have zero liquidity and no uncollected tokens, ids not tracked in fuse storage are skipped"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:25",
+                    "sources": {
+                        "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol": "0x598932d87b9697d1b3c178f93e09b2d9cbbf83b7dcd7d99f2003722b7b1988e4",
+                        "contracts/fuses/uniswap/UniswapV3Balance.sol": "0x9c78d70ae03b0a470e3cd90c4f0971d69717cf4a14822636042f3d5db7d546e0"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "UniswapV3NewPositionFuseEnterData",
+                            "signature": "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x6a3e6101",
+                            "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:18",
+                            "fields": [
+                                {
+                                    "name": "token0",
+                                    "type": "address",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:20"
+                                },
+                                {
+                                    "name": "token1",
+                                    "type": "address",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:22"
+                                },
+                                {
+                                    "name": "fee",
+                                    "type": "uint24",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:24"
+                                },
+                                {
+                                    "name": "tickLower",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:26"
+                                },
+                                {
+                                    "name": "tickUpper",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:28"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:30"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:32"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:34"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:36"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:38"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "UniswapV3NewPositionFuseExitData",
+                            "signature": "exit((uint256[]))",
+                            "selector": "0x608c7500",
+                            "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:42",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol:44"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol",
+                    "purpose": "increases (enter) or decreases (exit) liquidity of a tracked V3 position; a decrease only accrues owed tokens on the NFT, UniswapV3CollectFuse transfers them",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x7f61ea0b",
+                            "struct": "UniswapV3ModifyPositionFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "token0",
+                                    "type": "address",
+                                    "meaning": "token0 of the position's pool; must be a granted substrate"
+                                },
+                                {
+                                    "name": "token1",
+                                    "type": "address",
+                                    "meaning": "token1 of the position's pool; must be a granted substrate"
+                                },
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "position NFT id to add liquidity to"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "meaning": "token0 to spend, in token0's smallest unit"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "meaning": "token1 to spend, in token1's smallest unit"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 spent"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 spent"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((uint256,uint128,uint256,uint256,uint256))",
+                            "selector": "0x06ce4991",
+                            "struct": "UniswapV3ModifyPositionFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "position NFT id to remove liquidity from"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint128",
+                                    "meaning": "liquidity units to burn"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 accounted for the burned liquidity"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 accounted for the burned liquidity"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol": "0x9787bfad4af4b709780f6147db2658a4c24dba6eb280ac36873875e8bc94b2c2"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniswapV3ModifyPositionFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                                    "selector": "0x7f61ea0b",
+                                    "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:14",
+                                    "fields": [
+                                        {
+                                            "name": "token0",
+                                            "type": "address",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:16"
+                                        },
+                                        {
+                                            "name": "token1",
+                                            "type": "address",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:20"
+                                        },
+                                        {
+                                            "name": "amount0Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "amount1Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:28"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:30"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "UniswapV3ModifyPositionFuseExitData",
+                                    "signature": "exit((uint256,uint128,uint256,uint256,uint256))",
+                                    "selector": "0x06ce4991",
+                                    "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:34",
+                                    "fields": [
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "liquidity",
+                                            "type": "uint128",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:38"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:40"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:42"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol:44"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ModifyPositionSwapFuseUniswapV3",
+                        "address": "0xef0285fAA4BDb749CBFd3b1FcB4f61500307D8d4",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xe496315d88ae2af603ddbe75ef8b8f49e2c7756c048890f5858c799dbb774b8f",
+                        "observedMarketId": 8,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() and VERSION() (own address) returned as expected at the observed block",
+                            "runtime code contains enter 0x7f61ea0b",
+                            "runtime code contains exit 0x06ce4991"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/uniswap/UniswapV3CollectFuse.sol",
+                    "purpose": "collects owed tokens (fees and decreased principal) from V3 positions into the vault; enter only",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((uint256[]))",
+                            "selector": "0xdd15f123",
+                            "struct": "UniswapV3CollectFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "meaning": "position NFT ids to call collect on; owed fees and previously decreased principal are transferred to the vault"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/uniswap/UniswapV3CollectFuse.sol": "0x3d2f3e509b5b66c9d2bb5e96218ad73bc32e71583e5965f1a3dee56e99ab2231"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniswapV3CollectFuseEnterData",
+                                    "signature": "enter((uint256[]))",
+                                    "selector": "0xdd15f123",
+                                    "source": "contracts/fuses/uniswap/UniswapV3CollectFuse.sol:12",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIds",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/uniswap/UniswapV3CollectFuse.sol:14"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "CollectSwapFuseUniswapV3",
+                        "address": "0x4DeDFb0F957D844755069cfBA2f6828353662C77",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x59a7a23fdff3a45fe29ed570dc399462acb587e9c6503fbd0120e7881682b671",
+                        "observedMarketId": 8,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() and VERSION() (own address) returned as expected at the observed block",
+                            "runtime code contains enter 0xdd15f123"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "ERC20 token addresses the vault may hold V3 liquidity in. UniswapV3NewPositionFuse and UniswapV3ModifyPositionFuse check token0 and token1 on enter; the pool and fee tier are not substrates, any pool of two granted tokens is allowed. Exit, collect and the balance fuse do not check substrates: they work on the tokenIds tracked in FuseStorageLib.getUniswapV3TokenIds().",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "token0 and token1 of every tracked position NFT: principal plus uncollected fees from PositionValue.total at the pool's current sqrtPriceX96, each converted with the token's price and decimals",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(), i.e. the vault's PriceOracleMiddlewareManager falling back to the PriceOracleMiddleware it points at; every pool token needs a price feed there",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/uniswap/UniswapV3PositionFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "NewPositionSwapFuseUniswapV3",
+                    "address": "0xe096501052d741DA5483bD2a6cCc93a4CDf879cd",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x0c7f98a339fa806f15267fc15bff25f4dea61eb062ad8d6175954fae023ac001",
+                    "observedMarketId": 8,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() and VERSION() (own address) returned as expected at the observed block",
+                        "runtime code contains enter 0x6a3e6101",
+                        "runtime code contains exit 0x608c7500"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseSwapPositionsUniswapV3",
+                    "address": "0x76e06A26483A625ed5816D378836644F8C6CDC46",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x463151a62929ee4ac4c5b66ead2a95aedac9d8a4c7d1c9ce7ad7163d5d91ddb2",
+                    "observedMarketId": 8,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 8, VERSION() returned its own address, runtime code contains balanceOf() 0x722713f7"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-uniswap-market-9",
+            "protocol": "uniswap",
+            "chainId": 1,
+            "market": {
+                "id": 9,
+                "constant": "UNISWAP_SWAP_V2",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/uniswap/UniswapV2SwapFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((uint256,address[],uint256))",
+                    "selector": "0x1cdf84d6",
+                    "struct": "UniswapV2SwapFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenInAmount",
+                            "type": "uint256",
+                            "meaning": "input amount of path[0], in that token's smallest unit; the fuse caps it at the vault's balance and returns early when 0"
+                        },
+                        {
+                            "name": "path",
+                            "type": "address[]",
+                            "meaning": "token route including input and output; every address must be a granted substrate of the market"
+                        },
+                        {
+                            "name": "minOutAmount",
+                            "type": "uint256",
+                            "meaning": "slippage floor on the last token of the path, in its smallest unit, enforced by the Universal Router"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:29",
+                    "sources": {
+                        "contracts/fuses/uniswap/UniswapV2SwapFuse.sol": "0xa120dcfd0439218105ea670d152e2668382d5c041abd2061cae80e20081528ae",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "UniswapV2SwapFuseEnterData",
+                            "signature": "enter((uint256,address[],uint256))",
+                            "selector": "0x1cdf84d6",
+                            "source": "contracts/fuses/uniswap/UniswapV2SwapFuse.sol:19",
+                            "fields": [
+                                {
+                                    "name": "tokenInAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV2SwapFuse.sol:20"
+                                },
+                                {
+                                    "name": "path",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/uniswap/UniswapV2SwapFuse.sol:21"
+                                },
+                                {
+                                    "name": "minOutAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV2SwapFuse.sol:22"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "ERC20 token addresses that may appear anywhere in a swap path, including intermediate hops; UniswapV2SwapFuse checks every element of data.path on enter",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: a swap leaves no position, the market is registered with ZeroBalanceFuse (as in the tests and on chain) and the resulting tokens are valued by the ERC20_VAULT_BALANCE market (7)",
+                "priceSource": "none in this market; ERC20_VAULT_BALANCE prices the swapped tokens through the vault's price oracle middleware",
+                "unit": "USD normalized to WAD (18 decimals), always 0 for this market"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/uniswap/UniswapV2SwapFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapOnUniswapV2FuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SwapFuseUniswapV2",
+                    "address": "0x37a720Cf7F7dA943E4244F97903a85c997cab359",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x627d4e21a5a2c40d3aedaebc2221beb1dd883b2c4ca924dea45fc07746fe4af4",
+                    "observedMarketId": 9,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() and VERSION() (own address) returned as expected at the observed block",
+                        "runtime code contains enter 0x1cdf84d6"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseSwapUniswapV2",
+                    "address": "0xf8Ba61Bf6352E34819717e2cd56f97Be6b131296",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x33ada954584335265e1ff54de4b1bc59d060c4a574037e3388c79211a50e61cd",
+                    "observedMarketId": 9,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 9, VERSION() reverted, runtime code contains balanceOf() 0x722713f7",
+                        "runtime code is 167 bytes, the size of this checkout's compiled ZeroBalanceFuse (out/ZeroBalanceFuse.sol); the registry name does not say which contract it is, and bytecode equivalence was not established"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-uniswap-market-10",
+            "protocol": "uniswap",
+            "chainId": 1,
+            "market": {
+                "id": 10,
+                "constant": "UNISWAP_SWAP_V3",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/uniswap/UniswapV3SwapFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((uint256,uint256,bytes))",
+                    "selector": "0x1826189b",
+                    "struct": "UniswapV3SwapFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenInAmount",
+                            "type": "uint256",
+                            "meaning": "input amount of the first token of the path, in its smallest unit; capped at the vault's balance, 0 returns early"
+                        },
+                        {
+                            "name": "minOutAmount",
+                            "type": "uint256",
+                            "meaning": "slippage floor on the last token of the path, in its smallest unit, enforced by the Universal Router"
+                        },
+                        {
+                            "name": "path",
+                            "type": "bytes",
+                            "meaning": "Uniswap V3 packed path: 20-byte token, 3-byte fee, 20-byte token, ...; every token decoded from it must be a granted substrate"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:31",
+                    "sources": {
+                        "contracts/fuses/uniswap/UniswapV3SwapFuse.sol": "0x678ef54019b9a08b8772003f38992f8a78f73bd8db151e1232916f763056eec8",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "UniswapV3SwapFuseEnterData",
+                            "signature": "enter((uint256,uint256,bytes))",
+                            "selector": "0x1826189b",
+                            "source": "contracts/fuses/uniswap/UniswapV3SwapFuse.sol:19",
+                            "fields": [
+                                {
+                                    "name": "tokenInAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV3SwapFuse.sol:20"
+                                },
+                                {
+                                    "name": "minOutAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV3SwapFuse.sol:21"
+                                },
+                                {
+                                    "name": "path",
+                                    "type": "bytes",
+                                    "source": "contracts/fuses/uniswap/UniswapV3SwapFuse.sol:22"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "ERC20 token addresses that may appear anywhere in the packed V3 path, including intermediate hops; UniswapV3SwapFuse decodes the path and checks every token on enter",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: a swap leaves no position, the market is registered with ZeroBalanceFuse (as in the tests and on chain) and the resulting tokens are valued by the ERC20_VAULT_BALANCE market (7)",
+                "priceSource": "none in this market; ERC20_VAULT_BALANCE prices the swapped tokens through the vault's price oracle middleware",
+                "unit": "USD normalized to WAD (18 decimals), always 0 for this market"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/uniswap/UniswapV3SwapFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapOnUniswapV3SwapFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapEthOnUniswapV3SwapFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SwapFuseUniswapV3",
+                    "address": "0xA1D8600f64aA82161ba9265ffeBFDe6a78F1275C",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x661febbdcabde2692bcfe2e9313c9cc4c388611bf32c3d0c6f9cf5304596967e",
+                    "observedMarketId": 10,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() and VERSION() (own address) returned as expected at the observed block",
+                        "runtime code contains enter 0x1826189b"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseSwapUniswapV3",
+                    "address": "0x2D01C704Ad4502176a328094BF973f1868c2f082",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x5537967ebc3ad95f977e59c8299f1cb66d7e64a3c548ac4c2ea565505ec802b9",
+                    "observedMarketId": 10,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 10, VERSION() reverted, runtime code contains balanceOf() 0x722713f7",
+                        "runtime code is 167 bytes, the size of this checkout's compiled ZeroBalanceFuse (out/ZeroBalanceFuse.sol); the registry name does not say which contract it is, and bytecode equivalence was not established"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "ethereum-uniswap-market-53",
+            "protocol": "uniswap",
+            "chainId": 1,
+            "market": {
+                "id": 53,
+                "constant": "UNISWAP_V4",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol",
+                "balanceFuse": "contracts/fuses/uniswap/UniswapV4Balance.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter(((address,address,uint24,int24,address),int24,int24,uint256,uint256,uint256,uint256,bytes,uint256))",
+                    "selector": "0xa73b3729",
+                    "struct": "UniswapV4NewPositionFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "poolKey",
+                            "type": "PoolKey",
+                            "meaning": "Uniswap V4 pool key (currency0, currency1, fee, tickSpacing, hooks); keccak256(abi.encode(poolKey)) must be a granted market substrate and both currencies granted as assets; native currency pools revert"
+                        },
+                        {
+                            "name": "tickLower",
+                            "type": "int24",
+                            "meaning": "lower tick of the position range"
+                        },
+                        {
+                            "name": "tickUpper",
+                            "type": "int24",
+                            "meaning": "upper tick of the position range"
+                        },
+                        {
+                            "name": "amount0Desired",
+                            "type": "uint256",
+                            "meaning": "token0 used to compute the liquidity to mint, in token0's smallest unit"
+                        },
+                        {
+                            "name": "amount1Desired",
+                            "type": "uint256",
+                            "meaning": "token1 used to compute the liquidity to mint, in token1's smallest unit"
+                        },
+                        {
+                            "name": "amount0Max",
+                            "type": "uint256",
+                            "meaning": "slippage ceiling on token0 actually spent, in token0's smallest unit"
+                        },
+                        {
+                            "name": "amount1Max",
+                            "type": "uint256",
+                            "meaning": "slippage ceiling on token1 actually spent, in token1's smallest unit"
+                        },
+                        {
+                            "name": "hookData",
+                            "type": "bytes",
+                            "meaning": "forwarded to the pool's hook; empty for hookless pools"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256[],uint256[],uint256[],bytes,uint256))",
+                    "selector": "0x344c37a6",
+                    "struct": "UniswapV4NewPositionFuseExitData",
+                    "fields": [
+                        {
+                            "name": "tokenIds",
+                            "type": "uint256[]",
+                            "meaning": "tracked position NFT ids to burn; BURN_POSITION plus TAKE_PAIR returns principal and fees in one step"
+                        },
+                        {
+                            "name": "amount0Min",
+                            "type": "uint256[]",
+                            "meaning": "per position slippage floor on token0 received"
+                        },
+                        {
+                            "name": "amount1Min",
+                            "type": "uint256[]",
+                            "meaning": "per position slippage floor on token1 received"
+                        },
+                        {
+                            "name": "hookData",
+                            "type": "bytes",
+                            "meaning": "forwarded to the pool's hook"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:315",
+                    "sources": {
+                        "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol": "0x5116efa71df6dbb5050f69c8da7e9b5111f6e52f9ca7e5adc05979330f439bae",
+                        "contracts/fuses/uniswap/UniswapV4Balance.sol": "0x0b3c0435130643d383ae65a95f25ac0b6102364f90ceae10612466300f59187c"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "UniswapV4NewPositionFuseEnterData",
+                            "signature": "enter(((address,address,uint24,int24,address),int24,int24,uint256,uint256,uint256,uint256,bytes,uint256))",
+                            "selector": "0xa73b3729",
+                            "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:26",
+                            "fields": [
+                                {
+                                    "name": "poolKey",
+                                    "type": "PoolKey",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:28"
+                                },
+                                {
+                                    "name": "tickLower",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:30"
+                                },
+                                {
+                                    "name": "tickUpper",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:32"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:34"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:36"
+                                },
+                                {
+                                    "name": "amount0Max",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:38"
+                                },
+                                {
+                                    "name": "amount1Max",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:40"
+                                },
+                                {
+                                    "name": "hookData",
+                                    "type": "bytes",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:42"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:44"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "UniswapV4NewPositionFuseExitData",
+                            "signature": "exit((uint256[],uint256[],uint256[],bytes,uint256))",
+                            "selector": "0x344c37a6",
+                            "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:48",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:50"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:52"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:54"
+                                },
+                                {
+                                    "name": "hookData",
+                                    "type": "bytes",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:56"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/uniswap/UniswapV4NewPositionFuse.sol:58"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol",
+                    "purpose": "increases (enter) or decreases (exit) liquidity of a tracked V4 position; a decrease transfers principal and accrued fees to the vault in the same call",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((uint256,uint256,uint256,uint256,uint256,bytes,uint256))",
+                            "selector": "0x4e464b18",
+                            "struct": "UniswapV4ModifyPositionFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "tracked position NFT id to add liquidity to"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "meaning": "token0 used to compute the liquidity delta"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "meaning": "token1 used to compute the liquidity delta"
+                                },
+                                {
+                                    "name": "amount0Max",
+                                    "type": "uint256",
+                                    "meaning": "slippage ceiling on token0 spent"
+                                },
+                                {
+                                    "name": "amount1Max",
+                                    "type": "uint256",
+                                    "meaning": "slippage ceiling on token1 spent"
+                                },
+                                {
+                                    "name": "hookData",
+                                    "type": "bytes",
+                                    "meaning": "forwarded to the pool's hook"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((uint256,uint128,uint256,uint256,bytes,uint256))",
+                            "selector": "0x59f2c8c7",
+                            "struct": "UniswapV4ModifyPositionFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "tracked position NFT id to remove liquidity from"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint128",
+                                    "meaning": "liquidity units to burn, capped at the position's liquidity"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 received"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 received"
+                                },
+                                {
+                                    "name": "hookData",
+                                    "type": "bytes",
+                                    "meaning": "forwarded to the pool's hook"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol": "0x3480c296899b6711e1abdffbb203932d407f05b730f633d65e783e001deecb0e"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniswapV4ModifyPositionFuseEnterData",
+                                    "signature": "enter((uint256,uint256,uint256,uint256,uint256,bytes,uint256))",
+                                    "selector": "0x4e464b18",
+                                    "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:26",
+                                    "fields": [
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:28"
+                                        },
+                                        {
+                                            "name": "amount0Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:30"
+                                        },
+                                        {
+                                            "name": "amount1Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:32"
+                                        },
+                                        {
+                                            "name": "amount0Max",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "amount1Max",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "hookData",
+                                            "type": "bytes",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:38"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:40"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "UniswapV4ModifyPositionFuseExitData",
+                                    "signature": "exit((uint256,uint128,uint256,uint256,bytes,uint256))",
+                                    "selector": "0x59f2c8c7",
+                                    "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:44",
+                                    "fields": [
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:46"
+                                        },
+                                        {
+                                            "name": "liquidity",
+                                            "type": "uint128",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:48"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:50"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:52"
+                                        },
+                                        {
+                                            "name": "hookData",
+                                            "type": "bytes",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:54"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/uniswap/UniswapV4ModifyPositionFuse.sol:56"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ModifyPositionFuseUniswapV4",
+                        "address": "0x8Ff33d99A25B448387DCcad4Ed61C61b40C19815",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xe0fa878d06d8fd7f65eee24e095231326a669e321e9d70282aeab62cb0b2beac",
+                        "observedMarketId": 53,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() and VERSION() (own address) returned as expected at the observed block",
+                            "runtime code contains enter 0x4e464b18",
+                            "runtime code contains exit 0x59f2c8c7"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/uniswap/UniswapV4CollectFuse.sol",
+                    "purpose": "realizes accrued fees of tracked V4 positions through a zero-liquidity decrease plus TAKE_PAIR; positions with zero liquidity are skipped; enter only",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((uint256[]))",
+                            "selector": "0xdd15f123",
+                            "struct": "UniswapV4CollectFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "meaning": "tracked position NFT ids to collect fees from; an untracked id reverts"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/uniswap/UniswapV4CollectFuse.sol": "0xf6b285c1c3f5834af38ce8370fa46d23c97e59204e64c5d0ba7cfa4a72a9e75d"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniswapV4CollectFuseEnterData",
+                                    "signature": "enter((uint256[]))",
+                                    "selector": "0xdd15f123",
+                                    "source": "contracts/fuses/uniswap/UniswapV4CollectFuse.sol:16",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIds",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/uniswap/UniswapV4CollectFuse.sol:18"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "CollectFuseUniswapV4",
+                        "address": "0xb4A6b14d08bE159A6434c8668cF9044eCeFb64E7",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x6dc6f370c4fc449eff818af55c1854a6e1f1ffa5c064d0ed621648af2e8252ef",
+                        "observedMarketId": 53,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() and VERSION() (own address) returned as expected at the observed block",
+                            "runtime code contains enter 0xdd15f123"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "two levels checked by UniswapV4SubstrateLib.checkPoolKeyGranted on every mint and increase: the PoolId (keccak256(abi.encode(poolKey)), which pins currencies, fee, tickSpacing and hook) granted as a raw bytes32 market substrate, and both currencies granted as assets. Pools with the native currency are rejected. Exit, collect and the balance fuse work on the tokenIds tracked in FuseStorageLib.getUniswapV4TokenIds().",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with UniswapV4SubstrateLib.poolKeyToId(poolKey) and PlasmaVaultConfigLib.substrateAsAssetToBytes32(token) for each currency",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted (pool id) and PlasmaVaultConfigLib.isSubstrateAsAssetGranted (currencies), via UniswapV4SubstrateLib.checkPoolKeyGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "currency0 and currency1 of every tracked position NFT with non-zero liquidity: principal from the pool's slot0 price and the position liquidity, plus pending fees from fee-growth deltas, each converted with the token's price and decimals; the fuse reverts when no price oracle middleware is set",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(), i.e. the vault's PriceOracleMiddlewareManager falling back to the PriceOracleMiddleware it points at; every pool token needs a price feed there",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/uniswap/UniswapV4PositionFuseTest.t.sol",
+                "test/fuses/uniswap/UniswapV4BalanceFuseTest.t.sol",
+                "test/fuses/uniswap/UniswapV4TestBase.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "NewPositionFuseUniswapV4",
+                    "address": "0x1A2D2F51D1874BDc89F6E78feb99B8B7967d16dA",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x499ad5aceff974dda3bc374aff0f2c8604db3b4c4fe056b27b2b60b7df74fff9",
+                    "observedMarketId": 53,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() and VERSION() (own address) returned as expected at the observed block",
+                        "runtime code contains enter 0xa73b3729",
+                        "runtime code contains exit 0x344c37a6"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseUniswapV4",
+                    "address": "0x18192A95578db97539c0181Bb832DA7Bf2dD80B5",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x265612463754e7f424f12027c704f45f38c3c832298a99b2b8b41a960435af3f",
+                    "observedMarketId": 53,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 53, VERSION() returned its own address, runtime code contains balanceOf() 0x722713f7"
+                    ]
+                }
+            }
         }
     ]
 }
