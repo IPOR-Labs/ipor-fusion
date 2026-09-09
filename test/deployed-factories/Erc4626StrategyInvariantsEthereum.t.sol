@@ -131,6 +131,31 @@ contract Erc4626StrategyInvariantsEthereumTest is Test {
         assertApproxEqAbs(assetsOut, DEPOSIT, TOLERANCE, "redeem after the delay returned a different amount");
     }
 
+    /// @dev P4: the deployed fuse refuses a substrate that was never granted, even a
+    /// vault of the right asset.
+    function testP4ShouldRefuseAVaultThatIsNotAGrantedSubstrate() public {
+        _deposit();
+        assertEq(IERC4626(GAUNTLET_USDC_PRIME).asset(), USDC, "the control vault is not a USDC vault");
+
+        FuseAction[] memory enter = new FuseAction[](1);
+        enter[0] = FuseAction(
+            SUPPLY_FUSE,
+            abi.encodeWithSignature("enter((address,uint256))", DeployedSupplyFuseData(GAUNTLET_USDC_PRIME, SUPPLIED))
+        );
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSignature("Erc4626SupplyFuseUnsupportedVault(string,address)", "enter", GAUNTLET_USDC_PRIME)
+        );
+        IPlasmaVault(instance.plasmaVault).execute(enter);
+
+        assertEq(
+            IERC4626(GAUNTLET_USDC_PRIME).balanceOf(instance.plasmaVault),
+            0,
+            "shares of the refused vault appeared"
+        );
+        assertEq(IERC20(USDC).balanceOf(instance.plasmaVault), DEPOSIT, "idle balance changed on a refused action");
+    }
+
     function _deposit() private returns (uint256 shares) {
         // Test-only: the depositor's USDC is dealt, never acquired on a market.
         deal(USDC, depositor, DEPOSIT);
