@@ -16192,6 +16192,150 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-velora-swapper-market-43",
+            "protocol": "velora",
+            "chainId": 1,
+            "market": {
+                "id": 43,
+                "constant": "VELORA_SWAPPER",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/velora/VeloraSwapperFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint256,uint256,bytes))",
+                    "selector": "0xd1bfae13",
+                    "struct": "VeloraSwapperEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenIn",
+                            "type": "address",
+                            "meaning": "token sold; it must be granted as a Token substrate (type byte 1) of this market, otherwise VeloraSwapperFuseUnsupportedAsset"
+                        },
+                        {
+                            "name": "tokenOut",
+                            "type": "address",
+                            "meaning": "token bought; it must be granted as a Token substrate of this market; must differ from tokenIn (VeloraSwapperFuseSameTokens)"
+                        },
+                        {
+                            "name": "amountIn",
+                            "type": "uint256",
+                            "meaning": "amount of tokenIn transferred to the fuse's executor and approved to Velora (ParaSwap) Augustus v6.2 (0x6A000F20005980200259B80c5102003040001068, a constant of VeloraSwapExecutor), in tokenIn's smallest unit; 0 reverts with VeloraSwapperFuseZeroAmount; unspent tokenIn is returned to the Plasma Vault"
+                        },
+                        {
+                            "name": "minAmountOut",
+                            "type": "uint256",
+                            "meaning": "alpha-specified floor on the tokenOut received (balance delta of the Plasma Vault), in tokenOut's smallest unit; less reverts with VeloraSwapperFuseMinAmountOutNotReached"
+                        },
+                        {
+                            "name": "swapCallData",
+                            "type": "bytes",
+                            "meaning": "raw calldata for Velora (ParaSwap) Augustus v6.2 (0x6A000F20005980200259B80c5102003040001068, a constant of VeloraSwapExecutor) as returned by the Velora API; the executor forwards it with a low-level call and reverts with VeloraSwapExecutorSwapFailed on failure"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:202",
+                    "sources": {
+                        "contracts/fuses/velora/VeloraSwapperFuse.sol": "0x98770fea0ec83c08da789194deb1745793dd5688c675e965ac7b6c29d56cca16",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "VeloraSwapperEnterData",
+                            "signature": "enter((address,address,uint256,uint256,bytes))",
+                            "selector": "0xd1bfae13",
+                            "source": "contracts/fuses/velora/VeloraSwapperFuse.sol:21",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "source": "contracts/fuses/velora/VeloraSwapperFuse.sol:22"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "source": "contracts/fuses/velora/VeloraSwapperFuse.sol:23"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velora/VeloraSwapperFuse.sol:24"
+                                },
+                                {
+                                    "name": "minAmountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/velora/VeloraSwapperFuse.sol:25"
+                                },
+                                {
+                                    "name": "swapCallData",
+                                    "type": "bytes",
+                                    "source": "contracts/fuses/velora/VeloraSwapperFuse.sol:26"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values packed by VeloraSubstrateLib: the most significant byte is the type (1 = Token, 2 = Slippage), then either a token address in the low 160 bits or a uint248 slippage limit in WAD (1e18 = 100%). The fuse requires tokenIn and tokenOut to be granted Token substrates and reads the first Slippage substrate as the USD slippage limit, falling back to DEFAULT_SLIPPAGE_WAD = 1e16 (1%). The ZeroBalanceFuse ignores substrates.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with values from VeloraSubstrateLib.encodeTokenSubstrate / encodeSlippageSubstrate",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted on VeloraSubstrateLib.encodeTokenSubstrate(token); the slippage substrate is found by iterating PlasmaVaultConfigLib.getMarketSubstrates",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: a swap leaves no position in this market, so it is registered with ZeroBalanceFuse (always 0); the tokens land on the Plasma Vault and are valued by ERC20_VAULT_BALANCE (market 7). The fuse itself prices tokenIn and tokenOut in USD to enforce the slippage limit: tokenOutDelta * priceOut / (tokenInDelta * priceIn) must be at least 1 - slippage, else VeloraSwapperFuseSlippageFail",
+                "priceSource": "for the slippage check only: PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice for both tokens (a zero price or a zero middleware reverts)",
+                "unit": "market balance is always 0 (USD WAD); the slippage ratio is compared in WAD"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/velora/VeloraSwapperFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "VeloraSwapperFuse",
+                    "address": "0x8771e28451F0A2b891B3401c94bCfA272215D48b",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x0ec697b4b7a9ed1e28f2f720653ca46e72cd7571b43b4118db1853d0a9dc7cf9",
+                    "observedMarketId": 43,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 43 and VERSION() returned its own address at the observed block; EXECUTOR() returned 0xa5408F12aDCb2C2689c41A96aE986885EFF1b297 (the VeloraSwapExecutor it deployed in its constructor)",
+                        "the runtime code (5777 bytes) contains enter((address,address,uint256,uint256,bytes)) 0xd1bfae13, EXECUTOR() and DEFAULT_SLIPPAGE_WAD(); the fuse has no exit",
+                        "bytecode equivalence with this checkout's VeloraSwapperFuse.sol was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseVeloraSwapper",
+                    "address": "0xB5C14B4c741391d5625A56f70049ab2d720bE9C9",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xa807a10664ec6b22718ece0296246107315e1ae6bfaba473822ee2e8bb933abe",
+                    "observedMarketId": 43,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 43 at the observed block; VERSION() reverted, which ZeroBalanceFuse.sol does not expose either",
+                        "runtime code is 167 bytes with balanceOf() 0x722713f7, the same size as the compiled ZeroBalanceFuse; bytecode equivalence was not established"
+                    ]
+                }
+            }
         }
     ]
 }
