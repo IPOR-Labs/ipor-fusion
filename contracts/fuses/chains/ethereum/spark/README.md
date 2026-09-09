@@ -103,7 +103,10 @@ Read from IPOR-Labs/ipor-abi (`a0089cf`, 2026-09-02) and on chain at Ethereum bl
   `SparkLendWithPriceOracleMiddlewareBalanceFuse` `0x05397aDb7A0B596DF88BCa2b06c0cbfB28e5222d`
   (all answer `MARKET_ID() == 44`; the action fuses lack `enterTransient()` and the balance fuse
   lacks `VERSION()`, so they are older than this checkout).
-- Market 15: no deployment found in the registry.
+- Market 15 (`mainnet/mainnet-ethereum/addresses.json`): `SupplyFuseSpark`
+  `0xB48CF802C2D648c46ac7f752C81e29Fa2C955E9B` (`MARKET_ID() == 15`, `enter((uint256))` /
+  `exit((uint256))` present, no `enterTransient()`), `BalanceFuseSpark`
+  `0xb3ca07c9c10374D51046F94e5547a2C501DA0ab4` (`MARKET_ID() == 15`, no `VERSION()`).
 
 ## Security notes
 

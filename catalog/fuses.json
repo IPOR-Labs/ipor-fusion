@@ -3775,26 +3775,34 @@
             ],
             "deployments": {
                 "actionFuse": {
-                    "status": "unknown",
-                    "registryName": null,
-                    "address": null,
-                    "addressSource": "no SparkSupplyFuse / sDAI fuse in IPOR-Labs/ipor-abi at a0089cf on any *-fusion chain (queries 'Spark', 'Sdai'); the SparkLend* entries there belong to market 44",
-                    "observedAtBlock": null,
-                    "runtimeCodeHash": null,
-                    "observedMarketId": null,
+                    "status": "observed",
+                    "registryName": "SupplyFuseSpark",
+                    "address": "0xB48CF802C2D648c46ac7f752C81e29Fa2C955E9B",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xf0e87e5de2d04e8bb9237c9d4d7b1121b5b704634444f1a1be7895ecf67dca3e",
+                    "observedMarketId": 15,
                     "matchesCurrentSource": null,
-                    "notes": []
+                    "notes": [
+                        "MARKET_ID() returned 15 and VERSION() returned its own address at Ethereum block 25939091",
+                        "enter((uint256)) 0x9988a9ca, exit((uint256)) 0xdbadc359 and instantWithdraw(bytes32[]) present; enterTransient() 0xadea8fa0 absent, so the deployment predates the transient-storage entry points of this checkout",
+                        "listed in mainnet/mainnet-ethereum/addresses.json, not in mainnet-ethereum-fusion; bytecode equivalence with this checkout was not established"
+                    ]
                 },
                 "balanceFuse": {
-                    "status": "unknown",
-                    "registryName": null,
-                    "address": null,
-                    "addressSource": "no SparkBalanceFuse in IPOR-Labs/ipor-abi at a0089cf on any *-fusion chain (queries 'Spark', 'Sdai')",
-                    "observedAtBlock": null,
-                    "runtimeCodeHash": null,
-                    "observedMarketId": null,
-                    "matchesCurrentSource": null,
-                    "notes": []
+                    "status": "observed",
+                    "registryName": "BalanceFuseSpark",
+                    "address": "0xb3ca07c9c10374D51046F94e5547a2C501DA0ab4",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x84f2f6f9c26c661a33836adfe57b5e930f81e4074e31cf9beca76c7951cfc376",
+                    "observedMarketId": 15,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 15 at Ethereum block 25939091; balanceOf() present",
+                        "VERSION() reverted, while this checkout's SparkBalanceFuse.sol exposes it; the deployed contract is an older version",
+                        "listed in mainnet/mainnet-ethereum/addresses.json, not in mainnet-ethereum-fusion"
+                    ]
                 }
             }
         },
