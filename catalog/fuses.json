@@ -14924,6 +14924,262 @@
                     "notes": []
                 }
             }
+        },
+        {
+            "id": "ethereum-pendle-market-23",
+            "protocol": "pendle",
+            "chainId": 1,
+            "market": {
+                "id": 23,
+                "constant": "PENDLE",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/pendle/PendleSwapPTFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,(uint256,uint256,uint256,uint256,uint256),(address,uint256,address,address,(uint8,address,bytes,bool))))",
+                    "selector": "0xfc3c9017",
+                    "struct": "PendleSwapPTFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "market",
+                            "type": "address",
+                            "meaning": "the Pendle market (PT/SY pool) to swap in; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "minPtOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor on PT received, in PT smallest units"
+                        },
+                        {
+                            "name": "guessPtOut",
+                            "type": "ApproxParams",
+                            "meaning": "Pendle router binary-search parameters (guessMin, guessMax, guessOffchain, maxIteration, eps) for the PT amount"
+                        },
+                        {
+                            "name": "input",
+                            "type": "TokenInput",
+                            "meaning": "Pendle TokenInput: tokenIn, netTokenIn (smallest units, not capped by the fuse), tokenMintSy, pendleSwap aggregator and its SwapData; tokenIn must pass sy.isValidTokenIn or the call reverts with PendleSwapPTFuseInvalidTokenIn"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool))))",
+                    "selector": "0x6be96509",
+                    "struct": "PendleSwapPTFuseExitData",
+                    "fields": [
+                        {
+                            "name": "market",
+                            "type": "address",
+                            "meaning": "the Pendle market to swap in; it must be a granted substrate of this market"
+                        },
+                        {
+                            "name": "exactPtIn",
+                            "type": "uint256",
+                            "meaning": "exact PT amount to sell, in PT smallest units"
+                        },
+                        {
+                            "name": "output",
+                            "type": "TokenOutput",
+                            "meaning": "Pendle TokenOutput: tokenOut, minTokenOut (slippage floor), tokenRedeemSy, pendleSwap aggregator and its SwapData; tokenOut must be one of the SY's tokensOut"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:79",
+                    "sources": {
+                        "contracts/fuses/pendle/PendleSwapPTFuse.sol": "0x303052d9b43aa6966f1e93f1898839f90c5882b11fa9ea3209793c80ca040b83",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "PendleSwapPTFuseEnterData",
+                            "signature": "enter((address,uint256,(uint256,uint256,uint256,uint256,uint256),(address,uint256,address,address,(uint8,address,bytes,bool))))",
+                            "selector": "0xfc3c9017",
+                            "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:30",
+                            "fields": [
+                                {
+                                    "name": "market",
+                                    "type": "address",
+                                    "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:31"
+                                },
+                                {
+                                    "name": "minPtOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:32"
+                                },
+                                {
+                                    "name": "guessPtOut",
+                                    "type": "ApproxParams",
+                                    "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:33"
+                                },
+                                {
+                                    "name": "input",
+                                    "type": "TokenInput",
+                                    "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:34"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "PendleSwapPTFuseExitData",
+                            "signature": "exit((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool))))",
+                            "selector": "0x6be96509",
+                            "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:41",
+                            "fields": [
+                                {
+                                    "name": "market",
+                                    "type": "address",
+                                    "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:42"
+                                },
+                                {
+                                    "name": "exactPtIn",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:43"
+                                },
+                                {
+                                    "name": "output",
+                                    "type": "TokenOutput",
+                                    "source": "contracts/fuses/pendle/PendleSwapPTFuse.sol:44"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol",
+                    "purpose": "redeems a matured PT/YT pair for the SY's output token through router.redeemPyToToken; reverts if the PT has not expired",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool))))",
+                            "selector": "0x63e22829",
+                            "struct": "PendleRedeemPTAfterMaturityFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "market",
+                                    "type": "address",
+                                    "meaning": "the Pendle market whose PT is redeemed; it must be a granted substrate of this market"
+                                },
+                                {
+                                    "name": "netPyIn",
+                                    "type": "uint256",
+                                    "meaning": "PT amount to redeem, in PT smallest units"
+                                },
+                                {
+                                    "name": "output",
+                                    "type": "TokenOutput",
+                                    "meaning": "Pendle TokenOutput: tokenOut, minTokenOut (slippage floor), tokenRedeemSy, pendleSwap aggregator and its SwapData"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol": "0x2a3b3a7d6091a8b90cd81927ecd6b15396fdf56f8b6df71b70bd4e47715f3890"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "PendleRedeemPTAfterMaturityFuseEnterData",
+                                    "signature": "enter((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool))))",
+                                    "selector": "0x63e22829",
+                                    "source": "contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol:23",
+                                    "fields": [
+                                        {
+                                            "name": "market",
+                                            "type": "address",
+                                            "source": "contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "netPyIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "output",
+                                            "type": "TokenOutput",
+                                            "source": "contracts/fuses/pendle/PendleRedeemPTAfterMaturityFuse.sol:26"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "FusePendleRedeemPtAfterMaturity",
+                        "address": "0x40430a509188b71BdA9a0c06b132e978Ea2015BE",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xa2394e591919e6133e6bc4453b043cd80ab7930eafdb2a26ffb5dc7044338432",
+                        "observedMarketId": 23,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 23 and VERSION() returned its own address at the observed block",
+                            "enter((address,uint256,(address,uint256,address,address,(uint8,address,bytes,bool)))) 0x63e22829 is present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Pendle market addresses (IPMarket) the vault may trade PT in; both action fuses check data.market. The PT tokens the vault ends up holding are not substrates of this market: they are priced through ERC20_VAULT_BALANCE (market 7), where each PT must be granted as an ERC20 substrate and given a PtPriceFeed",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing in this market: the balance fuse registered for market 23 is a ZeroBalanceFuse. PT held by the vault is valued in market 7 (ERC20_VAULT_BALANCE) by Erc20BalanceFuse, which needs each PT granted there and priced by a PtPriceFeed (contracts/price_oracle/price_feed/PtPriceFeed.sol, created through PtPriceFeedFactory) that reads the Pendle PY oracle TWAP and the SY asset price",
+                "priceSource": "the vault's PriceOracleMiddleware, with one PtPriceFeed per PT; a dependency balance graph from market 23 to market 7 keeps the ERC20 valuation in step with swaps",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the two action fuses, a ZeroBalanceFuse for market 23 and Erc20BalanceFuse for market 7",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/pendle/PendleSwapPTFuseTest.t.sol",
+                "test/test_helpers/PendleHelper.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "FusePendleSwapPt",
+                    "address": "0xEEA3812B60ca4c6D0e2672a865bf7217eCd49f95",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x8b8935cc158916252082fef27b2ff224fc8e8c829efc07b0c123549b175fe432",
+                    "observedMarketId": 23,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 23 and VERSION() returned its own address at the observed block",
+                        "enter 0xfc3c9017 and exit 0x6be96509 of this checkout's structs are present in the runtime code",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFusePendle",
+                    "address": "0x48bD852d83f6e58Af59255aBc708e3ddeCB1d1E6",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xbd46ec98b5315cd549c3ac792a299be82ba371b80a3fa48418d016f467aeb538",
+                    "observedMarketId": 23,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 23; VERSION() reverted, which ZeroBalanceFuse does not expose",
+                        "runtime code is 167 bytes, the same size as this checkout's compiled ZeroBalanceFuse, and balanceOf() 0x722713f7 is present; the registry name gives no source, the size and selectors are consistent with a ZeroBalanceFuse(23)"
+                    ]
+                }
+            }
         }
     ]
 }
