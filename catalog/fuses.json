@@ -18283,6 +18283,350 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-external-state-market-50",
+            "protocol": "external_state",
+            "chainId": 1,
+            "market": {
+                "id": 50,
+                "constant": "EXTERNAL_STATE",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/external_state/ExternalStateOperationFuse.sol",
+                "balanceFuse": "contracts/fuses/external_state/ExternalStateBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,address,(address,bytes)[]))",
+                    "selector": "0x3a5a6226",
+                    "struct": "ExternalStateOperationFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "ERC20 moved between the Plasma Vault and the executor; must be a granted ASSET substrate when amount is non-zero, ignored (may be zero) when amount is 0"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of asset in its smallest unit; 0 means actions-only (a call with amount 0 and no actions reverts with ExternalStateEmptyAssetAndActions)"
+                        },
+                        {
+                            "name": "balanceAccount",
+                            "type": "address",
+                            "meaning": "logical balance bucket on the executor credited (enter) or debited (exit) with the amount converted to vault-underlying units through the price oracle; must be a granted BALANCE_ACCOUNT substrate when amount is non-zero"
+                        },
+                        {
+                            "name": "actions",
+                            "type": "ExternalStateExecutorAction[]",
+                            "meaning": "external calls (target, calldata) the executor performs; every (target, selector) pair must be a granted TARGET substrate and calldata must be at least 4 bytes; on enter they run after the transfer, on exit before the withdrawal"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,address,(address,bytes)[]))",
+                    "selector": "0x227e58ab",
+                    "struct": "ExternalStateOperationFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "ERC20 moved between the Plasma Vault and the executor; must be a granted ASSET substrate when amount is non-zero, ignored (may be zero) when amount is 0"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of asset in its smallest unit; 0 means actions-only (a call with amount 0 and no actions reverts with ExternalStateEmptyAssetAndActions)"
+                        },
+                        {
+                            "name": "balanceAccount",
+                            "type": "address",
+                            "meaning": "logical balance bucket on the executor credited (enter) or debited (exit) with the amount converted to vault-underlying units through the price oracle; must be a granted BALANCE_ACCOUNT substrate when amount is non-zero"
+                        },
+                        {
+                            "name": "actions",
+                            "type": "ExternalStateExecutorAction[]",
+                            "meaning": "external calls (target, calldata) the executor performs; every (target, selector) pair must be a granted TARGET substrate and calldata must be at least 4 bytes; on enter they run after the transfer, on exit before the withdrawal"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:276",
+                    "sources": {
+                        "contracts/fuses/external_state/ExternalStateOperationFuse.sol": "0x8e969fed4041ab05023acd7948da210158250aceb95dc5299f33cb8d9253f16b",
+                        "contracts/fuses/external_state/ExternalStateBalanceFuse.sol": "0x250f1835d55676721c920a976c50d90aa0aa04d8279e18d006d7f4b56984b622"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "ExternalStateOperationFuseEnterData",
+                            "signature": "enter((address,uint256,address,(address,bytes)[]))",
+                            "selector": "0x3a5a6226",
+                            "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:24",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:25"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:26"
+                                },
+                                {
+                                    "name": "balanceAccount",
+                                    "type": "address",
+                                    "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:27"
+                                },
+                                {
+                                    "name": "actions",
+                                    "type": "ExternalStateExecutorAction[]",
+                                    "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:28"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "ExternalStateOperationFuseExitData",
+                            "signature": "exit((address,uint256,address,(address,bytes)[]))",
+                            "selector": "0x227e58ab",
+                            "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:33",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:34"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:35"
+                                },
+                                {
+                                    "name": "balanceAccount",
+                                    "type": "address",
+                                    "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:36"
+                                },
+                                {
+                                    "name": "actions",
+                                    "type": "ExternalStateExecutorAction[]",
+                                    "source": "contracts/fuses/external_state/ExternalStateOperationFuse.sol:37"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/external_state/ExternalStateRescueFuse.sol",
+                    "purpose": "sweeps the executor's whole balance of an untracked token (airdrop, accidental transfer) back to the vault without touching tracked balances; refuses tokens registered as ASSET substrates on the executor; executed through PlasmaVault.execute by ALPHA_ROLE",
+                    "interface": {
+                        "rescue": {
+                            "signature": "rescue(address)",
+                            "selector": "0x839006f2",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "asset_",
+                                    "type": "address",
+                                    "meaning": "token to sweep from the executor to the vault; reverts for address(0) and for any currently tracked ASSET"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/external_state/ExternalStateRescueFuse.sol": "0x544e5b570e0e6b75d12890afda779561be17d9a25deb0b0be07205ddb062bf39"
+                            },
+                            "operations": {
+                                "rescue": {
+                                    "struct": null,
+                                    "signature": "rescue(address)",
+                                    "selector": "0x839006f2",
+                                    "source": "contracts/fuses/external_state/ExternalStateRescueFuse.sol:42",
+                                    "fields": [
+                                        {
+                                            "name": "asset_",
+                                            "type": "address",
+                                            "source": "contracts/fuses/external_state/ExternalStateRescueFuse.sol:42"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ExternalStateRescueFuse",
+                        "address": "0xE07e04F2844125c5a30A7B9FF77cB51bbBD4C6c2",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xe95df95ca4bdb06f0a4c9896c4e4dbbfc0db1aed06f7aff7a77d830c57afe93e",
+                        "observedMarketId": 50,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 50 and VERSION() returned its own address at the observed block",
+                            "rescue(address) 0x839006f2 is present in the deployed runtime code",
+                            "bytecode equivalence with this checkout's source was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/external_state/ExternalStateUnpauseFuse.sol",
+                    "purpose": "clears the vault-scoped ExternalState pause flag set by the balance fuse after a big-change event, after verifying an ATOMIST_ROLE ECDSA signature over (fuse, MARKET_ID, confirmedTotalBalance, nonce, expirationTime, chainId) and matching the confirmed total with the executor's live total; moves no funds; executed through PlasmaVault.execute by ALPHA_ROLE",
+                    "interface": {
+                        "unpause": {
+                            "signature": "unpause((uint256,uint256,uint256,bytes))",
+                            "selector": "0xea5dacfe",
+                            "struct": "ExternalStateUnpauseData",
+                            "fields": [
+                                {
+                                    "name": "confirmedTotalBalance",
+                                    "type": "uint256",
+                                    "meaning": "total executor balance in vault-underlying units the atomist signed off on; must equal the executor's current total or the call reverts with ExternalStateUnpauseBalanceMismatch"
+                                },
+                                {
+                                    "name": "nonce",
+                                    "type": "uint256",
+                                    "meaning": "unique nonce chosen off-chain; consumed on success, a reused nonce reverts with ExternalStateUnpauseSignatureReplay"
+                                },
+                                {
+                                    "name": "expirationTime",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp (seconds) after which the signature is rejected"
+                                },
+                                {
+                                    "name": "signature",
+                                    "type": "bytes",
+                                    "meaning": "ECDSA (r,s,v) signature over the keccak256(abi.encodePacked(...)) digest; the recovered signer must hold ATOMIST_ROLE in the vault's AccessManager"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/external_state/ExternalStateUnpauseFuse.sol": "0x250c51edf13c27c6f6c0a17f91369459f98572302e52980bf425d3d68bc769ea"
+                            },
+                            "operations": {
+                                "unpause": {
+                                    "struct": "ExternalStateUnpauseData",
+                                    "signature": "unpause((uint256,uint256,uint256,bytes))",
+                                    "selector": "0xea5dacfe",
+                                    "source": "contracts/fuses/external_state/ExternalStateUnpauseFuse.sol:21",
+                                    "fields": [
+                                        {
+                                            "name": "confirmedTotalBalance",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/external_state/ExternalStateUnpauseFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "nonce",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/external_state/ExternalStateUnpauseFuse.sol:23"
+                                        },
+                                        {
+                                            "name": "expirationTime",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/external_state/ExternalStateUnpauseFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "signature",
+                                            "type": "bytes",
+                                            "source": "contracts/fuses/external_state/ExternalStateUnpauseFuse.sol:25"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ExternalStateUnpauseFuse",
+                        "address": "0x6944BF59413F4aE9817cFeC06A0E1377F6801cdD",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x8e08c27a072d64736ff61b1c16c290354605c6a0f5646f4bf69bf445f233b953",
+                        "observedMarketId": 50,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 50 and VERSION() returned its own address at the observed block",
+                            "unpause((uint256,uint256,uint256,bytes)) 0xea5dacfe is present in the deployed runtime code",
+                            "bytecode equivalence with this checkout's source was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values typed in the most significant byte by ExternalStateSubstrateLib: ASSET (1, address allowed for enter/exit accounting), TARGET (2, address in the low 160 bits plus a bytes4 selector at bits 160..191 — one allowed external call), CUSTODIAN (3, address allowed to propose/confirm balance updates on the executor), BALANCE_ACCOUNT (4, address bucket), STALENESS_MAX (5, uint248 seconds), BIG_CHANGE_BPS (6, uint248 basis points), DUST_THRESHOLD (7, uint248 percent), MIN_UPDATE_INTERVAL (8, uint248 seconds). The operation fuse checks ASSET and BALANCE_ACCOUNT when amount > 0 and every action's TARGET+selector; the executor reads the scalar and CUSTODIAN entries. TARGET grants must never overlap ASSET addresses (the fuse does not police it).",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with bytes32 values built by ExternalStateSubstrateLib.encode*Substrate",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted via ExternalStateSubstrateLib.validateAssetGranted / validateBalanceAccountGranted / validateTargetSelectorGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the executor's tracked total balance, already expressed in the vault's underlying asset (sum of balance accounts as credited on enter and updated by custodian confirmations), priced as the underlying; tokens physically held by the executor are not read. balanceOf() is not a view: it stores the last total and custodian timestamp and sets the vault-scoped pause flag when a custodian update moves the total by more than BIG_CHANGE_BPS",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice for the underlying (and for the transferred asset on enter/exit)",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action; CUSTODIAN substrates propose/confirm balance updates on the executor; unpause needs an ATOMIST_ROLE (100) signature",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/external_state/ExternalStateFuseForkTest.t.sol",
+                "test/fuses/external_state/ExternalStateBigChangePauseForkTest.t.sol",
+                "test/fuses/external_state/ExternalStateCustodianDualApprovalForkTest.t.sol",
+                "test/fuses/external_state/ExternalStateMultiBalanceAccountsForkTest.t.sol",
+                "test/fuses/external_state/ExternalStateMultiTokenEnterForkTest.t.sol",
+                "test/fuses/external_state/ExternalStateStalenessForkTest.t.sol",
+                "test/fuses/external_state/ExternalStateWithOtherFusesInteractionForkTest.t.sol",
+                "test/unitTest/fuses/external_state/ExternalStateOperationFuseTest.t.sol",
+                "test/unitTest/fuses/external_state/ExternalStateBalanceFuseTest.t.sol",
+                "test/unitTest/fuses/external_state/ExternalStateRescueFuseTest.t.sol",
+                "test/unitTest/fuses/external_state/ExternalStateUnpauseFuseTest.t.sol",
+                "test/unitTest/fuses/external_state/ExternalStateExecutorTest.t.sol",
+                "test/unitTest/fuses/external_state/ExternalStatePausePreHookTest.t.sol",
+                "test/unitTest/fuses/external_state/ExternalStateRealVaultExecuteTest.t.sol",
+                "test/unitTest/fuses/external_state/lib/ExternalStateExecutorStorageLibTest.t.sol",
+                "test/unitTest/fuses/external_state/lib/ExternalStateSubstrateLibTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "ExternalStateOperationFuse",
+                    "address": "0x18856A47C4D8124Ec42Ad7e1Bd82970d63dfa68c",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xa4b429bc97eaff8af1d05e58d2259a7de1bf6d6f2305de52ad08ebd0f82c15fb",
+                    "observedMarketId": 50,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 50 and VERSION() returned its own address at the observed block",
+                        "the deployed runtime code (18904 bytes) contains enter 0x3a5a6226, exit 0x227e58ab and createExecutor() 0xf0791d5c, the same signatures as this checkout",
+                        "bytecode equivalence with this checkout's source was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "ExternalStateBalanceFuse",
+                    "address": "0x30DE3D8e37C55568653A94102080ea0e822AadD7",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xc669d0d7b7355adb59d2b106dc94022eec1a331e98e07b17d13931902ad43efa",
+                    "observedMarketId": 50,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 50 and VERSION() returned its own address at the observed block; balanceOf() present",
+                        "bytecode equivalence with this checkout's source was not established"
+                    ]
+                }
+            }
         }
     ]
 }
