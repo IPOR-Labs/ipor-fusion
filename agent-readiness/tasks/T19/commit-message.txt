@@ -1,0 +1,9 @@
+test(runner): T19 select affected suites conservatively
+
+Add a test:affected command that combines branch and working-tree changes with
+the classified suites' transitive Solidity imports and explicit trust-boundary
+rules. Widen unknown paths, helpers and unclassified tests to the full pilot and
+print the reason.
+
+Keep JSON as a non-executing plan, while default mode runs the selected local and
+fork runners so missing RPC access or a Forge failure cannot appear as success.

@@ -51,6 +51,7 @@ the same change and record the run that produced the numbers.
 forge build
 npm run test:unit
 npm run test:fork -- --chain 1 --suite factory --block 23831825
+npm run test:affected -- --base origin/main
 npm run validate:test-suites
 ```
 

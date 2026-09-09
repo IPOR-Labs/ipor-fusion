@@ -387,7 +387,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T19 — Konserwatywny dobór testów do zmiany
 
-- [ ] **P1 · M · Zależności: T13, T15, T16.**
+- [x] **P1 · M · Zależności: T13, T15, T16.**
 - **Zakres:** `test:affected -- --base …` z mapą modułów i zależności importów dla pilotażu. Nieznana ścieżka lub zmiana wspólnego storage/ról/oracle wybiera szerszy zestaw i podaje powód.
 - **Odbiór:** przykłady zmiany fabryki, biblioteki wspólnej, helpera i niesklasyfikowanego pliku dobierają wystarczający zakres; brak RPC nie jest traktowany jako zaliczenie.
 - **Commit:** `test(runner): T19 select affected suites conservatively`.

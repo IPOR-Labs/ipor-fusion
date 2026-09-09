@@ -121,6 +121,16 @@ warnings in this offline mode. Values from the environment and `.env` are never
 printed. The opt-in `--rpc` mode additionally verifies the provider chain ID and
 contract code at the requested historical block.
 
+Select and run the classified suites affected by a branch:
+
+```bash
+npm run test:affected -- --base origin/main
+npm run test:affected -- --base origin/main --json
+```
+
+JSON mode is a non-executing plan. The default mode runs the selected local and
+fork suites and returns non-zero if the required RPC is absent.
+
 ## Pre-commit hooks
 
 ### requirements

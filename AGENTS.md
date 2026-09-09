@@ -74,6 +74,12 @@ npm run prettier:all
 npm run solhint:all
 ```
 
+For a branch-wide conservative selection of classified suites:
+
+```bash
+npm run test:affected -- --base origin/main
+```
+
 If `format:check` reports pre-existing drift, do not run the writing command across the repository merely to make an
 unrelated change pass; format only files in scope and report inherited failures.
 

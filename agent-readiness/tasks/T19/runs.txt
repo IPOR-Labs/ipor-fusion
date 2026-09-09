@@ -1,0 +1,28 @@
+T19 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run test:affected:runner
+  5 passed; 0 failed
+  - factory change -> all 7 local/fork factory suites
+  - shared storage, access and oracle examples -> all 7 suites
+  - unknown helper and unclassified test -> all 7 with conservative reason
+  - documentation only -> validation-only, no contract suites
+  - synthetic transitive Solidity import -> importing suite only
+
+PASS npm run test:affected -- --base HEAD --json
+  status=planned; no tests executed
+  combined 12 committed/staged/unstaged/untracked T19 paths
+  selected all 7 suites with a reason for every path
+
+PASS npm run test:affected -- --base HEAD
+  local: 129 passed; 0 failed; 0 skipped
+  Ethereum fork at catalog block 23831825: 12 passed; 0 failed; 0 skipped
+  test:affected: PASS (7 classified suites)
+
+EXPECTED FAILURE env -u ETHEREUM_PROVIDER_URL FUSION_ENV_FILE=/dev/null npm run test:affected -- --base HEAD
+  local: 129 passed before the fork boundary
+  fork: RPC_UNAVAILABLE: ETHEREUM_PROVIDER_URL is not set
+  parent: FORK_TESTS_FAILED; exit 1; no affected PASS line
+
+PASS Node syntax and Prettier checks for T19 JavaScript and Markdown
+PASS local Markdown links
+PASS git diff --check

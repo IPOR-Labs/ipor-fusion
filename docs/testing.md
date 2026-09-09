@@ -178,6 +178,27 @@ suites write transient storage in one call and read it in another.
 
 ## Choosing what to run for a change
 
+Use the conservative catalog-driven selector for a branch or working tree:
+
+```bash
+npm run test:affected -- --base origin/main
+npm run test:affected -- --base origin/main --json
+```
+
+It combines committed, staged, unstaged and untracked paths. JSON mode prints a
+plan without executing tests. Default mode executes the selected scope through
+`test:unit` and `test:fork`, so a required but missing RPC is a failure rather
+than a skipped success.
+
+The pilot rules intentionally prefer a safe superset:
+
+- a factory change selects every classified factory suite;
+- storage, vault, access or oracle changes select the entire classified catalog;
+- a relative Solidity import selects its importing suite transitively;
+- an unknown helper, unclassified test or unrecognized path selects the entire
+  catalog and reports that it widened conservatively;
+- documentation and readiness metadata alone select validation only.
+
 | Changed area                              | Start with                                                                                                                               |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | A factory                                 | `test/factory/`, then the fee-package suites if fees are involved.                                                                       |
