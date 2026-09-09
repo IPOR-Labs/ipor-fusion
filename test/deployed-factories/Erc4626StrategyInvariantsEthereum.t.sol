@@ -255,6 +255,19 @@ contract Erc4626StrategyInvariantsEthereumTest is Test {
         IPlasmaVault(instance.plasmaVault).execute(enter);
     }
 
+    /// @dev P7: a private vault only accepts deposits from WHITELIST_ROLE holders.
+    function testP7ShouldRefuseDepositsFromAnAddressWithoutWhitelistRole() public {
+        address stranger = makeAddr("stranger");
+        // Test-only: the stranger's USDC is dealt, never acquired on a market.
+        deal(USDC, stranger, DEPOSIT);
+        vm.startPrank(stranger);
+        IERC20(USDC).approve(instance.plasmaVault, DEPOSIT);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, stranger));
+        IERC4626(instance.plasmaVault).deposit(DEPOSIT, stranger);
+        vm.stopPrank();
+        assertEq(IERC4626(instance.plasmaVault).balanceOf(stranger), 0, "a non-whitelisted depositor got shares");
+    }
+
     function _deposit() private returns (uint256 shares) {
         // Test-only: the depositor's USDC is dealt, never acquired on a market.
         deal(USDC, depositor, DEPOSIT);

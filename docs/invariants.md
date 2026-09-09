@@ -49,15 +49,15 @@ and [`recipes/erc4626-strategy.md`](recipes/erc4626-strategy.md).
 
 ## Permissions and limits
 
-| #   | Property                                                             | Status     | Evidence                                                                                                                                                                                                                                                                                                                                                             |
-| --- | -------------------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1  | The requested owner receives `OWNER_ROLE` with no execution delay.   | tested     | Both deployed-usage tests, and the `access.owner` / `access.ownerDelay` state checks.                                                                                                                                                                                                                                                                                |
-| P2  | Only `ALPHA_ROLE` can execute fuse actions.                          | tested     | [`Erc4626StrategyInvariantsEthereum.t.sol`](../test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol) — `testP2…`: `execute` from an unrelated address and from the vault owner both revert with `AccessManagedUnauthorized(caller)`; the lifecycle test covers the alpha's success path.                                                                  |
-| P3  | Only `FUSE_MANAGER_ROLE` can register fuses and grant substrates.    | tested     | `vault:configure` refuses with `MISSING_ROLE` before sending, and the fork test in [`test-configure-strategy.mjs`](../tools/test-configure-strategy.mjs) proves an operator without the role is rejected.                                                                                                                                                            |
-| P4  | A fuse action against a substrate that was never granted reverts.    | tested     | [`Erc4626StrategyInvariantsEthereum.t.sol`](../test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol) — `testP4…`: the deployed supply fuse `0x12FD0EE1…` refuses Gauntlet USDC Prime, a USDC vault that was not granted, with `Erc4626SupplyFuseUnsupportedVault("enter", vault)`; no external shares appear and the idle balance is unchanged.           |
-| P5  | A market cannot exceed its configured share of the vault's assets.   | tested     | [`Erc4626StrategyInvariantsEthereum.t.sol`](../test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol) — `testP5…`: supplying 60% against the 50% limit reverts with `MarketLimitExceeded` (selector asserted; the values observed while building the lifecycle test were `(100001, 59999999999, 49999999999)`), and a 40% supply on the same vault passes. |
-| P6  | The market limit is a WAD fraction of total assets (1e18 = 100%).    | tested     | Same observation: a basis-point value produced an effective limit of zero. The unit is now enforced by the strategy configuration schema.                                                                                                                                                                                                                            |
-| P7  | A private vault only accepts deposits from `WHITELIST_ROLE` holders. | postulated | The lifecycle test grants the role and deposits; it does not assert that an address without it is refused.                                                                                                                                                                                                                                                           |
+| #   | Property                                                             | Status | Evidence                                                                                                                                                                                                                                                                                                                                                             |
+| --- | -------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1  | The requested owner receives `OWNER_ROLE` with no execution delay.   | tested | Both deployed-usage tests, and the `access.owner` / `access.ownerDelay` state checks.                                                                                                                                                                                                                                                                                |
+| P2  | Only `ALPHA_ROLE` can execute fuse actions.                          | tested | [`Erc4626StrategyInvariantsEthereum.t.sol`](../test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol) — `testP2…`: `execute` from an unrelated address and from the vault owner both revert with `AccessManagedUnauthorized(caller)`; the lifecycle test covers the alpha's success path.                                                                  |
+| P3  | Only `FUSE_MANAGER_ROLE` can register fuses and grant substrates.    | tested | `vault:configure` refuses with `MISSING_ROLE` before sending, and the fork test in [`test-configure-strategy.mjs`](../tools/test-configure-strategy.mjs) proves an operator without the role is rejected.                                                                                                                                                            |
+| P4  | A fuse action against a substrate that was never granted reverts.    | tested | [`Erc4626StrategyInvariantsEthereum.t.sol`](../test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol) — `testP4…`: the deployed supply fuse `0x12FD0EE1…` refuses Gauntlet USDC Prime, a USDC vault that was not granted, with `Erc4626SupplyFuseUnsupportedVault("enter", vault)`; no external shares appear and the idle balance is unchanged.           |
+| P5  | A market cannot exceed its configured share of the vault's assets.   | tested | [`Erc4626StrategyInvariantsEthereum.t.sol`](../test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol) — `testP5…`: supplying 60% against the 50% limit reverts with `MarketLimitExceeded` (selector asserted; the values observed while building the lifecycle test were `(100001, 59999999999, 49999999999)`), and a 40% supply on the same vault passes. |
+| P6  | The market limit is a WAD fraction of total assets (1e18 = 100%).    | tested | Same observation: a basis-point value produced an effective limit of zero. The unit is now enforced by the strategy configuration schema.                                                                                                                                                                                                                            |
+| P7  | A private vault only accepts deposits from `WHITELIST_ROLE` holders. | tested | [`Erc4626StrategyInvariantsEthereum.t.sol`](../test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol) — `testP7…`: a funded, approving address without the role is refused with `AccessManagedUnauthorized(caller)` and holds no shares.                                                                                                                   |
 
 ## Rounding and tolerances
 
@@ -72,12 +72,19 @@ and [`recipes/erc4626-strategy.md`](recipes/erc4626-strategy.md).
 
 ## Gaps worth closing
 
-The postulated rows above are the honest list. The ones that most affect an
-agent working from this repository:
+The postulated rows above are the honest list. The four from the first
+version of this page (W1, P4, P5, A6) and three more (A5, P2, P7) are now
+tested by
+[`Erc4626StrategyInvariantsEthereum.t.sol`](../test/deployed-factories/Erc4626StrategyInvariantsEthereum.t.sol),
+one test per property. What is still postulated needs configuration the
+pilot vault does not have:
 
-1. **W1** — no test that an early redeem reverts on the pilot vault.
-2. **P4** — no test that a non-granted substrate is refused by the _deployed_ fuse.
-3. **P5** — the market-limit revert was observed but is not committed as a test.
-4. **A6** — no demonstration that yield accrues, because the fork is pinned.
+1. **F4** — performance and management fee arithmetic with the pilot's own
+   fee package (the invariants suite only reads the unrealized management fee
+   to net it out of the accrual).
+2. **F5** — a fee package change between planning and execution; belongs to
+   the preflight step, not to a fork test.
+3. **W4** — the `request` → `redeemFromRequest` path on the pilot vault.
+4. **W5** — instant-withdrawal fuses pulling funds back from the market.
 
 Each of those is a separate task, not a footnote in an existing one.
