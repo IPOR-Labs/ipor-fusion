@@ -5026,6 +5026,393 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "base-moonwell-market-21",
+            "protocol": "moonwell",
+            "chainId": 8453,
+            "market": {
+                "id": 21,
+                "constant": "MOONWELL",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/moonwell/MoonwellSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/moonwell/MoonwellBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "MoonwellSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the underlying ERC20 to supply; the fuse resolves the mToken whose underlying() equals it among the granted substrates and reverts MoonwellSupplyFuseUnsupportedAsset otherwise"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of underlying to supply, in the asset's smallest unit; capped at the Plasma Vault's balance, 0 is a no-op"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "MoonwellSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the underlying ERC20 to withdraw, resolved to its mToken through the granted substrates"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of underlying to redeem (redeemUnderlying), in the asset's smallest unit; capped at the vault's balanceOfUnderlying on the mToken; no slippage guard"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:73",
+                    "sources": {
+                        "contracts/fuses/moonwell/MoonwellSupplyFuse.sol": "0x27b7ddf50a582b52f50b741267a278102a6399ee18c9774f3c0924d2e08dbec6",
+                        "contracts/fuses/moonwell/MoonwellBalanceFuse.sol": "0xb5b3e8a04604137bcd664ec1a4351355f7ddf306c6c8cc0c4c23f11182b5917e"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "MoonwellSupplyFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/moonwell/MoonwellSupplyFuse.sol:19",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/moonwell/MoonwellSupplyFuse.sol:20"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/moonwell/MoonwellSupplyFuse.sol:21"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "MoonwellSupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/moonwell/MoonwellSupplyFuse.sol:27",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/moonwell/MoonwellSupplyFuse.sol:28"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/moonwell/MoonwellSupplyFuse.sol:29"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/moonwell/MoonwellBorrowFuse.sol",
+                    "purpose": "borrows (enter) and repays (exit) an underlying on its mToken; the mToken is resolved from the granted substrates, so any granted market may be borrowed once enabled as collateral",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "MoonwellBorrowFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "the underlying ERC20 to borrow, resolved to its mToken through the granted substrates"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount of underlying to borrow, in the asset's smallest unit; not capped, a non-zero Compound error code reverts MoonwellBorrowFuseBorrowFailed"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "struct": "MoonwellBorrowFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "meaning": "the borrowed underlying to repay, resolved to its mToken through the granted substrates"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount of underlying to repay (repayBorrow), in the asset's smallest unit; not capped at the vault balance, the approval is revoked after the call"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/moonwell/MoonwellBorrowFuse.sol": "0x98e2c551b04284985de585923ba0fb56316b56a124d74e5ef1108452c4d2d3af"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "MoonwellBorrowFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/moonwell/MoonwellBorrowFuse.sol:16",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/moonwell/MoonwellBorrowFuse.sol:18"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/moonwell/MoonwellBorrowFuse.sol:20"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "MoonwellBorrowFuseExitData",
+                                    "signature": "exit((address,uint256))",
+                                    "selector": "0x92876ac8",
+                                    "source": "contracts/fuses/moonwell/MoonwellBorrowFuse.sol:25",
+                                    "fields": [
+                                        {
+                                            "name": "asset",
+                                            "type": "address",
+                                            "source": "contracts/fuses/moonwell/MoonwellBorrowFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/moonwell/MoonwellBorrowFuse.sol:29"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "BorrowFuseMoonwell",
+                        "address": "0x8f6951795193C5AE825397ba35e940C5586e7b7D",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x5d0fa9949a68641b437fe83502a5bf2cc4e2df75d8295da92724f37fdbecf938",
+                        "observedMarketId": 21,
+                        "matchesCurrentSource": false,
+                        "notes": [
+                            "MARKET_ID() returned 21 and VERSION() returned its own address at the observed block",
+                            "enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8 are present in the runtime code",
+                            "enterTransient() 0xadea8fa0 is absent while this checkout's MoonwellBorrowFuse.sol exposes it; the deployed contract is an older version without the transient-storage entry points"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol",
+                    "purpose": "enables (enter) or disables (exit) granted mTokens as collateral on the Moonwell Comptroller (enterMarkets/exitMarket); a Comptroller error code is reported by event, not by revert",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address[]))",
+                            "selector": "0x5e047043",
+                            "struct": "MoonwellEnableMarketFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "mTokens",
+                                    "type": "address[]",
+                                    "meaning": "mToken addresses to enter as collateral; every one must be a granted substrate (MoonwellEnableMarketFuseUnsupportedMToken otherwise), an empty list reverts"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address[]))",
+                            "selector": "0xf7edc378",
+                            "struct": "MoonwellEnableMarketFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "mTokens",
+                                    "type": "address[]",
+                                    "meaning": "mToken addresses to exit as collateral, each must be a granted substrate; the Comptroller refuses to exit a market backing outstanding debt and the fuse only emits MoonwellMarketDisableFailed"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol": "0x52d8e95f26fd73b15ad2648e6e14a34157f7563bde65f176dcf380806181e3e3"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "MoonwellEnableMarketFuseEnterData",
+                                    "signature": "enter((address[]))",
+                                    "selector": "0x5e047043",
+                                    "source": "contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol:12",
+                                    "fields": [
+                                        {
+                                            "name": "mTokens",
+                                            "type": "address[]",
+                                            "source": "contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol:13"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "MoonwellEnableMarketFuseExitData",
+                                    "signature": "exit((address[]))",
+                                    "selector": "0xf7edc378",
+                                    "source": "contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol:18",
+                                    "fields": [
+                                        {
+                                            "name": "mTokens",
+                                            "type": "address[]",
+                                            "source": "contracts/fuses/moonwell/MoonwellEnableMarketFuse.sol:19"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "EnableMarketFuseMoonwell",
+                        "address": "0xD62542Ef1ABFF0ac71A1b5666CB76801e81104Ef",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x009a79ec126f36704ab0176afc11f7a5079bb9ac4000e6f9dc5be14b50e456ac",
+                        "observedMarketId": 21,
+                        "matchesCurrentSource": false,
+                        "notes": [
+                            "MARKET_ID() returned 21 and VERSION() returned its own address at the observed block",
+                            "enter((address[])) 0x5e047043 and exit((address[])) 0xf7edc378 are present in the runtime code",
+                            "enterTransient() 0xadea8fa0 is absent while this checkout's MoonwellEnableMarketFuse.sol exposes it; the deployed contract is an older version"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/rewards_fuses/moonwell/MoonwellClaimFuse.sol",
+                    "purpose": "reward claim fuse: claims WELL and other emission tokens for the given mTokens through the Comptroller's MultiRewardDistributor and forwards them to the RewardsClaimManager; registered on RewardsClaimManager by FUSE_MANAGER_ROLE (300) and executed by CLAIM_REWARDS_ROLE (600) via RewardsClaimManager.claimRewards, not via PlasmaVault.execute",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim((address[]))",
+                            "selector": "0x3e32a78f",
+                            "struct": "MoonwellClaimFuseData",
+                            "fields": [
+                                {
+                                    "name": "mTokens",
+                                    "type": "address[]",
+                                    "meaning": "mTokens to claim rewards for; not checked against the substrates, an empty list reverts MoonwellClaimFuseEmptyArray"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/moonwell/MoonwellClaimFuse.sol": "0x58f27d5405452b70a1f6f18d34dc4542946e85e23d307f5d6c3ee8794dd1e849"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": "MoonwellClaimFuseData",
+                                    "signature": "claim((address[]))",
+                                    "selector": "0x3e32a78f",
+                                    "source": "contracts/rewards_fuses/moonwell/MoonwellClaimFuse.sol:13",
+                                    "fields": [
+                                        {
+                                            "name": "mTokens",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/moonwell/MoonwellClaimFuse.sol:14"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsFuseMoonwell",
+                        "address": "0xd253C5C54248433C7879aC14Fb03201e008C5a1e",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x474257dbd965b09144bf2bb34199a02a3dc862035493fcad8a48992b643b174e",
+                        "observedMarketId": 21,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 21 and VERSION() returned its own address at the observed block",
+                            "claim((address[])) 0x3e32a78f is present in the runtime code; bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "the Moonwell mToken (MErc20) addresses this market may use. Supply and borrow resolve the asset given in the call to the mToken whose underlying() matches, the enable-market fuse checks the mToken addresses directly, and the balance fuse iterates the list; the claim fuse does not read it.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.getMarketSubstrates iterated by MoonwellHelperLib.getMToken (underlying match) and MoonwellEnableMarketFuse._isSupportedMToken (address match)",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every granted mToken: balanceOfUnderlying of the Plasma Vault minus borrowBalanceStored, both in the mToken's underlying asset; a negative net is reported as 0",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware() (the PriceOracleMiddlewareManager or PriceOracleMiddleware the vault points at), getAssetPrice of each underlying; a zero price reverts MoonwellBalanceFuseInvalidPrice",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/moonwell/MoonwellSupplyFuseBaseTest.sol",
+                "test/fuses/moonwell/MoonwellBorowFlowBaseTest.t.sol",
+                "test/fuses/moonwell/MoonwellClaimFuseBaseTest.sol",
+                "test/context/ContextManagerRewardsClaimManagerTest.t.sol",
+                "test/context/ContextManagerWithSignatureRewardsClaimManagerTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "SupplyFuseMoonwell",
+                    "address": "0xC4a62Bd86dB7dd61a875611b2220f9ab6e14FFbf",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x05cd2e7ff084fe53cf1ecbb3904694e77d37a2b05d4f1c5732d32e5698882320",
+                    "observedMarketId": 21,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 21 and VERSION() returned its own address at the observed block",
+                        "enter((address,uint256)) 0xd5ee7916, exit((address,uint256)) 0x92876ac8 and instantWithdraw(bytes32[]) 0xbe1946da are present in the runtime code",
+                        "enterTransient() 0xadea8fa0 is absent while this checkout's MoonwellSupplyFuse.sol exposes it; the deployed contract is an older version without the transient-storage entry points"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseMoonwell",
+                    "address": "0x86417B0B3B03e8BC8b68377994363796b4ccD3Bc",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0xafaf799151288f09c89cc0c8f80cd7cdb9a180f43ac791dadc0b264094a0c4a3",
+                    "observedMarketId": 21,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 21 at the observed block",
+                        "balanceOf() 0x722713f7 and balanceOf(bytes32[],address) 0x72839dd1 are present in the runtime code",
+                        "VERSION() reverted, while this checkout's MoonwellBalanceFuse.sol exposes it; the deployed contract is therefore an older version of this fuse"
+                    ]
+                }
+            }
         }
     ]
 }
