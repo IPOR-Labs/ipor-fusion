@@ -1,0 +1,13 @@
+feat(execution): T41 execute validated plans through an EOA signer
+
+Add vault:execute: it checks the plan against an explicit scope file, runs the
+preflight, records the intent and the sender's nonce in the journal, sends the
+plan's calldata verbatim with cast, and settles the entry from the chain.
+
+Signing stays outside the repository: the key lives in a Foundry keystore account
+named on the command line, while --private-key, --mnemonic and --interactive are
+rejected outright because process arguments are readable by other users.
+
+Verified on a fork with 4 tests: an out-of-scope target, selector, sender or
+chain is refused without a journal entry, a stopped preflight sends nothing, and
+an approved plan settles as confirmed with no key material anywhere in the output.

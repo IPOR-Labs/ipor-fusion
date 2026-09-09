@@ -1,0 +1,35 @@
+T41 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run vault:execute:test
+  tests 4, pass 4, fail 0
+
+  Key handling (no network needed):
+    --private-key 0x…      KEY_IN_ARGUMENT, exit 1, before any file is read
+    --mnemonic "…"         KEY_IN_ARGUMENT, exit 1
+    no signer flag         exit 2, "either --account <keystore account> or --fork-unlocked"
+    both signer flags      exit 2, "mutually exclusive"
+
+  Scope (anvil fork of Ethereum block 25937526, sender impersonated and funded on
+  the fork only):
+    allowedTargets without the factory      OUT_OF_SCOPE: target
+    allowedSelectors 0xdeadbeef             OUT_OF_SCOPE: selector
+    allowedSenders without the caller       OUT_OF_SCOPE: sender
+    chainId 42161                           OUT_OF_SCOPE: chain
+    after all four refusals the journal directory is still empty
+
+  Approved plan, in scope:
+    vault:preflight: go
+    vault:journal: prepared <id> (nonce …)
+    vault:journal: confirmed <id> <hash> (block …)
+    exit 0; journal entry state confirmed, history prepared → pending → confirmed
+    the entry holds a hash of the calldata, not the calldata and not any key
+    stdout+stderr contain no "private key", "mnemonic" or "password"
+
+  Stopped preflight:
+    a plan whose expected management fee no longer matches the chain prints
+    "STOP fees.values", exits 1 with PREFLIGHT_STOP, and creates no journal entry
+
+The real-signer path (--account with a Foundry keystore) is not exercised here:
+it would need a key on this machine and a real network. The fork path uses anvil
+impersonation, which exercises the same code apart from the two send arguments.
+No transaction was broadcast to a public network.

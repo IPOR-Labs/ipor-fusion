@@ -1,0 +1,10 @@
+{
+    "schemaVersion": 1,
+    "chainId": 1,
+    "allowedTargets": ["0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852"],
+    "allowedSelectors": ["0x8697b10a"],
+    "allowedSenders": ["0x1111111111111111111111111111111111111111"],
+    "maxValueWei": "0",
+    "maxGas": 12000000,
+    "note": "Creation of one vault through the verified Ethereum FusionFactory, by the named sender only. clone(string,string,address,uint256,address,uint256) = 0x8697b10a."
+}
