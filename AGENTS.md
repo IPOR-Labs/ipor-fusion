@@ -59,6 +59,7 @@ URLs, and use archive-capable endpoints for pinned historical blocks. For exampl
 
 ```bash
 npm run test:fork -- --chain 1 --suite factory --block 23831825
+npm run agent:doctor -- --rpc --chain 1 --block 23831825
 ```
 
 Do not interpret a missing provider or unavailable archive state as a passing or failing protocol regression. Report it

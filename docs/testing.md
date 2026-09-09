@@ -16,6 +16,7 @@ fixture actually proves:
 | ----------------------- | --------------------------------------------------------------------------- |
 | `group`, `path`         | The CLI suite group and the test file it selects.                           |
 | `contracts`, `chainId`  | Test contracts and their fork network (`null` for local).                   |
+| `stateProbe`            | Code-bearing address used only to test historical state availability.       |
 | `fixture`               | What the fixture builds — see the four types below.                         |
 | `profile`               | The Foundry profile the suite runs under.                                   |
 | `rpc`                   | The provider environment **variable name**, or `null` when none is needed.  |
@@ -132,6 +133,19 @@ embed a key.
 
 Pinned blocks need archive state. An endpoint that serves only recent state will
 fail on a historical block; that is an infrastructure result, not a protocol one.
+
+Check one provider before starting a fork suite:
+
+```bash
+npm run agent:doctor -- --rpc --chain 1 --block 23831825
+```
+
+This opt-in mode first calls `eth_chainId` and then `eth_getCode` for the
+catalogued `stateProbe` at the requested block. It reports `RPC_UNAVAILABLE`,
+`CHAIN_MISMATCH` and `HISTORICAL_STATE_UNAVAILABLE` separately and never prints
+the URL or the provider's error body. A successful probe proves only that the
+endpoint serves code at that chain and block. It does not verify the identity or
+configuration of the probed deployment.
 
 The catalog selects a profile per suite. Pass it explicitly when invoking Forge:
 

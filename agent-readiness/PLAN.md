@@ -380,7 +380,7 @@ Wspólne kryterium commita: zakres zadania wykonany, odpowiednie sprawdzenie zak
 
 #### T18 — Opcjonalna diagnostyka RPC
 
-- [ ] **P0 · S · Zależności: T16, T17.**
+- [x] **P0 · S · Zależności: T16, T17.**
 - **Zakres:** dodać do doctor jawny tryb sprawdzający jedną wskazaną sieć: chain ID, odpowiedź RPC i odczyt stanu na bloku pilotażu.
 - **Odbiór:** rozróżniane są niedostępny RPC, zła sieć i brak historycznego stanu; odpowiedzi błędów nie ujawniają URL z kluczem.
 - **Commit:** `feat(tooling): T18 add opt-in RPC diagnostics`.

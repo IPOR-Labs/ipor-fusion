@@ -23,8 +23,8 @@ krok 0 i 5) oraz Pete po commicie.
 | T14 | Jawne profile testów | P0 | T13 | committed `212a6e6` | 2026-09-09 | Jawne profile `ci`, `factory_local`, `factory_ethereum` i `arbitrum`; profile pilotażu bez FFI i dostępu do plików, bez zmiany kompilatora, optimizera ani EVM |
 | T15 | Lokalny zestaw bez RPC | P0 | T13, T14 | committed `b0bbd2a` | 2026-09-09 | `npm run test:unit` waliduje katalog i uruchamia 5 lokalnych suit (129 testów) bez RPC, FFI i dostępu do plików; pusta selekcja i błąd Forge są błędami |
 | T16 | Runner jednego zestawu na forku | P0 | T13, T14 | committed `3f68cf7` | 2026-09-09 | `test:fork -- --chain 1 --suite factory --block …`; blok trafia przez `FUSION_FORK_BLOCK` do obu fixture'ów i jest asertywnie sprawdzany; nazwane błędy wejścia/RPC/selekcji |
-| T17 | agent:doctor lokalny | P0 | T03, T04, T13 | ready-for-commit | 2026-09-09 | Offline text/JSON: wersje Node/npm/Foundry, dependencies, submoduły i wyłącznie obecność nazw RPC; brak dependencies daje `npm ci` i exit 1 |
-| T18 | agent:doctor RPC | P0 | T16, T17 | todo | | |
+| T17 | agent:doctor lokalny | P0 | T03, T04, T13 | committed `4660699` | 2026-09-09 | Offline text/JSON: wersje Node/npm/Foundry, dependencies, submoduły i wyłącznie obecność nazw RPC; brak dependencies daje `npm ci` i exit 1 |
+| T18 | agent:doctor RPC | P0 | T16, T17 | ready-for-commit | 2026-09-09 | Opt-in `--rpc --chain 1 --block …`: chain ID + `eth_getCode` przy katalogowym probe; osobne `RPC_UNAVAILABLE`, `CHAIN_MISMATCH` i `HISTORICAL_STATE_UNAVAILABLE`, bez ujawniania URL |
 | T19 | test:affected | P1 | T13, T15, T16 | todo | | |
 | T20 | Źródło adresów i wybór pilotażu | P0 | T11 | todo | | wymaga MCP `fusion_address_lookup` / ipor-abi |
 | T21 | Schemat i walidator manifestów | P0 | T20 | todo | | |

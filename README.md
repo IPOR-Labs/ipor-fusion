@@ -112,12 +112,14 @@ Diagnose the local checkout without making network calls:
 ```bash
 npm run agent:doctor
 npm run agent:doctor -- --json
+npm run agent:doctor -- --rpc --chain 1 --block 23831825
 ```
 
 The command checks tool versions, installed dependencies, submodule commits and
 which RPC variable names are present. Missing optional RPC variables are
 warnings in this offline mode. Values from the environment and `.env` are never
-printed.
+printed. The opt-in `--rpc` mode additionally verifies the provider chain ID and
+contract code at the requested historical block.
 
 ## Pre-commit hooks
 

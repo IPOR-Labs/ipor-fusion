@@ -1,0 +1,9 @@
+feat(tooling): T18 add opt-in RPC diagnostics
+
+Extend agent:doctor with an explicit RPC mode that checks the selected chain ID
+and reads contract code at a catalogued historical state probe. Keep the default
+doctor offline and distinguish unavailable transport, chain mismatch and
+missing historical state.
+
+Add catalog validation for the probe and test all error categories, the success
+path and redaction of provider URLs and remote error bodies.

@@ -48,6 +48,7 @@
                 "contracts",
                 "fixture",
                 "chainId",
+                "stateProbe",
                 "profile",
                 "rpc",
                 "block",
@@ -88,6 +89,16 @@
                     "description": "Network chain ID for a fork suite, or null for a local deployment.",
                     "type": ["integer", "null"],
                     "minimum": 1
+                },
+                "stateProbe": {
+                    "description": "A code-bearing address used to prove historical state availability, or null for local suites.",
+                    "type": ["object", "null"],
+                    "additionalProperties": false,
+                    "required": ["address", "expect"],
+                    "properties": {
+                        "address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+                        "expect": { "type": "string", "enum": ["nonempty-code"] }
+                    }
                 },
                 "profile": {
                     "description": "Foundry profile the suite is run under.",

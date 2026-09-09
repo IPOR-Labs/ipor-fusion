@@ -130,6 +130,8 @@ if (Array.isArray(catalog.suites)) {
             suite.fixture === "deployed-usage";
         if (forks) {
             if (suite.chainId === null) fail(where, `fixture "${suite.fixture}" needs a chainId, but chainId is null`);
+            if (suite.stateProbe === null)
+                fail(where, `fixture "${suite.fixture}" needs a historical state probe, but stateProbe is null`);
             if (suite.rpc === null)
                 fail(where, `fixture "${suite.fixture}" needs a provider variable, but rpc is null`);
             if (suite.block === null) fail(where, `fixture "${suite.fixture}" needs a pinned block, but block is null`);
@@ -139,6 +141,7 @@ if (Array.isArray(catalog.suites)) {
                     where,
                     `fixture "local-deployment" must not declare a chainId, got ${JSON.stringify(suite.chainId)}`,
                 );
+            if (suite.stateProbe !== null) fail(where, `fixture "local-deployment" must not declare a stateProbe`);
             if (suite.rpc !== null)
                 fail(where, `fixture "local-deployment" must not declare an rpc, got ${JSON.stringify(suite.rpc)}`);
             if (suite.block !== null)

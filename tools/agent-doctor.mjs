@@ -18,9 +18,20 @@ function usageError(message) {
 function parseArgs(argv) {
     let json = false;
     let root = defaultRoot;
+    let rpc = false;
+    let chainId;
+    let block;
     for (let index = 0; index < argv.length; index += 1) {
         if (argv[index] === "--json") {
             json = true;
+        } else if (argv[index] === "--rpc") {
+            rpc = true;
+        } else if (argv[index] === "--chain" && argv[index + 1]) {
+            chainId = parsePositiveInteger("--chain", argv[index + 1]);
+            index += 1;
+        } else if (argv[index] === "--block" && argv[index + 1]) {
+            block = parsePositiveInteger("--block", argv[index + 1]);
+            index += 1;
         } else if (argv[index] === "--root" && argv[index + 1]) {
             root = resolve(argv[index + 1]);
             index += 1;
@@ -28,7 +39,16 @@ function parseArgs(argv) {
             usageError(`unknown or incomplete argument ${JSON.stringify(argv[index])}`);
         }
     }
-    return { json, root };
+    if (rpc && (!chainId || !block)) usageError("--rpc requires --chain <id> and --block <number>");
+    if (!rpc && (chainId || block)) usageError("--chain and --block require --rpc");
+    return { json, root, rpc, chainId, block };
+}
+
+function parsePositiveInteger(flag, value) {
+    if (!/^[1-9][0-9]*$/.test(value)) usageError(`${flag} must be a positive integer`);
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed)) usageError(`${flag} is outside JavaScript's safe integer range`);
+    return parsed;
 }
 
 function readJson(path) {
@@ -57,7 +77,28 @@ function versionNumber(value) {
     return value?.trim().replace(/^v/, "");
 }
 
-const { json, root } = parseArgs(process.argv.slice(2));
+async function rpcRequest(url, method, params) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+            signal: controller.signal,
+        });
+        if (!response.ok) return { transportError: true };
+        const body = await response.json();
+        if (body.error) return { rpcError: true };
+        return { result: body.result };
+    } catch {
+        return { transportError: true };
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+const { json, root, rpc, chainId, block } = parseArgs(process.argv.slice(2));
 const checks = [];
 const add = (id, status, message, remediation) => {
     const check = { id, status, message };
@@ -181,17 +222,79 @@ for (const name of exampleVariables) {
     );
 }
 
+if (rpc) {
+    const catalog = readJson(resolve(root, "config/test-suites.json"));
+    const networkSuites = Array.isArray(catalog.suites)
+        ? catalog.suites.filter((suite) => suite.fixture !== "local-deployment" && suite.chainId === chainId)
+        : [];
+    const rpcNames = new Set(networkSuites.map((suite) => suite.rpc));
+    const probes = new Map(
+        networkSuites
+            .filter((suite) => suite.stateProbe)
+            .map((suite) => [suite.stateProbe.address.toLowerCase(), suite.stateProbe]),
+    );
+
+    if (networkSuites.length === 0 || rpcNames.size !== 1 || probes.size !== 1) {
+        add(
+            `rpc:${chainId}`,
+            "error",
+            `RPC_CHECK_UNCONFIGURED: chain ${chainId} does not have exactly one catalogued provider and state probe`,
+        );
+    } else {
+        const [rpcName] = rpcNames;
+        const [probe] = probes.values();
+        const rpcUrl = process.env[rpcName] || fileEnvironment[rpcName];
+        if (!rpcUrl) {
+            add(`rpc:${chainId}`, "error", `RPC_UNAVAILABLE: ${rpcName} is not set`);
+        } else {
+            const chain = await rpcRequest(rpcUrl, "eth_chainId", []);
+            if (chain.transportError || chain.rpcError || typeof chain.result !== "string") {
+                add(`rpc:${chainId}`, "error", `RPC_UNAVAILABLE: ${rpcName} did not return a chain ID`);
+            } else {
+                const actualChainId = Number.parseInt(chain.result, 16);
+                if (actualChainId !== chainId) {
+                    add(
+                        `rpc:${chainId}`,
+                        "error",
+                        `CHAIN_MISMATCH: expected chain ${chainId}, provider reports ${actualChainId}`,
+                    );
+                } else {
+                    add(`rpc:${chainId}`, "ok", `chain ID ${chainId} matches`);
+                    const historical = await rpcRequest(rpcUrl, "eth_getCode", [
+                        probe.address,
+                        `0x${block.toString(16)}`,
+                    ]);
+                    if (
+                        historical.transportError ||
+                        historical.rpcError ||
+                        typeof historical.result !== "string" ||
+                        historical.result === "0x"
+                    ) {
+                        add(
+                            `rpc-history:${chainId}`,
+                            "error",
+                            `HISTORICAL_STATE_UNAVAILABLE: code probe failed at block ${block}`,
+                        );
+                    } else {
+                        add(`rpc-history:${chainId}`, "ok", `historical code is available at block ${block}`);
+                    }
+                }
+            }
+        }
+    }
+}
+
 const status = checks.some((check) => check.status === "error")
     ? "error"
     : checks.some((check) => check.status === "warning")
       ? "warning"
       : "ok";
-const report = { schemaVersion: 1, status, networkChecks: false, checks };
+const report = { schemaVersion: 1, status, networkChecks: rpc, checks };
 
 if (json) {
     console.log(JSON.stringify(report, null, 2));
 } else {
-    console.log(`agent:doctor: ${status.toUpperCase()} (offline)`);
+    console.log(`agent:doctor: ${status.toUpperCase()} (${rpc ? "RPC enabled" : "offline"})`);
     for (const check of checks) {
         console.log(`[${check.status.toUpperCase()}] ${check.id}: ${check.message}`);
         if (check.remediation) console.log(`  -> ${check.remediation}`);
