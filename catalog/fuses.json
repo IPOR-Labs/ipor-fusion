@@ -17214,6 +17214,836 @@
                     ]
                 }
             }
+        },
+        {
+            "protocol": "universal-token-swapper",
+            "chainId": 1,
+            "source": {
+                "actionFuse": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint256,uint256,(address[],bytes[])))",
+                    "selector": "0xc674d752",
+                    "struct": "UniversalTokenSwapperEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenIn",
+                            "type": "address",
+                            "meaning": "token the Plasma Vault hands to the swap executor; it must be granted as a substrate of this market"
+                        },
+                        {
+                            "name": "tokenOut",
+                            "type": "address",
+                            "meaning": "token expected back on the Plasma Vault; it must be granted as a substrate of this market"
+                        },
+                        {
+                            "name": "amountIn",
+                            "type": "uint256",
+                            "meaning": "amount of tokenIn transferred to the executor before the calls run, in tokenIn's smallest unit; 0 reverts (UniversalTokenSwapperFuseZeroAmount) in the primary fuse and is a no-op in the WithVerification fuse"
+                        },
+                        {
+                            "name": "minAmountOut",
+                            "type": "uint256",
+                            "meaning": "floor on the tokenOut delta, in tokenOut's smallest unit; 0 disables it and only the USD slippage check remains"
+                        },
+                        {
+                            "name": "data",
+                            "type": "UniversalTokenSwapperData",
+                            "meaning": "targets: DEX or router addresses the executor calls in order, each one must be granted as a Target substrate; data: the calldata for each target (same length, non-empty). The executor sweeps any tokenIn and tokenOut left on it back to the vault after the calls"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:37",
+                    "sources": {
+                        "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol": "0xdffc0ddab333221ffd97e931d2aa1cd543f6d0c77b33c78b1c026c305eb35935",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "UniversalTokenSwapperEnterData",
+                            "signature": "enter((address,address,uint256,uint256,(address[],bytes[])))",
+                            "selector": "0xc674d752",
+                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:31",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:32"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:33"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:34"
+                                },
+                                {
+                                    "name": "minAmountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:35"
+                                },
+                                {
+                                    "name": "data",
+                                    "type": "UniversalTokenSwapperData",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:36"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "structured",
+                "meaning": "the primary fuse and the Eth fuse read every substrate of the market and decode it with UniversalTokenSwapperSubstrateLib: the first byte is the type (1 Token: a token the vault may hand over or receive, 2 Target: a DEX/router the executor may call, 3 Slippage: a uint248 USD slippage limit in WAD, 1e18 = 100%, default 1e16 = 1% when no Slippage substrate is granted; more than 1e18 reverts). Each tokenIn, tokenOut and every target must be granted. The NoSlippage fuse instead checks plain address substrates with isSubstrateAsAssetGranted, and the WithVerification fuse checks bytes32 values packed as (functionSelector << 224) | target with selector 0 for tokens; a vault that registers several of these fuses on one market must grant substrates in every encoding its fuses read",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with bytes32 values from UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate / encodeTargetSubstrate / encodeSlippageSubstrate (primary and Eth fuse), from UniversalTokenSwapperWithVerificationFuse.toBytes32 (WithVerification fuse), or plain addresses via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket (NoSlippage fuse)",
+                "checkFunction": "PlasmaVaultConfigLib.getMarketSubstrates iterated by the primary and Eth fuse; PlasmaVaultConfigLib.isMarketSubstrateGranted (WithVerification); PlasmaVaultConfigLib.isSubstrateAsAssetGranted (NoSlippage)",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: a swap leaves no position of its own, the tokens stay on the Plasma Vault, so the market is registered with ZeroBalanceFuse (always 0). IporFusionMarkets.sol notes the market needs a dependency-graph link to ERC20_VAULT_BALANCE so the idle balances are refreshed after a swap",
+                "priceSource": "none for valuation; the primary, Eth and WithVerification fuses read PlasmaVaultLib.getPriceOracleMiddleware for tokenIn and tokenOut to enforce the USD slippage check (a zero price reverts)",
+                "unit": "USD normalized to WAD (18 decimals), always 0"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces (the market itself always values 0, so the limit only matters for the dependency-graph refresh)",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for tokenIn and tokenOut of every swap; the USD slippage check reverts on a missing or zero price"
+            },
+            "tests": [
+                "test/fuses/universal_token_swapper/UniversalSwapOnUniswapV2FuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapOnUniswapV3SwapFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapOnMockDexTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapEthOnUniswapV3SwapFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapEthNoSlippageFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalTokenSwapperSlippageForkTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.t.sol",
+                "test/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLibTest.t.sol",
+                "test/fuses/universal_token_swapper/SwapExecutorTest.t.sol"
+            ],
+            "id": "ethereum-universal-token-swapper-market-12",
+            "market": {
+                "id": 12,
+                "constant": "UNIVERSAL_TOKEN_SWAPPER",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol",
+                    "purpose": "same swap flow with a SwapExecutorEth that can forward native ETH with each call, wraps leftover ETH into WETH and sweeps listed dust tokens back; created with the WETH address in the constructor",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                            "selector": "0x8f605271",
+                            "struct": "UniversalTokenSwapperEthEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "meaning": "token the Plasma Vault hands to the swap executor; it must be granted as a substrate of this market"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "token expected back on the Plasma Vault; it must be granted as a substrate of this market"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "amount of tokenIn transferred to the executor before the calls run, in tokenIn's smallest unit; 0 reverts (UniversalTokenSwapperFuseZeroAmount) in the primary fuse and is a no-op in the WithVerification fuse"
+                                },
+                                {
+                                    "name": "minAmountOut",
+                                    "type": "uint256",
+                                    "meaning": "floor on the tokenOut delta, in tokenOut's smallest unit; 0 disables it and only the USD slippage check remains"
+                                },
+                                {
+                                    "name": "data",
+                                    "type": "UniversalTokenSwapperEthData",
+                                    "meaning": "targets and callDatas as in the primary fuse; ethAmounts: native value forwarded with each call (the executor wraps any ETH left into WETH and returns it); tokensDustToCheck: extra tokens the executor sweeps back, each must be granted as a Token substrate"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol": "0xee1a5eb1a473860e0654dc645ce0f47719d11383e607a72bfcd6329e317551d7"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniversalTokenSwapperEthEnterData",
+                                    "signature": "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                                    "selector": "0x8f605271",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:35",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIn",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:37"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:38"
+                                        },
+                                        {
+                                            "name": "minAmountOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:39"
+                                        },
+                                        {
+                                            "name": "data",
+                                            "type": "UniversalTokenSwapperEthData",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:40"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "UniversalTokenSwapperEthFuse",
+                        "address": "0xa07780FdaF46C0EFd5C4F6349268065E5D1fDBe5",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xbc9138739c2ae09dc8e94c74152fa11144a1b5a6eac0c8b8e173a302e6685cfa",
+                        "observedMarketId": 12,
+                        "matchesCurrentSource": false,
+                        "notes": [
+                            "MARKET_ID() returned 12 and VERSION() returned its own address at the observed block",
+                            "runtime code (7589 bytes) contains enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[]))) 0x8f605271 and DEFAULT_SLIPPAGE_WAD(), but not enterTransient() 0xadea8fa0, which this checkout's UniversalTokenSwapperEthFuse.sol exposes: an older build of the same interface",
+                            "the registry's twin SwapFuseUniversalTokenSwapperEth 0xee9a18F0De64E8Eb399A3BaEF0550aa50A218768 (MARKET_ID 12) answers enter((address,address,uint256,(address[],bytes[],uint256[],address[]))) 0x44ce06fa with SLIPPAGE_REVERSE(): a still older generation without minAmountOut"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol",
+                    "purpose": "Eth-capable swap without any rate protection (no minAmountOut, no USD check) and with plain address substrates; takes an already deployed SwapExecutorEth in the constructor",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,(address[],bytes[],uint256[],address[])))",
+                            "selector": "0x44ce06fa",
+                            "struct": "UniversalTokenSwapperEthEnterDataNoSlippage",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "meaning": "token handed to the executor; checked with isSubstrateAsAssetGranted, i.e. this fuse reads plain address substrates, not the typed ones of the primary fuse"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "token expected back; checked with isSubstrateAsAssetGranted"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "amount of tokenIn transferred to the executor, in its smallest unit"
+                                },
+                                {
+                                    "name": "data",
+                                    "type": "UniversalTokenSwapperEthDataNoSlippage",
+                                    "meaning": "targets, callDatas, ethAmounts and tokensDustToCheck as in the Eth fuse; every target and dust token is checked with isSubstrateAsAssetGranted. No minAmountOut and no USD check: the event reports the deltas and nothing reverts on a bad rate"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol": "0x0101cacb965efc0ca1705ac257e335e213047d4ecea84c7048a58a71dd06ad00"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniversalTokenSwapperEthEnterDataNoSlippage",
+                                    "signature": "enter((address,address,uint256,(address[],bytes[],uint256[],address[])))",
+                                    "selector": "0x44ce06fa",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:17",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIn",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:18"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:19"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:20"
+                                        },
+                                        {
+                                            "name": "data",
+                                            "type": "UniversalTokenSwapperEthDataNoSlippage",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:21"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SwapFuseUniversalTokenSwapperEthNoSlippage",
+                        "address": "0xd932D47FcF53D8dc1eF58455Dd5910E19aF2DbF0",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x8baad54e1c4ed9d9065bce959dc0c45543a06b0160c6f0c21a3a21441fb0b5ab",
+                        "observedMarketId": 12,
+                        "matchesCurrentSource": false,
+                        "notes": [
+                            "MARKET_ID() returned 12 and VERSION() returned its own address at the observed block",
+                            "runtime code (6101 bytes) contains enter((address,address,uint256,(address[],bytes[],uint256[],address[]))) 0x44ce06fa, but also SLIPPAGE_REVERSE() 0xbc854680 which this checkout's NoSlippage fuse does not declare, and it has exactly the size of SwapFuseUniversalTokenSwapperEth: despite its registry name it is not a build of UniversalTokenSwapperEthFuseNoSlippage.sol",
+                            "no registry entry on Ethereum matches the checkout's NoSlippage source for market 12; the V2 market has SwapFuseUniversalTokenSwapperEthNoSlippageV2"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol",
+                    "purpose": "swap through a SwapExecutorEth where every (target, function selector) pair must be granted as a substrate, with a constructor-fixed USD slippage limit (SLIPPAGE_REVERSE)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,(address[],bytes[],uint256[],address[])))",
+                            "selector": "0x44ce06fa",
+                            "struct": "UniversalTokenSwapperWithVerificationEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "meaning": "token handed to the executor; must be granted as toBytes32({functionSelector: 0x00000000, target: tokenIn})"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "token expected back; must be granted as toBytes32({functionSelector: 0x00000000, target: tokenOut})"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "amount of tokenIn transferred to the executor, in its smallest unit; 0 returns zero deltas without calling the executor"
+                                },
+                                {
+                                    "name": "data",
+                                    "type": "UniversalTokenSwapperWithVerificationData",
+                                    "meaning": "targets, callDatas, ethAmounts, tokensDustToCheck; each (target, first 4 bytes of its callData) pair must be granted as toBytes32({functionSelector, target}), each dust token with selector 0x00000000. Slippage is the constructor's SLIPPAGE_REVERSE, applied to the USD value of the deltas"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol": "0x12af163db614ec9b41e242263e01e205ccca090b9adc8cc1ea619d7d2050b64e"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniversalTokenSwapperWithVerificationEnterData",
+                                    "signature": "enter((address,address,uint256,(address[],bytes[],uint256[],address[])))",
+                                    "selector": "0x44ce06fa",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:33",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIn",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:35"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "data",
+                                            "type": "UniversalTokenSwapperWithVerificationData",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:37"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SwapFuseUniversalTokenSwapperWithVerification",
+                        "address": "0x4E0B22A5052B640967c55b92401b1c067FdA53e0",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xec635509831c325964b1c064f604da819e7dc9e6f7650c1c40f50e9aa0d8223f",
+                        "observedMarketId": 12,
+                        "matchesCurrentSource": false,
+                        "notes": [
+                            "MARKET_ID() returned 12 and VERSION() returned its own address at the observed block",
+                            "runtime code (7168 bytes) contains enter((address,address,uint256,(address[],bytes[],uint256[],address[]))) 0x44ce06fa and SLIPPAGE_REVERSE(), but not enterTransient() 0xadea8fa0 which this checkout exposes: an older build of the same interface"
+                        ]
+                    }
+                }
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "UniversalTokenSwapperFuse",
+                    "address": "0xA301D6f34f2c8399E8564681cF675999cc1f1584",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x176ac406dbbd37a151bbfb63ab340b177093fe229986b076c357b35939a0f7fa",
+                    "observedMarketId": 12,
+                    "matchesCurrentSource": false,
+                    "notes": [
+                        "MARKET_ID() returned 12 and VERSION() returned its own address at the observed block",
+                        "runtime code (6775 bytes) contains enter((address,address,uint256,uint256,(address[],bytes[]))) 0xc674d752 and DEFAULT_SLIPPAGE_WAD(), but not enterTransient() 0xadea8fa0 which this checkout's UniversalTokenSwapperFuse.sol exposes: an older build of the same interface",
+                        "the registry's twin SwapFuseUniversalTokenSwapper 0x08dFdBB6Ecf19f1fc974E0675783E1150B2B650F (MARKET_ID 12, VERSION ok, 5421 bytes) is the fuse most production vaults hold for this market and answers enter((address,address,uint256,(address[],bytes[]))) 0x950ca9fa with SLIPPAGE_REVERSE(): a struct without minAmountOut. Encoding this checkout's UniversalTokenSwapperEnterData against it reverts",
+                        "whether these older builds read typed UniversalTokenSwapperSubstrateLib substrates or plain addresses was not established from the bytecode"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseUniversalTokenSwapper",
+                    "address": "0xe9562d7bd06b43E6391C5bE4B3c5F5C2BC1E06Bf",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x378b8cc179fa8f344a9d9ba707039f529b86ee0ff8f1db87f45f05ad59a0f3df",
+                    "observedMarketId": 12,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 12 at the observed block; VERSION() reverted, which ZeroBalanceFuse.sol does not expose either",
+                        "runtime code is 167 bytes with balanceOf() 0x722713f7, the size of the compiled ZeroBalanceFuse; bytecode equivalence was not established"
+                    ]
+                }
+            }
+        },
+        {
+            "protocol": "universal-token-swapper",
+            "chainId": 1,
+            "source": {
+                "actionFuse": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint256,uint256,(address[],bytes[])))",
+                    "selector": "0xc674d752",
+                    "struct": "UniversalTokenSwapperEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenIn",
+                            "type": "address",
+                            "meaning": "token the Plasma Vault hands to the swap executor; it must be granted as a substrate of this market"
+                        },
+                        {
+                            "name": "tokenOut",
+                            "type": "address",
+                            "meaning": "token expected back on the Plasma Vault; it must be granted as a substrate of this market"
+                        },
+                        {
+                            "name": "amountIn",
+                            "type": "uint256",
+                            "meaning": "amount of tokenIn transferred to the executor before the calls run, in tokenIn's smallest unit; 0 reverts (UniversalTokenSwapperFuseZeroAmount) in the primary fuse and is a no-op in the WithVerification fuse"
+                        },
+                        {
+                            "name": "minAmountOut",
+                            "type": "uint256",
+                            "meaning": "floor on the tokenOut delta, in tokenOut's smallest unit; 0 disables it and only the USD slippage check remains"
+                        },
+                        {
+                            "name": "data",
+                            "type": "UniversalTokenSwapperData",
+                            "meaning": "targets: DEX or router addresses the executor calls in order, each one must be granted as a Target substrate; data: the calldata for each target (same length, non-empty). The executor sweeps any tokenIn and tokenOut left on it back to the vault after the calls"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:49",
+                    "sources": {
+                        "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol": "0xdffc0ddab333221ffd97e931d2aa1cd543f6d0c77b33c78b1c026c305eb35935",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "UniversalTokenSwapperEnterData",
+                            "signature": "enter((address,address,uint256,uint256,(address[],bytes[])))",
+                            "selector": "0xc674d752",
+                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:31",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:32"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:33"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:34"
+                                },
+                                {
+                                    "name": "minAmountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:35"
+                                },
+                                {
+                                    "name": "data",
+                                    "type": "UniversalTokenSwapperData",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol:36"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "structured",
+                "meaning": "V2 market of the same fuses, introduced with the typed substrates: the primary fuse and the Eth fuse read every substrate of the market and decode it with UniversalTokenSwapperSubstrateLib: the first byte is the type (1 Token: a token the vault may hand over or receive, 2 Target: a DEX/router the executor may call, 3 Slippage: a uint248 USD slippage limit in WAD, 1e18 = 100%, default 1e16 = 1% when no Slippage substrate is granted; more than 1e18 reverts). Each tokenIn, tokenOut and every target must be granted. The NoSlippage fuse instead checks plain address substrates with isSubstrateAsAssetGranted, and the WithVerification fuse checks bytes32 values packed as (functionSelector << 224) | target with selector 0 for tokens; a vault that registers several of these fuses on one market must grant substrates in every encoding its fuses read",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with bytes32 values from UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate / encodeTargetSubstrate / encodeSlippageSubstrate (primary and Eth fuse), from UniversalTokenSwapperWithVerificationFuse.toBytes32 (WithVerification fuse), or plain addresses via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket (NoSlippage fuse)",
+                "checkFunction": "PlasmaVaultConfigLib.getMarketSubstrates iterated by the primary and Eth fuse; PlasmaVaultConfigLib.isMarketSubstrateGranted (WithVerification); PlasmaVaultConfigLib.isSubstrateAsAssetGranted (NoSlippage)",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: a swap leaves no position of its own, the tokens stay on the Plasma Vault, so the market is registered with ZeroBalanceFuse (always 0). IporFusionMarkets.sol notes the market needs a dependency-graph link to ERC20_VAULT_BALANCE so the idle balances are refreshed after a swap",
+                "priceSource": "none for valuation; the primary, Eth and WithVerification fuses read PlasmaVaultLib.getPriceOracleMiddleware for tokenIn and tokenOut to enforce the USD slippage check (a zero price reverts)",
+                "unit": "USD normalized to WAD (18 decimals), always 0"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces (the market itself always values 0, so the limit only matters for the dependency-graph refresh)",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for tokenIn and tokenOut of every swap; the USD slippage check reverts on a missing or zero price"
+            },
+            "tests": [
+                "test/fuses/universal_token_swapper/UniversalSwapOnUniswapV2FuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapOnUniswapV3SwapFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapOnMockDexTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapEthOnUniswapV3SwapFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalSwapEthNoSlippageFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalTokenSwapperSlippageForkTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuseTest.t.sol",
+                "test/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.t.sol",
+                "test/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLibTest.t.sol",
+                "test/fuses/universal_token_swapper/SwapExecutorTest.t.sol"
+            ],
+            "id": "ethereum-universal-token-swapper-v2-market-1202",
+            "market": {
+                "id": 1202,
+                "constant": "UNIVERSAL_TOKEN_SWAPPER_V2",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol",
+                    "purpose": "same swap flow with a SwapExecutorEth that can forward native ETH with each call, wraps leftover ETH into WETH and sweeps listed dust tokens back; created with the WETH address in the constructor",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                            "selector": "0x8f605271",
+                            "struct": "UniversalTokenSwapperEthEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "meaning": "token the Plasma Vault hands to the swap executor; it must be granted as a substrate of this market"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "token expected back on the Plasma Vault; it must be granted as a substrate of this market"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "amount of tokenIn transferred to the executor before the calls run, in tokenIn's smallest unit; 0 reverts (UniversalTokenSwapperFuseZeroAmount) in the primary fuse and is a no-op in the WithVerification fuse"
+                                },
+                                {
+                                    "name": "minAmountOut",
+                                    "type": "uint256",
+                                    "meaning": "floor on the tokenOut delta, in tokenOut's smallest unit; 0 disables it and only the USD slippage check remains"
+                                },
+                                {
+                                    "name": "data",
+                                    "type": "UniversalTokenSwapperEthData",
+                                    "meaning": "targets and callDatas as in the primary fuse; ethAmounts: native value forwarded with each call (the executor wraps any ETH left into WETH and returns it); tokensDustToCheck: extra tokens the executor sweeps back, each must be granted as a Token substrate"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol": "0xee1a5eb1a473860e0654dc645ce0f47719d11383e607a72bfcd6329e317551d7"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniversalTokenSwapperEthEnterData",
+                                    "signature": "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                                    "selector": "0x8f605271",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:35",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIn",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:37"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:38"
+                                        },
+                                        {
+                                            "name": "minAmountOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:39"
+                                        },
+                                        {
+                                            "name": "data",
+                                            "type": "UniversalTokenSwapperEthData",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol:40"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "UniversalTokenSwapperEthFuseV2",
+                        "address": "0xf3777089A4b31EF0f9e8B6f3762C6FBeD4dDA449",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xf31001e9b392e8e9c47f3ef6703028cfaf1187e5b35966e9618c8c255191d2d5",
+                        "observedMarketId": 1202,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 1202 and VERSION() returned its own address at the observed block",
+                            "runtime code (10329 bytes, the size of the compiled UniversalTokenSwapperEthFuse) contains enter 0x8f605271, enterTransient() and DEFAULT_SLIPPAGE_WAD(); bytecode equivalence was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol",
+                    "purpose": "Eth-capable swap without any rate protection (no minAmountOut, no USD check) and with plain address substrates; takes an already deployed SwapExecutorEth in the constructor",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,(address[],bytes[],uint256[],address[])))",
+                            "selector": "0x44ce06fa",
+                            "struct": "UniversalTokenSwapperEthEnterDataNoSlippage",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "meaning": "token handed to the executor; checked with isSubstrateAsAssetGranted, i.e. this fuse reads plain address substrates, not the typed ones of the primary fuse"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "token expected back; checked with isSubstrateAsAssetGranted"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "amount of tokenIn transferred to the executor, in its smallest unit"
+                                },
+                                {
+                                    "name": "data",
+                                    "type": "UniversalTokenSwapperEthDataNoSlippage",
+                                    "meaning": "targets, callDatas, ethAmounts and tokensDustToCheck as in the Eth fuse; every target and dust token is checked with isSubstrateAsAssetGranted. No minAmountOut and no USD check: the event reports the deltas and nothing reverts on a bad rate"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol": "0x0101cacb965efc0ca1705ac257e335e213047d4ecea84c7048a58a71dd06ad00"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniversalTokenSwapperEthEnterDataNoSlippage",
+                                    "signature": "enter((address,address,uint256,(address[],bytes[],uint256[],address[])))",
+                                    "selector": "0x44ce06fa",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:17",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIn",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:18"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:19"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:20"
+                                        },
+                                        {
+                                            "name": "data",
+                                            "type": "UniversalTokenSwapperEthDataNoSlippage",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuseNoSlippage.sol:21"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SwapFuseUniversalTokenSwapperEthNoSlippageV2",
+                        "address": "0xc4E6624736Ba9A33B2b59Ddc2C14cD16a0EcB564",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xbfbd6a4715bf91efb528513cd41009d77e71e34d3b169d31c2b33aa1a693ea31",
+                        "observedMarketId": 1202,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 1202 and VERSION() returned its own address at the observed block",
+                            "runtime code (4279 bytes, the size of the compiled UniversalTokenSwapperEthFuseNoSlippage) contains enter 0x44ce06fa and no SLIPPAGE_REVERSE(); bytecode equivalence was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol",
+                    "purpose": "swap through a SwapExecutorEth where every (target, function selector) pair must be granted as a substrate, with a constructor-fixed USD slippage limit (SLIPPAGE_REVERSE)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,(address[],bytes[],uint256[],address[])))",
+                            "selector": "0x44ce06fa",
+                            "struct": "UniversalTokenSwapperWithVerificationEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "meaning": "token handed to the executor; must be granted as toBytes32({functionSelector: 0x00000000, target: tokenIn})"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "token expected back; must be granted as toBytes32({functionSelector: 0x00000000, target: tokenOut})"
+                                },
+                                {
+                                    "name": "amountIn",
+                                    "type": "uint256",
+                                    "meaning": "amount of tokenIn transferred to the executor, in its smallest unit; 0 returns zero deltas without calling the executor"
+                                },
+                                {
+                                    "name": "data",
+                                    "type": "UniversalTokenSwapperWithVerificationData",
+                                    "meaning": "targets, callDatas, ethAmounts, tokensDustToCheck; each (target, first 4 bytes of its callData) pair must be granted as toBytes32({functionSelector, target}), each dust token with selector 0x00000000. Slippage is the constructor's SLIPPAGE_REVERSE, applied to the USD value of the deltas"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol": "0x12af163db614ec9b41e242263e01e205ccca090b9adc8cc1ea619d7d2050b64e"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UniversalTokenSwapperWithVerificationEnterData",
+                                    "signature": "enter((address,address,uint256,(address[],bytes[],uint256[],address[])))",
+                                    "selector": "0x44ce06fa",
+                                    "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:33",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIn",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:35"
+                                        },
+                                        {
+                                            "name": "amountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "data",
+                                            "type": "UniversalTokenSwapperWithVerificationData",
+                                            "source": "contracts/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.sol:37"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "SwapFuseUniversalTokenSwapperWithVerificationV2",
+                        "address": "0x65f24c9E91752BeC40397B232458DfdAC27e69a6",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0xdddba14254d886ed7a32153cd69f117d99f2c51e9014a3b1974cd0b5a3145bc0",
+                        "observedMarketId": 1202,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 1202 and VERSION() returned its own address at the observed block",
+                            "runtime code (10169 bytes, the size of the compiled UniversalTokenSwapperWithVerificationFuse) contains enter 0x44ce06fa, enterTransient() and SLIPPAGE_REVERSE(); bytecode equivalence was not established"
+                        ]
+                    }
+                }
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "UniversalTokenSwapperFuseV2",
+                    "address": "0x5A62574a2b28cC73c63116919A9131fb4F51941b",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xefd1f116447003285dee6d7ef3911f521e955fa1836bf32cf894bc14b0a013e9",
+                    "observedMarketId": 1202,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 1202 and VERSION() returned its own address at the observed block",
+                        "runtime code (9368 bytes, the size of the compiled UniversalTokenSwapperFuse) contains enter((address,address,uint256,uint256,(address[],bytes[]))) 0xc674d752, enterTransient() 0xadea8fa0 and DEFAULT_SLIPPAGE_WAD(); bytecode equivalence was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseUniversalTokenSwapperV2",
+                    "address": "0x05968c1Ec31e9eF193da13A0C1131e59eBa0d580",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xeaeab50a302e745a499e3fd6636872bb09698285f651906604e0205da330b145",
+                    "observedMarketId": 1202,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 1202 at the observed block; VERSION() reverted, which ZeroBalanceFuse.sol does not expose either",
+                        "runtime code is 167 bytes with balanceOf() 0x722713f7, the size of the compiled ZeroBalanceFuse; bytecode equivalence was not established"
+                    ]
+                }
+            }
         }
     ]
 }
