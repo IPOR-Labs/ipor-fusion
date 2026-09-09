@@ -1,0 +1,28 @@
+T42 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run vault:safe -- --plan <safe plan> --compare-with 0x2222…2222 --out batch.json
+  exported for 0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569 at block 25937526
+  fees dao-global 5/1000 -> 0xF6a9bd8F…5569
+  same resolution as 0x2222…2222
+  simulation as the Safe: success (gas 8874000)
+  batch written; its `data` equals the plan's calldata byte for byte
+
+  The Safe is a real contract at that block (getThreshold() = 4) and
+  getBusinessClientFeePackages(safe) reports isCustom = false, so the Safe and
+  the EOA resolve the same global package. The comparison reports that instead of
+  staying silent.
+
+PASS npm run vault:safe:test
+  tests 5, pass 5, fail 0
+    fee comparison (pure): equal resolutions differ in nothing; a different list,
+      rates or recipient are each named; address case is not a difference
+    batch document: version 1.0, one transaction, value "0", the Safe in meta
+    a plan whose caller is an EOA        CALLER_NOT_A_CONTRACT, exit 1
+    a Safe plan                          exported, fees resolved for the Safe's
+      own address, simulation callerIsTheSafe true, broadcast false, batch
+      calldata identical to the plan's, warnings about threshold logic and about
+      nothing being published
+    bad arguments                        exit 2
+
+No Safe service was contacted, no transaction was broadcast, and no wrapper
+contract was deployed or proposed.
