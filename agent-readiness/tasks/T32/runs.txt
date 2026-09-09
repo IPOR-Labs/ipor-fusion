@@ -1,0 +1,38 @@
+T32 verification — 2026-09-09 (Europe/Warsaw)
+
+The recipe was executed top to bottom, from the commands as written, with an
+input the walkthrough changed (name "Recipe Walkthrough Vault", symbol
+"rcpUSDC", redemption delay 7200 s) so that nothing could pass by matching the
+shipped example.
+
+PASS step 0  npm run agent:doctor
+             npm run agent:doctor -- --rpc --chain 1 --block 25937526
+  toolchain, dependencies and submodules OK; chain ID 1 matches; historical code
+  available at block 25937526. TAC_PROVIDER_URL warning is pre-existing and
+  irrelevant here.
+
+PASS step 1  npm run factory:inspect -- --chain 1 --deployment ethereum-fusion-factory-cd05909c
+               --block 25937526 --caller 0x1111111111111111111111111111111111111111
+  implementation and version 8 as recorded.
+
+PASS step 2  cp config/vaults/example.json my-vault.json; edited; npm run validate:vault-config -- my-vault.json
+  valid vault creation configs: 1 checked
+
+PASS step 3  npm run vault:plan -- --config my-vault.json --block 25937526 --out plan.json
+             cast decode-calldata "clone(string,string,address,uint256,address,uint256)" <data>
+  "Recipe Walkthrough Vault" / "rcpUSDC" / USDC / 7200 / 0x2222…2222 / 0
+  — the edited values, decoded back out of the calldata.
+
+PASS step 4  npm run vault:simulate -- --plan plan.json --out simulation.json
+  status success, gas 8874024, result.verification.ok true (29 checks)
+
+PASS step 5  anvil fork on port 8545, impersonate + fund the caller, eth_sendTransaction
+             npm run vault:verify -- --chain 1 --tx <hash> --rpc-url http://127.0.0.1:8545 --config my-vault.json
+  vault:verify: success
+    vault 0xD551F458aC9AA1fbf8976668509896F257aA9780
+    owner 0x2222…2222, underlying USDC
+    unresolved contextManager
+    checks 28/28 passed
+
+Nothing outside the recipe and the user's own parameters was needed. No
+transaction was broadcast; the anvil process was stopped afterwards.
