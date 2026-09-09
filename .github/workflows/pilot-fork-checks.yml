@@ -1,0 +1,106 @@
+# Trusted fork checks for the verified pilot deployment.
+#
+# This workflow needs an archive RPC provider, so it is privileged and must never
+# be triggered in a way that runs an untrusted pull request's code:
+#
+# - it is `workflow_call` only, and its caller decides what is checked out;
+# - the caller must gate it behind the `authorize` job, so that a pull request
+#   from a fork lands in the `external` environment;
+# - it declares exactly one secret, ETHEREUM_PROVIDER_URL, and no job here ever
+#   prints it: the tools report the variable's name only.
+#
+# The protection rules of those GitHub environments cannot be verified from this
+# repository — see docs/ci.md.
+name: Pilot fork checks
+
+on:
+    workflow_call:
+        secrets:
+            ETHEREUM_PROVIDER_URL:
+                required: true
+        inputs:
+            block:
+                description: "Pinned Ethereum block for the deployed-usage suites"
+                type: string
+                default: "25937526"
+                required: false
+
+permissions:
+    contents: read
+
+jobs:
+    pilot-fork:
+        name: Deployed pilot on a pinned block
+        runs-on: ubuntu-latest
+        env:
+            FOUNDRY_PROFILE: ci
+        steps:
+            - name: Checkout
+              # from tag: v4.2.2
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+              with:
+                  submodules: recursive
+
+            - name: Setup Node.js
+              # from tag: v4.2.0
+              uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
+              with:
+                  node-version: 20.17.0
+
+            - name: Setup Foundry
+              # from tag: v1.9.1
+              uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09
+              with:
+                  version: v1.7.1
+
+            - name: Install dependencies
+              run: npm ci
+
+            # Infrastructure first: a provider problem must not look like a
+            # contract failure. agent:doctor distinguishes RPC_UNAVAILABLE,
+            # CHAIN_MISMATCH and HISTORICAL_STATE_UNAVAILABLE by name.
+            - name: Provider and archive state
+              id: doctor
+              env:
+                  ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
+              run: npm run agent:doctor -- --rpc --chain 1 --block ${{ inputs.block }}
+
+            - name: Report an infrastructure failure as such
+              if: failure() && steps.doctor.outcome == 'failure'
+              run: |
+                  echo "::error title=RPC infrastructure::The pinned block ${{ inputs.block }} could not be read through ETHEREUM_PROVIDER_URL. This is an infrastructure result, not a contract failure — see docs/troubleshooting.md."
+                  exit 1
+
+            - name: Deployed-usage suites on the pinned block
+              env:
+                  ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
+              run: npm run test:fork -- --chain 1 --suite deployed-factory --block ${{ inputs.block }}
+
+            - name: Manifest still matches the deployment
+              env:
+                  ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
+              run: |
+                  npm run factory:inspect -- \
+                    --chain 1 \
+                    --deployment ethereum-fusion-factory-cd05909c \
+                    --block ${{ inputs.block }} \
+                    --caller 0x1111111111111111111111111111111111111111 > factory-inspection.json
+                  node -e '
+                    const report = require("./factory-inspection.json");
+                    const manifest = require("./deployments/1/factories.json").deployments[0];
+                    const fail = (message) => { console.error(message); process.exit(1); };
+                    if (report.result.proxy.implementation.toLowerCase() !== manifest.proxy.implementation.toLowerCase())
+                      fail(`implementation ${report.result.proxy.implementation} != manifest ${manifest.proxy.implementation}`);
+                    if (String(report.result.factoryVersion) !== manifest.interface.reportedVersion)
+                      fail(`version ${report.result.factoryVersion} != manifest ${manifest.interface.reportedVersion}`);
+                    console.log(`pilot factory unchanged at block ${report.blockNumber}`);
+                  '
+
+            - name: Upload the inspection report
+              if: always()
+              # from tag: v4.6.0
+              uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+              with:
+                  name: pilot-factory-inspection
+                  path: factory-inspection.json
+                  if-no-files-found: ignore

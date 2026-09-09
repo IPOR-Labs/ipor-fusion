@@ -37,15 +37,26 @@ jobs:
             sizes-enabled: false
             sizes-options: "--skip test --skip script"
 
+    pilot-fork:
+        # Trusted: it receives an RPC secret, so it stays behind `authorize`
+        # exactly like `build`.
+        needs:
+            - authorize
+            - notify
+        uses: ./.github/workflows/pilot-fork-checks.yml
+        secrets:
+            ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
+
     report:
         if: ${{ always() }}
         needs:
             - authorize
             - notify
             - build
+            - pilot-fork
         uses: ./.github/workflows/report-slack.yml
         secrets:
             SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
-            success: ${{ needs.build.result == 'success' }}
+            success: ${{ needs.build.result == 'success' && needs['pilot-fork'].result == 'success' }}
             slack-status-msg-id: ${{ needs.notify.outputs.slack-status-msg-id }}

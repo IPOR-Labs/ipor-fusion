@@ -234,15 +234,16 @@ if (rpc) {
             .map((suite) => [suite.stateProbe.address.toLowerCase(), suite.stateProbe]),
     );
 
-    if (networkSuites.length === 0 || rpcNames.size !== 1 || probes.size !== 1) {
+    // One provider per chain, but a chain may have several probes: each suite
+    // names the state it needs, and all of them are checked.
+    if (networkSuites.length === 0 || rpcNames.size !== 1 || probes.size === 0) {
         add(
             `rpc:${chainId}`,
             "error",
-            `RPC_CHECK_UNCONFIGURED: chain ${chainId} does not have exactly one catalogued provider and state probe`,
+            `RPC_CHECK_UNCONFIGURED: chain ${chainId} does not have exactly one catalogued provider and at least one state probe`,
         );
     } else {
         const [rpcName] = rpcNames;
-        const [probe] = probes.values();
         const rpcUrl = process.env[rpcName] || fileEnvironment[rpcName];
         if (!rpcUrl) {
             add(`rpc:${chainId}`, "error", `RPC_UNAVAILABLE: ${rpcName} is not set`);
@@ -260,23 +261,33 @@ if (rpc) {
                     );
                 } else {
                     add(`rpc:${chainId}`, "ok", `chain ID ${chainId} matches`);
-                    const historical = await rpcRequest(rpcUrl, "eth_getCode", [
-                        probe.address,
-                        `0x${block.toString(16)}`,
-                    ]);
-                    if (
-                        historical.transportError ||
-                        historical.rpcError ||
-                        typeof historical.result !== "string" ||
-                        historical.result === "0x"
-                    ) {
+                    const unavailable = [];
+                    for (const probe of probes.values()) {
+                        const historical = await rpcRequest(rpcUrl, "eth_getCode", [
+                            probe.address,
+                            `0x${block.toString(16)}`,
+                        ]);
+                        if (
+                            historical.transportError ||
+                            historical.rpcError ||
+                            typeof historical.result !== "string" ||
+                            historical.result === "0x"
+                        ) {
+                            unavailable.push(probe.address);
+                        }
+                    }
+                    if (unavailable.length > 0) {
                         add(
                             `rpc-history:${chainId}`,
                             "error",
-                            `HISTORICAL_STATE_UNAVAILABLE: code probe failed at block ${block}`,
+                            `HISTORICAL_STATE_UNAVAILABLE: code probe failed at block ${block} for ${unavailable.join(", ")}`,
                         );
                     } else {
-                        add(`rpc-history:${chainId}`, "ok", `historical code is available at block ${block}`);
+                        add(
+                            `rpc-history:${chainId}`,
+                            "ok",
+                            `historical code is available at block ${block} for ${probes.size} probe(s)`,
+                        );
                     }
                 }
             }
