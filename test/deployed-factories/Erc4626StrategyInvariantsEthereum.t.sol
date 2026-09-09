@@ -156,6 +156,29 @@ contract Erc4626StrategyInvariantsEthereumTest is Test {
         assertEq(IERC20(USDC).balanceOf(instance.plasmaVault), DEPOSIT, "idle balance changed on a refused action");
     }
 
+    /// @dev P5: a market cannot exceed its configured share of the vault's assets.
+    function testP5ShouldRefuseASupplyAboveTheMarketLimit() public {
+        _deposit();
+
+        FuseAction[] memory enter = new FuseAction[](1);
+        enter[0] = FuseAction(
+            SUPPLY_FUSE,
+            abi.encodeWithSignature("enter((address,uint256))", DeployedSupplyFuseData(STEAKHOUSE_USDC, OVER_LIMIT))
+        );
+        vm.prank(alpha);
+        vm.expectPartialRevert(AssetDistributionProtectionLib.MarketLimitExceeded.selector);
+        IPlasmaVault(instance.plasmaVault).execute(enter);
+
+        // The same vault accepts a supply within the limit.
+        enter[0] = FuseAction(
+            SUPPLY_FUSE,
+            abi.encodeWithSignature("enter((address,uint256))", DeployedSupplyFuseData(STEAKHOUSE_USDC, SUPPLIED))
+        );
+        vm.prank(alpha);
+        IPlasmaVault(instance.plasmaVault).execute(enter);
+        assertEq(IERC20(USDC).balanceOf(instance.plasmaVault), DEPOSIT - SUPPLIED, "supply within the limit failed");
+    }
+
     function _deposit() private returns (uint256 shares) {
         // Test-only: the depositor's USDC is dealt, never acquired on a market.
         deal(USDC, depositor, DEPOSIT);
