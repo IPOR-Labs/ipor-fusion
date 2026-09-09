@@ -13256,6 +13256,376 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-agua-market-51",
+            "protocol": "agua",
+            "chainId": 1,
+            "market": {
+                "id": 51,
+                "constant": "AGUA_GLOBAL_CARRY",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/agua/AguaSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/agua/AguaBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256))",
+                    "selector": "0x41b11ae7",
+                    "struct": "AguaSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "vault",
+                            "type": "address",
+                            "meaning": "the Agua Global Carry Vault (its own ERC4626-shaped share token) to deposit into; it must be granted as a VAULT substrate and its asset() as an ASSET substrate of this market"
+                        },
+                        {
+                            "name": "assetAmount",
+                            "type": "uint256",
+                            "meaning": "amount of the vault's underlying asset (USDC on the integrated instance, 6 decimals) to deposit, in its smallest unit; clamped to the Plasma Vault balance and to the Agua maxDeposit cap, 0 is a no-op"
+                        },
+                        {
+                            "name": "minSharesOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor: fewer shares than this reverts with AguaSupplyFuseInsufficientShares"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit(bytes)",
+                    "selector": "0x3805550f",
+                    "struct": null,
+                    "fields": [
+                        {
+                            "name": "",
+                            "type": "bytes",
+                            "meaning": "ignored; exit always reverts AguaSupplyFuseExitNotSupported because Agua exits are asynchronous and go through the redemption fuses"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:283",
+                    "sources": {
+                        "contracts/fuses/agua/AguaSupplyFuse.sol": "0x7a74de6d7041d3c3c04ca7b5d18962a5613ba8d602ee64a46c9b51ec018920aa",
+                        "contracts/fuses/agua/AguaBalanceFuse.sol": "0x83e70dc0c19a48efd47de9d1f8581f23bf638ef6ec18ed76c98f5ff75e6d5e06"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "AguaSupplyFuseEnterData",
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "source": "contracts/fuses/agua/AguaSupplyFuse.sol:13",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/agua/AguaSupplyFuse.sol:15"
+                                },
+                                {
+                                    "name": "assetAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/agua/AguaSupplyFuse.sol:17"
+                                },
+                                {
+                                    "name": "minSharesOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/agua/AguaSupplyFuse.sol:19"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": null,
+                            "signature": "exit(bytes)",
+                            "selector": "0x3805550f",
+                            "source": "contracts/fuses/agua/AguaSupplyFuse.sol:98",
+                            "fields": [
+                                {
+                                    "name": "",
+                                    "type": "bytes",
+                                    "source": "contracts/fuses/agua/AguaSupplyFuse.sol:98"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/agua/AguaRequestRedemptionFuse.sol",
+                    "purpose": "opens (enter) or cancels (exit) the single asynchronous redemption request the Plasma Vault may hold on an Agua vault; enter escrows shares inside the Agua vault for the 5-day lockup.",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "AguaRequestRedemptionFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "meaning": "the Agua vault (granted VAULT substrate) to request redemption from"
+                                },
+                                {
+                                    "name": "shares",
+                                    "type": "uint256",
+                                    "meaning": "shares to escrow, in the vault's share unit (18 decimals); clamped to the Plasma Vault's share balance, 0 is a no-op, and an already active request reverts AguaRequestRedemptionFuseRequestAlreadyActive"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address))",
+                            "selector": "0xb02a2332",
+                            "struct": "AguaRequestRedemptionFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "meaning": "the Agua vault (granted VAULT substrate) whose active request is cancelled, returning the escrowed shares; Agua reverts NoActiveRequest when none exists"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/agua/AguaRequestRedemptionFuse.sol": "0x51e67f989bc45a5dceb886dd26fb2137d4a666cbae18fe1012eee0c959cfd666"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AguaRequestRedemptionFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/agua/AguaRequestRedemptionFuse.sol:11",
+                                    "fields": [
+                                        {
+                                            "name": "vault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/agua/AguaRequestRedemptionFuse.sol:13"
+                                        },
+                                        {
+                                            "name": "shares",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/agua/AguaRequestRedemptionFuse.sol:15"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "AguaRequestRedemptionFuseExitData",
+                                    "signature": "exit((address))",
+                                    "selector": "0xb02a2332",
+                                    "source": "contracts/fuses/agua/AguaRequestRedemptionFuse.sol:19",
+                                    "fields": [
+                                        {
+                                            "name": "vault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/agua/AguaRequestRedemptionFuse.sol:21"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "AguaRequestRedemptionFuse",
+                        "address": "0xd275CA4D9b2f4dAE6e499421828Ee175c5859262",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x6f3cff999dbf43e2f0bddc68e0b855435d6d879c432bebc079fddba77a7e7cfa",
+                        "observedMarketId": 51,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 51 and VERSION() returned its own address at the observed block",
+                            "enter((address,uint256)) 0xd5ee7916 and exit((address)) 0xb02a2332 are present in the runtime code; bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/agua/AguaRedeemEarlyFuse.sol",
+                    "purpose": "instantly redeems free Agua shares for the underlying asset, paying Agua's early-redemption fee (500 bps on the integrated instance) and bypassing the lockup; enter only, slippage-guarded.",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "struct": "AguaRedeemEarlyFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "meaning": "the Agua vault (granted VAULT substrate) to redeem from"
+                                },
+                                {
+                                    "name": "shares",
+                                    "type": "uint256",
+                                    "meaning": "shares to redeem instantly, in the vault's share unit; clamped to the Plasma Vault's free share balance, 0 is a no-op"
+                                },
+                                {
+                                    "name": "minAssetsOut",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on the underlying paid net of the fee, in the asset's smallest unit; Agua reverts RedeemSlippageExceeded below it"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/agua/AguaRedeemEarlyFuse.sol": "0x16d89651298c87fc8e55a8ada275a01bca4f6c6c458d0009e220aa201bbf1a19"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AguaRedeemEarlyFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256))",
+                                    "selector": "0x41b11ae7",
+                                    "source": "contracts/fuses/agua/AguaRedeemEarlyFuse.sol:11",
+                                    "fields": [
+                                        {
+                                            "name": "vault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/agua/AguaRedeemEarlyFuse.sol:13"
+                                        },
+                                        {
+                                            "name": "shares",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/agua/AguaRedeemEarlyFuse.sol:15"
+                                        },
+                                        {
+                                            "name": "minAssetsOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/agua/AguaRedeemEarlyFuse.sol:17"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "AguaRedeemEarlyFuse",
+                        "address": "0xb94C1CE771330e962341e60dc06544649F92440e",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x31f4de8205792b5ee8dca237c7f3dd741a39e6d453f2d420feef383e6665911b",
+                        "observedMarketId": 51,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 51 and VERSION() returned its own address at the observed block",
+                            "enter((address,uint256,uint256)) 0x41b11ae7 is present in the runtime code; bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/agua/AguaClaimRedemptionFuse.sol",
+                    "purpose": "completes an unlocked redemption request, paying the frozen underlying payout to the Plasma Vault; enter only, Agua enforces the unlock time.",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address))",
+                            "selector": "0x7e890317",
+                            "struct": "AguaClaimRedemptionFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "vault",
+                                    "type": "address",
+                                    "meaning": "the Agua vault (granted VAULT substrate) whose active, unlocked request is completed; Agua reverts LockupNotFinished or NoActiveRequest otherwise"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/agua/AguaClaimRedemptionFuse.sol": "0x057c9afd014e7b4ee0349b432f18adff1ea8dd420a164bbc0476f0be9e4338b8"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AguaClaimRedemptionFuseEnterData",
+                                    "signature": "enter((address))",
+                                    "selector": "0x7e890317",
+                                    "source": "contracts/fuses/agua/AguaClaimRedemptionFuse.sol:10",
+                                    "fields": [
+                                        {
+                                            "name": "vault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/agua/AguaClaimRedemptionFuse.sol:12"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "AguaClaimRedemptionFuse",
+                        "address": "0xaAf109fcc6154014B586069743416c17b21af886",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x7a9c3e9eca01efc3f095abb379c8c53d8391ecd81213ca37a592fe98b492d129",
+                        "observedMarketId": 51,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 51 and VERSION() returned its own address at the observed block",
+                            "enter((address)) 0x7e890317 is present in the runtime code; bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values packed by AguaSubstrateLib: an AguaSubstrateType in bits 160+ (1 = VAULT, 2 = ASSET) and an address in the low 160 bits. Every action fuse requires the Agua vault as a VAULT substrate; the supply fuse additionally requires the vault's asset() as an ASSET substrate. The balance fuse iterates VAULT entries only.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with bytes32 values from AguaSubstrateLib.substrateToBytes32",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted via AguaSubstrateLib.validateVaultGranted / validateAssetGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "for every VAULT substrate: convertToAssets of the Plasma Vault's free share balance plus previewCompleteRedemption (the frozen payout of the single escrowed request), both in the Agua vault's underlying asset; escrowed shares leave balanceOf, so they are valued once through the pending leg",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware) for the Agua vault's asset(); an unset middleware reverts AguaBalanceFusePriceOracleNotSet",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the four action fuses and the balance fuse; none of them implements IFuseInstantWithdraw, so they must not be listed as instant-withdrawal fuses",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's VAULT and ASSET substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for the Agua vault's underlying asset"
+            },
+            "tests": [
+                "test/fuses/agua/AguaSupplyFuseTest.t.sol",
+                "test/fuses/agua/AguaRequestRedemptionFuseTest.t.sol",
+                "test/fuses/agua/AguaRedeemEarlyFuseTest.t.sol",
+                "test/fuses/agua/AguaClaimRedemptionFuseTest.t.sol",
+                "test/fuses/agua/AguaBalanceFuseTest.t.sol",
+                "test/fuses/agua/AguaSubstrateLibTest.t.sol",
+                "test/fuses/agua/AguaDosImpossibilityTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "AguaSupplyFuse",
+                    "address": "0x12C7FC434aEF4A2360b2Bc1d08CfddeB391A9Ad9",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x5c73065d415b8ab2c256c47cad13597e1cd4e73e7637b028d79ab75693be27c7",
+                    "observedMarketId": 51,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 51 and VERSION() returned its own address at the observed block",
+                        "enter((address,uint256,uint256)) 0x41b11ae7 and exit(bytes) 0x3805550f are present in the runtime code; bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "AguaBalanceFuse",
+                    "address": "0x8Ad87aE66c47932D64066214eE6a84BBB9009cCF",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x452ccecb74a6f8dfe4a1338554300ee0956ee217d9afc8e8771ab913576bf77a",
+                    "observedMarketId": 51,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 51 and VERSION() returned its own address at the observed block",
+                        "balanceOf() 0x722713f7 is present in the runtime code; bytecode equivalence with this checkout was not established"
+                    ]
+                }
+            }
         }
     ]
 }
