@@ -1,0 +1,13 @@
+feat(vault): T29 simulate creation plans on a fork
+
+Add vault:simulate, which runs exactly the plan's calldata on an ephemeral anvil
+fork at a pinned block as the caller the plan names, then reports success or
+revert, gas, the fork block and hash, and the SHA-256 of the plan it ran.
+
+Created addresses are reported only when the call's return value and the
+factory's own creation event agree; a caller with code, a plan for another
+implementation and a missing provider are named refusals.
+
+Nothing is broadcast and the fork is never repaired: no upgrade, no code
+replacement, no role grant. Verified with 7 tests, including a real fork run and
+a reverting creation reported as reverted.

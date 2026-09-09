@@ -1,0 +1,29 @@
+T29 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run vault:simulate -- --plan <plan from T28>
+  status success, gas 8873940, 306 logs
+  fork anvil, block 25937526 / 0x6b7043c5…d719, broadcast false
+  plan sha256 0xd839f25d…aabb, input sha256 0xc53f6275…4190
+  created (fork-only): plasmaVault 0xD551F458…9780, accessManager 0x9491afb8…FbA4,
+    feeManager 0x8E225857…2bac, withdrawManager 0x388b3dd2…4d54,
+    rewardsManager 0x1EC568e4…c7a4, contextManager 0xcC08498e…a7E1,
+    priceManager 0x9dB611E7…c156, owner 0x2222…2222, underlying USDC (6 decimals)
+  creation event topic 0x9c0af8f1…e78f emitted by the factory itself and equal
+    to keccak of the signature taken from contracts/factory/lib/FusionFactoryLib.sol;
+    its plasmaVault matches the value decoded from the call return
+
+PASS npm run vault:simulate:test
+  tests 7, pass 7, fail 0
+    missing --plan / unreadable plan          INVALID_ARGUMENT / PLAN_UNREADABLE, exit 2
+    artifact that is not a plan               INVALID_PLAN, exit 1
+    provider variable unset                   RPC_UNAVAILABLE (names the variable), exit 1
+    real fork run                             success, gas > 1e6, event == call result
+    caller with code (USDC address)           UNSUPPORTED_EXECUTION_PATH, exit 1
+    underlying token without code             status "reverted", created null, exit 0
+    plan naming another implementation        IMPLEMENTATION_MISMATCH, exit 1
+
+The fork test asserts that the provider URL appears in neither stdout nor stderr.
+
+No broadcast, no signing key, no upgrade, no vm.etch-style code replacement and
+no role grant. The impersonation and the 1 ETH balance exist only inside the
+anvil process, which is killed when the command ends.
