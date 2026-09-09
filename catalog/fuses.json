@@ -6759,6 +6759,426 @@
                     "notes": []
                 }
             }
+        },
+        {
+            "id": "ethereum-midas-market-45",
+            "protocol": "midas",
+            "chainId": 1,
+            "market": {
+                "id": 45,
+                "constant": "MIDAS",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/midas/MidasSupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/midas/MidasBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,uint256,uint256,address))",
+                    "selector": "0x962dead3",
+                    "struct": "MidasSupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "mToken",
+                            "type": "address",
+                            "meaning": "the Midas mToken (mTBILL, mBASIS, ...) minted by the deposit; must be granted as substrate type M_TOKEN"
+                        },
+                        {
+                            "name": "tokenIn",
+                            "type": "address",
+                            "meaning": "the token paid in; must be granted as substrate type ASSET"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of tokenIn to deposit, in its smallest unit; capped at the Plasma Vault's balance and converted to WAD for depositInstant"
+                        },
+                        {
+                            "name": "minMTokenAmountOut",
+                            "type": "uint256",
+                            "meaning": "slippage floor on mTokens received (18 decimals); below it reverts with MidasSupplyFuseInsufficientMTokenReceived"
+                        },
+                        {
+                            "name": "depositVault",
+                            "type": "address",
+                            "meaning": "the Midas deposit vault called with depositInstant; must be granted as substrate type DEPOSIT_VAULT"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,uint256,address,address))",
+                    "selector": "0x4e5c613d",
+                    "struct": "MidasSupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "mToken",
+                            "type": "address",
+                            "meaning": "the mToken to redeem; must be granted as substrate type M_TOKEN"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "mToken amount to redeem (18 decimals); capped at the vault balance"
+                        },
+                        {
+                            "name": "minTokenOutAmount",
+                            "type": "uint256",
+                            "meaning": "slippage floor on tokenOut received, in its smallest unit; below it reverts with MidasSupplyFuseInsufficientTokenOutReceived"
+                        },
+                        {
+                            "name": "tokenOut",
+                            "type": "address",
+                            "meaning": "the token to receive; must be granted as substrate type ASSET"
+                        },
+                        {
+                            "name": "instantRedemptionVault",
+                            "type": "address",
+                            "meaning": "the Midas instant redemption vault called with redeemInstant; must be granted as substrate type INSTANT_REDEMPTION_VAULT"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:218",
+                    "sources": {
+                        "contracts/fuses/midas/MidasSupplyFuse.sol": "0x648a1df484d2290b0bbe453d4c2700d90d828ca4394fa77693d8c49c1533e901",
+                        "contracts/fuses/midas/MidasBalanceFuse.sol": "0xee005a4c49e7c65a5cbcbcb82fc267262cb5c4673ba8f3ec05e6989872277675"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "MidasSupplyFuseEnterData",
+                            "signature": "enter((address,address,uint256,uint256,address))",
+                            "selector": "0x962dead3",
+                            "source": "contracts/fuses/midas/MidasSupplyFuse.sol:16",
+                            "fields": [
+                                {
+                                    "name": "mToken",
+                                    "type": "address",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:18"
+                                },
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:20"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:22"
+                                },
+                                {
+                                    "name": "minMTokenAmountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:24"
+                                },
+                                {
+                                    "name": "depositVault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:26"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "MidasSupplyFuseExitData",
+                            "signature": "exit((address,uint256,uint256,address,address))",
+                            "selector": "0x4e5c613d",
+                            "source": "contracts/fuses/midas/MidasSupplyFuse.sol:30",
+                            "fields": [
+                                {
+                                    "name": "mToken",
+                                    "type": "address",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:32"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:34"
+                                },
+                                {
+                                    "name": "minTokenOutAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:36"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:38"
+                                },
+                                {
+                                    "name": "instantRedemptionVault",
+                                    "type": "address",
+                                    "source": "contracts/fuses/midas/MidasSupplyFuse.sol:40"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/midas/MidasRequestSupplyFuse.sol",
+                    "purpose": "asynchronous path: files Midas deposit requests (enter) and standard redemption requests (exit) through the vault's own MidasExecutor and tracks pending request ids in MidasPendingRequestsStorageLib; each call first cleans up settled requests",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,address))",
+                            "selector": "0xddb45d10",
+                            "struct": "MidasRequestSupplyFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "mToken",
+                                    "type": "address",
+                                    "meaning": "the mToken the request will mint; substrate type M_TOKEN"
+                                },
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "meaning": "the token paid in; substrate type ASSET"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "amount of tokenIn, in its smallest unit; capped at the vault balance and transferred to the vault's MidasExecutor, which files depositRequest"
+                                },
+                                {
+                                    "name": "depositVault",
+                                    "type": "address",
+                                    "meaning": "the Midas deposit vault the request is filed with; substrate type DEPOSIT_VAULT"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,address,address))",
+                            "selector": "0xd9d53aba",
+                            "struct": "MidasRequestSupplyFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "mToken",
+                                    "type": "address",
+                                    "meaning": "the mToken to redeem; substrate type M_TOKEN"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "mToken amount (18 decimals); capped at the vault balance and transferred to the MidasExecutor, which files redeemRequest"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "the token to receive; substrate type ASSET"
+                                },
+                                {
+                                    "name": "standardRedemptionVault",
+                                    "type": "address",
+                                    "meaning": "the Midas standard (request-based) redemption vault; substrate type REDEMPTION_VAULT"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/midas/MidasRequestSupplyFuse.sol": "0x5dc7286ee08cc8c1056029a38ddc366aa1c50b7aa3141c3d2f7f84cd45f27bb8"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "MidasRequestSupplyFuseEnterData",
+                                    "signature": "enter((address,address,uint256,address))",
+                                    "selector": "0xddb45d10",
+                                    "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:18",
+                                    "fields": [
+                                        {
+                                            "name": "mToken",
+                                            "type": "address",
+                                            "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:20"
+                                        },
+                                        {
+                                            "name": "tokenIn",
+                                            "type": "address",
+                                            "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:24"
+                                        },
+                                        {
+                                            "name": "depositVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:26"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "MidasRequestSupplyFuseExitData",
+                                    "signature": "exit((address,uint256,address,address))",
+                                    "selector": "0xd9d53aba",
+                                    "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:30",
+                                    "fields": [
+                                        {
+                                            "name": "mToken",
+                                            "type": "address",
+                                            "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:32"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "standardRedemptionVault",
+                                            "type": "address",
+                                            "source": "contracts/fuses/midas/MidasRequestSupplyFuse.sol:38"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "MidasRequestSupplyFuse",
+                        "address": "0x181703Ceda22a1e27679244ac4fb33A51f1A4973",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x755110bf6ad16f0e5a1dc4ea145eade9f20fbb41a39031fb69ce3ea6f6472b9d",
+                        "observedMarketId": 45,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 45 and VERSION() returned its own address at the observed block",
+                            "enter((address,address,uint256,address)) 0xddb45d10 and exit((address,uint256,address,address)) 0xd9d53aba are present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/midas/MidasClaimFromExecutorFuse.sol",
+                    "purpose": "pulls tokens (mTokens minted from settled deposit requests, or assets returned by settled redemptions) from the vault's MidasExecutor back into the Plasma Vault; the token must be granted as M_TOKEN or ASSET; deployExecutor() creates the executor ahead of time",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address))",
+                            "selector": "0x7e890317",
+                            "struct": "MidasClaimFromExecutorFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "token",
+                                    "type": "address",
+                                    "meaning": "the mToken or asset to transfer from the MidasExecutor to the Plasma Vault; granted as substrate type M_TOKEN or ASSET"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/midas/MidasClaimFromExecutorFuse.sol": "0x01fe33587a83d307854fce2076cdb1056e4ceb13f1213f0cf56a8e6753c44ce6"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "MidasClaimFromExecutorFuseEnterData",
+                                    "signature": "enter((address))",
+                                    "selector": "0x7e890317",
+                                    "source": "contracts/fuses/midas/MidasClaimFromExecutorFuse.sol:12",
+                                    "fields": [
+                                        {
+                                            "name": "token",
+                                            "type": "address",
+                                            "source": "contracts/fuses/midas/MidasClaimFromExecutorFuse.sol:14"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "MidasClaimFromExecutorFuse",
+                        "address": "0xAe2459cB66CA9C404af897C3694d62ba760066Be",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x16d0869c27cbda1bb1cb2efb3ae4296c55f4f561f28e86b6aeb3b6853c9904c4",
+                        "observedMarketId": 45,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 45 and VERSION() returned its own address at the observed block",
+                            "enter((address)) 0x7e890317 and deployExecutor() 0x40304a85 are present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "MidasSubstrate {substrateType, substrateAddress} packed into bytes32 by MidasSubstrateLib.substrateToBytes32 (type << 160 | address). Types: M_TOKEN (1), DEPOSIT_VAULT (2), REDEMPTION_VAULT (3, standard request-based), INSTANT_REDEMPTION_VAULT (4), ASSET (5). Every action fuse validates each address it receives against the matching type; the balance fuse reads DEPOSIT_VAULT, REDEMPTION_VAULT and ASSET entries.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with values from MidasSubstrateLib.substrateToBytes32",
+                "checkFunction": "MidasSubstrateLib.validate*Granted → PlasmaVaultConfigLib.isMarketSubstrateGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "mToken balances of the Plasma Vault and of its MidasExecutor, valued with the mToken's own Midas data feed (getDataInBase18) taken from each granted deposit vault; plus pending deposit requests at their depositedUsdAmount and pending redemption requests at amountMToken × mToken price; plus ASSET balances held by the executor",
+                "priceSource": "IMidasDataFeed.getDataInBase18 of the deposit vault's mTokenDataFeed for mTokens; PriceOracleMiddleware.getAssetPrice for ASSET substrates held by the executor",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/midas/MidasSupplyFuseTest.t.sol",
+                "test/fuses/midas/MidasRequestSupplyFuseTest.t.sol",
+                "test/fuses/midas/MidasBalanceFuseTest.t.sol",
+                "test/fuses/midas/MidasExecutorFlowTest.t.sol",
+                "test/fuses/midas/MidasDecimalsIntegrationTest.t.sol",
+                "test/fuses/midas/MidasMHyperIntegrationTest.t.sol",
+                "test/fuses/midas/MidasSubstrateLibTest.t.sol",
+                "test/fuses/midas/MidasPendingRequestsStorageLibTest.t.sol",
+                "test/unitTest/fuses/midas/MidasSupplyFuseTest.t.sol",
+                "test/unitTest/fuses/midas/MidasRequestSupplyFuseTest.t.sol",
+                "test/unitTest/fuses/midas/MidasClaimFromExecutorFuseTest.t.sol",
+                "test/unitTest/fuses/midas/MidasBalanceFuseTest.t.sol",
+                "test/unitTest/fuses/midas/MidasExecutorTest.t.sol",
+                "test/unitTest/fuses/midas/lib/MidasSubstrateLibTest.t.sol",
+                "test/unitTest/fuses/midas/lib/MidasPendingRequestsStorageLibTest.t.sol",
+                "test/unitTest/fuses/midas/lib/MidasExecutorStorageLibTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "MidasSupplyFuse",
+                    "address": "0xadBf5B4739055B09440cd46c177D3f5B0d5E571F",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xe39580e46b55e9ca3241914f0a2a6b1633ecc4c36ee5275124af769bd164dcfc",
+                    "observedMarketId": 45,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 45 and VERSION() returned its own address at the observed block",
+                        "enter((address,address,uint256,uint256,address)) 0x962dead3, exit((address,uint256,uint256,address,address)) 0x4e5c613d and instantWithdraw(bytes32[]) 0xbe1946da are present in the runtime code",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "MidasBalanceFuse",
+                    "address": "0x79Be255f9D5B02C15127b97A3F1EEBc49A070500",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x8ee030abae6a6ad154aaf313d91454b22a6e1c417fc01409bf94b8d622199392",
+                    "observedMarketId": 45,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 45 and VERSION() returned its own address at the observed block",
+                        "balanceOf() 0x722713f7 is present in the runtime code",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                }
+            }
         }
     ]
 }
