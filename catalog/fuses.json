@@ -18044,6 +18044,245 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "plasma-enso-market-38",
+            "protocol": "enso",
+            "chainId": 9745,
+            "market": {
+                "id": 38,
+                "constant": "ENSO",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/enso/EnsoFuse.sol",
+                "balanceFuse": "contracts/fuses/enso/EnsoBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256,uint256,bytes32,bytes32,bytes32[],bytes[],address[]))",
+                    "selector": "0x793d3948",
+                    "struct": "EnsoFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "tokenOut",
+                            "type": "address",
+                            "meaning": "token the Plasma Vault transfers to the EnsoExecutor for the shortcut (despite the name it is the input of the route); it must be granted as (tokenOut, ERC20.transfer.selector) and cannot be zero"
+                        },
+                        {
+                            "name": "amountOut",
+                            "type": "uint256",
+                            "meaning": "amount of tokenOut moved to the executor, in its smallest unit; after the route the executor records tokenOut and the part of amountOut that did not come back as its pending balance"
+                        },
+                        {
+                            "name": "wEthAmount",
+                            "type": "uint256",
+                            "meaning": "WETH moved to the executor and unwrapped to native ETH before the route, in wei; 0 skips it; when non-zero (WETH, ERC20.transfer.selector) must be granted"
+                        },
+                        {
+                            "name": "accountId",
+                            "type": "bytes32",
+                            "meaning": "Enso API account identifier, forwarded to DelegateEnsoShortcuts.executeShortcut and emitted"
+                        },
+                        {
+                            "name": "requestId",
+                            "type": "bytes32",
+                            "meaning": "Enso API request identifier, forwarded and emitted"
+                        },
+                        {
+                            "name": "commands",
+                            "type": "bytes32[]",
+                            "meaning": "weiroll commands (selector, flags, target); every CALL/VALUECALL command's (target, selector) must be granted as a substrate, STATICCALLs are skipped and a FLAG_EXTENDED_COMMAND skips the following indices word"
+                        },
+                        {
+                            "name": "state",
+                            "type": "bytes[]",
+                            "meaning": "weiroll state (calldata parameters) for the commands, passed through unchanged"
+                        },
+                        {
+                            "name": "tokensToReturn",
+                            "type": "address[]",
+                            "meaning": "tokens the caller expects back on the vault; each must be granted as (token, ERC20.transfer.selector). The executor itself only returns tokenOut and wrapped ETH; other tokens stay on the executor until exit"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address[]))",
+                    "selector": "0xf7edc378",
+                    "struct": "EnsoFuseExitData",
+                    "fields": [
+                        {
+                            "name": "tokens",
+                            "type": "address[]",
+                            "meaning": "tokens whose whole executor balance is transferred back to the Plasma Vault (EnsoExecutor.withdrawAll); each must be granted as (token, ERC20.transfer.selector); the executor's pending balance record is cleared afterwards"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:147",
+                    "sources": {
+                        "contracts/fuses/enso/EnsoFuse.sol": "0x62bf1de8409889bf7bbc89e7364a08b5d71c43c1ef42343332567e400a3cfa60",
+                        "contracts/fuses/enso/EnsoBalanceFuse.sol": "0x84eb5bb4856653c00740a808b3b9be512b33aaeb821f2cb12f76c7108e45f8be"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "EnsoFuseEnterData",
+                            "signature": "enter((address,uint256,uint256,bytes32,bytes32,bytes32[],bytes[],address[]))",
+                            "selector": "0x793d3948",
+                            "source": "contracts/fuses/enso/EnsoFuse.sol:22",
+                            "fields": [
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:23"
+                                },
+                                {
+                                    "name": "amountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:24"
+                                },
+                                {
+                                    "name": "wEthAmount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:25"
+                                },
+                                {
+                                    "name": "accountId",
+                                    "type": "bytes32",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:26"
+                                },
+                                {
+                                    "name": "requestId",
+                                    "type": "bytes32",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:27"
+                                },
+                                {
+                                    "name": "commands",
+                                    "type": "bytes32[]",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:28"
+                                },
+                                {
+                                    "name": "state",
+                                    "type": "bytes[]",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:29"
+                                },
+                                {
+                                    "name": "tokensToReturn",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:30"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "EnsoFuseExitData",
+                            "signature": "exit((address[]))",
+                            "selector": "0xf7edc378",
+                            "source": "contracts/fuses/enso/EnsoFuse.sol:36",
+                            "fields": [
+                                {
+                                    "name": "tokens",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/enso/EnsoFuse.sol:37"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/enso/EnsoInitExecutorFuse.sol",
+                    "purpose": "creates the vault's EnsoExecutor ahead of the first swap (same constructor arguments as EnsoFuse) and stores it in EnsoStorageLib; a no-op when one exists",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter()",
+                            "selector": "0xe97dcb62",
+                            "struct": null,
+                            "fields": []
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/enso/EnsoInitExecutorFuse.sol": "0x355857f00c3923c6a871c6a3e18601a68fd180f034e3dab9310d583aa8d14d55"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": null,
+                                    "signature": "enter()",
+                                    "selector": "0xe97dcb62",
+                                    "source": "contracts/fuses/enso/EnsoInitExecutorFuse.sol:39",
+                                    "fields": []
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unverified",
+                        "registryName": "EnsoInitExecutorFuse",
+                        "address": "0x4ad1507Fa12b4216cB3F45aaF74741197bB4b230",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-plasma-fusion/addresses.json at a0089cf, captured 2026-09-09; not read on chain because this environment has no Plasma (9745) RPC endpoint",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "listed in the registry for the Plasma chain only; MARKET_ID, VERSION and selectors were not read"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values packing an allowed (target, function selector) pair: EnsoSubstrateLib.encode puts the target address in bits 96..255 and the 4-byte selector in bits 64..95. EnsoFuse checks (token, ERC20.transfer.selector) for tokenOut, WETH when used, every tokensToReturn entry and every exit token, and (target, selector) for every state-changing weiroll command. The balance fuse reads no substrates",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with values from EnsoSubstrateLib.encode / encodeRaw",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "only the executor's pending balance: after a route the EnsoExecutor records tokenOut and max(amountOut - returned, 0) (a uint96), meant for cross-chain or delayed routes; that amount is priced. Tokens already back on the vault are valued by the ERC20 balance market, and tokens parked on the executor other than the pending record are not valued at all until exit",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware, i.e. the PriceOracleMiddleware the vault points at, getAssetPrice for the pending asset (a missing middleware reverts)",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action; the EnsoExecutor accepts calls only from the vault that created it",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds EnsoFuse (and optionally EnsoInitExecutorFuse) and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the (target, selector) substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds a price source for every token that can become the executor's pending asset"
+            },
+            "tests": [
+                "test/fuses/enso/EnsoFuseTest.t.sol",
+                "test/fuses/enso/EnsoSubstrateLibTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unverified",
+                    "registryName": "EnsoFuse",
+                    "address": "0x48F3Ae36A9efaA7586A1d89E185A219732976833",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-plasma-fusion/addresses.json at a0089cf, captured 2026-09-09; not read on chain because this environment has no Plasma (9745) RPC endpoint",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "listed in the registry for the Plasma chain only (with DelegateEnsoShortcuts 0xA2F4f9C6ec598CA8c633024f8851c79CA5F43e48 in the same file); no Enso fuse is registered on Ethereum, Arbitrum, Base or Ink; MARKET_ID, VERSION and selectors were not read"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "unverified",
+                    "registryName": "EnsoBalanceFuse",
+                    "address": "0x23d9f804C29e93484e2a78aae6cB0A2e5E3F75D1",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-plasma-fusion/addresses.json at a0089cf, captured 2026-09-09; not read on chain because this environment has no Plasma (9745) RPC endpoint",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "listed in the registry for the Plasma chain only; not read"
+                    ]
+                }
+            }
         }
     ]
 }
