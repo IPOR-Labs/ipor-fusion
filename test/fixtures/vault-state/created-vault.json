@@ -1,0 +1,106 @@
+{
+    "comment": "Captured with vault:simulate against the Ethereum pilot factory on fork block 25937526. Real readings of a vault created by the unchanged deployment; used to test the pure state checks without a network.",
+    "block": 25937526,
+    "instance": {
+        "index": "161",
+        "version": "8",
+        "assetName": "Example USDC Vault",
+        "assetSymbol": "exUSDC",
+        "assetDecimals": "8",
+        "underlyingToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "underlyingTokenSymbol": "USDC",
+        "underlyingTokenDecimals": "6",
+        "initialOwner": "0x2222222222222222222222222222222222222222",
+        "plasmaVault": "0xD551F458aC9AA1fbf8976668509896F257aA9780",
+        "plasmaVaultBase": "0xc25BDD9099eB0DCD9AC1E7a566f4Dfc0260043E7",
+        "accessManager": "0x9491afb8280084dEE4Ed4B51C830F9F36eF5FbA4",
+        "feeManager": "0x8E225857B09C74D5e8C30E0B4582A22207E82bac",
+        "rewardsManager": "0x1EC568e4315AD4e50b54b906CD4225727CCFc7a4",
+        "withdrawManager": "0x388b3dd2F431F19c6C6C36b2794871C773994d54",
+        "contextManager": "0xcC08498eF627D5E371b925826411fEe4905Aa7E1",
+        "priceManager": "0x9dB611E7fd0C82776cCBb7DBEf3EceDfb236c156"
+    },
+    "expected": {
+        "name": "Example USDC Vault",
+        "symbol": "exUSDC",
+        "underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "underlyingDecimals": "6",
+        "redemptionDelaySeconds": "3600",
+        "managementFeeBps": 5,
+        "performanceFeeBps": 1000,
+        "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+    },
+    "readings": {
+        "components": {
+            "plasmaVault": {
+                "address": "0xD551F458aC9AA1fbf8976668509896F257aA9780",
+                "codeChars": 92
+            },
+            "accessManager": {
+                "address": "0x9491afb8280084dEE4Ed4B51C830F9F36eF5FbA4",
+                "codeChars": 92
+            },
+            "feeManager": {
+                "address": "0x8E225857B09C74D5e8C30E0B4582A22207E82bac",
+                "codeChars": 27994
+            },
+            "rewardsManager": {
+                "address": "0x1EC568e4315AD4e50b54b906CD4225727CCFc7a4",
+                "codeChars": 92
+            },
+            "withdrawManager": {
+                "address": "0x388b3dd2F431F19c6C6C36b2794871C773994d54",
+                "codeChars": 92
+            },
+            "contextManager": {
+                "address": "0xcC08498eF627D5E371b925826411fEe4905Aa7E1",
+                "codeChars": 92
+            },
+            "priceManager": {
+                "address": "0x9dB611E7fd0C82776cCBb7DBEf3EceDfb236c156",
+                "codeChars": 92
+            }
+        },
+        "vault": {
+            "asset": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "decimals": "8",
+            "name": "Example USDC Vault",
+            "symbol": "exUSDC",
+            "accessManager": "0x9491afb8280084dEE4Ed4B51C830F9F36eF5FbA4",
+            "priceOracleMiddleware": "0x9dB611E7fd0C82776cCBb7DBEf3EceDfb236c156",
+            "rewardsClaimManager": "0x1EC568e4315AD4e50b54b906CD4225727CCFc7a4",
+            "managementFeeAccount": "0x9fEa4b7b74536a71b1E48ABbd66D1F1FDF17A39E",
+            "managementFeeInPercentage": "5",
+            "performanceFeeAccount": "0x8E86dF7f86E3936fD690Ea74f09ce0512F403350",
+            "performanceFeeInPercentage": "1000"
+        },
+        "underlying": {
+            "decimals": "6",
+            "symbol": "USDC"
+        },
+        "access": {
+            "ownerHasRole": true,
+            "ownerExecutionDelay": "0",
+            "redemptionDelaySeconds": "3600"
+        },
+        "withdraw": {
+            "plasmaVault": "0xD551F458aC9AA1fbf8976668509896F257aA9780",
+            "windowSeconds": "86400 [8.64e4]"
+        },
+        "fees": {
+            "plasmaVault": "0xD551F458aC9AA1fbf8976668509896F257aA9780",
+            "daoManagementFee": "5",
+            "daoPerformanceFee": "1000",
+            "daoFeeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569",
+            "totalManagementFee": "5",
+            "totalPerformanceFee": "1000",
+            "managementFeeAccount": "0x9fEa4b7b74536a71b1E48ABbd66D1F1FDF17A39E",
+            "performanceFeeAccount": "0x8E86dF7f86E3936fD690Ea74f09ce0512F403350"
+        },
+        "factory": {
+            "address": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+            "withdrawWindowSeconds": "86400 [8.64e4]",
+            "plasmaVaultBase": "0xc25BDD9099eB0DCD9AC1E7a566f4Dfc0260043E7"
+        }
+    }
+}

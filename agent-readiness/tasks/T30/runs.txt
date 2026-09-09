@@ -1,0 +1,40 @@
+T30 verification — 2026-09-09 (Europe/Warsaw)
+
+PASS npm run vault:simulate -- --plan <plan> --out simulation.json
+  status success, verification.ok true, 29 checks, 0 failures
+  (the same run with the earlier, wrong expectation "the vault pays fees to the
+  fee manager itself" reported status "unverified" with 2 failing checks, which
+  is how the fee-account wiring was corrected: the vault pays into the fee
+  manager's MANAGEMENT_FEE_ACCOUNT / PERFORMANCE_FEE_ACCOUNT)
+
+PASS npm run vault:state:test
+  tests 21, pass 21, fail 0
+  Rejections proven (each: verifier returns ok false, exactly the listed check ids fail):
+    component without code                      component.withdrawManager.code
+    zero component address                      component.priceManager.code
+    vault holding another asset                 vault.asset
+    another requested name                      vault.name
+    foreign access manager                      vault.accessManager
+    foreign price manager                       vault.priceOracleMiddleware
+    vault base the factory does not report      vault.plasmaVaultBase
+    owner without OWNER_ROLE                    access.owner
+    owner role with execution delay             access.ownerDelay
+    other redemption delay                      access.redemptionDelay
+    withdraw manager of another vault           withdraw.plasmaVault
+    withdraw window ≠ factory window            withdraw.window
+    fee manager of another vault                fees.feeManagerVault
+    other DAO management fee                    fees.daoManagement
+    other DAO performance fee                   fees.daoPerformance
+    other fee recipient                         fees.daoRecipient
+    fees paid elsewhere                         fees.vaultManagementAccount
+    vault rate the fee manager does not know    fees.vaultManagementRate
+    other underlying decimals                   underlying.decimals
+  "existing addresses alone are not accepted as proof": all seven component
+  existence checks still pass while five wiring checks fail.
+
+PASS npm run vault:simulate:test
+  tests 7, pass 7 — the fork run additionally asserts verification.ok is true
+  and that at least 25 checks ran.
+
+Fixture test/fixtures/vault-state/created-vault.json holds real readings from a
+vault created by the unchanged Ethereum pilot factory on fork block 25937526.
