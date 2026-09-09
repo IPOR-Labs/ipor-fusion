@@ -9389,6 +9389,635 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "base-aerodrome-slipstream-market-33",
+            "protocol": "aerodrome_slipstream",
+            "chainId": 8453,
+            "market": {
+                "id": 33,
+                "constant": "AREODROME_SLIPSTREAM",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol",
+                "balanceFuse": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address,int24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint160))",
+                    "selector": "0x92b2d1ad",
+                    "struct": "AreodromeSlipstreamNewPositionFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "token0",
+                            "type": "address",
+                            "meaning": "first pool token; the fuse resolves the CL pool with CLFactory.getPool(sorted tokens, tickSpacing) and that pool must be a granted Pool substrate"
+                        },
+                        {
+                            "name": "token1",
+                            "type": "address",
+                            "meaning": "second pool token"
+                        },
+                        {
+                            "name": "tickSpacing",
+                            "type": "int24",
+                            "meaning": "tick spacing of the Slipstream pool; part of the pool identity"
+                        },
+                        {
+                            "name": "tickLower",
+                            "type": "int24",
+                            "meaning": "lower tick of the position range"
+                        },
+                        {
+                            "name": "tickUpper",
+                            "type": "int24",
+                            "meaning": "upper tick of the position range"
+                        },
+                        {
+                            "name": "amount0Desired",
+                            "type": "uint256",
+                            "meaning": "amount of token0 to add, in token0's smallest unit; approved to the position manager for this call only"
+                        },
+                        {
+                            "name": "amount1Desired",
+                            "type": "uint256",
+                            "meaning": "amount of token1 to add, in token1's smallest unit"
+                        },
+                        {
+                            "name": "amount0Min",
+                            "type": "uint256",
+                            "meaning": "slippage floor on token0 actually added, in token0's smallest unit; enforced by the position manager"
+                        },
+                        {
+                            "name": "amount1Min",
+                            "type": "uint256",
+                            "meaning": "slippage floor on token1 actually added"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256",
+                            "meaning": "unix timestamp in seconds after which the position manager rejects the mint"
+                        },
+                        {
+                            "name": "sqrtPriceX96",
+                            "type": "uint160",
+                            "meaning": "initial sqrt price (Q64.96) used only if the pool has to be created by the mint; 0 for an existing pool"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((uint256[]))",
+                    "selector": "0x608c7500",
+                    "struct": "AreodromeSlipstreamNewPositionFuseExitData",
+                    "fields": [
+                        {
+                            "name": "tokenIds",
+                            "type": "uint256[]",
+                            "meaning": "NFT position ids to burn; each must already have zero liquidity and collected fees, and it is removed from the vault's tracked token id list in FuseStorageLib"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:109",
+                    "sources": {
+                        "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol": "0x180bc31040e68733ace18a69a816f165b7cdc36bfa3a62c09d902a13ae1bcdd5",
+                        "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalanceFuse.sol": "0x7924e0de5bc4d4f89766fcfd5f4f6bc604c4f6b0a40d8b464054e40c7a9e9db0"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "AreodromeSlipstreamNewPositionFuseEnterData",
+                            "signature": "enter((address,address,int24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint160))",
+                            "selector": "0x92b2d1ad",
+                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:18",
+                            "fields": [
+                                {
+                                    "name": "token0",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:20"
+                                },
+                                {
+                                    "name": "token1",
+                                    "type": "address",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:22"
+                                },
+                                {
+                                    "name": "tickSpacing",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:23"
+                                },
+                                {
+                                    "name": "tickLower",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:25"
+                                },
+                                {
+                                    "name": "tickUpper",
+                                    "type": "int24",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:27"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:29"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:31"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:33"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:35"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:37"
+                                },
+                                {
+                                    "name": "sqrtPriceX96",
+                                    "type": "uint160",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:38"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "AreodromeSlipstreamNewPositionFuseExitData",
+                            "signature": "exit((uint256[]))",
+                            "selector": "0x608c7500",
+                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:41",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol:42"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol",
+                    "purpose": "increases (enter) or decreases (exit) the liquidity of an existing NFT position; the position's pool, read from the position manager, must be a granted Pool substrate",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                            "selector": "0x7f61ea0b",
+                            "struct": "AreodromeSlipstreamModifyPositionFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "token0",
+                                    "type": "address",
+                                    "meaning": "informational; the fuse approves the tokens it reads from the position itself, not this value"
+                                },
+                                {
+                                    "name": "token1",
+                                    "type": "address",
+                                    "meaning": "informational, see token0"
+                                },
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "NFT position id to add liquidity to; non-zero"
+                                },
+                                {
+                                    "name": "amount0Desired",
+                                    "type": "uint256",
+                                    "meaning": "amount of token0 to add, in token0's smallest unit; both amounts zero reverts InvalidAmount"
+                                },
+                                {
+                                    "name": "amount1Desired",
+                                    "type": "uint256",
+                                    "meaning": "amount of token1 to add, in token1's smallest unit"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 actually added"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 actually added"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds; a past deadline reverts DeadlineExpired before calling the position manager"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((uint256,uint128,uint256,uint256,uint256))",
+                            "selector": "0x06ce4991",
+                            "struct": "AreodromeSlipstreamModifyPositionFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "NFT position id to remove liquidity from"
+                                },
+                                {
+                                    "name": "liquidity",
+                                    "type": "uint128",
+                                    "meaning": "liquidity units to remove; zero reverts InvalidAmount"
+                                },
+                                {
+                                    "name": "amount0Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token0 owed after the decrease, in token0's smallest unit"
+                                },
+                                {
+                                    "name": "amount1Min",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on token1 owed after the decrease"
+                                },
+                                {
+                                    "name": "deadline",
+                                    "type": "uint256",
+                                    "meaning": "unix timestamp in seconds; a past deadline reverts DeadlineExpired"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol": "0x453b37815059e3281a92836e8c3d510d5a14658ca83d3e8580489f6e6cd590eb"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AreodromeSlipstreamModifyPositionFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                                    "selector": "0x7f61ea0b",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:26",
+                                    "fields": [
+                                        {
+                                            "name": "token0",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:29"
+                                        },
+                                        {
+                                            "name": "token1",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:32"
+                                        },
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "amount0Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:36"
+                                        },
+                                        {
+                                            "name": "amount1Desired",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:38"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:40"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:42"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:44"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "AreodromeSlipstreamModifyPositionFuseExitData",
+                                    "signature": "exit((uint256,uint128,uint256,uint256,uint256))",
+                                    "selector": "0x06ce4991",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:49",
+                                    "fields": [
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:51"
+                                        },
+                                        {
+                                            "name": "liquidity",
+                                            "type": "uint128",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:53"
+                                        },
+                                        {
+                                            "name": "amount0Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:55"
+                                        },
+                                        {
+                                            "name": "amount1Min",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:57"
+                                        },
+                                        {
+                                            "name": "deadline",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol:59"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ModifyPossitionFuseAerodromeSlipstream",
+                        "address": "0xBb60dC9da146617A3E9101D47dc9326D6D3FaF30",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0xdc782ccbb71f13c082c676af812a3439c25b5814fee25ce9e65e1fcf0e4178b0",
+                        "observedMarketId": 33,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "registry name carries the typo Possition",
+                            "MARKET_ID() returned 33 and VERSION() returned its own address at the observed block",
+                            "enter(...) 0x7f61ea0b and exit(...) 0x06ce4991 are present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol",
+                    "purpose": "collects the tokens owed to NFT positions (fees and amounts freed by a liquidity decrease) into the vault; it performs no substrate check and has no exit",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((uint256[]))",
+                            "selector": "0xdd15f123",
+                            "struct": "AreodromeSlipstreamCollectFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "tokenIds",
+                                    "type": "uint256[]",
+                                    "meaning": "NFT position ids to collect from with amount0Max/amount1Max = uint128 max; an empty list returns without acting"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol": "0xa83afb936e1ae522d3d45c58bd9f7c3ae37438fb2cfebaa0981bc226200849d9"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AreodromeSlipstreamCollectFuseEnterData",
+                                    "signature": "enter((uint256[]))",
+                                    "selector": "0xdd15f123",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol:12",
+                                    "fields": [
+                                        {
+                                            "name": "tokenIds",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol:13"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "CollectFuseAerodromeSlipstream",
+                        "address": "0x67442EDed8f704b4E1330219D96E6B20F4FB280a",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x9b7dd2910f8a638fd90e8a583eba09d73b4147218c1136c2c9b7789afc85509f",
+                        "observedMarketId": 33,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 33 and VERSION() returned its own address at the observed block",
+                            "enter((uint256[])) 0xdd15f123 is present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol",
+                    "purpose": "stakes an NFT position into a granted CL gauge (enter: approve + gauge.deposit) and withdraws it (exit: gauge.withdraw)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "AreodromeSlipstreamCLGaugeFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the CL gauge; must be a granted Gauge substrate, gauge.nft() is the position manager approved for the token"
+                                },
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "NFT position id to stake; zero returns without acting"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "struct": "AreodromeSlipstreamCLGaugeFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the CL gauge; must be a granted Gauge substrate"
+                                },
+                                {
+                                    "name": "tokenId",
+                                    "type": "uint256",
+                                    "meaning": "NFT position id to withdraw from the gauge"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol": "0xdfa89ff50463fb20fd72e93a3b0176563aae08f8f3077e42a5bf68d5f5b9605d"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "AreodromeSlipstreamCLGaugeFuseEnterData",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol:20",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol:22"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "AreodromeSlipstreamCLGaugeFuseExitData",
+                                    "signature": "exit((address,uint256))",
+                                    "selector": "0x92876ac8",
+                                    "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol:29",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol:30"
+                                        },
+                                        {
+                                            "name": "tokenId",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol:31"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "CLGaugeFuseAerodromeSlipstream",
+                        "address": "0x399599ac1807eb7F6eE6499a1EBc2BA68e01A21A",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x2759b3a4bfbae542d6065a9c3799edb9963381a7e1161a953182dc621ed6537d",
+                        "observedMarketId": 33,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 33 and VERSION() returned its own address at the observed block",
+                            "enter((address,uint256)) 0xd5ee7916 and exit((address,uint256)) 0x92876ac8 are present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                },
+                {
+                    "path": "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol",
+                    "purpose": "reward fuse: claims AERO emissions for every NFT the vault has staked in a granted CL gauge (gauge.getReward per token id) and transfers them to the RewardsClaimManager; executed through RewardsClaimManager.claimRewards by CLAIM_REWARDS_ROLE (600), not through PlasmaVault.execute; the directory name carries the typo areodrome",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(address[])",
+                            "selector": "0x318d9e5d",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "gauges_",
+                                    "type": "address[]",
+                                    "meaning": "CL gauges to claim from; each must be a granted Gauge substrate, an empty list reverts, a gauge with nothing staked is skipped"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol": "0x962382187de23c203b20d3f9333873fbde58248ab387a604d52eeb882d824833"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(address[])",
+                                    "selector": "0x318d9e5d",
+                                    "source": "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol:46",
+                                    "fields": [
+                                        {
+                                            "name": "gauges_",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol:46"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "ClaimRewardsGaugeFuseAerodromeSlipstream",
+                        "address": "0xD7B15C06CE4Cc807Ea0510B862407BB680C95344",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x085fd0073d8e97ff48120adac886a63a0b4446ebb9e57acc258a2a9cebcc3062",
+                        "observedMarketId": 33,
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned 33 and VERSION() returned its own address at the observed block",
+                            "claim(address[]) 0x318d9e5d is present in the runtime code",
+                            "bytecode equivalence with this checkout was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "bytes32 values packed by AreodromeSlipstreamSubstrateLib: the low 160 bits hold an address and bits 160+ hold AreodromeSlipstreamSubstrateType (1 = Gauge, 2 = Pool). Pool substrates are Slipstream CL pool addresses: the new-position fuse derives the pool from token0/token1/tickSpacing through the factory, the modify-position fuse from the position's stored tokens and tick spacing, and both check it. Gauge substrates are the CL gauges the gauge fuse and the gauge claim fuse may use. The collect fuse checks nothing. The balance fuse iterates the whole list.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with AreodromeSlipstreamSubstrateLib.substrateToBytes32(AreodromeSlipstreamSubstrate{substrateType, substrateAddress})",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted on the packed bytes32",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "token0 and token1 of every granted pool and gauge. For a Pool substrate the fuse walks the NFT ids the new-position fuse recorded in FuseStorageLib (not the vault's whole NFT balance), keeps those whose token0/token1/tickSpacing resolve to that pool, and adds principal at the pool's current sqrtPriceX96 plus uncollected fees, both read through the Slipstream Sugar helper. For a Gauge substrate it values the principal of the NFTs the gauge reports as staked by the vault (fees of staked positions are not counted). A position is counted once: unstaked under its pool, staked under its gauge. AERO emissions are not valued here.",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(), i.e. the PriceOracleMiddleware the vault points at, getAssetPrice per token",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse; the gauge claim fuse is added to RewardsClaimManager with addRewardFuses by the same role",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for token0 and token1 of every granted pool"
+            },
+            "tests": [
+                "test/fuses/aerodrome_slipstream/AreodromeSlipstreamTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "NewPositionFuseAerodromeSlipstream",
+                    "address": "0xB6A36F64aa10FFC8B6220C2f47c06670c18bAc5d",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0xc9f4b69370732786b9574fe882e25deb539eef3481bb4952206f2665526cc42f",
+                    "observedMarketId": 33,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 33 and VERSION() returned its own address at the observed block",
+                        "enter(...) 0x92b2d1ad and exit((uint256[])) 0x608c7500 are present in the runtime code",
+                        "bytecode equivalence with this checkout was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseAerodromeSlipstream",
+                    "address": "0x3075a82e51e3Ef3990656e4B3829507FB5275B53",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x33ae36b8325458237b74f2d9236354844acf653158957eebac6b5cb9bf147fcd",
+                    "observedMarketId": 33,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned 33 at the observed block",
+                        "VERSION() reverted, which is consistent with this checkout's AreodromeSlipstreamBalanceFuse.sol having no VERSION getter; that alone does not prove the deployed code is the current source",
+                        "balanceOf() 0x722713f7 is present in the runtime code"
+                    ]
+                }
+            }
         }
     ]
 }
