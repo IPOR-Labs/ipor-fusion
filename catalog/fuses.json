@@ -19021,6 +19021,202 @@
                 },
                 "balanceFuse": null
             }
+        },
+        {
+            "id": "ethereum-maintenance-zero-balance-market",
+            "protocol": "maintenance",
+            "chainId": 1,
+            "market": {
+                "id": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                "constant": "ZERO_BALANCE_MARKET",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/maintenance/ConfigureInstantWithdrawalFuse.sol",
+                "balanceFuse": null
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter(((address,bytes32[])[]))",
+                    "selector": "0x273e3894",
+                    "struct": "ConfigureInstantWithdrawalFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "fuses",
+                            "type": "InstantWithdrawalFusesParamsStruct[]",
+                            "meaning": "ordered instant-withdrawal paths written through PlasmaVaultLib.configureInstantWithdrawalFuses: each item is {fuse, params} where fuse is a registered fuse address and params[0] is a placeholder for the withdrawal amount (set by the vault at withdrawal time, in the vault asset's smallest unit) followed by fuse-specific values (asset addresses, market ids, slippage); the same fuse may appear more than once; the library validates that every fuse is supported"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit(bytes)",
+                    "selector": "0x3805550f",
+                    "struct": null,
+                    "fields": [
+                        {
+                            "name": "",
+                            "type": "bytes",
+                            "meaning": "ignored: exit always reverts with ExitNotSupported; the parameter is unnamed in the source"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:466",
+                    "sources": {
+                        "contracts/fuses/maintenance/ConfigureInstantWithdrawalFuse.sol": "0xacfb5fbe11e49a83d856373b8b0652c43cf53a244362f6bb61bf05d6a879625d"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "ConfigureInstantWithdrawalFuseEnterData",
+                            "signature": "enter(((address,bytes32[])[]))",
+                            "selector": "0x273e3894",
+                            "source": "contracts/fuses/maintenance/ConfigureInstantWithdrawalFuse.sol:9",
+                            "fields": [
+                                {
+                                    "name": "fuses",
+                                    "type": "InstantWithdrawalFusesParamsStruct[]",
+                                    "source": "contracts/fuses/maintenance/ConfigureInstantWithdrawalFuse.sol:11"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": null,
+                            "signature": "exit(bytes)",
+                            "selector": "0x3805550f",
+                            "source": "contracts/fuses/maintenance/ConfigureInstantWithdrawalFuse.sol:39",
+                            "fields": [
+                                {
+                                    "name": "",
+                                    "type": "bytes",
+                                    "source": "contracts/fuses/maintenance/ConfigureInstantWithdrawalFuse.sol:39"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol",
+                    "purpose": "sets the vault's WithdrawManager address by writing the corrected WITHDRAW_MANAGER storage slot (IL-6952) from inside the vault's delegatecall context; a zero address is a no-op; exit is a no-op; getWithdrawManager() reads the slot back",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address))",
+                            "selector": "0x7e890317",
+                            "struct": "UpdateWithdrawManagerMaintenanceFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "newManager",
+                                    "type": "address",
+                                    "meaning": "the WithdrawManager to store in PlasmaVaultStorageLib.getWithdrawManager().manager; address(0) returns without writing"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit(bytes)",
+                            "selector": "0x3805550f",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "",
+                                    "type": "bytes",
+                                    "meaning": "ignored: exit returns without doing anything; the parameter is unnamed in the source"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol": "0xc03a3dfea9a538972ed01065625961eb93b1e8ad8eb1d6e9cbbe582d7d6f4535"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "UpdateWithdrawManagerMaintenanceFuseEnterData",
+                                    "signature": "enter((address))",
+                                    "selector": "0x7e890317",
+                                    "source": "contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol:8",
+                                    "fields": [
+                                        {
+                                            "name": "newManager",
+                                            "type": "address",
+                                            "source": "contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol:10"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": null,
+                                    "signature": "exit(bytes)",
+                                    "selector": "0x3805550f",
+                                    "source": "contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol:41",
+                                    "fields": [
+                                        {
+                                            "name": "",
+                                            "type": "bytes",
+                                            "source": "contracts/fuses/maintenance/UpdateWithdrawManagerMaintenanceFuse.sol:41"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "MaintenanceFuseUpdateWithdrawManager",
+                        "address": "0x74CA34C2C47d0865856A54060246AB736a0Bb0D0",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x88ba8190c36fd7c228a676fdc44aba4d974f1ee1651d87b629a7d6e7c3e826c1",
+                        "observedMarketId": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned type(uint256).max (ZERO_BALANCE_MARKET) and VERSION() returned its own address at the observed block",
+                            "runtime code (1016 bytes) contains enter((address)) 0x7e890317, exit(bytes) 0x3805550f and getWithdrawManager() 0x42022932, the same signatures as this checkout; bytecode equivalence was not established and whether it writes the corrected (IL-6952) or the legacy slot was not read"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "none: neither maintenance fuse reads substrates; ConfigureInstantWithdrawalFuse writes the instant-withdrawal configuration and UpdateWithdrawManagerMaintenanceFuse writes the WithdrawManager slot",
+                "grantFunction": "none (nothing to grant for this market)",
+                "checkFunction": "none",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: MARKET_ID is ZERO_BALANCE_MARKET, whose balance fuse is a ZeroBalanceFuse returning 0 (deployment recorded in the burn-request-fee entry of this market)",
+                "priceSource": "none",
+                "unit": "not applicable"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action; the same configuration is available without a fuse to CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE (900) through PlasmaVaultGovernance.configureInstantWithdrawalFuses, and the WithdrawManager is otherwise set only at initialization, so registering these fuses hands both settings to whoever may execute",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the fuse with PlasmaVaultGovernance.addFuses; the ZERO_BALANCE_MARKET balance fuse (a ZeroBalanceFuse) is added with addBalanceFuse",
+                "configureSubstrates": "not applicable: no fuse of this market reads substrates, so none are granted",
+                "configureLimits": "not applicable: ZERO_BALANCE_MARKET always reports 0, so no market limit is meaningful",
+                "configurePriceSources": "not applicable: nothing is priced"
+            },
+            "tests": [
+                "test/fuses/maintenance/InstantWithdrawalFuseTest.t.sol",
+                "test/vaults/PlasmaVaultMaintenance.t.sol",
+                "test/vaults/PlasmaVaultScheduledWithdraw.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "ConfigureInstantWithdrawalFuse",
+                    "address": "0xd58F0EF796618F09f7fc6e63c25fae25CEB33799",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x3392ca5f86b1c5d27d2049e5c86e8ed0d92c81a096c7863083e92ecd94cc7ed1",
+                    "observedMarketId": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned type(uint256).max (ZERO_BALANCE_MARKET) and VERSION() returned its own address at the observed block",
+                        "runtime code (2461 bytes) contains enter(((address,bytes32[])[])) 0x273e3894 and exit(bytes) 0x3805550f, the same signatures as this checkout; bytecode equivalence was not established"
+                    ]
+                },
+                "balanceFuse": null
+            }
         }
     ]
 }
