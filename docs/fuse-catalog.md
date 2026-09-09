@@ -113,6 +113,7 @@ chain; the entry itself carries the block, code hash and notes.
 | `base-moonwell-market-21`                        | Base     | 21 `MOONWELL`                    | `MoonwellSupplyFuse`                    | `MoonwellBorrowFuse`, `MoonwellEnableMarketFuse`, `MoonwellClaimFuse`                                                                                                                    | observed / observed                   |
 | `ethereum-aave-v4-market-49`                     | Ethereum | 49 `AAVE_V4`                     | `AaveV4SupplyFuse`                      | `AaveV4BorrowFuse`, `AaveV4CollateralFuse`                                                                                                                                               | observed / observed                   |
 | `ethereum-aave-v2-market-1`                      | Ethereum | 1 (constructor, no constant)     | `AaveV2SupplyFuse`                      | –                                                                                                                                                                                        | unknown / unknown                     |
+| `ethereum-compound-v2-market-1`                  | Ethereum | 1 (constructor, no constant)     | `CompoundV2SupplyFuse`                  | –                                                                                                                                                                                        | unknown / unknown                     |
 
 ## The pilot entry
 

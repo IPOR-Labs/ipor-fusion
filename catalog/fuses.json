@@ -6033,6 +6033,149 @@
                     "notes": []
                 }
             }
+        },
+        {
+            "id": "ethereum-compound-v2-market-1",
+            "protocol": "compound_v2",
+            "chainId": 1,
+            "market": {
+                "id": 1,
+                "constant": null,
+                "constantSource": null,
+                "origin": "constructor argument marketId_ of both fuses; IporFusionMarkets.sol has no Compound V2 constant. The value 1 is what test/fuses/compound_v2/CompoundV2FuseTest.t.sol deploys with; it collides with AAVE_V3 = 1, so a vault that uses both would need another id. No deployment was found to confirm a production value."
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol",
+                "balanceFuse": "contracts/fuses/compound_v2/CompoundV2BalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,uint256))",
+                    "selector": "0xd5ee7916",
+                    "struct": "CompoundV2SupplyFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the underlying token to supply; the fuse resolves the cToken by scanning the market's substrates for one whose underlying() equals this address and reverts with CompoundV2SupplyFuseUnsupportedAsset otherwise"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of underlying to supply through cToken.mint, in the token's smallest unit; 0 is a no-op"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256))",
+                    "selector": "0x92876ac8",
+                    "struct": "CompoundV2SupplyFuseExitData",
+                    "fields": [
+                        {
+                            "name": "asset",
+                            "type": "address",
+                            "meaning": "the underlying token to withdraw; resolved to its cToken through the substrate list"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "amount of underlying to redeem through cToken.redeemUnderlying, in the token's smallest unit; capped at balanceOfUnderlying. A non-zero Compound error code is not a revert: the fuse emits CompoundV2SupplyExitFailed and returns"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": null,
+                    "sources": {
+                        "contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol": "0xaf777d6da78aaf9caf155f423f53620f6e70fdff0a0428cf264c217a696dad38",
+                        "contracts/fuses/compound_v2/CompoundV2BalanceFuse.sol": "0xeaf61e4c40fbb52b370b51211e2c519ce3ac22df3f0e035867030e349d5d4633"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "CompoundV2SupplyFuseEnterData",
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "source": "contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol:14",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol:16"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol:18"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "CompoundV2SupplyFuseExitData",
+                            "signature": "exit((address,uint256))",
+                            "selector": "0x92876ac8",
+                            "source": "contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol:21",
+                            "fields": [
+                                {
+                                    "name": "asset",
+                                    "type": "address",
+                                    "source": "contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol:23"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/compound_v2/CompoundV2SupplyFuse.sol:25"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "substrates": {
+                "shape": "address",
+                "meaning": "cToken addresses (not underlying tokens): the supply fuse walks the list and matches cToken.underlying() against data.asset; the balance fuse iterates the same list and reads balanceOfUnderlying and borrowBalanceCurrent of each cToken",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "none by address: PlasmaVaultConfigLib.getMarketSubstrates is scanned for a cToken whose underlying() matches; an asset without such a cToken reverts",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "the underlying token of every cToken in the substrate list: balanceOfUnderlying minus borrowBalanceCurrent (both non-view calls, so balanceOf is not a view)",
+                "priceSource": "the vault's PriceOracleMiddleware (PlasmaVaultLib.getPriceOracleMiddleware) through getAssetPrice(underlying), using the decimals it reports",
+                "unit": "USD normalized to WAD (18 decimals)"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuse and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/compound_v2/CompoundV2FuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf: every mainnet/*/addresses.json (fusion and client registries) contains no CompoundV2 fuse; captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "searched IPOR-Labs/ipor-abi at a0089cf: every mainnet/*/addresses.json (fusion and client registries) contains no CompoundV2 fuse; captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
         }
     ]
 }
