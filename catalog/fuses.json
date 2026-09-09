@@ -11082,6 +11082,555 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "ethereum-balancer-market-36",
+            "protocol": "balancer",
+            "chainId": 1,
+            "market": {
+                "id": 36,
+                "constant": "BALANCER",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol",
+                "balanceFuse": "contracts/fuses/balancer/BalancerBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((address,address[],uint256[],uint256))",
+                    "selector": "0xe6b84b8f",
+                    "struct": "BalancerLiquidityProportionalFuseEnterData",
+                    "fields": [
+                        {
+                            "name": "pool",
+                            "type": "address",
+                            "meaning": "the Balancer V3 pool (its BPT token); it must be granted as a POOL substrate of this market"
+                        },
+                        {
+                            "name": "tokens",
+                            "type": "address[]",
+                            "meaning": "the pool tokens to deposit, in the pool's token order; each is approved to the Balancer router through Permit2"
+                        },
+                        {
+                            "name": "maxAmountsIn",
+                            "type": "uint256[]",
+                            "meaning": "slippage ceiling per token, in each token's smallest unit; the router reverts above it"
+                        },
+                        {
+                            "name": "exactBptAmountOut",
+                            "type": "uint256",
+                            "meaning": "exact amount of BPT (18 decimals) to mint; 0 reverts with BalancerLiquidityProportionalFuseInvalidParams"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit((address,uint256,uint256[]))",
+                    "selector": "0xa8818a38",
+                    "struct": "BalancerLiquidityProportionalFuseExitData",
+                    "fields": [
+                        {
+                            "name": "pool",
+                            "type": "address",
+                            "meaning": "the Balancer V3 pool (its BPT token); it must be granted as a POOL substrate of this market"
+                        },
+                        {
+                            "name": "exactBptAmountIn",
+                            "type": "uint256",
+                            "meaning": "exact amount of BPT (18 decimals) to burn"
+                        },
+                        {
+                            "name": "minAmountsOut",
+                            "type": "uint256[]",
+                            "meaning": "slippage floor per pool token, in each token's smallest unit"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:125",
+                    "sources": {
+                        "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol": "0xd5dc9cd550fc16a6ec46dd3f0795ad8153676ed98df10e078b9491f4e742b635",
+                        "contracts/fuses/balancer/BalancerBalanceFuse.sol": "0x99348138517b7787caa4b338995df025ebd5c9fad5c31d23ad706edf7a9af68c"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "BalancerLiquidityProportionalFuseEnterData",
+                            "signature": "enter((address,address[],uint256[],uint256))",
+                            "selector": "0xe6b84b8f",
+                            "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:28",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:30"
+                                },
+                                {
+                                    "name": "tokens",
+                                    "type": "address[]",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:32"
+                                },
+                                {
+                                    "name": "maxAmountsIn",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:34"
+                                },
+                                {
+                                    "name": "exactBptAmountOut",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:36"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": "BalancerLiquidityProportionalFuseExitData",
+                            "signature": "exit((address,uint256,uint256[]))",
+                            "selector": "0xa8818a38",
+                            "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:49",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:51"
+                                },
+                                {
+                                    "name": "exactBptAmountIn",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:53"
+                                },
+                                {
+                                    "name": "minAmountsOut",
+                                    "type": "uint256[]",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol:55"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol",
+                    "purpose": "adds liquidity with exact token amounts (unbalanced) and removes it through removeLiquidityCustom; every token in tokens must also be granted as a TOKEN substrate",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address[],uint256[],uint256))",
+                            "selector": "0xe6b84b8f",
+                            "struct": "BalancerLiquidityUnbalancedFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "meaning": "the Balancer V3 pool (its BPT token); it must be granted as a POOL substrate of this market"
+                                },
+                                {
+                                    "name": "tokens",
+                                    "type": "address[]",
+                                    "meaning": "the pool tokens to deposit, in the pool's token order; each must be a granted TOKEN substrate and is approved to the router through Permit2"
+                                },
+                                {
+                                    "name": "exactAmountsIn",
+                                    "type": "uint256[]",
+                                    "meaning": "exact amount per token, in each token's smallest unit"
+                                },
+                                {
+                                    "name": "minBptAmountOut",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor on minted BPT (18 decimals)"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256[]))",
+                            "selector": "0xa8818a38",
+                            "struct": "BalancerLiquidityUnbalancedFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "meaning": "the Balancer V3 pool (its BPT token); it must be granted as a POOL substrate of this market"
+                                },
+                                {
+                                    "name": "maxBptAmountIn",
+                                    "type": "uint256",
+                                    "meaning": "slippage ceiling on burned BPT (18 decimals)"
+                                },
+                                {
+                                    "name": "minAmountsOut",
+                                    "type": "uint256[]",
+                                    "meaning": "slippage floor per pool token, in each token's smallest unit"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol": "0xca57b3a88f4ce07f6a4dc41df91b417c9cb3d5e81748e0be7fc6465d031ac5a5"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "BalancerLiquidityUnbalancedFuseEnterData",
+                                    "signature": "enter((address,address[],uint256[],uint256))",
+                                    "selector": "0xe6b84b8f",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:24",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "tokens",
+                                            "type": "address[]",
+                                            "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "exactAmountsIn",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "minBptAmountOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:28"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "BalancerLiquidityUnbalancedFuseExitData",
+                                    "signature": "exit((address,uint256,uint256[]))",
+                                    "selector": "0xa8818a38",
+                                    "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:37",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:38"
+                                        },
+                                        {
+                                            "name": "maxBptAmountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:39"
+                                        },
+                                        {
+                                            "name": "minAmountsOut",
+                                            "type": "uint256[]",
+                                            "source": "contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol:40"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "BalancerLiquidityUnbalancedFuse not found under any name in IPOR-Labs/ipor-abi mainnet/mainnet-*-fusion/addresses.json (all 14 chains) at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol",
+                    "purpose": "adds or removes liquidity with one token for an exact BPT amount (addLiquiditySingleTokenExactOut / removeLiquiditySingleTokenExactOut)",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,address,uint256,uint256))",
+                            "selector": "0x2242c270",
+                            "struct": "BalancerSingleTokenFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "meaning": "the Balancer V3 pool (its BPT token); it must be granted as a POOL substrate of this market"
+                                },
+                                {
+                                    "name": "tokenIn",
+                                    "type": "address",
+                                    "meaning": "the single pool token to deposit; it must belong to the pool and be a granted TOKEN substrate"
+                                },
+                                {
+                                    "name": "maxAmountIn",
+                                    "type": "uint256",
+                                    "meaning": "slippage ceiling on tokenIn, in its smallest unit; 0 returns without acting"
+                                },
+                                {
+                                    "name": "exactBptAmountOut",
+                                    "type": "uint256",
+                                    "meaning": "exact amount of BPT (18 decimals) to mint"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,address,uint256,uint256))",
+                            "selector": "0xa7350d8c",
+                            "struct": "BalancerSingleTokenFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "pool",
+                                    "type": "address",
+                                    "meaning": "the Balancer V3 pool (its BPT token); it must be granted as a POOL substrate of this market"
+                                },
+                                {
+                                    "name": "tokenOut",
+                                    "type": "address",
+                                    "meaning": "the single pool token to receive; it must belong to the pool and be a granted TOKEN substrate"
+                                },
+                                {
+                                    "name": "maxBptAmountIn",
+                                    "type": "uint256",
+                                    "meaning": "slippage ceiling on burned BPT (18 decimals); 0 returns without acting"
+                                },
+                                {
+                                    "name": "exactAmountOut",
+                                    "type": "uint256",
+                                    "meaning": "exact amount of tokenOut to receive, in its smallest unit"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/balancer/BalancerSingleTokenFuse.sol": "0xa24e1647c18116049b890761a497efbbac3237bf3389d252d01f08ca5e23cb67"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "BalancerSingleTokenFuseEnterData",
+                                    "signature": "enter((address,address,uint256,uint256))",
+                                    "selector": "0x2242c270",
+                                    "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:24",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:25"
+                                        },
+                                        {
+                                            "name": "tokenIn",
+                                            "type": "address",
+                                            "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:26"
+                                        },
+                                        {
+                                            "name": "maxAmountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:27"
+                                        },
+                                        {
+                                            "name": "exactBptAmountOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:28"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "BalancerSingleTokenFuseExitData",
+                                    "signature": "exit((address,address,uint256,uint256))",
+                                    "selector": "0xa7350d8c",
+                                    "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:38",
+                                    "fields": [
+                                        {
+                                            "name": "pool",
+                                            "type": "address",
+                                            "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:39"
+                                        },
+                                        {
+                                            "name": "tokenOut",
+                                            "type": "address",
+                                            "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:40"
+                                        },
+                                        {
+                                            "name": "maxBptAmountIn",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:41"
+                                        },
+                                        {
+                                            "name": "exactAmountOut",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerSingleTokenFuse.sol:42"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "BalancerSingleTokenFuse not found under any name in IPOR-Labs/ipor-abi mainnet/mainnet-*-fusion/addresses.json (all 14 chains) at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                },
+                {
+                    "path": "contracts/fuses/balancer/BalancerGaugeFuse.sol",
+                    "purpose": "stakes BPT into a Balancer liquidity gauge and unstakes it; the gauge must be granted as a GAUGE substrate",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256,uint256))",
+                            "selector": "0x41b11ae7",
+                            "struct": "BalancerGaugeFuseEnterData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the Balancer liquidity gauge to deposit BPT into; it must be a granted GAUGE substrate of this market"
+                                },
+                                {
+                                    "name": "bptAmount",
+                                    "type": "uint256",
+                                    "meaning": "amount of BPT (18 decimals) to stake; the fuse caps it at the Plasma Vault's BPT balance and 0 returns without acting"
+                                },
+                                {
+                                    "name": "minBptAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor: a capped amount below this reverts with BalancerGaugeFuseInsufficientBptAmount"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit((address,uint256,uint256))",
+                            "selector": "0x8467bd30",
+                            "struct": "BalancerGaugeFuseExitData",
+                            "fields": [
+                                {
+                                    "name": "gaugeAddress",
+                                    "type": "address",
+                                    "meaning": "the Balancer liquidity gauge to withdraw BPT from; it must be a granted GAUGE substrate of this market"
+                                },
+                                {
+                                    "name": "bptAmount",
+                                    "type": "uint256",
+                                    "meaning": "amount of gauge shares / BPT (18 decimals) to unstake; capped at the Plasma Vault's gauge balance, 0 returns without acting"
+                                },
+                                {
+                                    "name": "minBptAmount",
+                                    "type": "uint256",
+                                    "meaning": "slippage floor: a capped amount below this reverts with BalancerGaugeFuseInsufficientBptAmount"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/balancer/BalancerGaugeFuse.sol": "0x7c500e12045baaff3b88c7eef3c0a6baf4940f1f3a4409692dc1bb048edf4d40"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "BalancerGaugeFuseEnterData",
+                                    "signature": "enter((address,uint256,uint256))",
+                                    "selector": "0x41b11ae7",
+                                    "source": "contracts/fuses/balancer/BalancerGaugeFuse.sol:20",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/balancer/BalancerGaugeFuse.sol:21"
+                                        },
+                                        {
+                                            "name": "bptAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerGaugeFuse.sol:22"
+                                        },
+                                        {
+                                            "name": "minBptAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerGaugeFuse.sol:23"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": "BalancerGaugeFuseExitData",
+                                    "signature": "exit((address,uint256,uint256))",
+                                    "selector": "0x8467bd30",
+                                    "source": "contracts/fuses/balancer/BalancerGaugeFuse.sol:32",
+                                    "fields": [
+                                        {
+                                            "name": "gaugeAddress",
+                                            "type": "address",
+                                            "source": "contracts/fuses/balancer/BalancerGaugeFuse.sol:33"
+                                        },
+                                        {
+                                            "name": "bptAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerGaugeFuse.sol:34"
+                                        },
+                                        {
+                                            "name": "minBptAmount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/balancer/BalancerGaugeFuse.sol:35"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "unknown",
+                        "registryName": null,
+                        "address": null,
+                        "addressSource": "BalancerGaugeFuse not found under any name in IPOR-Labs/ipor-abi mainnet/mainnet-*-fusion/addresses.json (all 14 chains) at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": null,
+                        "runtimeCodeHash": null,
+                        "observedMarketId": null,
+                        "matchesCurrentSource": null,
+                        "notes": []
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "structured",
+                "meaning": "BalancerSubstrate packed by BalancerSubstrateLib.substrateToBytes32: the address in the low 160 bits and a BalancerSubstrateType (1 GAUGE, 2 POOL, 3 TOKEN) in bits 160+. POOL entries are the Balancer V3 pools (BPT tokens) the liquidity fuses may join and exit and the balance fuse values; GAUGE entries are the liquidity gauges the gauge fuse may stake into and the balance fuse values; TOKEN entries are the pool tokens the unbalanced and single-token fuses may move. The balance fuse skips TOKEN and UNDEFINED entries.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates with bytes32 values from BalancerSubstrateLib.substrateToBytes32",
+                "checkFunction": "PlasmaVaultConfigLib.isMarketSubstrateGranted on the packed bytes32 (BalancerSubstrateLib.validatePoolTokensGranted / validateTokenGranted for tokens)",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "every token of every POOL and GAUGE substrate, in the proportional amounts (IPool.getTokenInfo live balances scaled to 18 decimals times the Plasma Vault's BPT or gauge balance over BPT total supply) computed by BalancerSubstrateLib.computeProportionalAmountsOut",
+                "priceSource": "PlasmaVaultLib.getPriceOracleMiddleware(), i.e. the vault's PriceOracleMiddlewareManager falling back to the PriceOracleMiddleware it points at; reverts BalancerBalanceFusePriceOracleNotConfigured when unset",
+                "unit": "USD normalized to WAD (18 decimals); note the amounts are taken as 18-decimal live-scaled balances and multiplied by the price divided by 10^priceDecimals, without a per-token decimals conversion"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the action fuses and the balance fuse",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates",
+                "configureLimits": "ATOMIST_ROLE (100) sets the market limit that AssetDistributionProtectionLib enforces",
+                "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for each priced asset"
+            },
+            "tests": [
+                "test/fuses/balancer/BalancerTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "BalancerLiquidityProportionalFuse not found under any name in IPOR-Labs/ipor-abi mainnet/mainnet-*-fusion/addresses.json (all 14 chains) at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                },
+                "balanceFuse": {
+                    "status": "unknown",
+                    "registryName": null,
+                    "address": null,
+                    "addressSource": "BalancerBalanceFuse not found under any name in IPOR-Labs/ipor-abi mainnet/mainnet-*-fusion/addresses.json (all 14 chains) at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": null,
+                    "runtimeCodeHash": null,
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": []
+                }
+            }
         }
     ]
 }
