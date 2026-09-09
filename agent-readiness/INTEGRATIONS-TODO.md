@@ -126,7 +126,7 @@ osobny wpis. Nie ma katalogu `test/rewards_fuses/`; testy są tam, gdzie wskazan
 | R10 | `areodrome_slipstream` | 1    | 24                         | `test/fuses/aerodrome_slipstream/AreodromeSlipstreamTest.t.sol`                                                        | done (w `base-aerodrome-slipstream-market-33`) |
 | R11 | `velodrome_superchain` | 2    | 25, 26                     | `test/fuses/velodrome/*.t.sol`                                                                                         | done (wpisy 31 i 32)                           |
 | R12 | `stake_dao_v2`         | 1    | 28                         | `test/fuses/stake_dao_v2/StakeDaoV2FuseTest.t.sol`                                                                     | done (w 28)                                    |
-| R13 | `merkl`                | 2    | przekrojowy (Euler i inne) | `test/fuses/markl/*.t.sol`                                                                                             | todo                                           |
+| R13 | `merkl`                | 2    | przekrojowy (Euler i inne) | `test/fuses/markl/*.t.sol`                                                                                             | done                                           |
 | R14 | `syrup`                | 1    | brak fuse'a akcji w repo   | `test/fuses/syrup/SyrupClaimFuseTest.t.sol`                                                                            | todo                                           |
 
 Market ID `22 MORPHO_REWARDS` i `424 SPOL_UNSTAKE` nie mają katalogu w `contracts/fuses/`;

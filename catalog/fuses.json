@@ -16336,6 +16336,213 @@
                     ]
                 }
             }
+        },
+        {
+            "id": "base-merkl-rewards-market-merkl",
+            "protocol": "merkl",
+            "chainId": 8453,
+            "market": {
+                "id": "115792089237316195423570985008687907853269984665640564039457584007913129639932",
+                "constant": "MERKL",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/rewards_fuses/merkl/MerklClaimFuse.sol",
+                "balanceFuse": null
+            },
+            "interface": {
+                "claim": {
+                    "signature": "claim(address[],uint256[],bytes32[][],address[])",
+                    "selector": "0x69ffbb47",
+                    "struct": null,
+                    "fields": [
+                        {
+                            "name": "tokens_",
+                            "type": "address[]",
+                            "meaning": "reward tokens to claim from the Merkl Distributor, one per proof; the user in every claim is the Plasma Vault itself"
+                        },
+                        {
+                            "name": "amounts_",
+                            "type": "uint256[]",
+                            "meaning": "cumulative claimable amount per token as published in the Merkl Merkle root, in the token's smallest unit; the distributor pays the difference to what was already claimed"
+                        },
+                        {
+                            "name": "proofs_",
+                            "type": "bytes32[][]",
+                            "meaning": "Merkle proof per token for (user = Plasma Vault, token, amount)"
+                        },
+                        {
+                            "name": "doNotTransferToRewardManager_",
+                            "type": "address[]",
+                            "meaning": "tokens whose claimed balance delta stays on the Plasma Vault instead of being forwarded to the RewardsClaimManager (for rewards that are vault assets); every other claimed delta is transferred to the manager"
+                        }
+                    ]
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:450",
+                    "sources": {
+                        "contracts/rewards_fuses/merkl/MerklClaimFuse.sol": "0x9aca0b6653c51c3c39de774104e968294a221423ee219b41f0e63dcec5723140"
+                    },
+                    "operations": {
+                        "claim": {
+                            "struct": null,
+                            "signature": "claim(address[],uint256[],bytes32[][],address[])",
+                            "selector": "0x69ffbb47",
+                            "source": "contracts/rewards_fuses/merkl/MerklClaimFuse.sol:70",
+                            "fields": [
+                                {
+                                    "name": "tokens_",
+                                    "type": "address[]",
+                                    "source": "contracts/rewards_fuses/merkl/MerklClaimFuse.sol:70"
+                                },
+                                {
+                                    "name": "amounts_",
+                                    "type": "uint256[]",
+                                    "source": "contracts/rewards_fuses/merkl/MerklClaimFuse.sol:70"
+                                },
+                                {
+                                    "name": "proofs_",
+                                    "type": "bytes32[][]",
+                                    "source": "contracts/rewards_fuses/merkl/MerklClaimFuse.sol:70"
+                                },
+                                {
+                                    "name": "doNotTransferToRewardManager_",
+                                    "type": "address[]",
+                                    "source": "contracts/rewards_fuses/merkl/MerklClaimFuse.sol:70"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/rewards_fuses/merkl/MerklClaimWrapperFuse.sol",
+                    "purpose": "claims self-unwrapping Merkl rewards: the balance delta is measured on the caller-supplied received tokens (what lands on the vault after the wrapper unwraps), each of which must be a granted substrate-as-asset of the MERKL market, and is always forwarded to the RewardsClaimManager; executed by CLAIM_REWARDS_ROLE (600) through RewardsClaimManager.claimRewards, registered there by FUSE_MANAGER_ROLE (300). This is the only Merkl fuse that carries MARKET_ID",
+                    "interface": {
+                        "claim": {
+                            "signature": "claim(address[],uint256[],bytes32[][],address[])",
+                            "selector": "0x69ffbb47",
+                            "struct": null,
+                            "fields": [
+                                {
+                                    "name": "tokens_",
+                                    "type": "address[]",
+                                    "meaning": "reward tokens to claim from the Merkl Distributor, one per proof; the user in every claim is the Plasma Vault itself"
+                                },
+                                {
+                                    "name": "amounts_",
+                                    "type": "uint256[]",
+                                    "meaning": "cumulative claimable amount per token as published in the Merkl Merkle root, in the token's smallest unit; the distributor pays the difference to what was already claimed"
+                                },
+                                {
+                                    "name": "proofs_",
+                                    "type": "bytes32[][]",
+                                    "meaning": "Merkle proof per token for (user = Plasma Vault, token, amount)"
+                                },
+                                {
+                                    "name": "receivedTokens_",
+                                    "type": "address[]",
+                                    "meaning": "final tokens that land on the Plasma Vault after the claimed wrappers unwrap; each must be granted as a substrate-as-asset of the MERKL market (MerklClaimWrapperFuseUnsupportedReceivedToken otherwise); the positive balance delta of each is forwarded to the RewardsClaimManager, a decrease (rebasing token) counts as zero"
+                                }
+                            ]
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/rewards_fuses/merkl/MerklClaimWrapperFuse.sol": "0xcd51d3ddac6fdd5bc606cb9c958df2802985dbd12219559ed4b95e17a70e8837"
+                            },
+                            "operations": {
+                                "claim": {
+                                    "struct": null,
+                                    "signature": "claim(address[],uint256[],bytes32[][],address[])",
+                                    "selector": "0x69ffbb47",
+                                    "source": "contracts/rewards_fuses/merkl/MerklClaimWrapperFuse.sol:96",
+                                    "fields": [
+                                        {
+                                            "name": "tokens_",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/merkl/MerklClaimWrapperFuse.sol:96"
+                                        },
+                                        {
+                                            "name": "amounts_",
+                                            "type": "uint256[]",
+                                            "source": "contracts/rewards_fuses/merkl/MerklClaimWrapperFuse.sol:96"
+                                        },
+                                        {
+                                            "name": "proofs_",
+                                            "type": "bytes32[][]",
+                                            "source": "contracts/rewards_fuses/merkl/MerklClaimWrapperFuse.sol:96"
+                                        },
+                                        {
+                                            "name": "receivedTokens_",
+                                            "type": "address[]",
+                                            "source": "contracts/rewards_fuses/merkl/MerklClaimWrapperFuse.sol:96"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "MerklClaimWrapperFuse",
+                        "address": "0xb1c12A239a72ee518A065dA79E62dAE97Cb21A5B",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 51079414,
+                        "runtimeCodeHash": "0x51b38d17b0d327d0663025cff7c3040bd4eabf1dfb89a06b6ad9fbe02f1dfd52",
+                        "observedMarketId": "115792089237316195423570985008687907853269984665640564039457584007913129639932",
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned type(uint256).max - 3 (MERKL) and VERSION() returned its own address at the observed block; DISTRIBUTOR() returned 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae (MerklDistributor in the same registry)",
+                            "the runtime code (3853 bytes) contains claim(address[],uint256[],bytes32[][],address[]) 0x69ffbb47; bytecode equivalence with this checkout was not established",
+                            "also registered on Flare and Monad in the same registry; not read there"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "reward token addresses that MerklClaimWrapperFuse may forward to the RewardsClaimManager after unwrapping (checked per received token with isSubstrateAsAssetGranted). MerklClaimFuse reads no substrates and has no MARKET_ID: it claims any token the caller names and forwards the delta unless the token is listed in doNotTransferToRewardManager_.",
+                "grantFunction": "PlasmaVaultGovernance.grantMarketSubstrates (address-shaped, via PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket)",
+                "checkFunction": "PlasmaVaultConfigLib.isSubstrateAsAssetGranted (wrapper fuse only)",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: the market has no balance fuse in the source and no vault registers one for it; claimed tokens are transferred to the RewardsClaimManager and valued by its vesting logic. Tokens kept on the vault through doNotTransferToRewardManager_ are valued by the market that holds that asset",
+                "priceSource": "none (no balance fuse)",
+                "unit": "not applicable"
+            },
+            "roles": {
+                "execute": "CLAIM_REWARDS_ROLE (600) calls RewardsClaimManager.claimRewards with the claim action; the manager (TECH_REWARDS_CLAIM_MANAGER_ROLE 601) calls PlasmaVault.claimRewards, which delegatecalls the fuse",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the claim fuse with RewardsClaimManager.addRewardFuses; no balance fuse is registered",
+                "configureSubstrates": "FUSE_MANAGER_ROLE (300) grants the market's substrates through PlasmaVaultGovernance.grantMarketSubstrates (only the wrapper fuse reads them)",
+                "configureLimits": "not applicable: the market holds no position and AssetDistributionProtectionLib never sees it",
+                "configurePriceSources": "not applicable: nothing in this market is priced; claimed tokens are valued by the RewardsClaimManager's vesting logic"
+            },
+            "tests": [
+                "test/fuses/markl/MerklClaimFuseTest.t.sol",
+                "test/fuses/markl/MerklClaimWrapperFuseTest.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "MerklClaimFuse",
+                    "address": "0x310e6133a904761D717EE13D76E180E4EECf907A",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-base-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 51079414,
+                    "runtimeCodeHash": "0x61797169966b08aa2e81925c133b55f4e924e539abc5d4e9d0fe15b9964a7e1a",
+                    "observedMarketId": null,
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() reverted because the source declares no MARKET_ID; VERSION() returned its own address at the observed block; DISTRIBUTOR() returned 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae",
+                        "the runtime code (3462 bytes) contains claim(address[],uint256[],bytes32[][],address[]) 0x69ffbb47; bytecode equivalence with this checkout was not established",
+                        "the Ethereum deployment MerklClaimFuse 0x47AcA48086036D213F2A5faa6764a62777B4Bbcc (mainnet-ethereum-fusion) was read at block 25939091 with the same selector, DISTRIBUTOR 0x3Ef3D8bA…Dd9Ae and runtime code of the same size (3462 bytes, keccak 0x7b849516…a245); Arbitrum, Avalanche, Flare, Ink, Katana, Monad and Plasma also list one"
+                    ]
+                },
+                "balanceFuse": null
+            }
         }
     ]
 }
