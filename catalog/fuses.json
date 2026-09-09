@@ -19217,6 +19217,206 @@
                 },
                 "balanceFuse": null
             }
+        },
+        {
+            "id": "ethereum-burn-request-fee-zero-balance-market",
+            "protocol": "burn-request-fee",
+            "chainId": 1,
+            "market": {
+                "id": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                "constant": "ZERO_BALANCE_MARKET",
+                "constantSource": "contracts/libraries/IporFusionMarkets.sol"
+            },
+            "source": {
+                "actionFuse": "contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol",
+                "balanceFuse": "contracts/fuses/ZeroBalanceFuse.sol"
+            },
+            "interface": {
+                "enter": {
+                    "signature": "enter((uint256))",
+                    "selector": "0x9988a9ca",
+                    "struct": "BurnRequestFeeDataEnter",
+                    "fields": [
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "meaning": "vault shares to burn from the WithdrawManager's balance (request fees it collected), in share units; 0 is a no-op; the burn is routed through PlasmaVaultBase.updateInternal(withdrawManager, address(0), amount) by a nested delegatecall so ERC20Votes checkpoints and supply caps are applied; reverts if no WithdrawManager is set in the corrected or legacy slot, or if PLASMA_VAULT_BASE() is zero"
+                        }
+                    ]
+                },
+                "exit": {
+                    "signature": "exit()",
+                    "selector": "0xe9fad8ee",
+                    "struct": null,
+                    "fields": []
+                },
+                "generated": {
+                    "generator": "tools/generate-catalog.mjs",
+                    "marketConstantSource": "contracts/libraries/IporFusionMarkets.sol:466",
+                    "sources": {
+                        "contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol": "0x39484447ead2fbd1ff19fd42a136b39b3a317e5b985d4760dea6a2bef2068210",
+                        "contracts/fuses/ZeroBalanceFuse.sol": "0x2f846eb67c89d681318a02458d29c7e8d0646550c910389e8986a627c03d68ab"
+                    },
+                    "operations": {
+                        "enter": {
+                            "struct": "BurnRequestFeeDataEnter",
+                            "signature": "enter((uint256))",
+                            "selector": "0x9988a9ca",
+                            "source": "contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol:66",
+                            "fields": [
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "source": "contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol:68"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "struct": null,
+                            "signature": "exit()",
+                            "selector": "0xe9fad8ee",
+                            "source": "contracts/fuses/burn_request_fee/BurnRequestFeeFuse.sol:172",
+                            "fields": []
+                        }
+                    }
+                }
+            },
+            "additionalFuses": [
+                {
+                    "path": "contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol",
+                    "purpose": "refunds request-fee shares held by the WithdrawManager to a user whose withdraw request expired, transferring them through PlasmaVaultBase.updateInternal(withdrawManager, recipient, amount) so voting checkpoints stay consistent; exit always reverts",
+                    "interface": {
+                        "enter": {
+                            "signature": "enter((address,uint256))",
+                            "selector": "0xd5ee7916",
+                            "struct": "RequestFeeRefundDataEnter",
+                            "fields": [
+                                {
+                                    "name": "recipient",
+                                    "type": "address",
+                                    "meaning": "receiver of the refunded shares; address(0) reverts with RequestFeeRefundInvalidRecipient so the call cannot degrade into a burn"
+                                },
+                                {
+                                    "name": "amount",
+                                    "type": "uint256",
+                                    "meaning": "vault shares to move from the WithdrawManager to the recipient, in share units; 0 is a no-op"
+                                }
+                            ]
+                        },
+                        "exit": {
+                            "signature": "exit()",
+                            "selector": "0xe9fad8ee",
+                            "struct": null,
+                            "fields": []
+                        },
+                        "generated": {
+                            "generator": "tools/generate-catalog.mjs",
+                            "sources": {
+                                "contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol": "0xa639a13bc40a20991e591a1685d361a17eb7aa43e70bcf2ada5ae65ca4cbd0bb"
+                            },
+                            "operations": {
+                                "enter": {
+                                    "struct": "RequestFeeRefundDataEnter",
+                                    "signature": "enter((address,uint256))",
+                                    "selector": "0xd5ee7916",
+                                    "source": "contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol:66",
+                                    "fields": [
+                                        {
+                                            "name": "recipient",
+                                            "type": "address",
+                                            "source": "contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol:68"
+                                        },
+                                        {
+                                            "name": "amount",
+                                            "type": "uint256",
+                                            "source": "contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol:70"
+                                        }
+                                    ]
+                                },
+                                "exit": {
+                                    "struct": null,
+                                    "signature": "exit()",
+                                    "selector": "0xe9fad8ee",
+                                    "source": "contracts/fuses/burn_request_fee/RequestFeeRefundFuse.sol:185",
+                                    "fields": []
+                                }
+                            }
+                        }
+                    },
+                    "deployment": {
+                        "status": "observed",
+                        "registryName": "RequestFeeRefundFuse",
+                        "address": "0xcbB5cA86dB1E237bfA364A817F31F0812D88BF34",
+                        "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                        "observedAtBlock": 25939091,
+                        "runtimeCodeHash": "0x63809c6b63884fc71924e80cab3146582d1f3ad815e138ee4582d93f2326a94c",
+                        "observedMarketId": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                        "matchesCurrentSource": null,
+                        "notes": [
+                            "MARKET_ID() returned type(uint256).max (ZERO_BALANCE_MARKET) and VERSION() returned its own address at the observed block",
+                            "runtime code (1658 bytes) contains enter((address,uint256)) 0xd5ee7916 and exit() 0xe9fad8ee, the same signatures as this checkout; bytecode equivalence was not established"
+                        ]
+                    }
+                }
+            ],
+            "substrates": {
+                "shape": "address",
+                "meaning": "none: neither fuse reads substrates; both resolve the WithdrawManager from PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback() (corrected IL-6952 slot, then the legacy slot) and PlasmaVaultBase from the vault's own PLASMA_VAULT_BASE() getter (IL-7407)",
+                "grantFunction": "none (nothing to grant for this market)",
+                "checkFunction": "none",
+                "verifiedEntries": []
+            },
+            "valuation": {
+                "pricedAssets": "nothing: burning or refunding request-fee shares changes total supply or share ownership, not assets; MARKET_ID is ZERO_BALANCE_MARKET, whose ZeroBalanceFuse always returns 0. FusionFactory registers BurnRequestFeeFuse and this ZeroBalanceFuse on every vault it creates",
+                "priceSource": "none",
+                "unit": "not applicable"
+            },
+            "roles": {
+                "execute": "ALPHA_ROLE (200) calls PlasmaVault.execute with the fuse action",
+                "registerFuses": "FUSE_MANAGER_ROLE (300) adds the fuse with PlasmaVaultGovernance.addFuses; the ZERO_BALANCE_MARKET balance fuse (a ZeroBalanceFuse) is added with addBalanceFuse",
+                "configureSubstrates": "not applicable: no fuse of this market reads substrates, so none are granted",
+                "configureLimits": "not applicable: ZERO_BALANCE_MARKET always reports 0, so no market limit is meaningful",
+                "configurePriceSources": "not applicable: nothing is priced"
+            },
+            "tests": [
+                "test/fuses/burn_request_fee/RequestFeeRefundFuseTest.t.sol",
+                "test/fuses/burn_request_fee/RequestFeeRefundFuseLegacySlotTest.t.sol",
+                "test/vaults/BurnRequestFeeVotingRegressionTest.t.sol",
+                "test/vaults/PlasmaVaultScheduledWithdraw.t.sol",
+                "test/factory/FusionFactory.t.sol"
+            ],
+            "deployments": {
+                "actionFuse": {
+                    "status": "observed",
+                    "registryName": "BurnRequestFeeFuseV2",
+                    "address": "0x6DebD98329d826bA79b6Fd9B14cC718D1720D0bE",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0xce4c2309c4a6a04c161f610e3845420c3b1478ee76bc0ff9bcbcbeec72b47cd9",
+                    "observedMarketId": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned type(uint256).max (ZERO_BALANCE_MARKET) and VERSION() returned its own address at the observed block",
+                        "runtime code (1841 bytes) contains enter((uint256)) 0x9988a9ca, exit() 0xe9fad8ee, enterTransient() 0xadea8fa0 and exitTransient() 0x1db205df, the same signatures as this checkout; bytecode equivalence was not established",
+                        "the registry also lists the older BurnRequestFeeFuse 0x79e8B115Bd41baee318c1940F42F1a2d94D29ab4 (same MARKET_ID, 3335 bytes, keccak 0x538dcfd3286429a37d284e541fb925c77c4f6455beb63aaa56bdfd4ba8a83ff6 at the same block): it carries enter/exit but not enterTransient/exitTransient, so it predates this checkout's source; whether it carries the IL-7407 legacy-slot fallback was not established"
+                    ]
+                },
+                "balanceFuse": {
+                    "status": "observed",
+                    "registryName": "BalanceFuseBurnRequestFee",
+                    "address": "0xbc2907d76964510a4232878e7aC6E2B18c474EFb",
+                    "addressSource": "IPOR-Labs/ipor-abi mainnet/mainnet-ethereum-fusion/addresses.json at a0089cf, captured 2026-09-09",
+                    "observedAtBlock": 25939091,
+                    "runtimeCodeHash": "0x468eb8cc76e24efff283bb3fdbf1150b9a76bbacd4cde9fd3d2780ccd6cb3730",
+                    "observedMarketId": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+                    "matchesCurrentSource": null,
+                    "notes": [
+                        "MARKET_ID() returned type(uint256).max (ZERO_BALANCE_MARKET) at the observed block; VERSION() reverted, which ZeroBalanceFuse.sol does not expose either",
+                        "runtime code is 167 bytes and contains balanceOf() 0x722713f7, consistent with a ZeroBalanceFuse; bytecode equivalence with this checkout's ZeroBalanceFuse.sol was not established",
+                        "one deployment of this balance fuse serves every fuse registered on ZERO_BALANCE_MARKET (burn request fee, request fee refund, maintenance, update-balances)"
+                    ]
+                }
+            }
         }
     ]
 }

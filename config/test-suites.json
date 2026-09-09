@@ -2,10 +2,11 @@
     "schemaVersion": 1,
     "scope": {
         "classified": [
-            "test/factory/*.t.sol \u2014 the source-version suites needed for the factory pilot, at the top level of the directory only",
-            "test/deployed-factories/FusionFactoryEthereum.t.sol \u2014 unchanged deployed-usage coverage for the Ethereum pilot"
+            "test/factory/*.t.sol — the source-version suites needed for the factory pilot, at the top level of the directory only",
+            "test/deployed-factories/FusionFactoryEthereum.t.sol — unchanged deployed-usage coverage for the Ethereum pilot",
+            "test/fuses/<integration>/ and test/unitTest/fuses/<integration>/ local suites of the catalogued integrations (group fuses-local): Aave V4, Agua, async action, Euler V2, external state, Midas, Term Finance, transient storage, universal token swapper, update balances, burn request fee and the fuse whitelist — every file that deploys everything itself and reads no RPC; run 2026-09-09, 57 suites, 1476 tests, all passing under factory_local"
         ],
-        "unclassified": "Everything else under test/, including test/factory/price_feed/ and any other file under test/deployed-factories/, is deliberately not classified yet. An unlisted suite carries no claim in either direction: read its setUp() before quoting a result, and do not treat its absence here as evidence that it is local, that it forks, or that it is unnecessary. Suites are added one area at a time, each with the run that produced its numbers."
+        "unclassified": "Everything else under test/, including test/factory/price_feed/, any other file under test/deployed-factories/ and every fork suite of the integrations listed above, is deliberately not classified yet. An unlisted suite carries no claim in either direction: read its setUp() before quoting a result, and do not treat its absence here as evidence that it is local, that it forks, or that it is unnecessary. Suites are added one area at a time, each with the run that produced its numbers."
     },
     "suites": [
         {
@@ -125,7 +126,7 @@
             "setUp": {
                 "deploys": [
                     "MockERC20 underlying token",
-                    "MockPlasmaVault \u2014 a two-function stand-in defined in the test file, not a real PlasmaVault",
+                    "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
                     "WrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
                 ],
                 "mutations": [
@@ -155,7 +156,7 @@
             "setUp": {
                 "deploys": [
                     "MockERC20 underlying token",
-                    "MockPlasmaVault \u2014 a two-function stand-in defined in the test file, not a real PlasmaVault",
+                    "MockPlasmaVault — a two-function stand-in defined in the test file, not a real PlasmaVault",
                     "WhitelistWrappedPlasmaVaultFactory implementation behind an ERC1967Proxy"
                 ],
                 "mutations": [
@@ -187,7 +188,7 @@
             "tests": 9,
             "setUp": {
                 "deploys": [
-                    "PlasmaVaultFactory and FeeManagerFactory \u2014 replacing the ones the existing factory points at",
+                    "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
                     "PlasmaVaultBase",
                     "PlasmaVault, used as the new plasmaVaultCoreBase for cloning",
                     "a FusionFactory implementation behind a new ERC1967Proxy"
@@ -215,7 +216,7 @@
                 "helpers": []
             },
             "proves": "That the checked-out FusionFactory source applies DAO fee packages correctly when it runs against real mainnet state at the pinned block.",
-            "doesNotProve": "That the deployed factory at 0xcd05909C\u2026 can do this. The fixture deploys its own factory, its own bases and its own component factories, precisely because the deployed ones do not accept the current PlasmaVaultInitData shape. A pass here says nothing about the live deployment."
+            "doesNotProve": "That the deployed factory at 0xcd05909C… can do this. The fixture deploys its own factory, its own bases and its own component factories, precisely because the deployed ones do not accept the current PlasmaVaultInitData shape. A pass here says nothing about the live deployment."
         },
         {
             "id": "factory-business-client-fee-packages-fork",
@@ -237,7 +238,7 @@
             "tests": 3,
             "setUp": {
                 "deploys": [
-                    "PlasmaVaultFactory and FeeManagerFactory \u2014 replacing the ones the existing factory points at",
+                    "PlasmaVaultFactory and FeeManagerFactory — replacing the ones the existing factory points at",
                     "PlasmaVaultBase",
                     "PlasmaVault, used as the new plasmaVaultCoreBase for cloning",
                     "a FusionFactory implementation behind a new ERC1967Proxy"
@@ -266,7 +267,7 @@
                 "helpers": []
             },
             "proves": "That business-client fee packages resolve by direct caller against real mainnet state at the pinned block, using the checked-out source.",
-            "doesNotProve": "That the deployed factory at 0xcd05909C\u2026 offers these packages, or that the pilot caller would resolve to one. Same fresh-deployment caveat as the DAO fork suite."
+            "doesNotProve": "That the deployed factory at 0xcd05909C… offers these packages, or that the pilot caller would resolve to one. Same fresh-deployment caveat as the DAO fork suite."
         },
         {
             "id": "deployed-factory-ethereum-fusion-factory",
@@ -356,7 +357,7 @@
                 "helpers": []
             },
             "proves": "At Ethereum block 25937526, a vault created by the unchanged factory can be configured for the catalogued ERC4626 market with the deployed fuses and then carry a full asset cycle: deposit, supply into Steakhouse USDC through ALPHA_ROLE, exit back and redeem, with total assets preserved within 1 USDC on 100000 and the 50% market limit enforced.",
-            "doesNotProve": "That the current source's Erc4626SupplyFuse interface is deployed (it is not \u2014 the deployed fuse takes (vault, amount) without slippage bounds), that yield accrues over time, that any other substrate, market or protocol works, or that a transaction should be broadcast."
+            "doesNotProve": "That the current source's Erc4626SupplyFuse interface is deployed (it is not — the deployed fuse takes (vault, amount) without slippage bounds), that yield accrues over time, that any other substrate, market or protocol works, or that a transaction should be broadcast."
         },
         {
             "id": "deployed-price-feed-factory-ethereum-erc4626",
@@ -489,6 +490,1688 @@
             },
             "proves": "At Base block 51000000, the unchanged Base FusionFactory proxy reports version 8 and permissionlessly clones a complete Base USDC vault with fee package 0; the components have code, the requested owner receives OWNER_ROLE and the fee manager matches the caller-effective package.",
             "doesNotProve": "Anything about the Ethereum deployment, that the two implementations share bytecode, that a strategy is configured on the Base vault, or that any transaction should be broadcast."
+        },
+        {
+            "id": "aave-v4-balance-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/aave_v4/AaveV4BalanceFuseTest.t.sol",
+            "contracts": [
+                "AaveV4BalanceFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 20,
+            "setUp": {
+                "deploys": [
+                    "AaveV4BalanceFuse",
+                    "AaveV4BorrowFuse",
+                    "AaveV4SupplyFuse",
+                    "ERC20Mock",
+                    "MockAaveV4Spoke",
+                    "MockPriceOracle",
+                    "PlasmaVaultMock"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Aave V4 fuses and substrate library behave as written against a mock Spoke and a PlasmaVaultMock, in delegatecall context",
+            "doesNotProve": "anything about Aave V4 on a live network: the mock Spoke implements only what the fuses call, and no deployed fuse is exercised"
+        },
+        {
+            "id": "aave-v4-borrow-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/aave_v4/AaveV4BorrowFuseTest.t.sol",
+            "contracts": [
+                "AaveV4BorrowFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 28,
+            "setUp": {
+                "deploys": [
+                    "AaveV4BorrowFuse",
+                    "ERC20Mock",
+                    "MockAaveV4Spoke",
+                    "PlasmaVaultMock"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Aave V4 fuses and substrate library behave as written against a mock Spoke and a PlasmaVaultMock, in delegatecall context",
+            "doesNotProve": "anything about Aave V4 on a live network: the mock Spoke implements only what the fuses call, and no deployed fuse is exercised"
+        },
+        {
+            "id": "aave-v4-collateral-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/aave_v4/AaveV4CollateralFuseTest.t.sol",
+            "contracts": [
+                "AaveV4CollateralFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 19,
+            "setUp": {
+                "deploys": [
+                    "AaveV4BorrowFuse",
+                    "AaveV4CollateralFuse",
+                    "AaveV4SupplyFuse",
+                    "ERC20Mock",
+                    "MockAaveV4Spoke",
+                    "PlasmaVaultMock"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Aave V4 fuses and substrate library behave as written against a mock Spoke and a PlasmaVaultMock, in delegatecall context",
+            "doesNotProve": "anything about Aave V4 on a live network: the mock Spoke implements only what the fuses call, and no deployed fuse is exercised"
+        },
+        {
+            "id": "aave-v4-substrate-lib-test",
+            "group": "fuses-local",
+            "path": "test/fuses/aave_v4/AaveV4SubstrateLibTest.t.sol",
+            "contracts": [
+                "AaveV4SubstrateLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 28,
+            "setUp": {
+                "deploys": [],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Aave V4 fuses and substrate library behave as written against a mock Spoke and a PlasmaVaultMock, in delegatecall context",
+            "doesNotProve": "anything about Aave V4 on a live network: the mock Spoke implements only what the fuses call, and no deployed fuse is exercised"
+        },
+        {
+            "id": "aave-v4-supply-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/aave_v4/AaveV4SupplyFuseTest.t.sol",
+            "contracts": [
+                "AaveV4SupplyFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 36,
+            "setUp": {
+                "deploys": [
+                    "AaveV4CollateralFuse",
+                    "AaveV4SupplyFuse",
+                    "ERC20Mock",
+                    "MockAaveV4Spoke",
+                    "PlasmaVaultMock"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Aave V4 fuses and substrate library behave as written against a mock Spoke and a PlasmaVaultMock, in delegatecall context",
+            "doesNotProve": "anything about Aave V4 on a live network: the mock Spoke implements only what the fuses call, and no deployed fuse is exercised"
+        },
+        {
+            "id": "agua-dos-impossibility-test",
+            "group": "fuses-local",
+            "path": "test/fuses/agua/AguaDosImpossibilityTest.t.sol",
+            "contracts": [
+                "AguaDosImpossibilityTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 4,
+            "setUp": {
+                "deploys": [
+                    "AguaClaimRedemptionFuse",
+                    "AguaRedeemEarlyFuse",
+                    "AguaRequestRedemptionFuse",
+                    "AguaSupplyFuse"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Agua substrate encoding and the fuses' constructor validation behave as written, with no external protocol",
+            "doesNotProve": "anything about the Agua protocol, its vaults, or a deployed fuse; the protocol-facing fuse paths are covered only by the Ethereum fork suites"
+        },
+        {
+            "id": "agua-substrate-lib-test",
+            "group": "fuses-local",
+            "path": "test/fuses/agua/AguaSubstrateLibTest.t.sol",
+            "contracts": [
+                "AguaSubstrateLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 4,
+            "setUp": {
+                "deploys": [],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Agua substrate encoding and the fuses' constructor validation behave as written, with no external protocol",
+            "doesNotProve": "anything about the Agua protocol, its vaults, or a deployed fuse; the protocol-facing fuse paths are covered only by the Ethereum fork suites"
+        },
+        {
+            "id": "async-action-fuse-lib-test",
+            "group": "fuses-local",
+            "path": "test/fuses/async_action/AsyncActionFuseLibTest.t.sol",
+            "contracts": [
+                "AsyncActionFuseLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 11,
+            "setUp": {
+                "deploys": [],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out AsyncActionFuseLib encoding and the AsyncExecutor call, approval and slippage logic behave as written against mock targets, tokens and a mock vault",
+            "doesNotProve": "anything about a live target protocol or a deployed executor; the fuse-through-PlasmaVault path is covered only by the Ethereum fork suite"
+        },
+        {
+            "id": "async-action-async-executor-test",
+            "group": "fuses-local",
+            "path": "test/fuses/async_action/AsyncExecutorTest.t.sol",
+            "contracts": [
+                "AsyncExecutorTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 26,
+            "setUp": {
+                "deploys": [
+                    "AsyncExecutor",
+                    "MockERC20",
+                    "MockPlasmaVault",
+                    "MockPriceOracle",
+                    "MockTarget"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.deal of test balances"
+                ],
+                "externalAddresses": [],
+                "helpers": [
+                    "test/test_helpers/MockERC20.sol",
+                    "test/test_helpers/MockErc4626.sol"
+                ]
+            },
+            "proves": "the checked-out AsyncActionFuseLib encoding and the AsyncExecutor call, approval and slippage logic behave as written against mock targets, tokens and a mock vault",
+            "doesNotProve": "anything about a live target protocol or a deployed executor; the fuse-through-PlasmaVault path is covered only by the Ethereum fork suite"
+        },
+        {
+            "id": "euler-fuse-lib-can-instant-withdraw-test",
+            "group": "fuses-local",
+            "path": "test/fuses/euler/EulerFuseLibCanInstantWithdrawTest.t.sol",
+            "contracts": [
+                "EulerFuseLibCanInstantWithdrawTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 12,
+            "setUp": {
+                "deploys": [],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Euler V2 fuse, substrate library and EulerSwap fuse logic behave as written against mocks (EVC, factory, pool, registry) or mocked calls",
+            "doesNotProve": "anything about Euler V2 or EulerSwap on a live network, including EVC authorization of a real sub-account; those paths are covered only by the fork suites in the same directory"
+        },
+        {
+            "id": "euler-fuse-lib-test",
+            "group": "fuses-local",
+            "path": "test/fuses/euler/EulerFuseLibTest.t.sol",
+            "contracts": [
+                "EulerFuseLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 11,
+            "setUp": {
+                "deploys": [],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Euler V2 fuse, substrate library and EulerSwap fuse logic behave as written against mocks (EVC, factory, pool, registry) or mocked calls",
+            "doesNotProve": "anything about Euler V2 or EulerSwap on a live network, including EVC authorization of a real sub-account; those paths are covered only by the fork suites in the same directory"
+        },
+        {
+            "id": "euler-v2-supply-fuse-instant-withdraw-test",
+            "group": "fuses-local",
+            "path": "test/fuses/euler/EulerV2SupplyFuseInstantWithdrawTest.t.sol",
+            "contracts": [
+                "EulerV2SupplyFuseInstantWithdrawTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 12,
+            "setUp": {
+                "deploys": [
+                    "EulerV2SupplyFuse",
+                    "PlasmaVaultMock"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.mockCall / vm.mockCallRevert on mocked dependencies"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Euler V2 fuse, substrate library and EulerSwap fuse logic behave as written against mocks (EVC, factory, pool, registry) or mocked calls",
+            "doesNotProve": "anything about Euler V2 or EulerSwap on a live network, including EVC authorization of a real sub-account; those paths are covered only by the fork suites in the same directory"
+        },
+        {
+            "id": "euler-v2-supply-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/euler/EulerV2SupplyFuseTest.t.sol",
+            "contracts": [
+                "EulerV2SupplyFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 15,
+            "setUp": {
+                "deploys": [
+                    "EulerV2SupplyFuse",
+                    "MockToken"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Euler V2 fuse, substrate library and EulerSwap fuse logic behave as written against mocks (EVC, factory, pool, registry) or mocked calls",
+            "doesNotProve": "anything about Euler V2 or EulerSwap on a live network, including EVC authorization of a real sub-account; those paths are covered only by the fork suites in the same directory"
+        },
+        {
+            "id": "euler-v2-swap-deploy-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/euler/EulerV2SwapDeployFuseTest.t.sol",
+            "contracts": [
+                "EulerV2SwapDeployFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 18,
+            "setUp": {
+                "deploys": [
+                    "EulerV2SwapDeployFuse",
+                    "EulerV2SwapTestVault",
+                    "MockEVC",
+                    "MockEulerV2SwapFactory",
+                    "MockEulerV2SwapPool"
+                ],
+                "mutations": [
+                    "vm.warp to move time"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Euler V2 fuse, substrate library and EulerSwap fuse logic behave as written against mocks (EVC, factory, pool, registry) or mocked calls",
+            "doesNotProve": "anything about Euler V2 or EulerSwap on a live network, including EVC authorization of a real sub-account; those paths are covered only by the fork suites in the same directory"
+        },
+        {
+            "id": "euler-v2-swap-reconfigure-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/euler/EulerV2SwapReconfigureFuseTest.t.sol",
+            "contracts": [
+                "EulerV2SwapReconfigureFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 16,
+            "setUp": {
+                "deploys": [
+                    "EulerV2SwapReconfigureFuse",
+                    "EulerV2SwapTestVault",
+                    "MockEVC",
+                    "MockEulerV2SwapFactory",
+                    "MockEulerV2SwapPool"
+                ],
+                "mutations": [
+                    "vm.warp to move time"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Euler V2 fuse, substrate library and EulerSwap fuse logic behave as written against mocks (EVC, factory, pool, registry) or mocked calls",
+            "doesNotProve": "anything about Euler V2 or EulerSwap on a live network, including EVC authorization of a real sub-account; those paths are covered only by the fork suites in the same directory"
+        },
+        {
+            "id": "euler-v2-swap-registry-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/euler/EulerV2SwapRegistryFuseTest.t.sol",
+            "contracts": [
+                "EulerV2SwapRegistryFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 9,
+            "setUp": {
+                "deploys": [
+                    "EulerV2SwapRegistryFuse",
+                    "EulerV2SwapTestVault",
+                    "MockEVC",
+                    "MockEulerV2SwapPool",
+                    "MockEulerV2SwapRegistry"
+                ],
+                "mutations": [
+                    "vm.deal of test balances"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Euler V2 fuse, substrate library and EulerSwap fuse logic behave as written against mocks (EVC, factory, pool, registry) or mocked calls",
+            "doesNotProve": "anything about Euler V2 or EulerSwap on a live network, including EVC authorization of a real sub-account; those paths are covered only by the fork suites in the same directory"
+        },
+        {
+            "id": "transient-storage-chain-reader-fuse",
+            "group": "fuses-local",
+            "path": "test/fuses/transient_storage/TransientStorageChainReaderFuse.t.sol",
+            "contracts": [
+                "TransientStorageChainReaderFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 25,
+            "setUp": {
+                "deploys": [
+                    "ExternalCall",
+                    "MockTarget",
+                    "ReadDataFromResponse",
+                    "TransientStorageChainReaderFuse",
+                    "TransientStorageChainReaderFuseMock"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out transient storage fuses (set inputs, mapper, chain reader) behave as written when chained through mock callers with isolate = false",
+            "doesNotProve": "anything about a deployed fuse or a vault that uses transient inputs on a live network"
+        },
+        {
+            "id": "transient-storage-mapper-fuse",
+            "group": "fuses-local",
+            "path": "test/fuses/transient_storage/TransientStorageMapperFuse.t.sol",
+            "contracts": [
+                "TransientStorageMapperFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 110,
+            "setUp": {
+                "deploys": [
+                    "TransientStorageMapperFuse",
+                    "TransientStorageMapperFuseMock",
+                    "TransientStorageMapperItem"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out transient storage fuses (set inputs, mapper, chain reader) behave as written when chained through mock callers with isolate = false",
+            "doesNotProve": "anything about a deployed fuse or a vault that uses transient inputs on a live network"
+        },
+        {
+            "id": "transient-storage-set-inputs-fuse",
+            "group": "fuses-local",
+            "path": "test/fuses/transient_storage/TransientStorageSetInputsFuse.t.sol",
+            "contracts": [
+                "TransientStorageSetInputsFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 16,
+            "setUp": {
+                "deploys": [
+                    "TransientStorageSetInputsFuse",
+                    "TransientStorageSetInputsFuseMock"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out transient storage fuses (set inputs, mapper, chain reader) behave as written when chained through mock callers with isolate = false",
+            "doesNotProve": "anything about a deployed fuse or a vault that uses transient inputs on a live network"
+        },
+        {
+            "id": "universal-token-swapper-swap-executor-test",
+            "group": "fuses-local",
+            "path": "test/fuses/universal_token_swapper/SwapExecutorTest.t.sol",
+            "contracts": [
+                "SwapExecutorTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 14,
+            "setUp": {
+                "deploys": [
+                    "MockDex",
+                    "MockERC20",
+                    "ReentrancyAttacker",
+                    "SwapExecutor",
+                    "SwapExecutorRestricted"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.deal of test balances"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out swap executors, substrate library and with-verification fuse behave as written against a mock DEX and mock tokens",
+            "doesNotProve": "anything about a real DEX route or a deployed swapper; production behaviour, including the older deployed ABI without minAmountOut, is not exercised here"
+        },
+        {
+            "id": "universal-token-swapper-substrate-lib-test",
+            "group": "fuses-local",
+            "path": "test/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLibTest.t.sol",
+            "contracts": [
+                "UniversalTokenSwapperSubstrateLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 21,
+            "setUp": {
+                "deploys": [],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out swap executors, substrate library and with-verification fuse behave as written against a mock DEX and mock tokens",
+            "doesNotProve": "anything about a real DEX route or a deployed swapper; production behaviour, including the older deployed ABI without minAmountOut, is not exercised here"
+        },
+        {
+            "id": "universal-token-swapper-with-verification-fuse",
+            "group": "fuses-local",
+            "path": "test/fuses/universal_token_swapper/UniversalTokenSwapperWithVerificationFuse.t.sol",
+            "contracts": [
+                "UniversalTokenSwapperWithVerificationFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 3,
+            "setUp": {
+                "deploys": [
+                    "UniversalTokenSwapperWithVerificationFuse"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out swap executors, substrate library and with-verification fuse behave as written against a mock DEX and mock tokens",
+            "doesNotProve": "anything about a real DEX route or a deployed swapper; production behaviour, including the older deployed ABI without minAmountOut, is not exercised here"
+        },
+        {
+            "id": "update-balances-update-markets-balances-fuse-test",
+            "group": "fuses-local",
+            "path": "test/fuses/update_balances/UpdateMarketsBalancesFuseTest.t.sol",
+            "contracts": [
+                "UpdateMarketsBalancesFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 5,
+            "setUp": {
+                "deploys": [
+                    "UpdateMarketsBalancesFuse"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out UpdateMarketsBalancesFuse validates its input as written",
+            "doesNotProve": "anything about the balance refresh a PlasmaVault performs when the fuse runs inside it"
+        },
+        {
+            "id": "fuse-whitelist-test",
+            "group": "fuses-local",
+            "path": "test/fuses/whitelist/FuseWhitelistTest.t.sol",
+            "contracts": [
+                "FuseWhitelistLibRemoveFuseMetadataTest",
+                "FuseWhitelistTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 87,
+            "setUp": {
+                "deploys": [
+                    "ERC1967Proxy",
+                    "Erc4626SupplyFuse",
+                    "FuseWhitelist",
+                    "FuseWhitelistLibHarness"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
+                ],
+                "externalAddresses": [],
+                "helpers": [
+                    "test/test_helpers/TestAddresses.sol"
+                ]
+            },
+            "proves": "the checked-out FuseWhitelist registry behind a fresh ERC1967Proxy enforces its roles and metadata rules as written",
+            "doesNotProve": "anything about the deployed IporFusionFuseWhitelistProxy or its live contents"
+        },
+        {
+            "id": "external-state-balance-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/ExternalStateBalanceFuseTest.t.sol",
+            "contracts": [
+                "ExternalStateBalanceFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 22,
+            "setUp": {
+                "deploys": [
+                    "ExternalStateBalanceFuse",
+                    "ExternalStateExecutor",
+                    "MockERC20ForExternalState",
+                    "MockPlasmaVaultForExternalState",
+                    "MockPriceOracleMiddleware"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "external-state-executor-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/ExternalStateExecutorTest.t.sol",
+            "contracts": [
+                "ExternalStateExecutorTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 109,
+            "setUp": {
+                "deploys": [
+                    "BA",
+                    "ExternalStateExecutor",
+                    "ExternalStateExecutorAction",
+                    "MockERC20ForExternalState",
+                    "MockExternalStateTarget",
+                    "MockPlasmaVaultForExternalState",
+                    "ReentrantAssetToken",
+                    "RevertingOnTransferERC20"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.warp to move time"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "external-state-operation-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/ExternalStateOperationFuseTest.t.sol",
+            "contracts": [
+                "ExternalStateOperationFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 32,
+            "setUp": {
+                "deploys": [
+                    "ExternalStateExecutorAction",
+                    "ExternalStateOperationFuse",
+                    "MockERC20ForExternalState",
+                    "MockExternalStateTarget",
+                    "MockPlasmaVaultForExternalState",
+                    "MockPriceOracleMiddleware"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "external-state-pause-pre-hook-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/ExternalStatePausePreHookTest.t.sol",
+            "contracts": [
+                "ExternalStatePausePreHookTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 10,
+            "setUp": {
+                "deploys": [
+                    "ExternalStateExecutor",
+                    "ExternalStatePausePreHook",
+                    "MockPlasmaVaultForExternalState"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.warp to move time"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "external-state-real-vault-execute-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/ExternalStateRealVaultExecuteTest.t.sol",
+            "contracts": [
+                "ExternalStateRealVaultExecuteTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 7,
+            "setUp": {
+                "deploys": [
+                    "ExternalStateBalanceFuse",
+                    "ExternalStateExecutorAction",
+                    "ExternalStateOperationFuse",
+                    "ExternalStateUnpauseFuse",
+                    "FuseAction",
+                    "MockERC20ForExternalState",
+                    "MockExternalStateTarget",
+                    "MutableValuePriceFeed",
+                    "PlasmaVault",
+                    "PlasmaVaultBase",
+                    "PriceOracleMiddleware",
+                    "WithdrawManager"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
+                ],
+                "externalAddresses": [],
+                "helpers": [
+                    "test/test_helpers/FeeConfigHelper.sol"
+                ]
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "external-state-rescue-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/ExternalStateRescueFuseTest.t.sol",
+            "contracts": [
+                "ExternalStateRescueFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 10,
+            "setUp": {
+                "deploys": [
+                    "ExternalStateExecutor",
+                    "ExternalStateRescueFuse",
+                    "MockERC20ForExternalState",
+                    "MockPlasmaVaultForExternalState"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "external-state-unpause-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/ExternalStateUnpauseFuseTest.t.sol",
+            "contracts": [
+                "ExternalStateUnpauseFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 16,
+            "setUp": {
+                "deploys": [
+                    "ExternalStateExecutor",
+                    "ExternalStateUnpauseFuse",
+                    "MockAccessManager",
+                    "MockPlasmaVaultForExternalState"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "external-state-executor-storage-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/lib/ExternalStateExecutorStorageLibTest.t.sol",
+            "contracts": [
+                "ExternalStateExecutorStorageLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 13,
+            "setUp": {
+                "deploys": [
+                    "ExternalStateExecutorStorageLibHarness"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "external-state-substrate-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/external_state/lib/ExternalStateSubstrateLibTest.t.sol",
+            "contracts": [
+                "ExternalStateSubstrateLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 28,
+            "setUp": {
+                "deploys": [
+                    "ExternalStateSubstrateLibHarness"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out external-state executor, fuses, pre-hook and libraries behave as written against mock targets and mock or freshly deployed vaults",
+            "doesNotProve": "anything about a live external protocol or a deployed executor; the Ethereum fork suites cover the real-vault path with real targets"
+        },
+        {
+            "id": "midas-executor-storage-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/midas/lib/MidasExecutorStorageLibTest.t.sol",
+            "contracts": [
+                "MidasExecutorStorageLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 18,
+            "setUp": {
+                "deploys": [
+                    "MidasExecutor",
+                    "MidasExecutorStorageLibHarness"
+                ],
+                "mutations": [
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Midas fuses, executor and storage/substrate libraries behave as written against mock Midas vaults, data feed and price oracle",
+            "doesNotProve": "anything about the Midas protocol on a live network or a deployed fuse; the fork suites under test/fuses/midas/ cover that"
+        },
+        {
+            "id": "midas-pending-requests-storage-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/midas/lib/MidasPendingRequestsStorageLibTest.t.sol",
+            "contracts": [
+                "MidasPendingRequestsStorageLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 61,
+            "setUp": {
+                "deploys": [
+                    "MidasPendingRequestsStorageLibHarness"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Midas fuses, executor and storage/substrate libraries behave as written against mock Midas vaults, data feed and price oracle",
+            "doesNotProve": "anything about the Midas protocol on a live network or a deployed fuse; the fork suites under test/fuses/midas/ cover that"
+        },
+        {
+            "id": "midas-substrate-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/midas/lib/MidasSubstrateLibTest.t.sol",
+            "contracts": [
+                "MidasSubstrateLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 46,
+            "setUp": {
+                "deploys": [
+                    "MidasSubstrateLibHarness"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Midas fuses, executor and storage/substrate libraries behave as written against mock Midas vaults, data feed and price oracle",
+            "doesNotProve": "anything about the Midas protocol on a live network or a deployed fuse; the fork suites under test/fuses/midas/ cover that"
+        },
+        {
+            "id": "midas-balance-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/midas/MidasBalanceFuseTest.t.sol",
+            "contracts": [
+                "MidasBalanceFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 52,
+            "setUp": {
+                "deploys": [
+                    "MidasBalanceFuse",
+                    "MidasBalanceFuseHarness",
+                    "MockERC20ForBalance",
+                    "MockMidasDataFeedForBalance",
+                    "MockMidasDepositVaultForBalance",
+                    "MockMidasRedemptionVaultForBalance",
+                    "MockPriceOracleMiddlewareForBalance"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Midas fuses, executor and storage/substrate libraries behave as written against mock Midas vaults, data feed and price oracle",
+            "doesNotProve": "anything about the Midas protocol on a live network or a deployed fuse; the fork suites under test/fuses/midas/ cover that"
+        },
+        {
+            "id": "midas-claim-from-executor-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/midas/MidasClaimFromExecutorFuseTest.t.sol",
+            "contracts": [
+                "MidasClaimFromExecutorFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 25,
+            "setUp": {
+                "deploys": [
+                    "MidasClaimFromExecutorFuse",
+                    "MidasClaimFromExecutorFuseHarness",
+                    "MidasExecutor",
+                    "MockERC20ForClaim"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Midas fuses, executor and storage/substrate libraries behave as written against mock Midas vaults, data feed and price oracle",
+            "doesNotProve": "anything about the Midas protocol on a live network or a deployed fuse; the fork suites under test/fuses/midas/ cover that"
+        },
+        {
+            "id": "midas-executor-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/midas/MidasExecutorTest.t.sol",
+            "contracts": [
+                "MidasExecutorTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 31,
+            "setUp": {
+                "deploys": [
+                    "MidasExecutor",
+                    "MockERC20ForMidasExecutor",
+                    "MockMidasDepositVault",
+                    "MockMidasRedemptionVault"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Midas fuses, executor and storage/substrate libraries behave as written against mock Midas vaults, data feed and price oracle",
+            "doesNotProve": "anything about the Midas protocol on a live network or a deployed fuse; the fork suites under test/fuses/midas/ cover that"
+        },
+        {
+            "id": "midas-request-supply-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/midas/MidasRequestSupplyFuseTest.t.sol",
+            "contracts": [
+                "MidasRequestSupplyFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 65,
+            "setUp": {
+                "deploys": [
+                    "MidasExecutor",
+                    "MidasRequestSupplyFuse",
+                    "MidasRequestSupplyFuseHarness",
+                    "MockERC20Midas",
+                    "MockMidasDepositVault",
+                    "MockMidasExecutorForFuse",
+                    "MockMidasRedemptionVaultFuse"
+                ],
+                "mutations": [
+                    "vm.mockCall / vm.mockCallRevert on mocked dependencies"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Midas fuses, executor and storage/substrate libraries behave as written against mock Midas vaults, data feed and price oracle",
+            "doesNotProve": "anything about the Midas protocol on a live network or a deployed fuse; the fork suites under test/fuses/midas/ cover that"
+        },
+        {
+            "id": "midas-supply-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/midas/MidasSupplyFuseTest.t.sol",
+            "contracts": [
+                "MidasSupplyFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 49,
+            "setUp": {
+                "deploys": [
+                    "MidasSupplyFuse",
+                    "MidasSupplyFuseHarness",
+                    "MockERC20ForSupplyFuse",
+                    "MockMidasDepositVaultForSupplyFuse",
+                    "MockMidasRedemptionVaultForSupplyFuse"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Midas fuses, executor and storage/substrate libraries behave as written against mock Midas vaults, data feed and price oracle",
+            "doesNotProve": "anything about the Midas protocol on a live network or a deployed fuse; the fork suites under test/fuses/midas/ cover that"
+        },
+        {
+            "id": "term-finance-pending-bids-storage-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/lib/TermFinancePendingBidsStorageLibTest.t.sol",
+            "contracts": [
+                "TermFinancePendingBidsStorageLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 24,
+            "setUp": {
+                "deploys": [
+                    "TermFinancePendingBidsStorageLibHarness"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-pending-offers-storage-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/lib/TermFinancePendingOffersStorageLibTest.t.sol",
+            "contracts": [
+                "TermFinancePendingOffersStorageLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 17,
+            "setUp": {
+                "deploys": [
+                    "TermFinancePendingOffersStorageLibHarness"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-present-value-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/lib/TermFinancePresentValueLibTest.t.sol",
+            "contracts": [
+                "TermFinancePresentValueLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 31,
+            "setUp": {
+                "deploys": [],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-substrate-lib-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/lib/TermFinanceSubstrateLibTest.t.sol",
+            "contracts": [
+                "TermFinanceSubstrateLibTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 27,
+            "setUp": {
+                "deploys": [
+                    "TermFinanceSubstrateLibHarness"
+                ],
+                "mutations": [],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-balance-fuse-delegatecall-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceBalanceFuseDelegatecallTest.t.sol",
+            "contracts": [
+                "TermFinanceBalanceFuseDelegatecallTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 5,
+            "setUp": {
+                "deploys": [
+                    "MinimalPlasmaVaultHarness",
+                    "MockERC20Decimals",
+                    "MockPriceOracleMiddlewareForTermFinance",
+                    "MockTermController",
+                    "MockTermDiscountRateAdapter",
+                    "MockTermRepoCollateralManager",
+                    "MockTermRepoServicer",
+                    "MockTermRepoToken",
+                    "TermFinanceBalanceFuse"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.mockCall / vm.mockCallRevert on mocked dependencies"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-balance-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceBalanceFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceBalanceFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 70,
+            "setUp": {
+                "deploys": [
+                    "MockERC20Decimals",
+                    "MockPriceOracleMiddlewareForTermFinance",
+                    "MockTermAuctionBidLocker",
+                    "MockTermAuctionOfferLocker",
+                    "MockTermController",
+                    "MockTermDiscountRateAdapter",
+                    "MockTermRepoCollateralManager",
+                    "MockTermRepoServicer",
+                    "MockTermRepoToken",
+                    "TermFinanceBalanceFuseHarness"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.warp to move time",
+                    "vm.mockCall / vm.mockCallRevert on mocked dependencies"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-bid-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceBidFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceBidFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 35,
+            "setUp": {
+                "deploys": [
+                    "MockERC20Decimals",
+                    "MockTermAuctionBidLocker",
+                    "MockTermController",
+                    "MockTermRepoServicer",
+                    "TermFinanceBidFuseHarness"
+                ],
+                "mutations": [
+                    "vm.warp to move time",
+                    "vm.store to seed storage slots directly",
+                    "vm.mockCall / vm.mockCallRevert on mocked dependencies"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-bid-reveal-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceBidRevealFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceBidRevealFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 17,
+            "setUp": {
+                "deploys": [
+                    "MockTermAuctionBidLocker",
+                    "MockTermController",
+                    "MockTermRepoServicer",
+                    "TermFinanceBidRevealFuseHarness"
+                ],
+                "mutations": [
+                    "vm.warp to move time",
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-cleanup-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceCleanupFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceCleanupFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 35,
+            "setUp": {
+                "deploys": [
+                    "MockTermAuctionBidLocker",
+                    "MockTermAuctionOfferLocker",
+                    "TermFinanceCleanupFuseHarness"
+                ],
+                "mutations": [
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-collateral-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceCollateralFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceCollateralFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 28,
+            "setUp": {
+                "deploys": [
+                    "MockERC20Decimals",
+                    "MockTermController",
+                    "MockTermRepoCollateralManager",
+                    "MockTermRepoLocker",
+                    "MockTermRepoServicer",
+                    "TermFinanceCollateralFuseHarness"
+                ],
+                "mutations": [
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-offer-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceOfferFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceOfferFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 28,
+            "setUp": {
+                "deploys": [
+                    "MockERC20Decimals",
+                    "MockTermAuctionOfferLocker",
+                    "MockTermController",
+                    "MockTermRepoServicer",
+                    "TermFinanceOfferFuseHarness"
+                ],
+                "mutations": [
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-offer-reveal-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceOfferRevealFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceOfferRevealFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 15,
+            "setUp": {
+                "deploys": [
+                    "MockTermAuctionOfferLocker",
+                    "MockTermController",
+                    "MockTermRepoServicer",
+                    "TermFinanceOfferRevealFuseHarness"
+                ],
+                "mutations": [
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-redeem-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceRedeemFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceRedeemFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 11,
+            "setUp": {
+                "deploys": [
+                    "MockERC20Decimals",
+                    "MockTermController",
+                    "MockTermRepoServicer",
+                    "MockTermRepoToken",
+                    "TermFinanceRedeemFuseHarness"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.warp to move time",
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "term-finance-repurchase-fuse-test",
+            "group": "fuses-local",
+            "path": "test/unitTest/fuses/term_finance/TermFinanceRepurchaseFuseTest.t.sol",
+            "contracts": [
+                "TermFinanceRepurchaseFuseTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 23,
+            "setUp": {
+                "deploys": [
+                    "MockERC20Decimals",
+                    "MockTermController",
+                    "MockTermRepoLocker",
+                    "MockTermRepoServicer",
+                    "TermFinanceRepurchaseFuseHarness"
+                ],
+                "mutations": [
+                    "vm.prank / vm.startPrank as the vault, executor or role holders the test impersonates",
+                    "vm.warp to move time",
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out Term Finance fuses, balance fuse and libraries behave as written against mock Term controllers, lockers, servicers and repo tokens",
+            "doesNotProve": "anything about Term Finance on a live network or a deployed fuse; the Ethereum fork suites under test/integrationTest/termFinanceEthereum/ cover that"
+        },
+        {
+            "id": "burn-request-fee-voting-regression-test",
+            "group": "fuses-local",
+            "path": "test/vaults/BurnRequestFeeVotingRegressionTest.t.sol",
+            "contracts": [
+                "BurnRequestFeeVotingRegressionTest"
+            ],
+            "fixture": "local-deployment",
+            "chainId": null,
+            "stateProbe": null,
+            "profile": "factory_local",
+            "rpc": null,
+            "block": null,
+            "ffi": false,
+            "tests": 12,
+            "setUp": {
+                "deploys": [
+                    "BurnRequestFeeFuse",
+                    "DelegateCaller",
+                    "MockPlasmaVaultBase",
+                    "VulnerableBurnRequestFeeFuse"
+                ],
+                "mutations": [
+                    "vm.store to seed storage slots directly"
+                ],
+                "externalAddresses": [],
+                "helpers": []
+            },
+            "proves": "the checked-out BurnRequestFeeFuse does not corrupt the vault's voting storage in delegatecall context (the regression the vulnerable copy in the file reproduces)",
+            "doesNotProve": "anything about the deployed BurnRequestFeeFuse or BurnRequestFeeFuseV2"
         }
     ]
 }
