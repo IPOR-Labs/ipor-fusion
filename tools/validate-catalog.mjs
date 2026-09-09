@@ -71,6 +71,15 @@ function checkInterface(where, fusePath, iface) {
 
     for (const operation of operations) {
         const entry = iface[operation];
+        // Operation names are free (enter, exit, claim, claimMainRewards, ...), so the schema
+        // cannot pin their shape; check each against the operation definition here.
+        for (const error of validateSchema(
+            entry,
+            { $defs: schema.$defs, ...schema.$defs.operation },
+            `${where}.${operation}`,
+        )) {
+            errors.push(error);
+        }
         if (!entry || typeof entry !== "object") continue;
         const selector = selectorOf(entry.signature);
         if (selector === null) {
@@ -151,9 +160,18 @@ function checkDeployment(at, contract, marketId) {
     for (const error of validateSchema(contract, { $defs: schema.$defs, ...schema.$defs.deployedContract }, at))
         errors.push(error);
     if (contract.status === "observed") {
-        for (const field of ["address", "observedAtBlock", "runtimeCodeHash", "observedMarketId"]) {
+        for (const field of ["address", "observedAtBlock", "runtimeCodeHash"]) {
             if (contract[field] === null || contract[field] === undefined) {
                 fail(at, `status "observed" requires ${field}`);
+            }
+        }
+        // A contract without MARKET_ID (some reward fuses) cannot report one; the note must say so.
+        if (contract.observedMarketId === null || contract.observedMarketId === undefined) {
+            if (!(contract.notes ?? []).some((note) => /MARKET_ID/.test(note))) {
+                fail(
+                    at,
+                    'status "observed" requires observedMarketId, or a note explaining that the source declares no MARKET_ID',
+                );
             }
         }
         const observed = contract.observedMarketId;

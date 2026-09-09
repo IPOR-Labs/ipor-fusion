@@ -335,7 +335,8 @@
                 "observedMarketId": {
                     "type": ["integer", "string", "null"],
                     "minimum": 1,
-                    "pattern": "^[0-9]+$"
+                    "pattern": "^[0-9]+$",
+                    "description": "MARKET_ID() as read at the observed block. May be null for an observed contract only when the source declares no MARKET_ID, which a note must say."
                 },
                 "matchesCurrentSource": {
                     "type": ["boolean", "null"],
@@ -352,19 +353,10 @@
         },
         "interface": {
             "type": "object",
-            "additionalProperties": false,
+            "additionalProperties": true,
             "required": ["generated"],
-            "description": "The operations a fuse exposes, by name. At least one of enter, exit, claim must be described.",
+            "description": "The operations a fuse exposes, by function name: enter, exit, claim, or another external entry point the fuse defines (e.g. claimMainRewards). Every property except generated is an operation; at least one is required.",
             "properties": {
-                "enter": {
-                    "$ref": "#/$defs/operation"
-                },
-                "exit": {
-                    "$ref": "#/$defs/operation"
-                },
-                "claim": {
-                    "$ref": "#/$defs/operation"
-                },
                 "generated": {
                     "type": ["object", "null"],
                     "description": "Structural data produced from the Solidity sources. Null until a generator fills it; editorial fields are never written there.",

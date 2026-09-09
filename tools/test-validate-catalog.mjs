@@ -151,6 +151,19 @@ for (const scenario of [
         expected: /interface: describes no operation/,
     },
     {
+        name: "an observed deployment without a market id and without a note about it",
+        change: (value) => {
+            value.integrations[0].deployments.actionFuse.observedMarketId = null;
+            value.integrations[0].deployments.actionFuse.notes = ["no explanation"];
+        },
+        expected: /requires observedMarketId, or a note/,
+    },
+    {
+        name: "an operation with a malformed selector",
+        change: (value) => (value.integrations[0].interface.enter.selector = "41b11ae7"),
+        expected: /interface\.enter\.selector.*does not match/,
+    },
+    {
         name: "an unknown property",
         change: (value) => (value.integrations[0].readyToUse = true),
         expected: /unknown property "readyToUse"/,
