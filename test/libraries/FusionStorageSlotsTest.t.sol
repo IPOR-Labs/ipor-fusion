@@ -20,10 +20,16 @@ contract FusionStorageSlotsTest is Test {
     // IporFusionAccessManagersStorageLib
     // ============================================
 
-    function testAccessManager_RedemptionLocksSlot() public pure {
-        bytes32 expected = _computeSlot("io.ipor.managers.access.RedemptionLocks");
-        bytes32 actual = 0x5e07febb5bd598f6b55406c9bf939d497fd39a2dbc2b5891f20f6640c3f32500;
-        assertEq(actual, expected, "REDEMPTION_LOCKS mismatch");
+    function testAccessManager_RedemptionLockStartTimesSlot() public pure {
+        bytes32 expected = _computeSlot("io.ipor.managers.access.RedemptionLockStartTimes");
+        bytes32 actual = 0x83e7bafd2a5059a7a3f8f00883c599ce24355cc422725b4bf7e796d03c954a00;
+        assertEq(actual, expected, "REDEMPTION_LOCK_START_TIMES mismatch");
+    }
+
+    function testAccessManager_RedemptionDelaySlot() public pure {
+        bytes32 expected = _computeSlot("io.ipor.managers.access.RedemptionDelay");
+        bytes32 actual = 0x145eef5574c3cce4d2653445e6a5a4d0b02eafca2d8fced992bac1eca819d500;
+        assertEq(actual, expected, "REDEMPTION_DELAY mismatch");
     }
 
     function testAccessManager_MinimalExecutionDelayForRoleSlot() public pure {

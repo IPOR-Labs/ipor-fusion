@@ -571,6 +571,90 @@ contract FusionFactoryTest is Test {
         assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
     }
 
+    function testShouldOwnerChangeRedemptionDelayAfterVaultCreation() public {
+        // given
+        uint256 redemptionDelay = 123;
+
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+
+        // when - the owner changes the delay through the vault's governance entry point
+        vm.prank(owner);
+        IPlasmaVaultGovernance(instance.plasmaVault).setRedemptionDelay(0);
+
+        // then
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
+
+        // when
+        vm.prank(owner);
+        IPlasmaVaultGovernance(instance.plasmaVault).setRedemptionDelay(7 days);
+
+        // then
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 7 days);
+    }
+
+    function testShouldNotChangeRedemptionDelayDirectlyOnAccessManagerEvenWhenOwner() public {
+        // given - the access manager setter is reserved for the vault (TECH_PLASMA_VAULT_ROLE), the owner must go
+        // through PlasmaVaultGovernance.setRedemptionDelay so the OWNER_ROLE timelock can apply
+        uint256 redemptionDelay = 123;
+
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        // when
+        vm.expectRevert(abi.encodeWithSignature("AccessManagedUnauthorized(address)", owner));
+        vm.prank(owner);
+        accessManager.setRedemptionDelay(0);
+
+        // then
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+    }
+
+    function testShouldNotChangeRedemptionDelayAfterVaultCreationWhenNotOwner() public {
+        // given
+        uint256 redemptionDelay = 123;
+
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        // when
+        vm.expectRevert(abi.encodeWithSignature("AccessManagedUnauthorized(address)", adminOne));
+        vm.prank(adminOne);
+        IPlasmaVaultGovernance(instance.plasmaVault).setRedemptionDelay(0);
+
+        vm.expectRevert(abi.encodeWithSignature("AccessManagedUnauthorized(address)", adminOne));
+        vm.prank(adminOne);
+        accessManager.setRedemptionDelay(0);
+
+        // then
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+    }
+
     function testShouldCreateVaultWithCorrectWithdrawWindow() public {
         // given
         uint256 redemptionDelay = 1 seconds;
@@ -890,7 +974,6 @@ contract FusionFactoryTest is Test {
         assertTrue(instance.rewardsManager != address(0));
         assertTrue(instance.contextManager != address(0));
         assertTrue(instance.feeManager != address(0));
-
     }
 
     function testShouldRevertUpgradeWhenNotOwner() public {
@@ -1755,14 +1838,7 @@ contract FusionFactoryTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
-        fusionFactory.clone(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            10
-        );
+        fusionFactory.clone("Test Asset", "TEST", address(underlyingToken), redemptionDelay, owner, 10);
     }
 
     function testShouldRevertWhenCloneWithInvalidDaoFeePackageIndex() public {
@@ -1771,14 +1847,7 @@ contract FusionFactoryTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLogicLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
-        fusionFactory.clone(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            10
-        );
+        fusionFactory.clone("Test Asset", "TEST", address(underlyingToken), redemptionDelay, owner, 10);
     }
 
     function testShouldCreateVaultWithDifferentDaoFeePackages() public {

@@ -5,11 +5,20 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FuseAction,
+    PlasmaVaultInitData
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuse,
+    CompoundV3SupplyFuseEnterData
+} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PlasmaVaultConfigLib} from "../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {IAavePoolDataProvider} from "../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -444,6 +453,92 @@ contract PlasmaVaultWithdrawTest is Test {
         vm.expectRevert(error);
         vm.prank(userOne);
         plasmaVault.redeem(10e18, userOne, userOne);
+    }
+
+    function testShouldWithdrawImmediatelyWhenOwnerLowersRedemptionDelayToZero() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(7 days);
+
+        userOne = address(0x777);
+
+        amount = 100 * 1e18;
+        sharesAmount = 100 * 10 ** plasmaVault.decimals();
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", block.timestamp + 7 days);
+        vm.expectRevert(error);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        uint256 vaultTotalAssetsBefore = plasmaVault.totalAssets();
+        uint256 userVaultBalanceBefore = plasmaVault.balanceOf(userOne);
+
+        //when - the owner (atomist == address(this) holds OWNER_ROLE) lowers the delay to zero through the
+        //vault's governance entry point, the user withdraws in the same block, without any time passing
+        IPlasmaVaultGovernance(address(plasmaVault)).setRedemptionDelay(0);
+
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        //then
+        uint256 vaultTotalAssetsAfter = plasmaVault.totalAssets();
+        uint256 userVaultBalanceAfter = plasmaVault.balanceOf(userOne);
+
+        assertEq(vaultTotalAssetsBefore - amount, vaultTotalAssetsAfter, "vaultTotalAssetsBefore - amount");
+        assertEq(userVaultBalanceBefore - sharesAmount, userVaultBalanceAfter, "userVaultBalanceBefore - amount");
+        assertEq(vaultTotalAssetsAfter, 0);
+    }
+
+    function testShouldLockExistingDepositorWhenOwnerRaisesRedemptionDelay() public {
+        //given
+        plasmaVault = _preparePlasmaVaultDai(0);
+
+        userOne = address(0x777);
+
+        amount = 100 * 1e18;
+
+        deal(DAI, address(userOne), amount);
+
+        vm.prank(userOne);
+        ERC20(DAI).approve(address(plasmaVault), 3 * amount);
+
+        uint256 depositTimestamp = block.timestamp;
+
+        vm.prank(userOne);
+        plasmaVault.deposit(amount, userOne);
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(
+            IPlasmaVaultGovernance(address(plasmaVault)).getAccessManagerAddress()
+        );
+
+        //when - the owner raises the delay (through the vault) after the deposit was made under a zero delay
+        IPlasmaVaultGovernance(address(plasmaVault)).setRedemptionDelay(10 minutes);
+
+        //then - the lock reaches back to the existing deposit, measured from its own deposit time
+        assertEq(accessManager.getAccountLockTime(userOne), depositTimestamp + 10 minutes);
+
+        bytes memory error = abi.encodeWithSignature("AccountIsLocked(uint256)", depositTimestamp + 10 minutes);
+        vm.expectRevert(error);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        //and - unlocks once the delay elapses from the original deposit
+        vm.warp(depositTimestamp + 10 minutes);
+        vm.prank(userOne);
+        plasmaVault.withdraw(amount, userOne, userOne);
+
+        assertEq(plasmaVault.totalAssets(), 0);
     }
 
     function testShouldNotInstantWithdrawBecauseNoShares() public {

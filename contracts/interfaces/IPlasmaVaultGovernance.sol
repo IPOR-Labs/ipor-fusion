@@ -168,4 +168,13 @@ interface IPlasmaVaultGovernance {
     /// @param rolesIds_ The roles for which the minimal execution delay is set
     /// @param delays_ The minimal execution delays for the specified roles
     function setMinimalExecutionDelaysForRoles(uint64[] calldata rolesIds_, uint256[] calldata delays_) external;
+
+    /// @notice Sets the vault-wide redemption delay - the cooling period between a deposit and the moment
+    /// the depositing account may withdraw, redeem or transfer its shares. The new value governs every
+    /// account immediately, measured from each account's own last deposit.
+    /// @dev Forwards to IporFusionAccessManager.setRedemptionDelay. The owner-facing entry point lives on the
+    /// vault so the call is subject to the OWNER_ROLE execution delay (timelock) like every other governance function.
+    /// @param redemptionDelayInSeconds_ The new redemption delay in seconds, at most
+    /// IporFusionAccessManager.MAX_REDEMPTION_DELAY_IN_SECONDS
+    function setRedemptionDelay(uint256 redemptionDelayInSeconds_) external;
 }

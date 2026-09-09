@@ -5,7 +5,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
-import {RoleToFunction, AdminRole, AccountToRole, InitializationData} from "../../managers/access/IporFusionAccessManagerInitializationLib.sol";
+import {
+    RoleToFunction,
+    AdminRole,
+    AccountToRole,
+    InitializationData
+} from "../../managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {PlasmaVaultGovernance} from "../PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../PlasmaVaultBase.sol";
 import {Roles} from "../../libraries/Roles.sol";
@@ -87,7 +92,7 @@ library IporFusionAccessManagerInitializerLibV1 {
     error InvalidAddress();
 
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 41;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 8;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
@@ -768,10 +773,26 @@ library IporFusionAccessManagerInitializerLibV1 {
             minimalExecutionDelay: 0
         });
 
+        /// @dev Only the vault (TECH_PLASMA_VAULT_ROLE) writes the redemption delay on the access manager - the
+        /// owner-facing entry point is PlasmaVaultGovernance.setRedemptionDelay below, so the OWNER_ROLE timelock applies
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.accessManager,
+            roleId: Roles.TECH_PLASMA_VAULT_ROLE,
+            functionSelector: IporFusionAccessManager.setRedemptionDelay.selector,
+            minimalExecutionDelay: 0
+        });
+
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.OWNER_ROLE,
             functionSelector: PlasmaVaultGovernance.setMinimalExecutionDelaysForRoles.selector,
+            minimalExecutionDelay: 0
+        });
+
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.plasmaVault,
+            roleId: Roles.OWNER_ROLE,
+            functionSelector: PlasmaVaultGovernance.setRedemptionDelay.selector,
             minimalExecutionDelay: 0
         });
 

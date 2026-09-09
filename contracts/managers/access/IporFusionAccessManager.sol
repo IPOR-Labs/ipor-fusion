@@ -7,9 +7,13 @@ import {IIporFusionAccessManager} from "../../interfaces/IIporFusionAccessManage
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import {RedemptionDelayLib} from "./RedemptionDelayLib.sol";
+import {IporFusionAccessManagersStorageLib} from "./IporFusionAccessManagersStorageLib.sol";
 import {PlasmaVault} from "../../vaults/PlasmaVault.sol";
 import {RoleExecutionTimelockLib} from "./RoleExecutionTimelockLib.sol";
-import {IporFusionAccessManagerInitializationLib, InitializationData} from "./IporFusionAccessManagerInitializationLib.sol";
+import {
+    IporFusionAccessManagerInitializationLib,
+    InitializationData
+} from "./IporFusionAccessManagerInitializationLib.sol";
 import {Roles} from "../../libraries/Roles.sol";
 
 /**
@@ -31,6 +35,8 @@ import {Roles} from "../../libraries/Roles.sol";
  * - convertToPublicVault: Restricted to TECH_PLASMA_VAULT_ROLE
  * - enableTransferShares: Restricted to TECH_PLASMA_VAULT_ROLE
  * - setMinimalExecutionDelaysForRoles: Restricted to TECH_PLASMA_VAULT_ROLE
+ * - setRedemptionDelay: Restricted to TECH_PLASMA_VAULT_ROLE (the OWNER_ROLE reaches it through
+ *   PlasmaVaultGovernance.setRedemptionDelay, which is subject to the role's execution delay)
  * - grantRole: Restricted to authorized roles (via onlyAuthorized)
  *
  * Security features:
@@ -45,12 +51,12 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
     error TooShortExecutionDelayForRole(uint64 roleId, uint32 executionDelay);
     error TooLongRedemptionDelay(uint256 redemptionDelayInSeconds);
 
+    /// @notice Emitted when the vault-wide redemption delay is changed
+    /// @param newRedemptionDelayInSeconds The redemption delay in force after the change
+    event RedemptionDelayUpdated(uint256 newRedemptionDelayInSeconds);
+
     /// @notice Maximum allowed redemption delay in seconds (7 days)
     uint256 public constant MAX_REDEMPTION_DELAY_IN_SECONDS = 7 days;
-
-    /// @notice Actual redemption delay in seconds for this instance
-    // solhint-disable-next-line var-name-mixedcase
-    uint256 public override REDEMPTION_DELAY_IN_SECONDS;
 
     /// @dev Flag to track custom schedule consumption
     bool private _customConsumingSchedule;
@@ -88,10 +94,7 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
     /// @param redemptionDelayInSeconds_ The redemption delay in seconds
     /// @dev This method is used by both constructor and proxyInitialize to avoid code duplication
     function _initialize(address initialAdmin_, uint256 redemptionDelayInSeconds_) private {
-        if (redemptionDelayInSeconds_ > MAX_REDEMPTION_DELAY_IN_SECONDS) {
-            revert TooLongRedemptionDelay(redemptionDelayInSeconds_);
-        }
-        REDEMPTION_DELAY_IN_SECONDS = redemptionDelayInSeconds_;
+        _setRedemptionDelay(redemptionDelayInSeconds_);
         _grantRole(ADMIN_ROLE, initialAdmin_, 0, 0);
     }
 
@@ -211,6 +214,21 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
     }
 
     /**
+     * @notice Sets the vault-wide redemption delay
+     * @param redemptionDelayInSeconds_ The new redemption delay in seconds
+     * @dev The new value governs every account immediately - each account's unlock time is computed
+     * at check time as its last deposit timestamp plus the current delay, so lowering the delay
+     * releases existing depositors and raising it extends their locks, measured from their own deposits.
+     * Governance calls it through PlasmaVaultGovernance.setRedemptionDelay - AccessManager cannot schedule
+     * its own custom functions, so a setter restricted here to the OWNER_ROLE could never be timelocked
+     * @custom:access Restricted to TECH_PLASMA_VAULT_ROLE (the PlasmaVault)
+     * @custom:error TooLongRedemptionDelay if redemptionDelayInSeconds_ exceeds MAX_REDEMPTION_DELAY_IN_SECONDS
+     */
+    function setRedemptionDelay(uint256 redemptionDelayInSeconds_) external override restricted {
+        _setRedemptionDelay(redemptionDelayInSeconds_);
+    }
+
+    /**
      * @notice Grants a role to an account with a specified execution delay
      * @param roleId_ The role identifier to grant
      * @param account_ The account to receive the role
@@ -246,10 +264,13 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
     }
 
     /**
-     * @notice Retrieves the lock time for a specific account
+     * @notice Retrieves the effective unlock time for a specific account under the current redemption delay
      * @param account_ The account address to query
-     * @return The timestamp until which the account is locked for redemption operations
-     * @dev Used to enforce redemption delay periods after certain operations
+     * @return The timestamp until which the account is locked for redemption operations, computed as
+     * the account's last deposit timestamp plus the current REDEMPTION_DELAY_IN_SECONDS. May be in the
+     * past when the lock has already expired. Returns 0 when the account never deposited.
+     * @dev Used to enforce redemption delay periods after certain operations. The returned value moves
+     * immediately, in both directions, whenever the redemption delay is changed via setRedemptionDelay.
      * @custom:access No access restrictions - can be called by anyone
      * @custom:security
      * - Part of the redemption delay mechanism
@@ -258,6 +279,18 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
      */
     function getAccountLockTime(address account_) external view override returns (uint256) {
         return RedemptionDelayLib.getAccountLockTime(account_);
+    }
+
+    /**
+     * @notice Retrieves the current vault-wide redemption delay
+     * @return The redemption delay in seconds, changeable by the OWNER_ROLE via PlasmaVaultGovernance.setRedemptionDelay
+     * @dev The value lives in ERC-7201 namespaced storage; the constant-style name is kept for
+     * ABI compatibility with instances deployed when the value was set once at initialization
+     * @custom:access No access restrictions - can be called by anyone
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function REDEMPTION_DELAY_IN_SECONDS() external view override returns (uint256) {
+        return IporFusionAccessManagersStorageLib.getRedemptionDelay();
     }
 
     /**
@@ -272,6 +305,14 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
      */
     function isConsumingScheduledOp() external view override returns (bytes4) {
         return _customConsumingSchedule ? this.isConsumingScheduledOp.selector : bytes4(0);
+    }
+
+    function _setRedemptionDelay(uint256 redemptionDelayInSeconds_) private {
+        if (redemptionDelayInSeconds_ > MAX_REDEMPTION_DELAY_IN_SECONDS) {
+            revert TooLongRedemptionDelay(redemptionDelayInSeconds_);
+        }
+        IporFusionAccessManagersStorageLib.setRedemptionDelay(redemptionDelayInSeconds_);
+        emit RedemptionDelayUpdated(redemptionDelayInSeconds_);
     }
 
     function _grantRoleInternal(uint64 roleId_, address account_, uint32 executionDelay_) internal {
