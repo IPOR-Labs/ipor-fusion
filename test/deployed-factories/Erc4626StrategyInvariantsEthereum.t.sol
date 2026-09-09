@@ -179,6 +179,45 @@ contract Erc4626StrategyInvariantsEthereumTest is Test {
         assertEq(IERC20(USDC).balanceOf(instance.plasmaVault), DEPOSIT - SUPPLIED, "supply within the limit failed");
     }
 
+    /// @dev A6: total assets track yield accruing in the external ERC4626 vault.
+    function testA6ShouldTrackYieldAccruedInTheExternalVault() public {
+        _deposit();
+        _supply(SUPPLIED);
+
+        uint256 externalShares = IERC4626(STEAKHOUSE_USDC).balanceOf(instance.plasmaVault);
+        uint256 valueBefore = IERC4626(STEAKHOUSE_USDC).convertToAssets(externalShares);
+        uint256 totalBefore = IERC4626(instance.plasmaVault).totalAssets();
+
+        // Test-only: let interest accrue. The external vault's share price moves because
+        // Morpho Blue accrues interest from block.timestamp on the pinned state; nothing
+        // else on the fork changes.
+        vm.warp(block.timestamp + ACCRUAL_PERIOD);
+        assertEq(IERC4626(STEAKHOUSE_USDC).balanceOf(instance.plasmaVault), externalShares, "external shares changed");
+
+        uint256 valueAfter = IERC4626(STEAKHOUSE_USDC).convertToAssets(externalShares);
+        assertGt(valueAfter, valueBefore, "the external vault accrued no yield over the period");
+
+        // The market balance is cached; the alpha refreshes it as on a network.
+        uint256[] memory markets = new uint256[](1);
+        markets[0] = IporFusionMarkets.ERC4626_0001;
+        vm.prank(alpha);
+        IPlasmaVault(instance.plasmaVault).updateMarketsBalances(markets);
+
+        // totalAssets() is net of the management fee accrued over the same period, so
+        // the accrual is compared gross of that fee.
+        uint256 totalAfter = IERC4626(instance.plasmaVault).totalAssets();
+        uint256 unrealizedManagementFee = IPlasmaVault(instance.plasmaVault).getUnrealizedManagementFee();
+        assertGt(totalAfter + unrealizedManagementFee, totalBefore, "total assets did not follow the accrual");
+        assertApproxEqAbs(
+            totalAfter + unrealizedManagementFee - totalBefore,
+            valueAfter - valueBefore,
+            TOLERANCE,
+            "accrual not reflected in total assets"
+        );
+        emit log_named_uint("accrued in the external vault (USDC, 6 decimals)", valueAfter - valueBefore);
+        emit log_named_uint("unrealized management fee (USDC, 6 decimals)", unrealizedManagementFee);
+    }
+
     function _deposit() private returns (uint256 shares) {
         // Test-only: the depositor's USDC is dealt, never acquired on a market.
         deal(USDC, depositor, DEPOSIT);
