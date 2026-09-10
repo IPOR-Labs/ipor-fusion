@@ -19,6 +19,7 @@ import { ChainError, callAt, cast, checksum, providerUrl, rpc } from "./lib/chai
 import { startFork } from "./lib/fork.mjs";
 import { InputError, readJsonOrThrow, manifestPathFor, repoRoot } from "./lib/vault-config.mjs";
 import { compareFeeResolution, safeBatch } from "./lib/safe-plan.mjs";
+import { firstArtifactError } from "./lib/artifact-schema.mjs";
 
 function die(code, message) {
     console.error(`vault:safe: ${code}: ${message}`);
@@ -53,9 +54,8 @@ function parseArgs(argv) {
 const args = parseArgs(process.argv.slice(2));
 const planPath = resolve(args["--plan"]);
 const plan = readJsonOrThrow(planPath, "PLAN_UNREADABLE");
-if (plan.kind !== "vault-creation" || plan.status !== "planned") {
-    die("INVALID_PLAN", `${relative(repoRoot, planPath)} is not a planned vault creation`);
-}
+const planError = firstArtifactError(plan, "vault-creation");
+if (planError) die("INVALID_PLAN", `${relative(repoRoot, planPath)} ${planError}`);
 
 let fork;
 const report = await (async () => {

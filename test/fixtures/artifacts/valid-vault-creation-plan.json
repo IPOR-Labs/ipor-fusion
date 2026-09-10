@@ -1,0 +1,52 @@
+{
+    "schemaVersion": 1,
+    "status": "planned",
+    "kind": "vault-creation",
+    "chainId": 1,
+    "deploymentId": "ethereum-fusion-factory-cd05909c",
+    "readBlock": {
+        "number": 25937526,
+        "hash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719"
+    },
+    "input": {
+        "path": "config/vaults/example.json",
+        "sha256": "0xc53f6275529f94d5f5f18a3528fe7962de8504d919a2daf19d1092130c934190"
+    },
+    "transaction": {
+        "to": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+        "from": "0x1111111111111111111111111111111111111111",
+        "value": "0",
+        "data": "0x8697b10a",
+        "operation": "clone(string,string,address,uint256,address,uint256)",
+        "arguments": {
+            "assetName": "Example USDC Vault",
+            "assetSymbol": "exUSDC",
+            "underlyingToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "redemptionDelayInSeconds": "3600",
+            "owner": "0x2222222222222222222222222222222222222222",
+            "daoFeePackageIndex": "0"
+        }
+    },
+    "expected": {
+        "implementation": "0xf19C9954d1e3086C4A5C96314348F49557BA63f5",
+        "factoryVersion": "8",
+        "feePackage": {
+            "source": "dao-global",
+            "index": 0,
+            "managementFeeBps": 5,
+            "performanceFeeBps": 1000,
+            "feeRecipient": "0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569"
+        }
+    },
+    "provider": {
+        "variable": "ETHEREUM_PROVIDER_URL"
+    },
+    "warnings": [
+        "fixture plan; not signed and not broadcast"
+    ],
+    "references": {
+        "manifest": "deployments/1/factories.json",
+        "abi": "abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/FusionFactory.abi.json",
+        "verificationReport": "deployments/reports/ethereum-fusion-factory-cd05909c-25937526.json"
+    }
+}

@@ -21,6 +21,7 @@ import { forkRpc, startFork } from "./lib/fork.mjs";
 import { InputError, readJsonOrThrow, repoRoot } from "./lib/vault-config.mjs";
 import { decodeRevert, loadErrorMap } from "./lib/revert-decoder.mjs";
 import { verifyVaultState } from "./lib/vault-state.mjs";
+import { firstArtifactError } from "./lib/artifact-schema.mjs";
 
 // The deployed ABI does not carry the factory's creation event (it is emitted
 // from a library), so the signature comes from the repository source and is
@@ -88,9 +89,8 @@ try {
     if (!(error instanceof InputError)) throw error;
     die(error.code, error.message);
 }
-if (plan.kind !== "vault-creation" || plan.status !== "planned") {
-    die("INVALID_PLAN", `${relative(repoRoot, input.planPath)} is not a planned vault creation`);
-}
+const planError = firstArtifactError(plan, "vault-creation");
+if (planError) die("INVALID_PLAN", `${relative(repoRoot, input.planPath)} ${planError}`);
 
 let errorMap = {};
 try {
@@ -276,6 +276,9 @@ const report = await (async () => {
 });
 
 fork?.stop();
+
+const artifactError = firstArtifactError(report, "vault-creation-simulation");
+if (artifactError) die("INVALID_ARTIFACT", `generated simulation does not match its schema: ${artifactError}`);
 
 const serialized = `${JSON.stringify(report, null, 4)}\n`;
 if (input.outPath) {

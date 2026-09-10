@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 1,
+    "status": "reverted",
+    "kind": "vault-creation-simulation",
+    "chainId": 1,
+    "deploymentId": "ethereum-fusion-factory-cd05909c",
+    "fork": {
+        "engine": "anvil",
+        "blockNumber": 25937526,
+        "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+        "broadcast": false
+    },
+    "plan": {
+        "path": "plan.json",
+        "sha256": "0x2e6b88ee6cbf7824c399fe2e5d66cac1d8a0dc9cdad569ebab135f197cbe7656",
+        "inputSha256": "0xc53f6275529f94d5f5f18a3528fe7962de8504d919a2daf19d1092130c934190"
+    },
+    "transaction": {
+        "to": "0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852",
+        "from": "0x1111111111111111111111111111111111111111",
+        "value": "0",
+        "localHash": "0x4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "result": {
+        "succeeded": false,
+        "gasUsed": 2500000,
+        "logCount": 0,
+        "revertReason": {
+            "data": "0x",
+            "kind": "empty",
+            "selector": null,
+            "signature": null,
+            "name": null,
+            "arguments": [],
+            "declaredIn": [],
+            "text": "reverted without data",
+            "note": null
+        },
+        "created": null,
+        "creationEvent": null,
+        "verification": null
+    },
+    "provider": {
+        "variable": "ETHEREUM_PROVIDER_URL"
+    },
+    "warnings": [
+        "fixture simulation; no transaction was broadcast"
+    ],
+    "references": {
+        "manifest": "deployments/1/factories.json",
+        "abi": "abi/fusion-factory-ethereum-0xf19c1e9f6616f6056af1e322a86fdaaaaf0263f5/FusionFactory.abi.json"
+    }
+}

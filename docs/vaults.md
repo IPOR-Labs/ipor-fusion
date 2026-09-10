@@ -369,6 +369,36 @@ does not remove it. Anything stronger would need a wrapper contract that checks
 those values in the same transaction, which is a separate design with its own
 tests — and it changes the `msg.sender` the factory sees.
 
+## Validating machine-readable artifacts
+
+The three artifacts exchanged by the creation workflow have versioned JSON
+Schemas. The `kind` field selects the schema; an artifact of another stage is
+never accepted just because some fields happen to overlap.
+
+| Artifact | Producer | Schema |
+| -------- | -------- | ------ |
+| `vault-creation` | `vault:plan` | [`vault-creation-plan.schema.json`](../schemas/artifacts/vault-creation-plan.schema.json) |
+| `vault-creation-simulation` | `vault:simulate` | [`vault-creation-simulation.schema.json`](../schemas/artifacts/vault-creation-simulation.schema.json) |
+| `vault-creation-preflight` | `vault:preflight --json` | [`vault-creation-preflight.schema.json`](../schemas/artifacts/vault-creation-preflight.schema.json) |
+
+Validate saved artifacts without touching a network:
+
+```bash
+npm run validate:artifacts -- plan.json simulation.json preflight.json
+npm run validate:artifacts -- plan.json --json
+```
+
+Exit codes are `0` valid, `1` structurally invalid and `2` missing or unreadable
+input. Producers validate their own report before writing it. Every command that
+consumes a plan (`vault:simulate`, `vault:preflight`, `vault:journal record`,
+`vault:execute` and `vault:safe`) validates the complete plan before an RPC read
+or state-changing attempt. Unknown fields are rejected, so a misspelled or
+unsupported override cannot be silently ignored.
+
+Schema validity proves the artifact's shape, field types and encodings. It does
+not prove that the referenced deployment or chain state is current; planning,
+simulation and preflight provide those separate checks.
+
 ## The execution journal
 
 A creation that is sent and then loses its answer is the one situation where

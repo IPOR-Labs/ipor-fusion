@@ -1,0 +1,32 @@
+{
+    "schemaVersion": 1,
+    "status": "go",
+    "kind": "vault-creation-preflight",
+    "chainId": 1,
+    "deploymentId": "ethereum-fusion-factory-cd05909c",
+    "plan": {
+        "path": "plan.json",
+        "builtAtBlock": 25937526
+    },
+    "readAt": {
+        "blockNumber": 25937526,
+        "blockHash": "0x6b7043c5ff6c350882871b43f4b208e96e50ac1b812e10dbe187954edcbfd719",
+        "head": 25937526
+    },
+    "checks": [
+        {
+            "id": "chain.id",
+            "description": "the provider still serves the plan's chain",
+            "ok": true,
+            "observed": "1",
+            "expected": "1"
+        }
+    ],
+    "simulation": null,
+    "provider": {
+        "variable": "ETHEREUM_PROVIDER_URL"
+    },
+    "residualRisk": [
+        "state can change after this preflight"
+    ]
+}

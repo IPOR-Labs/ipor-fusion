@@ -10,6 +10,7 @@ const repoRoot = resolve(import.meta.dirname, "..");
 const simulator = resolve(repoRoot, "tools/simulate-vault.mjs");
 const planner = resolve(repoRoot, "tools/plan-vault.mjs");
 const example = resolve(repoRoot, "config/vaults/example.json");
+const validPlanFixture = resolve(repoRoot, "test/fixtures/artifacts/valid-vault-creation-plan.json");
 const block = "25937526";
 
 /// The fork tests need a real archive provider; without one they are skipped
@@ -67,17 +68,7 @@ test("a missing provider variable is a named error, not a silent skip", async ()
     const directory = scratch();
     try {
         const path = resolve(directory, "plan.json");
-        writeFileSync(
-            path,
-            JSON.stringify({
-                kind: "vault-creation",
-                status: "planned",
-                chainId: 1,
-                readBlock: { number: Number(block) },
-                transaction: { to: "0x", from: "0x", data: "0x", value: "0" },
-                expected: { implementation: "0x" },
-            }),
-        );
+        writeFileSync(path, readFileSync(validPlanFixture));
         const result = await run(simulator, ["--plan", path], {
             FUSION_ENV_FILE: "/dev/null",
             ETHEREUM_PROVIDER_URL: "",

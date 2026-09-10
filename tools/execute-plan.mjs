@@ -21,6 +21,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { repoRoot } from "./lib/vault-config.mjs";
+import { firstArtifactError } from "./lib/artifact-schema.mjs";
 
 const journalTool = resolve(repoRoot, "tools/execution-journal.mjs");
 const preflightTool = resolve(repoRoot, "tools/preflight-plan.mjs");
@@ -77,9 +78,8 @@ const read = (path, code) => {
 
 const plan = read(planPath, "PLAN_UNREADABLE");
 const scope = read(scopePath, "SCOPE_UNREADABLE");
-if (plan.kind !== "vault-creation" || plan.status !== "planned") {
-    die("INVALID_PLAN", `${relative(repoRoot, planPath)} is not a planned vault creation`);
-}
+const planError = firstArtifactError(plan, "vault-creation");
+if (planError) die("INVALID_PLAN", `${relative(repoRoot, planPath)} ${planError}`);
 
 // The scope is the authorization: anything outside it is refused, whatever the
 // plan says and whoever produced it.

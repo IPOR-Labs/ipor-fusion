@@ -31,6 +31,7 @@ import {
     readJsonOrThrow,
     repoRoot,
 } from "./lib/vault-config.mjs";
+import { firstArtifactError } from "./lib/artifact-schema.mjs";
 
 function die(code, message) {
     console.error(`vault:plan: ${code}: ${message}`);
@@ -217,6 +218,9 @@ const plan = await (async () => {
     if (!(error instanceof ChainError) && !(error instanceof InputError)) throw error;
     die(error.code, error.message);
 });
+
+const artifactError = firstArtifactError(plan, "vault-creation");
+if (artifactError) die("INVALID_ARTIFACT", `generated plan does not match its schema: ${artifactError}`);
 
 const serialized = `${JSON.stringify(plan, null, 4)}\n`;
 if (input.outPath) {

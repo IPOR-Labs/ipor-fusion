@@ -1,0 +1,85 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/IPOR-Labs/ipor-fusion/schemas/artifacts/vault-creation-preflight.schema.json",
+    "title": "IPOR Fusion vault creation preflight report",
+    "description": "Current-state checks and optional re-simulation result produced immediately before execution.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "schemaVersion",
+        "status",
+        "kind",
+        "chainId",
+        "deploymentId",
+        "plan",
+        "readAt",
+        "checks",
+        "simulation",
+        "provider",
+        "residualRisk"
+    ],
+    "properties": {
+        "schemaVersion": { "type": "integer", "enum": [1] },
+        "status": { "type": "string", "enum": ["go", "stop"] },
+        "kind": { "type": "string", "enum": ["vault-creation-preflight"] },
+        "chainId": { "type": "integer", "minimum": 1 },
+        "deploymentId": { "$ref": "#/$defs/id" },
+        "plan": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "builtAtBlock"],
+            "properties": {
+                "path": { "$ref": "#/$defs/path" },
+                "builtAtBlock": { "type": "integer", "minimum": 0 }
+            }
+        },
+        "readAt": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["blockNumber", "blockHash", "head"],
+            "properties": {
+                "blockNumber": { "type": "integer", "minimum": 0 },
+                "blockHash": { "$ref": "#/$defs/hash" },
+                "head": { "type": "integer", "minimum": 0 }
+            }
+        },
+        "checks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/check" } },
+        "simulation": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["status", "blockNumber", "gasUsed", "verified"],
+            "properties": {
+                "status": { "type": "string", "enum": ["success", "reverted", "unverified"] },
+                "blockNumber": { "type": "integer", "minimum": 0 },
+                "gasUsed": { "type": "integer", "minimum": 0 },
+                "verified": { "type": ["boolean", "null"] }
+            }
+        },
+        "provider": { "$ref": "#/$defs/provider" },
+        "residualRisk": { "$ref": "#/$defs/messages" }
+    },
+    "$defs": {
+        "hash": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "path": { "type": "string", "minLength": 1 },
+        "messages": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "provider": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["variable"],
+            "properties": { "variable": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } }
+        },
+        "check": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "description", "ok", "observed", "expected"],
+            "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "description": { "type": "string", "minLength": 1 },
+                "ok": { "type": "boolean" },
+                "observed": { "type": "string" },
+                "expected": { "type": "string" }
+            }
+        }
+    }
+}

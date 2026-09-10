@@ -19,6 +19,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { relative, resolve } from "node:path";
 import { ChainError, checksum, providerUrl, rpc } from "./lib/chain.mjs";
 import { InputError, readJsonOrThrow, repoRoot } from "./lib/vault-config.mjs";
+import { firstArtifactError } from "./lib/artifact-schema.mjs";
 
 const journalRoot = resolve(process.env.FUSION_JOURNAL_DIR ?? resolve(repoRoot, ".fusion/journal"));
 const settled = new Set(["confirmed", "reverted"]);
@@ -95,9 +96,8 @@ try {
         if (!values["--plan"]) die("INVALID_ARGUMENT", "missing --plan");
         const planPath = resolve(values["--plan"]);
         const plan = readJsonOrThrow(planPath, "PLAN_UNREADABLE");
-        if (plan.kind !== "vault-creation" || plan.status !== "planned") {
-            die("INVALID_PLAN", `${relative(repoRoot, planPath)} is not a planned vault creation`);
-        }
+        const planError = firstArtifactError(plan, "vault-creation");
+        if (planError) die("INVALID_PLAN", `${relative(repoRoot, planPath)} ${planError}`);
         const planHash = `0x${createHash("sha256").update(readFileSync(planPath)).digest("hex")}`;
 
         // One unsettled entry per plan and caller: preparing a second send while

@@ -49,6 +49,8 @@
         "revert:decode:test": "node --test tools/test-decode-revert.mjs",
         "validate:vault-config": "node tools/validate-vault-config.mjs",
         "validate:vault-config:test": "node --test tools/test-validate-vault-config.mjs",
+        "validate:artifacts": "node tools/validate-artifacts.mjs",
+        "validate:artifacts:test": "node --test tools/test-validate-artifacts.mjs",
         "vault:plan": "node tools/plan-vault.mjs",
         "vault:plan:test": "node --test tools/test-plan-vault.mjs",
         "vault:simulate": "node tools/simulate-vault.mjs",

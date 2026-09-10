@@ -17,6 +17,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { ChainError, callAt, checksum, providerUrl, rpc } from "./lib/chain.mjs";
 import { configHash, InputError, manifestPathFor, readJsonOrThrow, repoRoot } from "./lib/vault-config.mjs";
+import { firstArtifactError } from "./lib/artifact-schema.mjs";
 
 function die(code, message) {
     console.error(`vault:preflight: ${code}: ${message}`);
@@ -56,9 +57,8 @@ function parseArgs(argv) {
 
 const input = parseArgs(process.argv.slice(2));
 const plan = readJsonOrThrow(input.planPath, "PLAN_UNREADABLE");
-if (plan.kind !== "vault-creation" || plan.status !== "planned") {
-    die("INVALID_PLAN", `${relative(repoRoot, input.planPath)} is not a planned vault creation`);
-}
+const planError = firstArtifactError(plan, "vault-creation");
+if (planError) die("INVALID_PLAN", `${relative(repoRoot, input.planPath)} ${planError}`);
 
 const report = await (async () => {
     const checks = [];
@@ -248,6 +248,9 @@ const report = await (async () => {
     if (!(error instanceof ChainError) && !(error instanceof InputError)) throw error;
     die(error.code, error.message);
 });
+
+const artifactError = firstArtifactError(report, "vault-creation-preflight");
+if (artifactError) die("INVALID_ARTIFACT", `generated preflight does not match its schema: ${artifactError}`);
 
 if (input.asJson) {
     process.stdout.write(`${JSON.stringify(report, null, 4)}\n`);
