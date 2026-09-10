@@ -9,8 +9,8 @@
 // second implementation. Nothing here can sign or send a transaction: the server
 // reads manifests and, for inspect_factory, runs the read-only inspector.
 //
-// The existing ipor-fusion MCP server (fusion_address_lookup, contract_abi,
-// contract_source, …) remains the discovery source. It does not serve this
+// The public IPOR Fusion MCP server (fusion_address_lookup and the other
+// read-only vault queries) remains the discovery source. It does not serve this
 // repository's manifests, verification reports or compatibility tests, which is
 // why these two tools exist; see docs/mcp.md.
 

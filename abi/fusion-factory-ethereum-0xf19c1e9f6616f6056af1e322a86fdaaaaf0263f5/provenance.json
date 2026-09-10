@@ -23,11 +23,10 @@
         "explorerProxyFlag": false
     },
     "source": {
-        "server": "ipor-fusion-dev",
+        "addressLookup": "fusion_address_lookup on the public IPOR Fusion MCP server (https://mcp.ipor.io/mcp)",
         "sdkVersion": "3.6.7",
         "repository": "https://github.com/IPOR-Labs/ipor-fusion.py",
-        "sourceTool": "contract_source",
-        "abiTool": "contract_abi",
+        "explorer": "Etherscan (chain 1)",
         "upstream": "verified explorer source and ABI"
     },
     "abi": {

@@ -16,8 +16,9 @@ evidence, not a deployment manifest and not permission to transact.
 | Implementation address  | `0xf19C1E9f6616F6056AF1e322A86fDaAaAf0263f5`       |
 | Status                  | **verified at Ethereum block `25937526`**          |
 
-The source is the `fusion_address_lookup` deployment lookup exposed by
-`ipor-fusion-dev`, running IPOR Fusion SDK `3.6.7`. On 2026-09-09
+The source is the `fusion_address_lookup` deployment lookup exposed by the
+public IPOR Fusion MCP server (`https://mcp.ipor.io/mcp`, IPOR Fusion SDK
+`3.6.7`). On 2026-09-09
 (Europe/Warsaw), a case-insensitive `FusionFactory` name query restricted to
 chain 1 returned exactly the proxy and implementation rows above. A separate
 exact-address query returned one match for the proxy. The captured, non-secret
@@ -46,7 +47,7 @@ Keep the layers separate:
 | Source                                                              | Data accepted from it                                                                       | Data not inferred from it                                                                       |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `fusion_address_lookup` / its deployment dataset                    | Network, registry name and address used to discover a candidate.                            | Current proxy slot, runtime bytecode, deployment transaction, roles, fees or ABI compatibility. |
-| Verified explorer source through `contract_source` / `contract_abi` | Compiler metadata, verified source and ABI for the addressed deployed version.              | Current mutable configuration or authorization.                                                 |
+| Verified block-explorer source and ABI (Etherscan, Basescan)        | Compiler metadata, verified source and ABI for the addressed deployed version.              | Current mutable configuration or authorization.                                                 |
 | Local `deployments/<chain-id>/factories.json`                       | Reviewed identity, provenance, ABI reference, hashes, dependencies and evidence references. | Live state beyond the manifest's recorded block.                                                |
 | Direct RPC reads (`factory:inspect`)                                | Code, implementation, components, caller-specific fees and roles at a named block.          | Permanent truth after that block.                                                               |
 

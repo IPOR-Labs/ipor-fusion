@@ -6,14 +6,12 @@ CLI.
 
 ## What the existing server already does
 
-The IPOR Fusion MCP server (`ipor-fusion-dev`, SDK `3.6.7`) is the **discovery**
-source and stays that way. It answers:
-
-- `fusion_address_lookup` / `fusion_address_names` — which addresses exist, by
-  name or address, per chain;
-- `contract_abi` / `contract_source` — the verified explorer ABI and source for
-  an address;
-- vault, keeper and market queries.
+The public IPOR Fusion MCP server (`https://mcp.ipor.io/mcp`, served by the
+IPOR Fusion SDK, `3.6.7` at the time of capture) is the **discovery** source and
+stays that way. It answers `fusion_address_lookup` — which addresses exist, by
+name or address, per chain — together with its other read-only vault queries.
+The verified ABI and source of an address come from the block explorer
+(Etherscan, Basescan) for that network.
 
 What it does not answer is this repository's evidence: which deployments **we**
 registered, at which block they were verified, against which ABI file and hash,
