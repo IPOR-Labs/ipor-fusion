@@ -1,8 +1,0 @@
-build(format): T05 add a non-mutating format check
-
-Add a format:check npm script that checks Solidity contracts and tests with
-the project's current Prettier configuration without rewriting files. Keep
-the existing formatting commands as explicit, separate write operations.
-
-Verified passing and failing fixtures preserve their hashes, and confirmed
-the full check reports existing formatting drift without modifying sources.

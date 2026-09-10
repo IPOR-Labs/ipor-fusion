@@ -1,8 +1,0 @@
-build(format): T06 align pre-commit formatter versions
-
-Align the pre-commit hook with the Prettier and Solidity plugin versions
-already pinned in package.json. Keep the hook harness and formatting scope
-unchanged.
-
-Verified the local formatter and isolated pre-commit hook produce identical
-output from the same unformatted Solidity sample.

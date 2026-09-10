@@ -2,7 +2,7 @@
     "capturedAt": "2026-09-09",
     "timezone": "Europe/Warsaw",
     "source": {
-        "server": "ipor-fusion-dev",
+        "server": "IPOR Fusion MCP (https://mcp.ipor.io/mcp)",
         "sdkVersion": "3.6.7",
         "repository": "https://github.com/IPOR-Labs/ipor-fusion.py",
         "tool": "fusion_address_lookup"

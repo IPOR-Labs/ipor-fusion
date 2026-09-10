@@ -34,10 +34,8 @@ therefore safe.
 ### What the documentation check covers
 
 `validate:docs` reads the files this repository ships — `docs/`, the root
-`README.md`, every `AGENTS.md` and `evals/` — taken from what git tracks or would
-track. Private notes ignored under `docs/` are out of scope by construction, and
-`agent-readiness/tasks/` is excluded because those per-task logs quote paths as
-prose.
+`README.md` and every `AGENTS.md` — taken from what git tracks or would track.
+Private notes ignored under `docs/` are out of scope by construction.
 
 It resolves every relative link and, for links into Markdown files, checks that
 the `#anchor` is a real heading there. External links are counted and never

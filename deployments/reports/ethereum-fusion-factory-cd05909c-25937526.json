@@ -48,7 +48,7 @@
         "reportedFactoryVersion": 8
     },
     "reads": {
-        "source": "agent-readiness/tasks/T24/factory-inspection.json",
+        "source": "deployments/evidence/ethereum-fusion-factory-inspection-25937526.json",
         "reproducedAt": "2026-09-09T06:30:09Z",
         "reproducedIdentically": true,
         "caller": "0x1111111111111111111111111111111111111111",

@@ -17,7 +17,7 @@
             "provenance": {
                 "addressSource": {
                     "kind": "fusion-address-lookup",
-                    "reference": "agent-readiness/tasks/T20/address-lookup.json",
+                    "reference": "deployments/evidence/ethereum-fusion-factory-address-lookup-2026-09-09.json",
                     "capturedAt": "2026-09-09"
                 },
                 "deploymentTransaction": null,

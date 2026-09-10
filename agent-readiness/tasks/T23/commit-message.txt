@@ -1,8 +1,0 @@
-feat(deployments): T23 register the pilot factory candidate
-
-Add the first production factory manifest for the Ethereum FusionFactory pilot.
-Record only the lookup-backed proxy identity, explorer-linked implementation,
-deployed compiler metadata and implementation-bound ABI.
-
-Keep the entry at candidate status with unknown deployment provenance, runtime
-hashes, dependencies and verification evidence explicitly null or empty.

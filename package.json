@@ -34,8 +34,6 @@
         "validate:deployments:test": "node --test tools/test-validate-deployments.mjs",
         "validate:pilot-abi": "node tools/validate-pilot-factory-abi.mjs",
         "validate:docs": "node tools/validate-docs.mjs",
-        "evals:report": "node tools/evals-report.mjs",
-        "evals:report:test": "node --test tools/test-evals-report.mjs",
         "validate:docs:test": "node --test tools/test-validate-docs.mjs",
         "validate:catalog": "node tools/validate-catalog.mjs",
         "catalog:generate": "node tools/generate-catalog.mjs",

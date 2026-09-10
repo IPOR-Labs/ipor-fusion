@@ -1,7 +1,7 @@
 # Deployment sources and factory pilot
 
 This document records where deployment identities come from and selects the
-first network–factory pair for the agent-readiness pilot. It is discovery
+first network–factory pair for the factory pilot. It is discovery
 evidence, not a deployment manifest and not permission to transact.
 
 ## Selected pilot
@@ -22,7 +22,7 @@ The source is the `fusion_address_lookup` deployment lookup exposed by
 chain 1 returned exactly the proxy and implementation rows above. A separate
 exact-address query returned one match for the proxy. The captured, non-secret
 responses are in
-[`../agent-readiness/tasks/T20/address-lookup.json`](../agent-readiness/tasks/T20/address-lookup.json).
+[`../deployments/evidence/ethereum-fusion-factory-address-lookup-2026-09-09.json`](../deployments/evidence/ethereum-fusion-factory-address-lookup-2026-09-09.json).
 
 The proxy address independently appears as a configuration source in both
 classified factory fork fixtures:
@@ -35,8 +35,8 @@ deployment can create a vault. The RPC doctor also proved only that non-empty
 code was readable at this address on block `23831825`.
 
 Ethereum is selected because the repository already has a pinned archive-state
-fixture at block `23831825`, the configured provider served that state during
-T18, and the deployment lookup names both a proxy and an implementation. This
+fixture at block `23831825`, the configured provider served that state in the
+fork suite, and the deployment lookup names both a proxy and an implementation. This
 does not assume that the deployed interface matches the current checkout.
 
 ## Source responsibilities
@@ -47,8 +47,8 @@ Keep the layers separate:
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `fusion_address_lookup` / its deployment dataset                    | Network, registry name and address used to discover a candidate.                            | Current proxy slot, runtime bytecode, deployment transaction, roles, fees or ABI compatibility. |
 | Verified explorer source through `contract_source` / `contract_abi` | Compiler metadata, verified source and ABI for the addressed deployed version.              | Current mutable configuration or authorization.                                                 |
-| Local `deployments/<chain-id>/factories.json` (from T23 onward)     | Reviewed identity, provenance, ABI reference, hashes, dependencies and evidence references. | Live state beyond the manifest's recorded block.                                                |
-| Direct RPC reads (`factory:inspect` from T24 onward)                | Code, implementation, components, caller-specific fees and roles at a named block.          | Permanent truth after that block.                                                               |
+| Local `deployments/<chain-id>/factories.json`                       | Reviewed identity, provenance, ABI reference, hashes, dependencies and evidence references. | Live state beyond the manifest's recorded block.                                                |
+| Direct RPC reads (`factory:inspect`)                                | Code, implementation, components, caller-specific fees and roles at a named block.          | Permanent truth after that block.                                                               |
 
 The local repository will maintain the versioned ABI, manifest, hashes and
 reproducible verification report. It will not copy the whole upstream address
@@ -135,15 +135,15 @@ timing and both global and caller-effective fee packages. Failures distinguish
 at least `CHAIN_MISMATCH`, `NO_CODE`, `IMPLEMENTATION_MISMATCH` and
 `UNSUPPORTED_FACTORY_VERSION`.
 
-The captured T24 observation is
-[`../agent-readiness/tasks/T24/factory-inspection.json`](../agent-readiness/tasks/T24/factory-inspection.json).
+The captured factory inspection is
+[`../deployments/evidence/ethereum-fusion-factory-inspection-25937526.json`](../deployments/evidence/ethereum-fusion-factory-inspection-25937526.json).
 It is pinned to Ethereum block `25937526` and caller `0x1111…1111`. The report
 shows factory version 8 and the expected implementation, but the inspector
 itself never mutates or promotes a manifest entry; promotion is the separate,
 reviewed step recorded below. An inspection at block `23831825` instead reports an implementation
 mismatch because the proxy still pointed to an older implementation there.
 
-The T25 deployed-usage test exercises the same identity without replacing or
+The deployed-usage test exercises the same identity without replacing or
 upgrading it:
 
 ```bash
@@ -169,7 +169,7 @@ records four things that were actually observed at that block:
 1. proxy and implementation runtime code hashes, the ERC-1967 slot value and the
    ABI hash bound to that implementation;
 2. reported factory version `8`, component addresses, timing and both fee
-   package sets, reproduced identically to the T24 capture;
+   package sets, reproduced identically to the captured inspection;
 3. non-empty runtime code with its hash at all sixteen component addresses; and
 4. the deployed-usage compatibility test, its file hash and its passing result
    without any upgrade, code replacement, role grant or broadcast.

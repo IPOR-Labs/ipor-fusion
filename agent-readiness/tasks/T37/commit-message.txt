@@ -1,9 +1,0 @@
-docs(testing): T37 map pilot invariants to evidence
-
-Add docs/invariants.md: the accounting, fee, withdrawal and permission
-properties the pilot path relies on, each labelled tested or postulated, with the
-test that proves it and the tolerance that test accepts.
-
-Twelve properties are tested, eleven are postulated; the four gaps that matter
-most for an agent working from this repository are listed as separate tasks, not
-hidden as footnotes.

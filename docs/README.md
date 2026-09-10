@@ -89,10 +89,3 @@ List the integration documents that exist in the current checkout:
 ```bash
 git ls-files 'contracts/**/README.md'
 ```
-
-## Related, but not documentation
-
-- [`../agent-readiness/`](../agent-readiness/) — the plan and task log for making
-  this repository workable by AI agents. Process files, written in Polish.
-- [`../evals/agent-readiness/`](../evals/agent-readiness/) — the measurement suite
-  that checks whether that work had an effect.

@@ -8,10 +8,9 @@
 // Exit codes: 0 valid, 1 invalid, 2 could not read an input file.
 //
 // Scope: the documentation this repository ships — docs/, the root README and
-// every AGENTS.md — plus evals/, taken from the files git would keep (tracked,
-// or untracked and not ignored). Private, ignored notes under docs/ are none of
-// this check's business, and agent-readiness/tasks/ holds per-task process logs
-// that quote paths as prose rather than linking them.
+// every AGENTS.md — taken from the files git would keep (tracked, or untracked
+// and not ignored). Private, ignored notes under docs/ are none of this check's
+// business.
 // External links are listed, never fetched: this must work offline.
 
 import { spawnSync } from "node:child_process";
@@ -32,7 +31,7 @@ function gitFiles() {
     return result.stdout.split("\n").filter(Boolean);
 }
 
-const shipped = [/^docs\//, /^README\.md$/, /(^|\/)AGENTS\.md$/, /^evals\//];
+const shipped = [/^docs\//, /^README\.md$/, /(^|\/)AGENTS\.md$/];
 const inputs =
     process.argv.length > 2
         ? process.argv.slice(2).map((path) => relative(repoRoot, resolve(path)))

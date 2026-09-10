@@ -13,9 +13,8 @@ control, and assets managed on-chain, so prefer evidence from code and tests ove
   [contracts/vaults/README.md](contracts/vaults/README.md) is supplementary and may describe historical components.
 - Treat source code, tests, and tracked artifacts as repository truth. Private notes or agent memory are not required.
 - The deployment schema, one `candidate` production manifest and its implementation-bound ABI are tracked. No vault
-  config or factory recipe is tracked yet. Their rollout is planned in
-  [agent-readiness/PLAN.md](agent-readiness/PLAN.md); do not invent missing values or promote a deployment without the
-  required evidence. Validate with `npm run validate:deployments` and `npm run validate:pilot-abi`.
+  config or factory recipe is tracked yet. Do not invent missing values or promote a deployment without the required
+  evidence recorded under `deployments/`. Validate with `npm run validate:deployments` and `npm run validate:pilot-abi`.
 - Absence from this checkout does not prove that a contract is not deployed. Use a maintained registry or an on-chain
   read, and record its source, network, and block when deployment identity matters.
 
@@ -32,7 +31,6 @@ control, and assets managed on-chain, so prefer evidence from code and tests ove
 - `contracts/libraries/` and `contracts/interfaces/`: shared storage, math, errors, markets, and public interfaces.
 - `test/`: tests organized mostly like `contracts/`; shared fixtures and builders are under `test/test_helpers/`.
 - `docs/`: selectively tracked, team-facing documentation. Follow its index when adding a document.
-- `agent-readiness/`: implementation plan and task evidence, not product or deployment documentation.
 
 Directory-level instructions exist in `contracts/vaults/AGENTS.md`, `contracts/managers/AGENTS.md`,
 `contracts/price_oracle/AGENTS.md`, `contracts/factory/AGENTS.md`, `contracts/fuses/AGENTS.md` and `test/AGENTS.md`. Read

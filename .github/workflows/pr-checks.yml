@@ -91,7 +91,6 @@ jobs:
                   npm run keccak:test
                   npm run revert:decode:test
                   npm run validate:docs:test
-                  npm run evals:report:test
                   npm run mcp:deployments:test
                   npm run catalog:generate:test
                   npm run factory:inspect:test

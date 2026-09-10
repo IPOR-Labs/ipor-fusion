@@ -1,8 +1,0 @@
-build(deps): T03 use reproducible dependency installation
-
-Use npm ci locally and in CI so package-lock.json controls the installed Node
-dependency tree. Document recursive initialization of the Git-pinned submodules
-and how to recover a checkout with missing submodule contents.
-
-Verified a clean npm ci without lockfile changes and initialized every recursive
-submodule at its recorded commit in a fresh writable clone.

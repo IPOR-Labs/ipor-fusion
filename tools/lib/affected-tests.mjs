@@ -3,8 +3,6 @@ import { dirname, relative, resolve, sep } from "node:path";
 
 const documentationOnly = [
     /^docs\//,
-    /^agent-readiness\//,
-    /^evals\//,
     /(^|\/)AGENTS\.md$/,
     /^README\.md$/,
     /^CLAUDE\.md$/,

@@ -1,8 +1,0 @@
-docs(architecture): T09 map vault execution and storage
-
-Add a current PlasmaVault architecture map covering clone and delegatecall
-boundaries, direct and fallback entry points, namespaced storage, external
-managers, and verified deposit, execute, and fallback call traces.
-
-Link the map from the repository instructions and documentation index, and
-mark the older vault overview's removed ERC4626 view component as historical.

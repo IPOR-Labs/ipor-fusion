@@ -1,9 +1,0 @@
-feat(factory): T24 inspect deployed factory identity and configuration
-
-Add a read-only, block-pinned inspector for the pilot FusionFactory. Verify
-provider chain, proxy and implementation code, ERC-1967 identity and the
-version-bound ABI before decoding components, timing and fee packages.
-
-Capture one Ethereum observation without promoting the candidate manifest, and
-cover distinct chain, missing-code, implementation and interface failures with
-redacted mock-RPC tests.
