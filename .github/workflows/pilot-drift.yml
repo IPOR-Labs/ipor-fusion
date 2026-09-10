@@ -1,4 +1,4 @@
-# Scheduled drift detection for the verified pilot deployment.
+# Scheduled drift detection for every verified deployment in the registry.
 #
 # It reads a live network, so it needs the RPC secret and must never run an
 # untrusted pull request's code: it is triggered only by the schedule and by a
@@ -6,7 +6,7 @@
 #
 # The job reports; it never rewrites the manifest, never promotes a new version
 # and never touches the pinned blocks that historical fixtures use.
-name: Pilot deployment drift
+name: Verified deployment drift
 
 on:
     schedule:
@@ -16,8 +16,11 @@ on:
     workflow_dispatch:
         inputs:
             block:
-                description: "Block to read (number, finalized or latest)"
-                type: string
+                description: "Block tag to read on every network"
+                type: choice
+                options:
+                    - finalized
+                    - latest
                 default: "finalized"
                 required: false
 
@@ -26,7 +29,7 @@ permissions:
 
 jobs:
     drift:
-        name: Pilot factory against its confirmed state
+        name: All verified deployments against confirmed state
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
@@ -48,10 +51,11 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Compare the pilot factory with its confirmed state
+            - name: Compare every verified deployment with its confirmed state
               id: drift
               env:
                   ETHEREUM_PROVIDER_URL: ${{ secrets.ETHEREUM_PROVIDER_URL }}
+                  BASE_PROVIDER_URL: ${{ secrets.BASE_PROVIDER_URL }}
               # 0 unchanged, 1 drift, 2 the comparison could not be made.
               run: |
                   set +e
@@ -63,18 +67,18 @@ jobs:
               # from tag: v4.6.0
               uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
               with:
-                  name: pilot-drift-report
+                  name: verified-deployments-drift-report
                   path: drift-report.json
                   if-no-files-found: ignore
 
             - name: Fail on drift, and say so distinctly
               if: steps.drift.outputs.exit-code == '1'
               run: |
-                  echo "::error title=Pilot deployment drift::The verified pilot deployment no longer matches its confirmed state. Review the artifact, re-verify and update the manifest by hand — nothing here promotes a new version."
+                  echo "::error title=Verified deployment drift::At least one verified deployment no longer matches its confirmed state. Review the batch artifact, re-verify and update the manifest by hand — nothing here promotes a new version."
                   exit 1
 
             - name: Fail on an unusable comparison, separately
               if: steps.drift.outputs.exit-code == '2'
               run: |
-                  echo "::error title=Drift check unavailable::The comparison could not be made (provider, block or artifact). This is not evidence that the deployment changed; see docs/troubleshooting.md."
+                  echo "::error title=Drift check incomplete::At least one verified deployment could not be compared (provider, block or artifact). This is not evidence that it changed; inspect the batch artifact and see docs/troubleshooting.md."
                   exit 1

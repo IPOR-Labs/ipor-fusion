@@ -88,7 +88,7 @@ Walk it in order. Each step names the command that produces the evidence.
    ```bash
    npm run test:unit
    npm run test:fork -- --chain <id> --suite <suite> --block <block>
-   npm run deployments:drift         # 0 unchanged, 1 drift, 2 comparison unavailable
+   npm run deployments:drift         # all verified entries: 0 unchanged, 1 drift, 2 incomplete
    ```
 
 10. **Name the block and the date in the pull request.** A registry change that

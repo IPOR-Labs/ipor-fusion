@@ -9,11 +9,13 @@ import { test } from "node:test";
 const repoRoot = resolve(import.meta.dirname, "..");
 const detector = resolve(repoRoot, "tools/detect-drift.mjs");
 const realManifest = JSON.parse(readFileSync(resolve(repoRoot, "deployments/1/factories.json"), "utf8"));
+const baseManifest = JSON.parse(readFileSync(resolve(repoRoot, "deployments/8453/factories.json"), "utf8"));
 const proxy = realManifest.deployments[0].address;
 const implementation = realManifest.deployments[0].proxy.implementation;
 const realReport = JSON.parse(
     readFileSync(resolve(repoRoot, "deployments/reports/ethereum-fusion-factory-cd05909c-25937526.json"), "utf8"),
 );
+const pilotSelection = ["--chain", "1", "--deployment", realManifest.deployments[0].id];
 
 function cast(args) {
     const result = spawnSync("cast", args, { cwd: repoRoot, encoding: "utf8" });
@@ -142,13 +144,127 @@ function chainAt({ slot = implementation, codeMap = code, version = 8, addresses
     };
 }
 
-async function scenario(handler, args = ["--json"]) {
+async function scenario(handler, args = [...pilotSelection, "--json"]) {
     const scratch = mkdtempSync(resolve(tmpdir(), "fusion-drift-"));
     registry(scratch);
     try {
         let outcome;
         await withRpc(handler, async (url) => {
             outcome = await invoke(args, { ETHEREUM_PROVIDER_URL: url, FUSION_DEPLOYMENTS_DIR: scratch });
+        });
+        return outcome;
+    } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+}
+
+function batchRegistry(scratch) {
+    const states = new Map();
+    let codeIndex = 64;
+    for (const source of [realManifest, baseManifest]) {
+        const manifest = JSON.parse(JSON.stringify(source));
+        const state = { deployments: manifest.deployments, code: new Map() };
+        states.set(manifest.chainId, state);
+        mkdirSync(resolve(scratch, String(manifest.chainId)), { recursive: true });
+
+        for (const deployment of manifest.deployments) {
+            const originalReport = JSON.parse(
+                readFileSync(resolve(repoRoot, deployment.verification.reportPath), "utf8"),
+            );
+            const proxyCode = `0x60${codeIndex.toString(16)}`;
+            codeIndex += 1;
+            const implementationCode = `0x60${codeIndex.toString(16)}`;
+            codeIndex += 1;
+            state.code.set(deployment.address.toLowerCase(), proxyCode);
+            state.code.set(deployment.proxy.implementation.toLowerCase(), implementationCode);
+
+            const reportComponents =
+                deployment.kind === "price-feed-factory"
+                    ? (originalReport.reads?.components?.entries ?? []).map((component) => {
+                          const componentCode = `0x60${codeIndex.toString(16)}`;
+                          codeIndex += 1;
+                          state.code.set(component.address.toLowerCase(), componentCode);
+                          return { ...component, runtimeCodeHash: cast(["keccak", componentCode]) };
+                      })
+                    : [];
+
+            const reportPath = resolve(scratch, `${deployment.id}.json`);
+            writeFileSync(
+                reportPath,
+                `${JSON.stringify(
+                    {
+                        schemaVersion: 1,
+                        blockNumber: deployment.verification.blockNumber,
+                        identity: {
+                            proxy: {
+                                address: deployment.address,
+                                runtimeCodeHash: cast(["keccak", proxyCode]),
+                            },
+                            implementation: {
+                                address: deployment.proxy.implementation,
+                                runtimeCodeHash: cast(["keccak", implementationCode]),
+                            },
+                            reportedFactoryVersion: deployment.interface.reportedVersion,
+                        },
+                        reads: { components: { entries: reportComponents } },
+                    },
+                    null,
+                    4,
+                )}\n`,
+            );
+            deployment.verification.reportPath = reportPath;
+        }
+        writeFileSync(
+            resolve(scratch, String(manifest.chainId), "factories.json"),
+            `${JSON.stringify(manifest, null, 4)}\n`,
+        );
+    }
+    return states;
+}
+
+function batchChainAt(chainId, state, codeMap = state.code) {
+    return (request) => {
+        if (request.method === "eth_chainId") return ok(`0x${chainId.toString(16)}`);
+        if (request.method === "eth_getBlockByNumber") {
+            return ok({ hash: `0x${chainId.toString(16).padStart(64, "0")}`, number: "0x1e240" });
+        }
+        if (request.method === "eth_getStorageAt") {
+            const address = String(request.params[0]).toLowerCase();
+            const deployment = state.deployments.find((entry) => entry.address.toLowerCase() === address);
+            if (!deployment) return undefined;
+            return ok(`0x${"0".repeat(24)}${deployment.proxy.implementation.slice(2)}`);
+        }
+        if (request.method === "eth_getCode") {
+            return ok(codeMap.get(String(request.params[0]).toLowerCase()) ?? "0x");
+        }
+        if (request.method === "eth_call") {
+            const address = String(request.params[0].to).toLowerCase();
+            const deployment = state.deployments.find((entry) => entry.address.toLowerCase() === address);
+            if (deployment?.interface.reportedVersion !== null) {
+                return ok(cast(["abi-encode", "f(uint256)", deployment.interface.reportedVersion]));
+            }
+        }
+        return undefined;
+    };
+}
+
+async function batchScenario(callback, { baseUrl = true } = {}) {
+    const scratch = mkdtempSync(resolve(tmpdir(), "fusion-drift-batch-"));
+    const states = batchRegistry(scratch);
+    try {
+        let outcome;
+        await withRpc(batchChainAt(1, states.get(1)), async (ethereumUrl) => {
+            await withRpc(batchChainAt(8453, states.get(8453)), async (availableBaseUrl) => {
+                outcome = await callback({
+                    scratch,
+                    states,
+                    env: {
+                        FUSION_DEPLOYMENTS_DIR: scratch,
+                        ETHEREUM_PROVIDER_URL: ethereumUrl,
+                        BASE_PROVIDER_URL: baseUrl ? availableBaseUrl : "",
+                    },
+                });
+            });
         });
         return outcome;
     } finally {
@@ -211,16 +327,91 @@ test("a reported version other than the confirmed one is drift", async () => {
     );
 });
 
+test("the default batch discovers every verified deployment across both chains", async () => {
+    const result = await batchScenario(({ env }) => invoke(["--json"], env));
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.kind, "deployment-drift-batch");
+    assert.equal(report.status, "unchanged");
+    assert.deepEqual(report.summary, { total: 4, unchanged: 4, drift: 0, unavailable: 0 });
+    assert.deepEqual(
+        report.results.map((entry) => entry.deploymentId).sort(),
+        [...realManifest.deployments, ...baseManifest.deployments].map((entry) => entry.id).sort(),
+    );
+    assert.equal(report.results.filter((entry) => entry.coverage.version).length, 2);
+    assert.equal(report.results.filter((entry) => !entry.coverage.version).length, 2);
+    const priceFeed = report.results.find((entry) => entry.deploymentKind === "price-feed-factory");
+    assert.equal(priceFeed.coverage.componentCodeHashes, 1);
+    assert.doesNotMatch(result.stdout, /private-token|127\.0\.0\.1/);
+});
+
+test("one drifting entry fails the batch without skipping its siblings", async () => {
+    const result = await batchScenario(({ env, states }) => {
+        const wrapper = realManifest.deployments.find((entry) => entry.kind === "wrapped-vault-factory");
+        states.get(1).code.set(wrapper.proxy.implementation.toLowerCase(), "0xdeadbeef");
+        return invoke(["--json"], env);
+    });
+    assert.equal(result.status, 1, result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.summary, { total: 4, unchanged: 3, drift: 1, unavailable: 0 });
+    const wrapper = report.results.find((entry) => entry.deploymentKind === "wrapped-vault-factory");
+    assert.equal(wrapper.status, "drift");
+    assert.deepEqual(wrapper.differences.map((difference) => difference.field), ["implementation.runtimeCodeHash"]);
+});
+
+test("a captured price-feed dependency code change is drift", async () => {
+    const result = await batchScenario(({ env, states }) => {
+        const middleware = realManifest.deployments.find((entry) => entry.kind === "price-feed-factory").dependencies[0];
+        states.get(1).code.set(middleware.address.toLowerCase(), "0xdeadbeef");
+        return invoke(["--json"], env);
+    });
+    assert.equal(result.status, 1, result.stderr);
+    const report = JSON.parse(result.stdout);
+    const priceFeed = report.results.find((entry) => entry.deploymentKind === "price-feed-factory");
+    assert.equal(priceFeed.status, "drift");
+    assert.deepEqual(priceFeed.differences.map((difference) => difference.field), [
+        "component.price-oracle-middleware.runtimeCodeHash",
+    ]);
+});
+
+test("one unavailable provider is exit 2 and the batch retains the other results", async () => {
+    const outcome = await batchScenario(async ({ env, scratch }) => {
+        const out = resolve(scratch, "batch-report.json");
+        const result = await invoke(["--json", "--out", out], env);
+        return { result, saved: JSON.parse(readFileSync(out, "utf8")) };
+    }, { baseUrl: false });
+    const { result, saved } = outcome;
+    assert.equal(result.status, 2, result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.summary, { total: 4, unchanged: 3, drift: 0, unavailable: 1 });
+    assert.deepEqual(saved.summary, report.summary, "the CI artifact must survive an unavailable comparison");
+    const base = report.results.find((entry) => entry.chainId === 8453);
+    assert.equal(base.status, "unavailable");
+    assert.equal(base.error.code, "RPC_UNAVAILABLE");
+});
+
+test("a numeric block without a chain selection is refused as ambiguous", async () => {
+    const result = await invoke(["--block", "25937526"]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /numeric block across multiple chains is ambiguous/);
+});
+
 test("a provider failure is a third outcome, not drift", async () => {
-    const unset = await invoke([], { ETHEREUM_PROVIDER_URL: "" });
+    const unset = await invoke(pilotSelection, { ETHEREUM_PROVIDER_URL: "" });
     assert.equal(unset.status, 2);
     assert.match(unset.stderr, /RPC_UNAVAILABLE/);
 
-    const noBlock = await scenario((request) => (request.method === "eth_chainId" ? ok("0x1") : undefined), []);
+    const noBlock = await scenario(
+        (request) => (request.method === "eth_chainId" ? ok("0x1") : undefined),
+        pilotSelection,
+    );
     assert.equal(noBlock.status, 2);
     assert.match(noBlock.stderr, /BLOCK_UNAVAILABLE/);
 
-    const otherChain = await scenario((request) => (request.method === "eth_chainId" ? ok("0xa4b1") : undefined), []);
+    const otherChain = await scenario(
+        (request) => (request.method === "eth_chainId" ? ok("0xa4b1") : undefined),
+        pilotSelection,
+    );
     assert.equal(otherChain.status, 2);
     assert.match(otherChain.stderr, /CHAIN_MISMATCH/);
 });
@@ -229,4 +420,12 @@ test("an unknown deployment cannot be compared", async () => {
     const result = await invoke(["--deployment", "ethereum-fusion-factory-unknown"]);
     assert.equal(result.status, 2);
     assert.match(result.stderr, /UNKNOWN_DEPLOYMENT/);
+});
+
+test("the scheduled workflow supplies both providers to the all-verified batch", () => {
+    const workflow = readFileSync(resolve(repoRoot, ".github/workflows/pilot-drift.yml"), "utf8");
+    assert.match(workflow, /ETHEREUM_PROVIDER_URL:.*secrets\.ETHEREUM_PROVIDER_URL/);
+    assert.match(workflow, /BASE_PROVIDER_URL:.*secrets\.BASE_PROVIDER_URL/);
+    assert.match(workflow, /npm run deployments:drift -- --block/);
+    assert.doesNotMatch(workflow, /npm run deployments:drift.*--deployment/);
 });

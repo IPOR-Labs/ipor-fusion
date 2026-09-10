@@ -118,35 +118,63 @@ for *changes* on a fresh block is a different job, on a schedule.
 
 [`pilot-drift.yml`](../.github/workflows/pilot-drift.yml) runs
 `npm run deployments:drift` once a day (and on manual dispatch) against a
-**finalized** block, comparing the verified pilot deployment with the confirmed
-state recorded in its verification report: the implementation behind the proxy,
-the proxy's and the implementation's runtime code hashes, the reported factory
-version, and every component the report named — both that the factory still uses
-it and that its code hash is unchanged.
+**finalized** block on every registered network. The command discovers every
+entry whose status is `verified`; it currently checks three Ethereum deployments
+and one Base deployment. The workflow supplies `ETHEREUM_PROVIDER_URL` and
+`BASE_PROVIDER_URL` and uploads one batch report containing every result.
+
+Every deployment is compared with the confirmed state in its own verification
+report. The common identity checks cover the implementation behind the proxy and
+the proxy's and implementation's runtime code hashes. Further checks follow the
+evidence that actually exists for that kind:
+
+- a reported factory version is read only when the report records one;
+- every dependency with a captured runtime code hash is re-read;
+- FusionFactory component membership is compared through
+  `getFactoryAddresses()` and `getBaseAddresses()` when the report captured those
+  components.
+
+The report's `coverage` object makes those boundaries explicit. A price-feed
+factory or wrapper with no version getter is not called through a fictional
+FusionFactory interface, and the Base entry does not claim component coverage
+its verification report never recorded.
+
+The default is the complete verified set. Selection remains available for
+diagnosis:
+
+```bash
+npm run deployments:drift
+npm run deployments:drift -- --chain 1
+npm run deployments:drift -- --chain 1 --deployment ethereum-fusion-factory-cd05909c
+```
+
+One numeric block cannot describe two networks, so it requires `--chain` or an
+explicit deployment. An unscoped batch uses `finalized` or `latest` on each
+network.
 
 Three outcomes, deliberately distinct:
 
 | Exit | Job result | Meaning                                                                 |
 | ---- | ---------- | ------------------------------------------------------------------------ |
-| `0`  | success    | Unchanged.                                                               |
-| `1`  | failure    | **Drift**: something the report recorded is now different.               |
-| `2`  | failure    | The comparison could not be made — provider, block or a missing artifact. |
+| `0`  | success    | Every selected verified deployment is unchanged.                         |
+| `1`  | failure    | **Drift**: at least one entry differs and none was unavailable.           |
+| `2`  | failure    | At least one comparison was unavailable — provider, block or artifact.    |
 
-The two failures emit different CI errors, because "the factory was upgraded" and
-"the RPC did not answer" call for different actions. The report is uploaded as an
-artifact either way.
+The batch always keeps successful, drifted and unavailable results together. If
+one entry is unavailable, exit `2` takes precedence because the verified set was
+not completely checked; any drift already found remains visible in the report.
+The two failure exits emit different CI errors, because "a factory was upgraded"
+and "an RPC did not answer" call for different actions.
 
 Drift is a signal for a person: the job never rewrites the manifest, never
 promotes a new implementation to `verified`, and never re-pins the historical
-blocks that fixtures and regression tests use. Re-verification is the T26
-procedure, run again by hand.
+blocks that fixtures and regression tests use. Re-verification follows the
+reviewed procedure in [release.md](release.md), run again by hand.
 
 ## What is not covered here
 
 - **`agent:doctor` without `--rpc`** is offline but is not run in CI, because it
   inspects the local machine rather than the repository.
-- **Other networks and other deployments** — the drift job checks the one
-  `verified` entry that exists.
 - **GitHub environment protection rules** — see above; they must be confirmed in
   the repository's settings by an administrator. This repository changes no
   organisation or repository permissions.
