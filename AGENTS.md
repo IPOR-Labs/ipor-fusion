@@ -89,6 +89,13 @@ npm run test:affected -- --base origin/main
 `format:check` is expected to pass on `main` and gates in CI. Format only files in scope; if the check reports files you
 did not touch, report that instead of reformatting them inside an unrelated change.
 
+Keep these toolchain pins synchronized when intentionally upgrading them:
+
+| Tool | Pinned version | Locations that must agree |
+| --- | --- | --- |
+| Foundry | `v1.7.1` | `README.md`, this setup section, and the Foundry setup steps in `.github/workflows/` |
+| Node.js | `20.17.0` | `README.md`, `package.json` `engines.node`, and the Node setup inputs in `.github/workflows/` |
+
 ## Choosing and writing tests
 
 - Start with the smallest test file next to the changed module, then expand according to the affected trust boundary.
@@ -142,6 +149,9 @@ operation and its scope in the task. Simulation is not authorization to execute.
 - Inspect `git status` before editing. Preserve user changes and keep unrelated formatting or generated files out.
 - Never commit `.env`, RPC URLs, keys, mnemonics, signer material, or copied production calldata containing secrets.
 - Keep changes atomic. Do not use destructive Git commands to clean a shared worktree.
+- Follow the repository's existing commit-subject style: `type(scope): description`, or `type: description` when no
+  meaningful scope applies. Do not add AI-attribution trailers such as `Co-Authored-By` for an AI tool or
+  `Claude-Session`.
 - A contract change that adds, renames or removes a custom error must be followed by `npm run errors:generate`
   (`catalog/errors.json`; CI runs `errors:check`). Name a revert with `npm run revert:decode -- --data 0x…` or
   `--tx <hash> --chain <id>` instead of guessing from the selector; see `docs/troubleshooting.md`.
