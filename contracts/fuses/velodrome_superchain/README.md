@@ -213,6 +213,12 @@ gauges[0] = gaugeAddress;
 VelodromeSuperchainGaugeClaimFuse(claimFuse).claim(gauges);
 ```
 
+## Tests
+
+- [`test/fuses/velodrome_superchain/VelodromeSuperchainFuseTests.t.sol`](../../../test/fuses/velodrome_superchain/VelodromeSuperchainFuseTests.t.sol)
+  — fork of Ink (`INK_PROVIDER_URL`, block 19702898), covering liquidity, gauges, rewards,
+  transient-storage entry points, balance accounting and substrate encoding.
+
 ## Price Oracle Setup
 
 Required price feeds:

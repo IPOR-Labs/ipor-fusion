@@ -93,10 +93,8 @@ other markets.
 
 ## Tests
 
-- `test/fuses/markl/MerklClaimFuseTest.t.sol` — Ethereum fork, block 23642516.
-- `test/fuses/markl/MerklClaimWrapperFuseTest.t.sol` — Base fork, block 46766277.
-
-(The test directory is spelled `markl`.)
+- `test/fuses/merkl/MerklClaimFuseTest.t.sol` — Ethereum fork, block 23642516.
+- `test/fuses/merkl/MerklClaimWrapperFuseTest.t.sol` — Base fork, block 46766277.
 
 ## Deployments
 

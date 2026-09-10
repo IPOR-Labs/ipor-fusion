@@ -2125,7 +2125,7 @@
             "name": "AerodromeSlipstreamGaugeClaimFuseRewardsClaimManagerZeroAddress",
             "inputs": [],
             "declaredIn": [
-                "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol"
+                "contracts/rewards_fuses/aerodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol"
             ]
         },
         "0x392e1e27": {
@@ -5646,7 +5646,7 @@
                 }
             ],
             "declaredIn": [
-                "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol"
+                "contracts/rewards_fuses/aerodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol"
             ]
         },
         "0x9d565d4e": {
@@ -6434,7 +6434,7 @@
             "name": "AerodromeSlipstreamGaugeClaimFuseEmptyArray",
             "inputs": [],
             "declaredIn": [
-                "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol"
+                "contracts/rewards_fuses/aerodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol"
             ]
         },
         "0xb6573ae1": {

@@ -7,10 +7,9 @@ the concentrated-liquidity (Uniswap V3 style) pools of Aerodrome. A vault can mi
 Slipstream pool, grow or shrink them, collect the fees they earn, stake the NFTs in a CL gauge for AERO emissions,
 and claim those emissions through the rewards path.
 
-The source files and the market constant carry a historical typo: contracts are named `AreodromeSlipstream*`,
-the constant is `IporFusionMarkets.AREODROME_SLIPSTREAM`, and the reward fuse lives in
-`contracts/rewards_fuses/areodrome_slipstream/`. The registry names of the deployed contracts use the correct
-spelling (`...FuseAerodromeSlipstream`).
+The contract names and the market constant carry a historical typo: contracts are named `AreodromeSlipstream*`
+and the constant is `IporFusionMarkets.AREODROME_SLIPSTREAM`. The source directories use the correct spelling,
+as do the registry names of the deployed contracts (`...FuseAerodromeSlipstream`).
 
 ## Market Structure
 

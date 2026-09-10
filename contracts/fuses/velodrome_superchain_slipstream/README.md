@@ -158,10 +158,9 @@ feed for the balance fuse, since emissions are not valued here.
 
 ## Tests
 
-- [`test/fuses/velodrome/VelodromeSuperchainSlipstreamTest.t.sol`](../../../test/fuses/velodrome/VelodromeSuperchainSlipstreamTest.t.sol)
+- [`test/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamTest.t.sol`](../../../test/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamTest.t.sol)
   – fork of Ink (`INK_PROVIDER_URL`, block 20419547), covers mint, modify, collect, gauge
-  stake / unstake, claim and balance. Note the test directory is `velodrome`, not
-  `velodrome_superchain_slipstream`.
+  stake / unstake, claim and balance.
 
 ## Deployments
 

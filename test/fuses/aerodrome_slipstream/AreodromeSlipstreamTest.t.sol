@@ -54,7 +54,7 @@ import {INonfungiblePositionManager} from "../../../contracts/fuses/aerodrome_sl
 import {ICLGauge} from "../../../contracts/fuses/aerodrome_slipstream/ext/ICLGauge.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
-import {AreodromeSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol";
+import {AreodromeSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuses/aerodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol";
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";

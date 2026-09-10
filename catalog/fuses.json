@@ -9910,8 +9910,8 @@
                     }
                 },
                 {
-                    "path": "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol",
-                    "purpose": "reward fuse: claims AERO emissions for every NFT the vault has staked in a granted CL gauge (gauge.getReward per token id) and transfers them to the RewardsClaimManager; executed through RewardsClaimManager.claimRewards by CLAIM_REWARDS_ROLE (600), not through PlasmaVault.execute; the directory name carries the typo areodrome",
+                    "path": "contracts/rewards_fuses/aerodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol",
+                    "purpose": "reward fuse: claims AERO emissions for every NFT the vault has staked in a granted CL gauge (gauge.getReward per token id) and transfers them to the RewardsClaimManager; executed through RewardsClaimManager.claimRewards by CLAIM_REWARDS_ROLE (600), not through PlasmaVault.execute",
                     "interface": {
                         "claim": {
                             "signature": "claim(address[])",
@@ -9928,19 +9928,19 @@
                         "generated": {
                             "generator": "tools/generate-catalog.mjs",
                             "sources": {
-                                "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol": "0x962382187de23c203b20d3f9333873fbde58248ab387a604d52eeb882d824833"
+                                "contracts/rewards_fuses/aerodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol": "0x962382187de23c203b20d3f9333873fbde58248ab387a604d52eeb882d824833"
                             },
                             "operations": {
                                 "claim": {
                                     "struct": null,
                                     "signature": "claim(address[])",
                                     "selector": "0x318d9e5d",
-                                    "source": "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol:46",
+                                    "source": "contracts/rewards_fuses/aerodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol:46",
                                     "fields": [
                                         {
                                             "name": "gauges_",
                                             "type": "address[]",
-                                            "source": "contracts/rewards_fuses/areodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol:46"
+                                            "source": "contracts/rewards_fuses/aerodrome_slipstream/AreodromeSlipstreamGaugeClaimFuse.sol:46"
                                         }
                                     ]
                                 }
@@ -10419,7 +10419,7 @@
                 "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for token0 and token1 of every pool"
             },
             "tests": [
-                "test/fuses/velodrome/VelodromeSuperchainFuseTests.t.sol"
+                "test/fuses/velodrome_superchain/VelodromeSuperchainFuseTests.t.sol"
             ],
             "deployments": {
                 "actionFuse": {
@@ -11048,7 +11048,7 @@
                 "configurePriceSources": "PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE (1200) adds the price source for token0 and token1 of every pool"
             },
             "tests": [
-                "test/fuses/velodrome/VelodromeSuperchainSlipstreamTest.t.sol"
+                "test/fuses/velodrome_superchain_slipstream/VelodromeSuperchainSlipstreamTest.t.sol"
             ],
             "deployments": {
                 "actionFuse": {
@@ -16522,8 +16522,8 @@
                 "configurePriceSources": "not applicable: nothing in this market is priced; claimed tokens are valued by the RewardsClaimManager's vesting logic"
             },
             "tests": [
-                "test/fuses/markl/MerklClaimFuseTest.t.sol",
-                "test/fuses/markl/MerklClaimWrapperFuseTest.t.sol"
+                "test/fuses/merkl/MerklClaimFuseTest.t.sol",
+                "test/fuses/merkl/MerklClaimWrapperFuseTest.t.sol"
             ],
             "deployments": {
                 "actionFuse": {
