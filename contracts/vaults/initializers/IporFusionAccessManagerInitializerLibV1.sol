@@ -5,7 +5,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
-import {RoleToFunction, AdminRole, AccountToRole, InitializationData} from "../../managers/access/IporFusionAccessManagerInitializationLib.sol";
+import {
+    RoleToFunction,
+    AdminRole,
+    AccountToRole,
+    InitializationData
+} from "../../managers/access/IporFusionAccessManagerInitializationLib.sol";
 import {PlasmaVaultGovernance} from "../PlasmaVaultGovernance.sol";
 import {PlasmaVaultBase} from "../PlasmaVaultBase.sol";
 import {Roles} from "../../libraries/Roles.sol";
@@ -86,8 +91,8 @@ struct Iterator {
 library IporFusionAccessManagerInitializerLibV1 {
     error InvalidAddress();
 
-    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 39;
+    uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 21;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 42;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 8;
     uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
@@ -109,25 +114,17 @@ library IporFusionAccessManagerInitializerLibV1 {
     function _generateAccountToRoles(
         DataForInitialization memory data_
     ) private pure returns (AccountToRole[] memory accountToRoles) {
-        if (data_.plasmaVaultAddress.plasmaVault == address(0)) {
-            revert InvalidAddress();
-        }
-        if (data_.plasmaVaultAddress.accessManager == address(0)) {
-            revert InvalidAddress();
-        }
-        if (data_.plasmaVaultAddress.rewardsClaimManager == address(0)) {
-            revert InvalidAddress();
-        }
-        if (data_.plasmaVaultAddress.feeManager == address(0)) {
-            revert InvalidAddress();
-        }
-        if (data_.plasmaVaultAddress.contextManager == address(0)) {
-            revert InvalidAddress();
-        }
-        if (data_.plasmaVaultAddress.withdrawManager == address(0)) {
-            revert InvalidAddress();
-        }
-        if (data_.plasmaVaultAddress.priceOracleMiddlewareManager == address(0)) {
+        PlasmaVaultAddress memory addresses = data_.plasmaVaultAddress;
+
+        if (
+            addresses.plasmaVault == address(0) ||
+            addresses.accessManager == address(0) ||
+            addresses.rewardsClaimManager == address(0) ||
+            addresses.feeManager == address(0) ||
+            addresses.contextManager == address(0) ||
+            addresses.withdrawManager == address(0) ||
+            addresses.priceOracleMiddlewareManager == address(0)
+        ) {
             revert InvalidAddress();
         }
 
@@ -135,274 +132,122 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         uint256 index;
 
-        if (data_.plasmaVaultAddress.rewardsClaimManager != address(0)) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
-                account: data_.plasmaVaultAddress.rewardsClaimManager,
-                executionDelay: 0
-            });
-            ++index;
+        if (addresses.rewardsClaimManager != address(0)) {
+            index = _appendAccount(
+                accountToRoles,
+                index,
+                Roles.TECH_REWARDS_CLAIM_MANAGER_ROLE,
+                addresses.rewardsClaimManager
+            );
         }
 
-        for (uint256 i; i < data_.iporDaos.length; ++i) {
-            if (data_.iporDaos[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.IPOR_DAO_ROLE,
-                account: data_.iporDaos[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.admins.length; ++i) {
-            if (data_.admins[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.ADMIN_ROLE,
-                account: data_.admins[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.owners.length; ++i) {
-            if (data_.owners[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.OWNER_ROLE,
-                account: data_.owners[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.guardians.length; ++i) {
-            if (data_.guardians[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.GUARDIAN_ROLE,
-                account: data_.guardians[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.atomists.length; ++i) {
-            if (data_.atomists[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.ATOMIST_ROLE,
-                account: data_.atomists[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.alphas.length; ++i) {
-            if (data_.alphas[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.ALPHA_ROLE,
-                account: data_.alphas[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.fuseManagers.length; ++i) {
-            if (data_.fuseManagers[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.FUSE_MANAGER_ROLE,
-                account: data_.fuseManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.claimRewards.length; ++i) {
-            if (data_.claimRewards[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.CLAIM_REWARDS_ROLE,
-                account: data_.claimRewards[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.transferRewardsManagers.length; ++i) {
-            if (data_.transferRewardsManagers[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.TRANSFER_REWARDS_ROLE,
-                account: data_.transferRewardsManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.whitelist.length; ++i) {
-            if (data_.whitelist[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.WHITELIST_ROLE,
-                account: data_.whitelist[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.configInstantWithdrawalFusesManagers.length; ++i) {
-            if (data_.configInstantWithdrawalFusesManagers[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE,
-                account: data_.configInstantWithdrawalFusesManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.updateMarketsBalancesAccounts.length; ++i) {
-            if (data_.updateMarketsBalancesAccounts[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.UPDATE_MARKETS_BALANCES_ROLE,
-                account: data_.updateMarketsBalancesAccounts[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        for (uint256 i; i < data_.preHooksManagers.length; ++i) {
-            if (data_.preHooksManagers[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.PRE_HOOKS_MANAGER_ROLE,
-                account: data_.preHooksManagers[i],
-                executionDelay: 0
-            });
-            ++index;
-        }
+        index = _appendAccounts(accountToRoles, index, Roles.IPOR_DAO_ROLE, data_.iporDaos);
+        index = _appendAccounts(accountToRoles, index, Roles.ADMIN_ROLE, data_.admins);
+        index = _appendAccounts(accountToRoles, index, Roles.OWNER_ROLE, data_.owners);
+        index = _appendAccounts(accountToRoles, index, Roles.GUARDIAN_ROLE, data_.guardians);
+        index = _appendAccounts(accountToRoles, index, Roles.ATOMIST_ROLE, data_.atomists);
+        index = _appendAccounts(accountToRoles, index, Roles.ALPHA_ROLE, data_.alphas);
+        index = _appendAccounts(accountToRoles, index, Roles.FUSE_MANAGER_ROLE, data_.fuseManagers);
+        index = _appendAccounts(accountToRoles, index, Roles.CLAIM_REWARDS_ROLE, data_.claimRewards);
+        index = _appendAccounts(accountToRoles, index, Roles.TRANSFER_REWARDS_ROLE, data_.transferRewardsManagers);
+        index = _appendAccounts(accountToRoles, index, Roles.WHITELIST_ROLE, data_.whitelist);
+        index = _appendAccounts(
+            accountToRoles,
+            index,
+            Roles.CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE,
+            data_.configInstantWithdrawalFusesManagers
+        );
+        index = _appendAccounts(
+            accountToRoles,
+            index,
+            Roles.UPDATE_MARKETS_BALANCES_ROLE,
+            data_.updateMarketsBalancesAccounts
+        );
+        index = _appendAccounts(accountToRoles, index, Roles.PRE_HOOKS_MANAGER_ROLE, data_.preHooksManagers);
 
         /// @dev Always add UPDATE_MARKETS_BALANCES_ROLE to the Plasma Vault
+        index = _appendAccount(accountToRoles, index, Roles.UPDATE_MARKETS_BALANCES_ROLE, addresses.plasmaVault);
 
-        accountToRoles[index] = AccountToRole({
-            roleId: Roles.UPDATE_MARKETS_BALANCES_ROLE,
-            account: data_.plasmaVaultAddress.plasmaVault,
-            executionDelay: 0
-        });
-        ++index;
+        index = _appendAccounts(
+            accountToRoles,
+            index,
+            Roles.UPDATE_REWARDS_BALANCE_ROLE,
+            data_.updateRewardsBalanceAccounts
+        );
+        index = _appendAccounts(
+            accountToRoles,
+            index,
+            Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE,
+            data_.withdrawManagerRequestFeeManagers
+        );
+        index = _appendAccounts(
+            accountToRoles,
+            index,
+            Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE,
+            data_.withdrawManagerWithdrawFeeManagers
+        );
 
-        for (uint256 i; i < data_.updateRewardsBalanceAccounts.length; ++i) {
-            if (data_.updateRewardsBalanceAccounts[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.UPDATE_REWARDS_BALANCE_ROLE,
-                account: data_.updateRewardsBalanceAccounts[i],
-                executionDelay: 0
-            });
-            ++index;
+        index = _appendAccount(accountToRoles, index, Roles.TECH_PLASMA_VAULT_ROLE, addresses.plasmaVault);
+
+        if (addresses.feeManager != address(0)) {
+            index = _appendAccount(accountToRoles, index, Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE, addresses.feeManager);
+            index = _appendAccount(
+                accountToRoles,
+                index,
+                Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
+                addresses.feeManager
+            );
+            index = _appendAccount(accountToRoles, index, Roles.TECH_VAULT_TRANSFER_SHARES_ROLE, addresses.feeManager);
         }
 
-        for (uint256 i; i < data_.withdrawManagerRequestFeeManagers.length; ++i) {
-            if (data_.withdrawManagerRequestFeeManagers[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.WITHDRAW_MANAGER_REQUEST_FEE_ROLE,
-                account: data_.withdrawManagerRequestFeeManagers[i],
-                executionDelay: 0
-            });
-            ++index;
+        if (addresses.contextManager != address(0)) {
+            index = _appendAccount(accountToRoles, index, Roles.TECH_CONTEXT_MANAGER_ROLE, addresses.contextManager);
         }
 
-        for (uint256 i; i < data_.withdrawManagerWithdrawFeeManagers.length; ++i) {
-            if (data_.withdrawManagerWithdrawFeeManagers[i] == address(0)) {
-                revert InvalidAddress();
-            }
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE,
-                account: data_.withdrawManagerWithdrawFeeManagers[i],
-                executionDelay: 0
-            });
-            ++index;
+        if (addresses.withdrawManager != address(0)) {
+            index = _appendAccount(accountToRoles, index, Roles.TECH_WITHDRAW_MANAGER_ROLE, addresses.withdrawManager);
         }
 
-        accountToRoles[index] = AccountToRole({
-            roleId: Roles.TECH_PLASMA_VAULT_ROLE,
-            account: data_.plasmaVaultAddress.plasmaVault,
-            executionDelay: 0
-        });
-        ++index;
-
-        if (data_.plasmaVaultAddress.feeManager != address(0)) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.TECH_MANAGEMENT_FEE_MANAGER_ROLE,
-                account: data_.plasmaVaultAddress.feeManager,
-                executionDelay: 0
-            });
-            ++index;
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
-                account: data_.plasmaVaultAddress.feeManager,
-                executionDelay: 0
-            });
-            ++index;
-
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.TECH_VAULT_TRANSFER_SHARES_ROLE,
-                account: data_.plasmaVaultAddress.feeManager,
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        if (data_.plasmaVaultAddress.contextManager != address(0)) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.TECH_CONTEXT_MANAGER_ROLE,
-                account: data_.plasmaVaultAddress.contextManager,
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        if (data_.plasmaVaultAddress.withdrawManager != address(0)) {
-            accountToRoles[index] = AccountToRole({
-                roleId: Roles.TECH_WITHDRAW_MANAGER_ROLE,
-                account: data_.plasmaVaultAddress.withdrawManager,
-                executionDelay: 0
-            });
-            ++index;
-        }
-
-        if (data_.plasmaVaultAddress.priceOracleMiddlewareManager != address(0)) {
-            for (uint256 i; i < data_.priceOracleMiddlewareManagers.length; ++i) {
-                accountToRoles[index] = AccountToRole({
-                    roleId: Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
-                    account: data_.priceOracleMiddlewareManagers[i],
-                    executionDelay: 0
-                });
-                ++index;
-            }
+        if (addresses.priceOracleMiddlewareManager != address(0)) {
+            index = _appendAccounts(
+                accountToRoles,
+                index,
+                Roles.PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE,
+                data_.priceOracleMiddlewareManagers
+            );
         }
         return accountToRoles;
+    }
+
+    /// @dev Appends one AccountToRole entry (execution delay 0) per account, reverts on the zero address.
+    /// Shared by every role list to keep the generated bytecode small - the library is inlined into FusionFactoryLogicLib
+    /// @return The next free index in accountToRoles_
+    function _appendAccounts(
+        AccountToRole[] memory accountToRoles_,
+        uint256 index_,
+        uint64 roleId_,
+        address[] memory accounts_
+    ) private pure returns (uint256) {
+        uint256 length = accounts_.length;
+        for (uint256 i; i < length; ++i) {
+            if (accounts_[i] == address(0)) {
+                revert InvalidAddress();
+            }
+            index_ = _appendAccount(accountToRoles_, index_, roleId_, accounts_[i]);
+        }
+        return index_;
+    }
+
+    /// @dev Appends a single AccountToRole entry with execution delay 0
+    /// @return The next free index in accountToRoles_
+    function _appendAccount(
+        AccountToRole[] memory accountToRoles_,
+        uint256 index_,
+        uint64 roleId_,
+        address account_
+    ) private pure returns (uint256) {
+        accountToRoles_[index_] = AccountToRole({roleId: roleId_, account: account_, executionDelay: 0});
+        return index_ + 1;
     }
 
     function _prepareAccountToRoles(
@@ -448,6 +293,7 @@ library IporFusionAccessManagerInitializerLibV1 {
         Iterator memory iterator;
         adminRoles_[iterator.index] = AdminRole({roleId: Roles.OWNER_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.GUARDIAN_ROLE, adminRoleId: Roles.OWNER_ROLE});
+        adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.PAUSER_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.PRE_HOOKS_MANAGER_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.ATOMIST_ROLE, adminRoleId: Roles.OWNER_ROLE});
         adminRoles_[_next(iterator)] = AdminRole({roleId: Roles.ALPHA_ROLE, adminRoleId: Roles.ATOMIST_ROLE});
@@ -768,10 +614,29 @@ library IporFusionAccessManagerInitializerLibV1 {
             minimalExecutionDelay: 0
         });
 
+        /// @dev Only the vault (TECH_PLASMA_VAULT_ROLE) writes the redemption delay on the access manager - the
+        /// owner-facing entry point is PlasmaVaultGovernance.setRedemptionDelay below. That entry point can be timelocked
+        /// only through the OWNER_ROLE execution delay: this initializer grants OWNER_ROLE with executionDelay 0 and sets no
+        /// minimalExecutionDelay (per-role granularity, a non-zero value here would apply to every OWNER_ROLE function and
+        /// break the executionDelay: 0 grants above), so by default the owner changes the redemption delay immediately
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.accessManager,
+            roleId: Roles.TECH_PLASMA_VAULT_ROLE,
+            functionSelector: IporFusionAccessManager.setRedemptionDelay.selector,
+            minimalExecutionDelay: 0
+        });
+
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.OWNER_ROLE,
             functionSelector: PlasmaVaultGovernance.setMinimalExecutionDelaysForRoles.selector,
+            minimalExecutionDelay: 0
+        });
+
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.plasmaVault,
+            roleId: Roles.OWNER_ROLE,
+            functionSelector: PlasmaVaultGovernance.setRedemptionDelay.selector,
             minimalExecutionDelay: 0
         });
 
@@ -786,6 +651,16 @@ library IporFusionAccessManagerInitializerLibV1 {
             target: plasmaVaultAddress_.accessManager,
             roleId: Roles.GUARDIAN_ROLE,
             functionSelector: IporFusionAccessManager.updateTargetClosed.selector,
+            minimalExecutionDelay: 0
+        });
+
+        /// @dev One-way emergency pause for automated pausers (PlasmaVaultPauser): PAUSER_ROLE can only close a target,
+        /// it can neither reopen it nor cancel scheduled operations. Nobody holds it after initialization - the
+        /// OWNER_ROLE (admin of PAUSER_ROLE) grants it to the pauser contract explicitly
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.accessManager,
+            roleId: Roles.PAUSER_ROLE,
+            functionSelector: IporFusionAccessManager.closeTarget.selector,
             minimalExecutionDelay: 0
         });
 
