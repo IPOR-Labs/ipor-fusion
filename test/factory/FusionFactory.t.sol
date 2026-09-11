@@ -33,6 +33,8 @@ import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/Price
 import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
+import {PlasmaVaultPauser} from "../../contracts/managers/pause/PlasmaVaultPauser.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 contract FusionFactoryTest is Test {
     FusionFactory public fusionFactory;
     FusionFactory public fusionFactoryImplementation;
@@ -571,6 +573,164 @@ contract FusionFactoryTest is Test {
         assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
     }
 
+    function testShouldOwnerChangeRedemptionDelayAfterVaultCreation() public {
+        // given
+        uint256 redemptionDelay = 123;
+
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+
+        // when - the owner changes the delay through the vault's governance entry point
+        vm.prank(owner);
+        IPlasmaVaultGovernance(instance.plasmaVault).setRedemptionDelay(0);
+
+        // then
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 0);
+
+        // when
+        vm.prank(owner);
+        IPlasmaVaultGovernance(instance.plasmaVault).setRedemptionDelay(7 days);
+
+        // then
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), 7 days);
+    }
+
+    function testShouldNotChangeRedemptionDelayDirectlyOnAccessManagerEvenWhenOwner() public {
+        // given - the access manager setter is reserved for the vault (TECH_PLASMA_VAULT_ROLE), the owner must go
+        // through PlasmaVaultGovernance.setRedemptionDelay so the OWNER_ROLE timelock can apply
+        uint256 redemptionDelay = 123;
+
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        // when
+        vm.expectRevert(abi.encodeWithSignature("AccessManagedUnauthorized(address)", owner));
+        vm.prank(owner);
+        accessManager.setRedemptionDelay(0);
+
+        // then
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+    }
+
+    function testShouldNotChangeRedemptionDelayAfterVaultCreationWhenNotOwner() public {
+        // given
+        uint256 redemptionDelay = 123;
+
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        // when
+        vm.expectRevert(abi.encodeWithSignature("AccessManagedUnauthorized(address)", adminOne));
+        vm.prank(adminOne);
+        IPlasmaVaultGovernance(instance.plasmaVault).setRedemptionDelay(0);
+
+        vm.expectRevert(abi.encodeWithSignature("AccessManagedUnauthorized(address)", adminOne));
+        vm.prank(adminOne);
+        accessManager.setRedemptionDelay(0);
+
+        // then
+        assertEq(accessManager.REDEMPTION_DELAY_IN_SECONDS(), redemptionDelay);
+    }
+
+    function testShouldWireEmergencyPauseToDedicatedPauserRole() public {
+        // given - IL-7725 follow-up: guardians pause/unpause via updateTargetClosed, PAUSER_ROLE gets the one-way closeTarget
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            0,
+            owner,
+            0
+        );
+        IporFusionAccessManager accessManager = IporFusionAccessManager(instance.accessManager);
+
+        assertEq(
+            accessManager.getTargetFunctionRole(
+                instance.accessManager,
+                IporFusionAccessManager.updateTargetClosed.selector
+            ),
+            Roles.GUARDIAN_ROLE,
+            "updateTargetClosed stays with GUARDIAN_ROLE"
+        );
+        assertEq(
+            accessManager.getTargetFunctionRole(instance.accessManager, IporFusionAccessManager.closeTarget.selector),
+            Roles.PAUSER_ROLE,
+            "closeTarget mapped to PAUSER_ROLE"
+        );
+        assertEq(accessManager.getRoleAdmin(Roles.PAUSER_ROLE), Roles.OWNER_ROLE, "owner administers PAUSER_ROLE");
+        assertEq(accessManager.getRoleGuardian(Roles.PAUSER_ROLE), Roles.GUARDIAN_ROLE, "guardian guards PAUSER_ROLE");
+
+        // and - a guardian appointed after creation needs GUARDIAN_ROLE only to pause and unpause
+        address guardian = makeAddr("guardian");
+        vm.prank(owner);
+        accessManager.grantRole(Roles.GUARDIAN_ROLE, guardian, 0);
+
+        vm.startPrank(guardian);
+        accessManager.updateTargetClosed(instance.plasmaVault, true);
+        assertTrue(accessManager.isTargetClosed(instance.plasmaVault), "guardian paused");
+        accessManager.updateTargetClosed(instance.plasmaVault, false);
+        assertFalse(accessManager.isTargetClosed(instance.plasmaVault), "guardian unpaused");
+        vm.stopPrank();
+
+        // when - governance opts in: the owner grants PAUSER_ROLE (and nothing more) to a PlasmaVaultPauser
+        PlasmaVaultPauser pauser = new PlasmaVaultPauser(owner);
+        address emergencyKey = makeAddr("emergencyKey");
+        vm.startPrank(owner);
+        accessManager.grantRole(Roles.PAUSER_ROLE, address(pauser), 0);
+        pauser.addToWhitelist(instance.plasmaVault, emergencyKey);
+        vm.stopPrank();
+
+        vm.prank(emergencyKey);
+        pauser.pause(instance.plasmaVault);
+
+        // then
+        assertTrue(accessManager.isTargetClosed(instance.plasmaVault), "vault paused through PAUSER_ROLE");
+        (bool isGuardian, ) = accessManager.hasRole(Roles.GUARDIAN_ROLE, address(pauser));
+        assertFalse(isGuardian, "pauser never needs GUARDIAN_ROLE");
+        (bool canReopen, ) = accessManager.canCall(
+            address(pauser),
+            instance.accessManager,
+            IporFusionAccessManager.updateTargetClosed.selector
+        );
+        assertFalse(canReopen, "PAUSER_ROLE cannot reopen");
+        (bool canCancel, ) = accessManager.canCall(
+            address(pauser),
+            instance.accessManager,
+            AccessManager.cancel.selector
+        );
+        assertFalse(canCancel, "PAUSER_ROLE cannot cancel scheduled operations");
+
+        // and - the guardian reopens the vault, the pauser contract cannot
+        vm.prank(guardian);
+        accessManager.updateTargetClosed(instance.plasmaVault, false);
+        assertFalse(accessManager.isTargetClosed(instance.plasmaVault), "guardian reopened the vault");
+    }
+
     function testShouldCreateVaultWithCorrectWithdrawWindow() public {
         // given
         uint256 redemptionDelay = 1 seconds;
@@ -890,7 +1050,6 @@ contract FusionFactoryTest is Test {
         assertTrue(instance.rewardsManager != address(0));
         assertTrue(instance.contextManager != address(0));
         assertTrue(instance.feeManager != address(0));
-
     }
 
     function testShouldRevertUpgradeWhenNotOwner() public {
@@ -1755,14 +1914,7 @@ contract FusionFactoryTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
-        fusionFactory.clone(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            10
-        );
+        fusionFactory.clone("Test Asset", "TEST", address(underlyingToken), redemptionDelay, owner, 10);
     }
 
     function testShouldRevertWhenCloneWithInvalidDaoFeePackageIndex() public {
@@ -1771,14 +1923,7 @@ contract FusionFactoryTest is Test {
 
         // when / then
         vm.expectRevert(abi.encodeWithSelector(FusionFactoryLogicLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
-        fusionFactory.clone(
-            "Test Asset",
-            "TEST",
-            address(underlyingToken),
-            redemptionDelay,
-            owner,
-            10
-        );
+        fusionFactory.clone("Test Asset", "TEST", address(underlyingToken), redemptionDelay, owner, 10);
     }
 
     function testShouldCreateVaultWithDifferentDaoFeePackages() public {

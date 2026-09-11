@@ -16,7 +16,8 @@ library Roles {
     /// @dev Managed by the Owner, if applicable managed by the Admin
     uint64 public constant OWNER_ROLE = 1;
 
-    /// @notice Account with this role has rights to cancel time-locked operations, pause restricted methods in PlasmaVault contracts in case of emergency
+    /// @notice Account with this role has rights to cancel time-locked operations, pause and unpause restricted methods in
+    /// PlasmaVault contracts in case of emergency (updateTargetClosed in both directions)
     /// @dev Managed by the Owner
     uint64 public constant GUARDIAN_ROLE = 2;
 
@@ -102,6 +103,13 @@ library Roles {
     /// @notice Account with this role has rights to manage the PriceOracleMiddlewareManager contract
     /// @dev Managed by the Atomist
     uint64 public constant PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE = 1200;
+
+    /// @notice Account with this role has rights to CLOSE a target on the IporFusionAccessManager (closeTarget), i.e. to pause
+    /// the PlasmaVault in case of emergency - one way only, it can neither reopen the target nor cancel scheduled operations.
+    /// Intended for automated pausers such as the PlasmaVaultPauser contract; Guardians keep pausing and unpausing through
+    /// updateTargetClosed with the GUARDIAN_ROLE. Nobody receives this role at initialization.
+    /// @dev Managed by the Owner
+    uint64 public constant PAUSER_ROLE = 1300;
 
     /// @notice Public role, no restrictions
     uint64 public constant PUBLIC_ROLE = type(uint64).max;
