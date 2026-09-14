@@ -16,7 +16,8 @@ library Roles {
     /// @dev Managed by the Owner, if applicable managed by the Admin
     uint64 public constant OWNER_ROLE = 1;
 
-    /// @notice Account with this role has rights to cancel time-locked operations, pause restricted methods in PlasmaVault contracts in case of emergency
+    /// @notice Account with this role has rights to cancel time-locked operations, pause and unpause restricted methods in
+    /// PlasmaVault contracts in case of emergency (updateTargetClosed in both directions)
     /// @dev Managed by the Owner
     uint64 public constant GUARDIAN_ROLE = 2;
 

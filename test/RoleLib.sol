@@ -183,11 +183,12 @@ library RoleLib {
         address plasmaVault_,
         IporFusionAccessManager accessManager_
     ) private {
-        bytes4[] memory plasmaVaultRoles = new bytes4[](4);
+        bytes4[] memory plasmaVaultRoles = new bytes4[](5);
         plasmaVaultRoles[0] = IporFusionAccessManager.convertToPublicVault.selector;
         plasmaVaultRoles[1] = IporFusionAccessManager.enableTransferShares.selector;
         plasmaVaultRoles[2] = IporFusionAccessManager.setMinimalExecutionDelaysForRoles.selector;
         plasmaVaultRoles[3] = IporFusionAccessManager.canCallAndUpdate.selector;
+        plasmaVaultRoles[4] = IporFusionAccessManager.setRedemptionDelay.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(address(accessManager_), plasmaVaultRoles, Roles.TECH_PLASMA_VAULT_ROLE);
@@ -198,8 +199,9 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(address(accessManager_), guardianSig, Roles.GUARDIAN_ROLE);
 
-        bytes4[] memory ownerSig = new bytes4[](1);
+        bytes4[] memory ownerSig = new bytes4[](2);
         ownerSig[0] = PlasmaVaultGovernance.setMinimalExecutionDelaysForRoles.selector;
+        ownerSig[1] = PlasmaVaultGovernance.setRedemptionDelay.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, ownerSig, Roles.OWNER_ROLE);

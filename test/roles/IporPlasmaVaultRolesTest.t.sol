@@ -2,7 +2,13 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, PlasmaVaultInitData, FuseAction} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    PlasmaVaultInitData,
+    FuseAction
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
@@ -175,6 +181,18 @@ contract IporPlasmaVaultRolesTest is Test {
         vm.prank(_deployer);
         vm.expectRevert(error);
         _accessManager.updateTargetClosed(address(_plasmaVault), true);
+    }
+
+    function testShouldMapUpdateTargetClosedToGuardianRole() external {
+        // then - guardians (humans and the PlasmaVaultPauser contract alike) pause/unpause through updateTargetClosed
+        assertEq(
+            _accessManager.getTargetFunctionRole(
+                address(_accessManager),
+                IporFusionAccessManager.updateTargetClosed.selector
+            ),
+            Roles.GUARDIAN_ROLE
+        );
+        assertEq(_accessManager.getRoleAdmin(Roles.GUARDIAN_ROLE), Roles.OWNER_ROLE);
     }
 
     function testShouldBeAbleToUpdateTargetClosedByGuardian() external {
