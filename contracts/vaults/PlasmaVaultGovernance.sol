@@ -1618,6 +1618,54 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         IIporFusionAccessManager(authority()).setMinimalExecutionDelaysForRoles(rolesIds_, delays_);
     }
 
+    /// @notice Sets the vault-wide redemption delay
+    /// @dev Forwards to IporFusionAccessManager.setRedemptionDelay, which the access manager exposes only to the
+    /// TECH_PLASMA_VAULT_ROLE held by this vault. The owner-facing entry point lives on the vault on purpose:
+    /// OpenZeppelin AccessManager cannot schedule or execute its own custom functions (schedule/execute recognise
+    /// only the built-in admin selectors when the target is the manager itself), so a setter restricted directly
+    /// on the access manager could never be put behind the OWNER_ROLE execution delay. Routing the call through
+    /// the vault makes it eligible for the same timelock (schedule -> wait -> execute, cancellable by the
+    /// GUARDIAN_ROLE) as every other governance function.
+    ///
+    /// Timelock is opt-in, not a default:
+    /// - The timelock applies only when the calling owner holds OWNER_ROLE with a non-zero execution delay
+    /// - IporFusionAccessManagerInitializerLibV1 grants OWNER_ROLE with executionDelay 0 and configures no
+    ///   minimalExecutionDelay for the role (delays are per role, not per selector), so out of the box the
+    ///   owner changes the redemption delay immediately and no cancellation window exists
+    /// - To get the guarantee, governance must configure the OWNER_ROLE execution delay
+    ///   (setMinimalExecutionDelaysForRoles + re-grant with the delay)
+    ///
+    /// Redemption Delay Semantics:
+    /// - Cooling period between an account's deposit/mint and its withdraw/redeem/transfer
+    /// - The new value governs every account immediately, measured from each account's own last deposit
+    /// - Lowering the delay releases existing depositors, raising it extends their locks
+    /// - Capped at IporFusionAccessManager.MAX_REDEMPTION_DELAY_IN_SECONDS
+    ///
+    /// Risk Disclosure (retroactivity - a trust-model change vs. the pre-IL-7910 fixed unlock time):
+    /// - Before IL-7910 an account knew its unlock timestamp at deposit time and it could not move
+    /// - Now raising the delay from 0 to 7 days locks every account that deposited in the last 7 days
+    /// - Bounded by MAX_REDEMPTION_DELAY_IN_SECONDS counted from the account's last deposit, never longer
+    /// - Combined with a 0 execution delay this is a single owner transaction - vault risk disclosures must
+    ///   state that the owner can retroactively extend the redemption lock up to the cap
+    ///
+    /// Security Considerations:
+    /// - Only callable by OWNER_ROLE
+    /// - Subject to the OWNER_ROLE execution delay only when one is configured (default: none)
+    /// - Reverts with TooLongRedemptionDelay above the maximum
+    ///
+    /// Related Components:
+    /// - IporFusionAccessManager
+    /// - RedemptionDelayLib
+    /// - Access Control System
+    ///
+    /// @param redemptionDelayInSeconds_ The new redemption delay in seconds
+    /// @custom:access OWNER_ROLE restricted
+    /// @custom:security Critical for depositor lock semantics, timelock possible only through the vault
+    /// @custom:risk Retroactive for existing depositors, immediate unless the OWNER_ROLE has an execution delay
+    function setRedemptionDelay(uint256 redemptionDelayInSeconds_) external override restricted {
+        IIporFusionAccessManager(authority()).setRedemptionDelay(redemptionDelayInSeconds_);
+    }
+
     /// @notice Sets or updates pre-hook implementations for function selectors
     /// @dev Manages the configuration of pre-execution hooks through PreHooksLib
     ///
