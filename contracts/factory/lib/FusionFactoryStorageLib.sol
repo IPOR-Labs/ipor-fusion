@@ -14,6 +14,7 @@ pragma solidity 0.8.30;
  * - Price oracle middleware
  * - Fee configuration (DAO management and performance fees)
  * - Burn request fee configuration
+ * - Registry of PlasmaVaults produced by this factory (provenance only)
  *
  * Security Considerations:
  * - Uses ERC-7201 namespaced storage pattern to prevent storage collisions
@@ -70,6 +71,11 @@ library FusionFactoryStorageLib {
     /// @dev ERC-7201 namespaced storage struct for business client fee packages
     struct BusinessClientFeePackagesStorage {
         mapping(address => FeePackage[]) clientPackages;
+    }
+
+    /// @dev ERC-7201 namespaced storage struct for PlasmaVaults produced by this factory
+    struct FusionVaultsStorage {
+        mapping(address vault => bool isFusionVault) vaults;
     }
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionFactoryVersion")) - 1)) & ~bytes32(uint256(0xff))
@@ -135,6 +141,10 @@ library FusionFactoryStorageLib {
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.BusinessClientFeePackages")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant BUSINESS_CLIENT_FEE_PACKAGES_STORAGE_SLOT =
         0xe0e5362dddc0800f01413c3ddfe63a5811a144af374a6c011371f2d4ecdf8d00;
+
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionVaults")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant FUSION_VAULTS_STORAGE_SLOT =
+        0xd8f986f99805409cbb90b99bdf93bd9819d8b8f9dd5c2456ffaf840ff9eb8900;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.WithdrawWindowInSeconds")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant WITHDRAW_WINDOW_IN_SECONDS =
@@ -547,5 +557,30 @@ library FusionFactoryStorageLib {
     /// @param client_ Address of the business client
     function removeBusinessClientFeePackages(address client_) internal {
         delete _getBusinessClientFeePackagesStorageSlot().clientPackages[client_];
+    }
+
+    // ============ Fusion Vaults Storage Functions ============
+
+    function _getFusionVaultsStorageSlot() private pure returns (FusionVaultsStorage storage $) {
+        assembly {
+            $.slot := FUSION_VAULTS_STORAGE_SLOT
+        }
+    }
+
+    /// @notice Returns whether a PlasmaVault was recorded as produced by this factory
+    /// @dev Provenance only, not endorsement. Registry integrity relies on the factory and base addresses
+    /// configured by MAINTENANCE_MANAGER_ROLE at the time of creation and on implementation upgrades authorized
+    /// by DEFAULT_ADMIN_ROLE.
+    /// @param vault_ Address to check
+    /// @return True if the vault was recorded during a successful clone
+    function isFusionVault(address vault_) internal view returns (bool) {
+        return _getFusionVaultsStorageSlot().vaults[vault_];
+    }
+
+    /// @notice Records a PlasmaVault as produced by this factory
+    /// @dev One-way write: entries are permanent and there is intentionally no unset operation
+    /// @param vault_ Address of the PlasmaVault to record
+    function setFusionVault(address vault_) internal {
+        _getFusionVaultsStorageSlot().vaults[vault_] = true;
     }
 }

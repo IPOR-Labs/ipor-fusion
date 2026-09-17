@@ -367,6 +367,18 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         return FusionFactoryStorageLib.getFusionFactoryIndex();
     }
 
+    /// @notice Returns whether a PlasmaVault was produced by this FusionFactory proxy after the registry upgrade
+    /// @param vault_ Address to check
+    /// @return True when this proxy recorded the vault during a successful clone or cloneSupervised call
+    /// @dev Provenance only. Since clone is permissionless and accepts any owner, true does not imply IPOR
+    /// endorsement, review or management of the vault. Vaults created before the registry upgrade return false.
+    /// Registry integrity relies on the factory and base addresses configured by MAINTENANCE_MANAGER_ROLE and
+    /// on implementation upgrades authorized by DEFAULT_ADMIN_ROLE.
+    /// Entries are permanent; there is no unset operation.
+    function isFusionVault(address vault_) external view returns (bool) {
+        return FusionFactoryStorageLib.isFusionVault(vault_);
+    }
+
     function getFactoryAddresses() external view returns (FusionFactoryStorageLib.FactoryAddresses memory) {
         return FusionFactoryStorageLib.getFactoryAddresses();
     }

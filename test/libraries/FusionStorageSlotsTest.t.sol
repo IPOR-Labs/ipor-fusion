@@ -346,6 +346,12 @@ contract FusionStorageSlotsTest is Test {
         assertEq(actual, expected, "PLASMA_VAULT_CORE_BASE_ADDRESS mismatch");
     }
 
+    function testFactory_FusionVaultsSlot() public pure {
+        bytes32 expected = _computeSlot("io.ipor.fusion.factory.FusionVaults");
+        bytes32 actual = 0xd8f986f99805409cbb90b99bdf93bd9819d8b8f9dd5c2456ffaf840ff9eb8900;
+        assertEq(actual, expected, "FUSION_VAULTS_STORAGE_SLOT mismatch");
+    }
+
     // ============================================
     // FuseStorageLib
     // ============================================

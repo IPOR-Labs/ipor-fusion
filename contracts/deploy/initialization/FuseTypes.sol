@@ -321,8 +321,15 @@ library FuseTypes {
     uint16 public constant ERC4626_MARKET_14_SUPPLY_FUSE_ID = 105;
     string public constant ERC4626_MARKET_14_SUPPLY_FUSE_NAME = "ERC4626_MARKET_14_SUPPLY_FUSE";
 
+    uint16 public constant COMPOUND_V3_USDC_BORROW_FUSE_ID = 106;
+    string public constant COMPOUND_V3_USDC_BORROW_FUSE_NAME = "COMPOUND_V3_USDC_BORROW_FUSE";
+
+    uint16 public constant COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE_ID = 107;
+    string public constant COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE_NAME =
+        "COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE";
+
     function getAllFuseIds() internal pure returns (uint16[] memory) {
-        uint16[] memory fuseIds = new uint16[](105);
+        uint16[] memory fuseIds = new uint16[](107);
         fuseIds[0] = AAVE_V2_BALANCE_FUSE_ID;
         fuseIds[1] = AAVE_V2_SUPPLY_FUSE_ID;
         fuseIds[2] = AAVE_V3_BALANCE_FUSE_ID;
@@ -428,11 +435,13 @@ library FuseTypes {
         fuseIds[102] = ERC4626_MARKET_12_SUPPLY_FUSE_ID;
         fuseIds[103] = ERC4626_MARKET_13_SUPPLY_FUSE_ID;
         fuseIds[104] = ERC4626_MARKET_14_SUPPLY_FUSE_ID;
+        fuseIds[105] = COMPOUND_V3_USDC_BORROW_FUSE_ID;
+        fuseIds[106] = COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE_ID;
         return fuseIds;
     }
 
     function getAllFuseNames() internal pure returns (string[] memory) {
-        string[] memory fuseNames = new string[](105);
+        string[] memory fuseNames = new string[](107);
         fuseNames[0] = AAVE_V2_BALANCE_FUSE_NAME;
         fuseNames[1] = AAVE_V2_SUPPLY_FUSE_NAME;
         fuseNames[2] = AAVE_V3_BALANCE_FUSE_NAME;
@@ -538,6 +547,8 @@ library FuseTypes {
         fuseNames[102] = ERC4626_MARKET_12_SUPPLY_FUSE_NAME;
         fuseNames[103] = ERC4626_MARKET_13_SUPPLY_FUSE_NAME;
         fuseNames[104] = ERC4626_MARKET_14_SUPPLY_FUSE_NAME;
+        fuseNames[105] = COMPOUND_V3_USDC_BORROW_FUSE_NAME;
+        fuseNames[106] = COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE_NAME;
         return fuseNames;
     }
 }
