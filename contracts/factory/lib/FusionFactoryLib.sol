@@ -112,6 +112,7 @@ library FusionFactoryLib {
             withAdmin_,
             daoFeePackageIndex_
         );
+        FusionFactoryStorageLib.setFusionVault(fusionAddresses.plasmaVault);
         _emitEvent(fusionAddresses);
         return fusionAddresses;
     }

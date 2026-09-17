@@ -34,7 +34,12 @@ import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultStorageLib} from "../../contracts/libraries/PlasmaVaultStorageLib.sol";
 import {PlasmaVaultPauser} from "../../contracts/managers/pause/PlasmaVaultPauser.sol";
+import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {Vm} from "forge-std/Vm.sol";
 contract FusionFactoryTest is Test {
+    /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.factory.FusionVaults")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant FUSION_VAULTS_SLOT = 0xd8f986f99805409cbb90b99bdf93bd9819d8b8f9dd5c2456ffaf840ff9eb8900;
+
     FusionFactory public fusionFactory;
     FusionFactory public fusionFactoryImplementation;
     FusionFactoryStorageLib.FactoryAddresses public factoryAddresses;
@@ -2061,5 +2066,472 @@ contract FusionFactoryTest is Test {
         FeeManager feeManager = FeeManager(instance.feeManager);
         assertEq(feeManager.IPOR_DAO_MANAGEMENT_FEE(), 500, "Max DAO management fee allowed");
         assertEq(feeManager.IPOR_DAO_PERFORMANCE_FEE(), 5000, "Max DAO performance fee allowed");
+    }
+
+    // ======================= Fusion Vault Registry Tests =======================
+
+    function testShouldRegisterPlasmaVaultWhenClone() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        // then
+        assertTrue(fusionFactory.isFusionVault(instance.plasmaVault), "Cloned PlasmaVault should be registered");
+        assertEq(
+            vm.load(address(fusionFactory), _fusionVaultMappingSlot(instance.plasmaVault)),
+            bytes32(uint256(1)),
+            "Raw registry slot should be set on the factory proxy"
+        );
+    }
+
+    function testShouldRegisterPlasmaVaultWhenCloneSupervised() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        vm.startPrank(maintenanceManager);
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.cloneSupervised(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+        vm.stopPrank();
+
+        // then
+        assertTrue(
+            fusionFactory.isFusionVault(instance.plasmaVault),
+            "Supervised cloned PlasmaVault should be registered"
+        );
+        assertEq(
+            vm.load(address(fusionFactory), _fusionVaultMappingSlot(instance.plasmaVault)),
+            bytes32(uint256(1)),
+            "Raw registry slot should be set on the factory proxy"
+        );
+    }
+
+    function testShouldNotRegisterPlasmaVaultClonedDirectlyByPlasmaVaultFactory() public {
+        // given
+        FusionFactoryStorageLib.FactoryAddresses memory currentFactoryAddresses = fusionFactory.getFactoryAddresses();
+        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = fusionFactory.getBaseAddresses();
+
+        // when
+        address directPlasmaVault = PlasmaVaultFactory(currentFactoryAddresses.plasmaVaultFactory).clone(
+            baseAddresses.plasmaVaultCoreBase,
+            1,
+            PlasmaVaultInitData({
+                assetName: "Direct Asset",
+                assetSymbol: "DIRECT",
+                underlyingToken: address(underlyingToken),
+                priceOracleMiddleware: priceOracleMiddleware,
+                feeConfig: FeeConfig({
+                    feeFactory: currentFactoryAddresses.feeManagerFactory,
+                    iporDaoManagementFee: 111,
+                    iporDaoPerformanceFee: 222,
+                    iporDaoFeeRecipientAddress: address(this)
+                }),
+                accessManager: baseAddresses.accessManagerBase,
+                plasmaVaultBase: plasmaVaultBase,
+                withdrawManager: baseAddresses.withdrawManagerBase,
+                plasmaVaultVotesPlugin: address(0)
+            })
+        );
+
+        // then
+        assertTrue(directPlasmaVault.code.length > 0, "Direct PlasmaVault should be deployed");
+        assertFalse(
+            fusionFactory.isFusionVault(directPlasmaVault),
+            "PlasmaVault cloned directly by PlasmaVaultFactory should not be registered"
+        );
+        assertEq(
+            vm.load(address(fusionFactory), _fusionVaultMappingSlot(directPlasmaVault)),
+            bytes32(0),
+            "Raw registry slot should be empty for a direct PlasmaVaultFactory clone"
+        );
+    }
+
+    function testShouldNotRegisterNonPlasmaVaultAddresses() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        // when / then
+        assertTrue(fusionFactory.isFusionVault(instance.plasmaVault), "Cloned PlasmaVault should be registered");
+        assertFalse(fusionFactory.isFusionVault(address(0)), "Zero address should not be registered");
+        assertFalse(fusionFactory.isFusionVault(makeAddr("eoa")), "EOA should not be registered");
+        assertFalse(fusionFactory.isFusionVault(instance.accessManager), "AccessManager should not be registered");
+        assertFalse(fusionFactory.isFusionVault(instance.withdrawManager), "WithdrawManager should not be registered");
+        assertFalse(fusionFactory.isFusionVault(instance.priceManager), "PriceManager should not be registered");
+        assertFalse(fusionFactory.isFusionVault(instance.rewardsManager), "RewardsManager should not be registered");
+        assertFalse(fusionFactory.isFusionVault(instance.contextManager), "ContextManager should not be registered");
+        assertFalse(fusionFactory.isFusionVault(instance.feeManager), "FeeManager should not be registered");
+        assertFalse(
+            fusionFactory.isFusionVault(fusionFactory.getBaseAddresses().plasmaVaultCoreBase),
+            "PlasmaVault core base should not be registered"
+        );
+        assertFalse(fusionFactory.isFusionVault(address(fusionFactory)), "Factory proxy should not be registered");
+    }
+
+    function testShouldIsolateFusionVaultRegistryPerFactoryProxy() public {
+        // given
+        FusionFactory otherFusionFactory = _deployConfiguredFusionFactoryProxy();
+        uint256 redemptionDelay = 1 seconds;
+
+        // when
+        FusionFactoryLogicLib.FusionInstance memory instanceA = fusionFactory.clone(
+            "Test Asset A",
+            "TESTA",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+        FusionFactoryLogicLib.FusionInstance memory instanceB = otherFusionFactory.clone(
+            "Test Asset B",
+            "TESTB",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        // then
+        assertEq(
+            vm.load(address(otherFusionFactory), ERC1967Utils.IMPLEMENTATION_SLOT),
+            vm.load(address(fusionFactory), ERC1967Utils.IMPLEMENTATION_SLOT),
+            "Both proxies should share the same implementation"
+        );
+        assertTrue(fusionFactory.isFusionVault(instanceA.plasmaVault), "Vault A should be registered on proxy A");
+        assertFalse(otherFusionFactory.isFusionVault(instanceA.plasmaVault), "Vault A should not be registered on B");
+        assertTrue(otherFusionFactory.isFusionVault(instanceB.plasmaVault), "Vault B should be registered on proxy B");
+        assertFalse(fusionFactory.isFusionVault(instanceB.plasmaVault), "Vault B should not be registered on A");
+
+        assertEq(
+            vm.load(address(fusionFactory), _fusionVaultMappingSlot(instanceA.plasmaVault)),
+            bytes32(uint256(1)),
+            "Raw slot for vault A should be set on proxy A"
+        );
+        assertEq(
+            vm.load(address(otherFusionFactory), _fusionVaultMappingSlot(instanceA.plasmaVault)),
+            bytes32(0),
+            "Raw slot for vault A should be empty on proxy B"
+        );
+        assertEq(
+            vm.load(address(otherFusionFactory), _fusionVaultMappingSlot(instanceB.plasmaVault)),
+            bytes32(uint256(1)),
+            "Raw slot for vault B should be set on proxy B"
+        );
+        assertEq(
+            vm.load(address(fusionFactory), _fusionVaultMappingSlot(instanceB.plasmaVault)),
+            bytes32(0),
+            "Raw slot for vault B should be empty on proxy A"
+        );
+    }
+
+    function testShouldKeepVersionAndIncrementIndexOncePerRegisteredClone() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        uint256 versionBefore = fusionFactory.getFusionFactoryVersion();
+        uint256 indexBefore = fusionFactory.getFusionFactoryIndex();
+
+        // when
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        // then
+        assertEq(fusionFactory.getFusionFactoryVersion(), versionBefore, "Version should not change on clone");
+        assertEq(instance.version, versionBefore, "Instance version should equal factory version");
+        assertEq(fusionFactory.getFusionFactoryIndex(), indexBefore + 1, "Index should increase exactly once");
+        assertEq(instance.index, indexBefore + 1, "Instance index should equal the new factory index");
+
+        // when
+        vm.startPrank(maintenanceManager);
+        FusionFactoryLogicLib.FusionInstance memory supervisedInstance = fusionFactory.cloneSupervised(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+        vm.stopPrank();
+
+        // then
+        assertEq(
+            fusionFactory.getFusionFactoryVersion(),
+            versionBefore,
+            "Version should not change on cloneSupervised"
+        );
+        assertEq(supervisedInstance.version, versionBefore, "Supervised instance version should equal factory version");
+        assertEq(fusionFactory.getFusionFactoryIndex(), indexBefore + 2, "Index should increase exactly once again");
+        assertEq(supervisedInstance.index, indexBefore + 2, "Supervised instance index should equal the new index");
+        assertTrue(fusionFactory.isFusionVault(instance.plasmaVault), "First vault should be registered");
+        assertTrue(
+            fusionFactory.isFusionVault(supervisedInstance.plasmaVault),
+            "Supervised vault should be registered"
+        );
+    }
+
+    function testShouldPreserveFusionVaultRegistryAndIndexAfterUpgrade() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        FusionFactoryLogicLib.FusionInstance memory instanceBefore = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+        uint256 indexBefore = fusionFactory.getFusionFactoryIndex();
+        uint256 versionBefore = fusionFactory.getFusionFactoryVersion();
+        FusionFactory newImplementation = new FusionFactory();
+
+        // when
+        vm.startPrank(owner);
+        fusionFactory.upgradeToAndCall(address(newImplementation), "");
+        vm.stopPrank();
+
+        // then
+        assertEq(
+            vm.load(address(fusionFactory), ERC1967Utils.IMPLEMENTATION_SLOT),
+            bytes32(uint256(uint160(address(newImplementation)))),
+            "Proxy should point to the new implementation"
+        );
+        assertTrue(fusionFactory.isFusionVault(instanceBefore.plasmaVault), "Registry entry should survive upgrade");
+        assertEq(
+            vm.load(address(fusionFactory), _fusionVaultMappingSlot(instanceBefore.plasmaVault)),
+            bytes32(uint256(1)),
+            "Raw registry slot should survive upgrade"
+        );
+        assertEq(fusionFactory.getFusionFactoryIndex(), indexBefore, "Index should survive upgrade");
+        assertEq(fusionFactory.getFusionFactoryVersion(), versionBefore, "Version should survive upgrade");
+
+        // when
+        FusionFactoryLogicLib.FusionInstance memory instanceAfter = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        // then
+        assertTrue(fusionFactory.isFusionVault(instanceAfter.plasmaVault), "Post-upgrade vault should be registered");
+        assertEq(fusionFactory.getFusionFactoryIndex(), indexBefore + 1, "Index should increase exactly once");
+        assertEq(instanceAfter.index, indexBefore + 1, "Post-upgrade instance index should follow preserved index");
+    }
+
+    function testShouldEmitFusionInstanceCreatedWithUnchangedPayloadWhenClone() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        uint256 indexBefore = fusionFactory.getFusionFactoryIndex();
+        bytes32 expectedEventSignature = keccak256(
+            "FusionInstanceCreated(uint256,uint256,string,string,uint8,address,string,uint8,address,address,address,address)"
+        );
+
+        // when
+        vm.recordLogs();
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        // then
+        assertEq(FusionFactoryLib.FusionInstanceCreated.selector, expectedEventSignature, "Event signature changed");
+
+        FusionFactoryLogicLib.FusionInstance memory expected;
+        expected.index = indexBefore + 1;
+        expected.version = fusionFactory.getFusionFactoryVersion();
+        expected.assetName = "Test Asset";
+        expected.assetSymbol = "TEST";
+        expected.assetDecimals = PlasmaVault(instance.plasmaVault).decimals();
+        expected.underlyingToken = address(underlyingToken);
+        expected.underlyingTokenSymbol = "TEST";
+        expected.underlyingTokenDecimals = 18;
+        expected.initialOwner = owner;
+        expected.plasmaVault = instance.plasmaVault;
+        expected.plasmaVaultBase = plasmaVaultBase;
+        expected.feeManager = instance.feeManager;
+
+        uint256 matchingLogs;
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics.length > 0 && logs[i].topics[0] == expectedEventSignature) {
+                ++matchingLogs;
+                assertEq(logs[i].emitter, address(fusionFactory), "Event should be emitted by the factory proxy");
+                assertEq(logs[i].topics.length, 1, "Event should have no indexed parameters");
+                assertEq(logs[i].data, _encodeFusionInstanceCreatedData(expected), "Event payload changed");
+            }
+        }
+        assertEq(matchingLogs, 1, "FusionInstanceCreated should be emitted exactly once");
+        assertTrue(fusionFactory.isFusionVault(instance.plasmaVault), "Cloned PlasmaVault should be registered");
+    }
+
+    function testShouldNotRegisterAnyAddressWhenCloneRevertsOnInvalidDaoFeePackageIndex() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        address plasmaVaultFactory = fusionFactory.getFactoryAddresses().plasmaVaultFactory;
+        address predictedPlasmaVault = vm.computeCreateAddress(plasmaVaultFactory, vm.getNonce(plasmaVaultFactory));
+        uint256 indexBefore = fusionFactory.getFusionFactoryIndex();
+
+        // when
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLogicLib.DaoFeePackageIndexOutOfBounds.selector, 10, 2));
+        fusionFactory.clone("Test Asset", "TEST", address(underlyingToken), redemptionDelay, owner, 10);
+
+        // then
+        assertEq(fusionFactory.getFusionFactoryIndex(), indexBefore, "Index should not change on reverted clone");
+        assertFalse(fusionFactory.isFusionVault(predictedPlasmaVault), "Reverted clone should not register a vault");
+        assertEq(
+            vm.load(address(fusionFactory), _fusionVaultMappingSlot(predictedPlasmaVault)),
+            bytes32(0),
+            "Raw registry slot should be empty after reverted clone"
+        );
+
+        // and the predicted address is the one a successful clone produces next
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+        assertEq(instance.plasmaVault, predictedPlasmaVault, "Predicted PlasmaVault address mismatch");
+        assertTrue(fusionFactory.isFusionVault(predictedPlasmaVault), "Successful clone should register the vault");
+    }
+
+    function testShouldNotRegisterPlasmaVaultWhenCloneRevertsAfterPlasmaVaultDeployment() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        FusionFactoryStorageLib.FactoryAddresses memory currentFactoryAddresses = fusionFactory.getFactoryAddresses();
+        address predictedPlasmaVault = vm.computeCreateAddress(
+            currentFactoryAddresses.plasmaVaultFactory,
+            vm.getNonce(currentFactoryAddresses.plasmaVaultFactory)
+        );
+        uint256 indexBefore = fusionFactory.getFusionFactoryIndex();
+        // RewardsManagerFactory.clone runs after the PlasmaVault has been cloned and initialized
+        vm.mockCallRevert(
+            currentFactoryAddresses.rewardsManagerFactory,
+            abi.encodeWithSelector(RewardsManagerFactory.clone.selector),
+            bytes("REWARDS_MANAGER_CLONE_FAILED")
+        );
+
+        // when
+        vm.expectRevert(bytes("REWARDS_MANAGER_CLONE_FAILED"));
+        fusionFactory.clone("Test Asset", "TEST", address(underlyingToken), redemptionDelay, owner, 0);
+
+        // then
+        assertEq(fusionFactory.getFusionFactoryIndex(), indexBefore, "Index should not change on reverted clone");
+        assertFalse(fusionFactory.isFusionVault(predictedPlasmaVault), "Reverted clone should not register a vault");
+        assertEq(
+            vm.load(address(fusionFactory), _fusionVaultMappingSlot(predictedPlasmaVault)),
+            bytes32(0),
+            "Raw registry slot should be empty after reverted clone"
+        );
+
+        // and the predicted address is the one a successful clone produces next
+        vm.clearMockedCalls();
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+        assertEq(instance.plasmaVault, predictedPlasmaVault, "Predicted PlasmaVault address mismatch");
+        assertTrue(fusionFactory.isFusionVault(predictedPlasmaVault), "Successful clone should register the vault");
+    }
+
+    function _fusionVaultMappingSlot(address vault_) private pure returns (bytes32) {
+        return keccak256(abi.encode(vault_, FUSION_VAULTS_SLOT));
+    }
+
+    function _encodeFusionInstanceCreatedData(
+        FusionFactoryLogicLib.FusionInstance memory instance_
+    ) private pure returns (bytes memory) {
+        return
+            abi.encode(
+                instance_.index,
+                instance_.version,
+                instance_.assetName,
+                instance_.assetSymbol,
+                instance_.assetDecimals,
+                instance_.underlyingToken,
+                instance_.underlyingTokenSymbol,
+                instance_.underlyingTokenDecimals,
+                instance_.initialOwner,
+                instance_.plasmaVault,
+                instance_.plasmaVaultBase,
+                instance_.feeManager
+            );
+    }
+
+    /// @dev Deploys a second FusionFactory proxy of the same implementation, configured like setUp
+    function _deployConfiguredFusionFactoryProxy() private returns (FusionFactory otherFusionFactory) {
+        bytes memory initData = abi.encodeWithSignature(
+            "initialize(address,(address,address,address,address,address,address,address),address,address,address,address)",
+            owner,
+            factoryAddresses,
+            plasmaVaultBase,
+            priceOracleMiddleware,
+            burnRequestFeeFuse,
+            burnRequestFeeBalanceFuse
+        );
+        otherFusionFactory = FusionFactory(address(new ERC1967Proxy(address(fusionFactoryImplementation), initData)));
+
+        vm.startPrank(owner);
+        otherFusionFactory.grantRole(otherFusionFactory.DAO_FEE_MANAGER_ROLE(), daoFeeManager);
+        otherFusionFactory.grantRole(otherFusionFactory.MAINTENANCE_MANAGER_ROLE(), maintenanceManager);
+        vm.stopPrank();
+
+        FusionFactoryStorageLib.FeePackage[] memory packages = fusionFactory.getDaoFeePackages();
+        vm.startPrank(daoFeeManager);
+        otherFusionFactory.setDaoFeePackages(packages);
+        vm.stopPrank();
+
+        FusionFactoryStorageLib.BaseAddresses memory baseAddresses = fusionFactory.getBaseAddresses();
+        uint256 version = fusionFactory.getFusionFactoryVersion();
+        vm.startPrank(maintenanceManager);
+        otherFusionFactory.updateBaseAddresses(
+            version,
+            baseAddresses.plasmaVaultCoreBase,
+            baseAddresses.accessManagerBase,
+            baseAddresses.priceManagerBase,
+            baseAddresses.withdrawManagerBase,
+            baseAddresses.rewardsManagerBase,
+            baseAddresses.contextManagerBase
+        );
+        vm.stopPrank();
     }
 }
