@@ -573,6 +573,10 @@ contract PlasmaVault is
     /// @return uint256 Amount of shares minted
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access Initially restricted to WHITELIST_ROLE, can be set to PUBLIC_ROLE via convertToPublicVault
+    /// @custom:security The WHITELIST_ROLE check binds the calling account (_msgSender(): msg.sender unless a
+    /// ContextManager set a context sender), not receiver_. A whitelisted caller may mint shares to any non-zero
+    /// address and the receiver needs no role; withdraw and redeem are PUBLIC_ROLE. The whitelist therefore gates
+    /// who may enter the vault, not who may hold or redeem its shares.
     function deposit(uint256 assets_, address receiver_) public override nonReentrant restricted returns (uint256) {
         return _deposit(assets_, receiver_);
     }
@@ -613,6 +617,10 @@ contract PlasmaVault is
     /// @return uint256 Amount of shares minted
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access Initially restricted to WHITELIST_ROLE, can be set to PUBLIC_ROLE via convertToPublicVault
+    /// @custom:security The WHITELIST_ROLE check binds the calling account (_msgSender(): msg.sender unless a
+    /// ContextManager set a context sender), not receiver_. A whitelisted caller may mint shares to any non-zero
+    /// address and the receiver needs no role; withdraw and redeem are PUBLIC_ROLE. The whitelist therefore gates
+    /// who may enter the vault, not who may hold or redeem its shares.
     function depositWithPermit(
         uint256 assets_,
         address receiver_,
@@ -663,6 +671,10 @@ contract PlasmaVault is
     /// @return depositAssets Amount of assets deposited
     /// @custom:security Non-reentrant and role-restricted
     /// @custom:access Initially restricted to WHITELIST_ROLE, can be set to PUBLIC_ROLE via convertToPublicVault
+    /// @custom:security The WHITELIST_ROLE check binds the calling account (_msgSender(): msg.sender unless a
+    /// ContextManager set a context sender), not receiver_. A whitelisted caller may mint shares to any non-zero
+    /// address and the receiver needs no role; withdraw and redeem are PUBLIC_ROLE. The whitelist therefore gates
+    /// who may enter the vault, not who may hold or redeem its shares.
     function mint(
         uint256 shares_,
         address receiver_
