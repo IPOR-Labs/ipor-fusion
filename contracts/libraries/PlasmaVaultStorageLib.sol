@@ -761,6 +761,14 @@ library PlasmaVaultStorageLib {
         0x9a54c2c1797818ee85d1850742208f80368867ad13d3e45052e701201fa4af00;
 
     /**
+     * @dev Storage slot for the management fee accrued but not yet minted. Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.PendingManagementFee")) - 1)) & ~bytes32(uint256(0xff))
+     * @notice Holds the management fee in underlying that rounded to zero shares, so the fee clock can advance
+     */
+    bytes32 private constant PENDING_MANAGEMENT_FEE_SLOT =
+        0x612d50d27ffbb749a9804ec5bba7933bff2377ff69afba55e14b5cf7180bff00;
+
+    /**
      * @notice Maps callback signatures to their handler contracts
      * @dev Stores routing information for protocol-specific callbacks
      * @custom:storage-location erc7201:io.ipor.callbackHandler
@@ -1156,7 +1164,9 @@ library PlasmaVaultStorageLib {
     ///
     ///      Intended exclusively for fuses that must run unchanged against both the
     ///      new and old PlasmaVault storage layouts (RequestFeeRefundFuse,
-    ///      BurnRequestFeeFuse). New code MUST keep using `getWithdrawManager().manager`.
+    ///      BurnRequestFeeFuse). The crosschain dispatchers' `plasmaVaultWithdrawManager()` readers (executed
+    ///      inside a REMOTE vault via UniversalReader, IL-8608) are the sanctioned exception.
+    ///      All other new code MUST keep using `getWithdrawManager().manager`.
     function getWithdrawManagerAddressWithLegacyFallback() internal view returns (address withdrawManager) {
         withdrawManager = getWithdrawManager().manager;
         if (withdrawManager == address(0)) {
@@ -1217,6 +1227,24 @@ library PlasmaVaultStorageLib {
     function setPlasmaVaultVotesPlugin(address votesPlugin_) internal {
         assembly {
             sstore(PLASMA_VAULT_VOTES_PLUGIN_SLOT, votesPlugin_)
+        }
+    }
+
+    /// @notice Gets the management fee accrued but not yet minted
+    /// @return The pending management fee in underlying token decimals
+    function getPendingManagementFee() internal view returns (uint256) {
+        uint256 pendingFee;
+        assembly {
+            pendingFee := sload(PENDING_MANAGEMENT_FEE_SLOT)
+        }
+        return pendingFee;
+    }
+
+    /// @notice Sets the management fee accrued but not yet minted
+    /// @param pendingFee_ The pending management fee in underlying token decimals
+    function setPendingManagementFee(uint256 pendingFee_) internal {
+        assembly {
+            sstore(PENDING_MANAGEMENT_FEE_SLOT, pendingFee_)
         }
     }
 }

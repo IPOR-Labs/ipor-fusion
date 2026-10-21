@@ -18,8 +18,15 @@ import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 
 import {SwapExecutorEth} from "../../../contracts/fuses/universal_token_swapper/SwapExecutorEth.sol";
-import {UniversalTokenSwapperEthFuse, UniversalTokenSwapperEthEnterData, UniversalTokenSwapperEthData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    UniversalTokenSwapperEthFuse,
+    UniversalTokenSwapperEthEnterData,
+    UniversalTokenSwapperEthData
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperEthFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
@@ -30,6 +37,13 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
+    event UniversalTokenSwapperEthFuseEnter(
+        address version,
+        address tokenIn,
+        address tokenOut,
+        uint256 tokenInDelta,
+        uint256 tokenOutDelta
+    );
 
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
@@ -290,7 +304,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
 
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] = abi.encodeWithSignature("withdraw(uint256)", 10 ether);
-        callDatas[1] = abi.encodeWithSignature("deposit(address)", _plasmaVault);
+        callDatas[1] = abi.encodeWithSignature("deposit(address)", address(_swapExecutorEth)); // IL-8767: ETHX must be minted to the executor so the fuse measures it
 
         uint256[] memory ethAmounts = new uint256[](2);
         ethAmounts[0] = 0;
@@ -954,6 +968,109 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         assertGt(plasmaVaultUsdtBalanceAfter, 0, "plasmaVaultUsdtBalanceAfter");
     }
 
+    // ============ Net-delta measurement tests (IL-8767) ============
+
+    address private constant NET_DELTA_CLAIM_TARGET = address(0xC1A1C1A1);
+    address private constant NET_DELTA_THIEF = address(0xA1FA);
+
+    function _netDeltaSetup(address rewardToken_, uint256 rewardAmount_) private {
+        address userOne = address(0x1222);
+        vm.prank(0xe9172Daf64b05B26eb18f07aC8d6D723aCB48f99);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, 1_000e6);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(1_000e6, userOne);
+
+        vm.etch(NET_DELTA_CLAIM_TARGET, address(new NetDeltaClaimTargetEth()).code);
+        deal(rewardToken_, NET_DELTA_CLAIM_TARGET, rewardAmount_);
+    }
+
+    /// @dev mode 0: honest swap (USDC to the pool, pool pays USDT to the executor, plus an unrelated claim to the vault)
+    ///      mode 1: theft of tokenIn, then a claim paying `claimToken_` to the vault
+    function _netDeltaEnter(uint8 mode_, address claimToken_, uint256 claimAmount_) private {
+        address[] memory targets = new address[](2);
+        bytes[] memory callDatas = new bytes[](2);
+        uint256[] memory ethAmounts = new uint256[](2);
+        targets[0] = USDC;
+        targets[1] = NET_DELTA_CLAIM_TARGET;
+        if (mode_ == 0) {
+            callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", NET_DELTA_CLAIM_TARGET, 1_000e6);
+            callDatas[1] = abi.encodeWithSignature(
+                "claim(address,address,uint256)",
+                address(_swapExecutorEth),
+                USDT,
+                1_000e6
+            );
+        } else {
+            callDatas[0] = abi.encodeWithSignature("transfer(address,uint256)", NET_DELTA_THIEF, 1_000e6);
+            callDatas[1] = abi.encodeWithSignature(
+                "claim(address,address,uint256)",
+                _plasmaVault,
+                claimToken_,
+                claimAmount_
+            );
+        }
+
+        UniversalTokenSwapperEthEnterData memory enterData = UniversalTokenSwapperEthEnterData({
+            tokenIn: USDC,
+            tokenOut: USDT,
+            amountIn: 1_000e6,
+            minAmountOut: 1_000e6,
+            data: UniversalTokenSwapperEthData({
+                targets: targets,
+                callDatas: callDatas,
+                ethAmounts: ethAmounts,
+                tokensDustToCheck: new address[](0)
+            })
+        });
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,(address[],bytes[],uint256[],address[])))",
+                enterData
+            )
+        );
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    /// @notice (a) The route sends the vault's tokenIn to a third party and a claim refills the vault with tokenIn.
+    /// Pre-fix (vault balance deltas): early return, the theft succeeds.
+    function testShouldRevertWhenClaimRefillsTokenInAfterTheft() external {
+        _netDeltaSetup(USDC, 1_000e6);
+
+        vm.expectRevert(abi.encodeWithSignature("UniversalTokenSwapperEthFuseSlippageFail()"));
+        _netDeltaEnter(1, USDC, 1_000e6);
+
+        assertEq(ERC20(USDC).balanceOf(NET_DELTA_THIEF), 0, "thief got nothing");
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), 1_000e6, "vault untouched");
+    }
+
+    /// @notice (b) Mirror: the route steals tokenIn while a claim pays the vault tokenOut; it must not count as output.
+    /// Pre-fix: tokenOutDelta = claim amount, the checks pass.
+    function testShouldRevertWhenClaimPaysTokenOutAfterTheft() external {
+        _netDeltaSetup(USDT, 1_000e6);
+
+        vm.expectRevert(abi.encodeWithSignature("UniversalTokenSwapperEthFuseSlippageFail()"));
+        _netDeltaEnter(1, USDT, 1_000e6);
+
+        assertEq(ERC20(USDC).balanceOf(NET_DELTA_THIEF), 0, "thief got nothing");
+        assertEq(ERC20(USDT).balanceOf(_plasmaVault), 0, "claim rolled back");
+    }
+
+    /// @notice (c) Control: an honest swap through the executor passes and the vault receives tokenOut.
+    function testShouldAcceptHonestSwapMeasuredOnExecutor() external {
+        _netDeltaSetup(USDT, 1_000e6);
+
+        vm.expectEmit(false, false, false, true, _plasmaVault);
+        emit UniversalTokenSwapperEthFuseEnter(address(_universalTokenSwapperFuse), USDC, USDT, 1_000e6, 1_000e6);
+        _netDeltaEnter(0, USDT, 0);
+
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), 0, "tokenIn spent");
+        assertEq(ERC20(USDT).balanceOf(_plasmaVault), 1_000e6, "tokenOut received");
+    }
+
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {
         feeConfig_ = FeeConfigHelper.createZeroFeeConfig();
     }
@@ -1007,13 +1124,19 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         universalSwapSubstrates[10] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(STETH);
         universalSwapSubstrates[11] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(W_ETH);
         universalSwapSubstrates[12] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(USDC);
-        universalSwapSubstrates[13] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(STADER_STAKING_POOL_MANAGER);
-        universalSwapSubstrates[14] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(FRAX_ETHER_MINTER_V2_ADDRESS);
-        universalSwapSubstrates[15] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(ROCKET_DEPOSIT_POOL_ADDRESS);
+        universalSwapSubstrates[13] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(
+            STADER_STAKING_POOL_MANAGER
+        );
+        universalSwapSubstrates[14] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(
+            FRAX_ETHER_MINTER_V2_ADDRESS
+        );
+        universalSwapSubstrates[15] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(
+            ROCKET_DEPOSIT_POOL_ADDRESS
+        );
         // Slippage substrate - using 100% slippage for testing (same as original 1e18)
         universalSwapSubstrates[16] = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(1e18);
         // Unused slots can be zero
-        universalSwapSubstrates[17] = bytes32(0);
+        universalSwapSubstrates[17] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(NET_DELTA_CLAIM_TARGET); // IL-8767 tests
         universalSwapSubstrates[18] = bytes32(0);
         universalSwapSubstrates[19] = bytes32(0);
 
@@ -1021,10 +1144,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
     }
 
     function _setupFuses() private returns (address[] memory fuses_) {
-        _universalTokenSwapperFuse = new UniversalTokenSwapperEthFuse(
-            IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER,
-            W_ETH
-        );
+        _universalTokenSwapperFuse = new UniversalTokenSwapperEthFuse(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, W_ETH);
         _swapExecutorEth = SwapExecutorEth(_universalTokenSwapperFuse.EXECUTOR());
 
         _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
@@ -1041,5 +1161,15 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         balanceFuses_ = new MarketBalanceFuseConfig[](2);
         balanceFuses_[0] = MarketBalanceFuseConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, address(zeroBalance));
         balanceFuses_[1] = MarketBalanceFuseConfig(IporFusionMarkets.ERC20_VAULT_BALANCE, address(erc20BalanceFuse));
+    }
+}
+
+/// @notice IL-8767 stateless helper etched at a fixed address: `claim(account, token, amount)` pays `token` to
+/// `account` from its own balance (a stand-in for a permissionless "claim on behalf of the vault" distributor).
+contract NetDeltaClaimTargetEth {
+    function claim(address account_, address token_, uint256 amount_) external {
+        // USDT has no return value, so a low-level call is used
+        (bool success, ) = token_.call(abi.encodeWithSignature("transfer(address,uint256)", account_, amount_));
+        require(success, "claim failed");
     }
 }

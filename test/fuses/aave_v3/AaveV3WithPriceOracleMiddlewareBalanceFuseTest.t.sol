@@ -15,8 +15,14 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
-import {AaveV3SupplyFuseEnterData, AaveV3SupplyFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
-import {AaveV3BorrowFuseEnterData, AaveV3BorrowFuseExitData} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
+import {
+    AaveV3SupplyFuseEnterData,
+    AaveV3SupplyFuseExitData
+} from "../../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
+import {
+    AaveV3BorrowFuseEnterData,
+    AaveV3BorrowFuseExitData
+} from "../../../contracts/fuses/aave_v3/AaveV3BorrowFuse.sol";
 
 /*
 Test description:
@@ -59,7 +65,14 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
         // Setup fee packages before creating vault
         FusionFactoryDaoFeePackagesHelper.setupDefaultDaoFeePackages(vm, fusionFactory);
 
-        _fusionInstance = fusionFactory.clone("AaveV2WithPriceOracleMiddlewareBalanceFuse", "AV2", _WETH, 0, _ATOMIST, 0);
+        _fusionInstance = fusionFactory.clone(
+            "AaveV2WithPriceOracleMiddlewareBalanceFuse",
+            "AV2",
+            _WETH,
+            0,
+            _ATOMIST,
+            0
+        );
 
         vm.startPrank(_ATOMIST);
         IporFusionAccessManager(_fusionInstance.accessManager).grantRole(Roles.ATOMIST_ROLE, _ATOMIST, 0);
@@ -309,5 +322,101 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
             IporFusionMarkets.AAVE_V3
         );
         assertGt(marketBalanceAfter, marketBalanceBefore, "marketBalanceAfter > marketBalanceBefore");
+    }
+
+    function test_ShouldIgnoreAssetWithoutMiddlewarePriceWhenNoPositionInIt() public {
+        // given: position only in WETH
+        test_ShouldIncreaseBalanceInMarketAfterEnterWeth();
+        uint256 marketBalanceBefore = PlasmaVault(_fusionInstance.plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AAVE_V3
+        );
+
+        _allowAlphaToRefreshMarkets();
+
+        // when: the middleware has no price for wstETH (the real middleware reverts for an unsupported asset;
+        // here a zero return is mocked to exercise the fuse's ZeroPrice guard)
+        _mockMiddlewarePrice(_WST_ETH, 0);
+        _refreshAaveMarket();
+
+        // then
+        assertEq(
+            PlasmaVault(_fusionInstance.plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3),
+            marketBalanceBefore,
+            "wstETH without price and without position must not matter"
+        );
+    }
+
+    function test_ShouldIgnoreAssetWithRevertingMiddlewarePriceWhenNoPositionInIt() public {
+        // given: position only in WETH
+        test_ShouldIncreaseBalanceInMarketAfterEnterWeth();
+        uint256 marketBalanceBefore = PlasmaVault(_fusionInstance.plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AAVE_V3
+        );
+
+        _allowAlphaToRefreshMarkets();
+
+        // the dependent ERC20 market would read the wstETH price too, so keep wstETH out of its substrates
+        bytes32[] memory erc20Substrates = new bytes32[](1);
+        erc20Substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
+        vm.prank(_FUSE_MANAGER);
+        PlasmaVaultGovernance(_fusionInstance.plasmaVault).grantMarketSubstrates(
+            IporFusionMarkets.ERC20_VAULT_BALANCE,
+            erc20Substrates
+        );
+        marketBalanceBefore = PlasmaVault(_fusionInstance.plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3);
+
+        // when: the middleware reverts on the wstETH price (as the real one does for an unsupported asset)
+        vm.mockCallRevert(
+            PlasmaVaultGovernance(_fusionInstance.plasmaVault).getPriceOracleMiddleware(),
+            abi.encodeWithSignature("getAssetPrice(address)", _WST_ETH),
+            abi.encodeWithSignature("Error(string)", "unsupported asset")
+        );
+        _refreshAaveMarket();
+
+        // then: the price is never read for the asset without a position
+        assertEq(
+            PlasmaVault(_fusionInstance.plasmaVault).totalAssetsInMarket(IporFusionMarkets.AAVE_V3),
+            marketBalanceBefore,
+            "reverting wstETH price without position must not matter"
+        );
+    }
+
+    function test_ShouldRevertWithZeroPriceWhenPositionInAssetWithoutMiddlewarePrice() public {
+        // given: position in wstETH
+        test_ShouldIncreaseBalanceInMarketAfterEnterWstEth();
+
+        _allowAlphaToRefreshMarkets();
+
+        // when
+        _mockMiddlewarePrice(_WST_ETH, 0);
+
+        // then
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AaveV3WithPriceOracleMiddlewareBalanceFuse.AaveV3WithPriceOracleMiddlewareBalanceFuseZeroPrice.selector,
+                _WST_ETH
+            )
+        );
+        _refreshAaveMarket();
+    }
+
+    function _mockMiddlewarePrice(address asset_, uint256 price_) private {
+        vm.mockCall(
+            PlasmaVaultGovernance(_fusionInstance.plasmaVault).getPriceOracleMiddleware(),
+            abi.encodeWithSignature("getAssetPrice(address)", asset_),
+            abi.encode(price_, uint256(8))
+        );
+    }
+
+    function _allowAlphaToRefreshMarkets() private {
+        vm.prank(_ATOMIST);
+        IporFusionAccessManager(_fusionInstance.accessManager).grantRole(Roles.UPDATE_MARKETS_BALANCES_ROLE, _ALPHA, 0);
+    }
+
+    function _refreshAaveMarket() private {
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.AAVE_V3;
+        vm.prank(_ALPHA);
+        PlasmaVault(_fusionInstance.plasmaVault).updateMarketsBalances(marketIds);
     }
 }

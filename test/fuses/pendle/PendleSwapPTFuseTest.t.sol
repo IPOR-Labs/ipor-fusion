@@ -76,7 +76,7 @@ contract PendleSwapPTFuseTest is Test {
         markets[0] = _MARKET;
 
         uint256[] memory usePendleOracleMethod = new uint256[](1);
-        usePendleOracleMethod[0] = 0;
+        usePendleOracleMethod[0] = 1;
 
         _pendleAddresses = PendleHelper.addFullMarket(_plasmaVault, markets, usePendleOracleMethod, vm);
 
@@ -151,23 +151,23 @@ contract PendleSwapPTFuseTest is Test {
         assertApproxEqAbs(ptBalanceBefore, 0, ERROR_DELTA, "PT balance should be 0");
         assertApproxEqAbs(
             totalAssetsAfter,
-            8434352772450140063,
+            9997453876860145982,
             ERROR_DELTA,
-            "Total assets should be 8434352772450140063"
+            "Total assets should be 9997453876860145982"
         );
         assertApproxEqAbs(erc20MarketBefore, 0, ERROR_DELTA, "ERC20 market balance should be 0");
         assertApproxEqAbs(
             erc20MarketAfter,
-            8434352772450140063,
+            9997453876860145982,
             ERROR_DELTA,
-            "ERC20 market balance should be 8434352772450140063"
+            "ERC20 market balance should be 9997453876860145982"
         );
         assertApproxEqAbs(erc20MarketBefore, 0, ERROR_DELTA, "ERC20 market balance should be 0");
         assertApproxEqAbs(
             erc20MarketAfter,
-            8434352772450140063,
+            9997453876860145982,
             ERROR_DELTA,
-            "ERC20 market balance should be 8434352772450140063"
+            "ERC20 market balance should be 9997453876860145982"
         );
     }
 
@@ -216,7 +216,7 @@ contract PendleSwapPTFuseTest is Test {
         assertApproxEqAbs(ptBalanceBefore, 12117435159760642058, 0, "PT balance should be 12117435159760642058");
         assertApproxEqAbs(ptBalanceAfter, 0, ERROR_DELTA, "PT balance should be 0");
 
-        assertApproxEqAbs(totalAssetsBefore, 8434352772450140063, 0, "Total assets should be 8434352772450140063");
+        assertApproxEqAbs(totalAssetsBefore, 9997453876860145982, 0, "Total assets should be 9997453876860145982");
         assertApproxEqAbs(
             totalAssetsAfter,
             10222875153389507980,
@@ -406,16 +406,16 @@ contract PendleSwapPTFuseTest is Test {
         assertApproxEqAbs(ptBalanceBefore, 0, ERROR_DELTA, "PT balance should be 0");
         assertApproxEqAbs(
             totalAssetsAfter,
-            8434352772450140063,
+            9997453876860145982,
             ERROR_DELTA,
-            "Total assets should be 8434352772450140063"
+            "Total assets should be 9997453876860145982"
         );
         assertApproxEqAbs(erc20MarketBefore, 0, ERROR_DELTA, "ERC20 market balance should be 0");
         assertApproxEqAbs(
             erc20MarketAfter,
-            8434352772450140063,
+            9997453876860145982,
             ERROR_DELTA,
-            "ERC20 market balance should be 8434352772450140063"
+            "ERC20 market balance should be 9997453876860145982"
         );
     }
 
@@ -534,7 +534,7 @@ contract PendleSwapPTFuseTest is Test {
         assertApproxEqAbs(ptBalanceBefore, 12117435159760642058, 0, "PT balance should be 12117435159760642058");
         assertApproxEqAbs(ptBalanceAfter, 0, ERROR_DELTA, "PT balance should be 0");
 
-        assertApproxEqAbs(totalAssetsBefore, 8434352772450140063, 0, "Total assets should be 8434352772450140063");
+        assertApproxEqAbs(totalAssetsBefore, 9997453876860145982, 0, "Total assets should be 9997453876860145982");
         assertApproxEqAbs(
             totalAssetsAfter,
             10222875153389507980,

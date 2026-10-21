@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+
 /**
  * @title Redemption Lock Start Times Storage Structure
  * @notice Stores the moment each account last deposited or minted (the start of its redemption lock)
@@ -25,6 +27,17 @@ struct RedemptionLockStartTimes {
 struct RedemptionDelay {
     /// @notice The current redemption delay in seconds
     uint256 redemptionDelayInSeconds;
+}
+
+/**
+ * @title Redemption Delay Exemptions Storage Structure
+ * @notice Stores the accounts that are exempt from the redemption delay
+ * @dev Uses ERC-7201 namespaced storage pattern
+ * @custom:storage-location erc7201:io.ipor.managers.access.RedemptionDelayExemptions
+ */
+struct RedemptionDelayExemptions {
+    /// @notice Set of accounts treated as if the vault-wide redemption delay were 0 when exiting
+    EnumerableSet.AddressSet accounts;
 }
 
 /**
@@ -68,6 +81,11 @@ library IporFusionAccessManagersStorageLib {
     /// @notice Storage slot for RedemptionDelay
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.managers.access.RedemptionDelay")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant REDEMPTION_DELAY = 0x145eef5574c3cce4d2653445e6a5a4d0b02eafca2d8fced992bac1eca819d500;
+
+    /// @notice Storage slot for RedemptionDelayExemptions
+    /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.managers.access.RedemptionDelayExemptions")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant REDEMPTION_DELAY_EXEMPTIONS =
+        0xc907ff1647cc23a1ed16a70292ca2dd8b68ec279b648a0a2e9599d2834e88f00;
 
     /// @notice Storage slot for MinimalExecutionDelayForRole
     /// @dev Computed as: keccak256(abi.encode(uint256(keccak256("io.ipor.managers.access.MinimalExecutionDelayForRole")) - 1)) & ~bytes32(uint256(0xff))
@@ -116,6 +134,21 @@ library IporFusionAccessManagersStorageLib {
     {
         assembly {
             redemptionLockStartTimes.slot := REDEMPTION_LOCK_START_TIMES
+        }
+    }
+
+    /**
+     * @notice Retrieves the redemption delay exemptions storage pointer
+     * @dev Uses assembly to access the predetermined storage slot
+     * @return redemptionDelayExemptions Storage pointer to the set of exempt accounts
+     */
+    function getRedemptionDelayExemptions()
+        internal
+        pure
+        returns (RedemptionDelayExemptions storage redemptionDelayExemptions)
+    {
+        assembly {
+            redemptionDelayExemptions.slot := REDEMPTION_DELAY_EXEMPTIONS
         }
     }
 

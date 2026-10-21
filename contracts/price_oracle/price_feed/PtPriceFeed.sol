@@ -8,6 +8,7 @@ import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandard
 import {IPPYLpOracle} from "@pendle/core-v2/contracts/interfaces/IPPYLpOracle.sol";
 import {IPriceOracleMiddleware} from "../IPriceOracleMiddleware.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {PendleOracleMethodLib} from "./lib/PendleOracleMethodLib.sol";
 
 /// @title Price feed for Pendle Principal Tokens (PT)
 /// @notice Provides price data for PT tokens based on Pendle market rates
@@ -59,11 +60,12 @@ contract PtPriceFeed is IPriceFeed {
     /// 1. TWAP window is sufficiently long (min 5 min, recommended 15 min)
     /// 2. Pendle oracle is active and has enough historical data
     /// 3. Price middleware supports the underlying asset from SY
+    /// 4. Oracle method is 0 or 1, and method 0 is only used with an SY that is 1:1 with its asset
     /// @param pendleOracle_ Address of the Pendle oracle
     /// @param pendleMarket_ Address of the Pendle market
     /// @param twapWindow_ Duration of TWAP window (recommended 15 minutes)
     /// @param priceMiddleware_ Address of price oracle middleware that must support the underlying asset
-    /// @param usePendleOracleMethod 0 for getPtToSyRate, 1 for getPtToAssetRate
+    /// @param usePendleOracleMethod 0 for getPtToSyRate (only for an SY that is 1:1 with its asset), 1 for getPtToAssetRate
     constructor(
         address pendleOracle_,
         address pendleMarket_,
@@ -88,6 +90,8 @@ contract PtPriceFeed is IPriceFeed {
         }
 
         (IStandardizedYield sy, , ) = IPMarket(pendleMarket_).readTokens();
+
+        PendleOracleMethodLib.validate(sy, usePendleOracleMethod);
 
         (, address assetAddress, uint8 assetDecimals) = sy.assetInfo();
 
@@ -114,7 +118,7 @@ contract PtPriceFeed is IPriceFeed {
         uint32 twapWindow = TWAP_WINDOW;
 
         uint256 unitPrice;
-        if (USE_PENDLE_ORACLE_METHOD == 1) {
+        if (USE_PENDLE_ORACLE_METHOD == PendleOracleMethodLib.PT_TO_ASSET) {
             unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(PENDLE_MARKET), twapWindow);
         } else {
             unitPrice = PendlePYOracleLib.getPtToSyRate(IPMarket(PENDLE_MARKET), twapWindow);

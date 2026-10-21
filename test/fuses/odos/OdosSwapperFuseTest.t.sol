@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -63,6 +64,7 @@ contract OdosSwapperFuseTest is Test {
     address private constant WETH_WHALE = 0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8;
 
     // Fork block number for reproducible tests (from Odos API response)
+    // Chainlink at this block: USDC = 0.99975919 USD, WETH = 3331.66731181 USD
     uint256 private constant FORK_BLOCK_NUMBER = 421193396;
 
     // ============ State Variables ============
@@ -74,6 +76,9 @@ contract OdosSwapperFuseTest is Test {
 
     OdosSwapperFuse private _odosSwapperFuse;
     OdosSwapExecutor private _odosSwapExecutor;
+
+    /// @dev WETH amount the calldata-driven pull router pays (set by {_installPullRouter})
+    uint256 private _routerWethOut;
 
     // ============ Setup ============
 
@@ -162,13 +167,14 @@ contract OdosSwapperFuseTest is Test {
             tokenOut: WETH,
             amountIn: 1000e6,
             minAmountOut: 0,
-            swapCallData: ""
+            swapCallData: "",
+            tokensToReturn: new address[](0)
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_odosSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
         );
 
         // when/then
@@ -190,13 +196,14 @@ contract OdosSwapperFuseTest is Test {
             tokenOut: unsupportedToken,
             amountIn: 1000e6,
             minAmountOut: 0,
-            swapCallData: ""
+            swapCallData: "",
+            tokensToReturn: new address[](0)
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_odosSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
         );
 
         // when/then
@@ -213,13 +220,14 @@ contract OdosSwapperFuseTest is Test {
             tokenOut: WETH,
             amountIn: 0,
             minAmountOut: 0,
-            swapCallData: ""
+            swapCallData: "",
+            tokensToReturn: new address[](0)
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_odosSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
         );
 
         // when/then
@@ -302,13 +310,14 @@ contract OdosSwapperFuseTest is Test {
             tokenOut: WETH,
             amountIn: depositAmount,
             minAmountOut: minAmountOut,
-            swapCallData: odosSwapCallData
+            swapCallData: odosSwapCallData,
+            tokensToReturn: new address[](0)
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_odosSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
         );
 
         // when
@@ -344,13 +353,14 @@ contract OdosSwapperFuseTest is Test {
             tokenOut: WETH,
             amountIn: depositAmount,
             minAmountOut: unrealisticMinAmountOut,
-            swapCallData: odosSwapCallData
+            swapCallData: odosSwapCallData,
+            tokensToReturn: new address[](0)
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_odosSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
         );
 
         // when/then - expect revert with MinAmountOutNotReached error
@@ -380,207 +390,167 @@ contract OdosSwapperFuseTest is Test {
             tokenOut: WETH,
             amountIn: depositAmount,
             minAmountOut: 0,
-            swapCallData: odosSwapCallData
+            swapCallData: odosSwapCallData,
+            tokensToReturn: new address[](0)
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_odosSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
         );
 
-        // when/then - expect event emission
-        vm.expectEmit(true, true, true, false);
-        emit OdosSwapperFuseEnter(address(_odosSwapperFuse), USDC, WETH, 0, 0);
+        // when/then - expect event emission including the deltas (1000 USDC spent, the quoted WETH received)
+        vm.expectEmit(true, true, true, true, _plasmaVault);
+        emit OdosSwapperFuseEnter(address(_odosSwapperFuse), USDC, WETH, 1000e6, 299864205733840000);
 
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }
 
     // ============ Edge Case Tests ============
 
-    /// @notice Test HIGH PRIORITY: Revert when tokenOut balance does not increase after swap
-    /// @dev Covers OdosSwapperFuse.sol lines 163-165: critical security path where tokens are consumed but nothing received
+    /// @notice tokenIn consumed but nothing received reverts (received == 0)
     function testShouldRevertWhenTokenOutBalanceDoesNotIncrease() public {
         // given
-        uint256 depositAmount = 1000e6;
-        _depositToVault(depositAmount);
+        _depositToVault(1000e6);
+        _installPullRouter(0);
 
-        // Mock a malicious/broken swap that consumes tokenIn but returns nothing
-        // We create a mock executor that simulates this edge case
-        MockBrokenOdosSwapExecutor mockExecutor = new MockBrokenOdosSwapExecutor();
-
-        // Deploy a new fuse with our mock executor for testing
-        OdosSwapperFuseWithMockExecutor testFuse = new OdosSwapperFuseWithMockExecutor(
-            IporFusionMarkets.ODOS_SWAPPER,
-            address(mockExecutor)
-        );
-
-        // Configure the new fuse in the vault
-        address[] memory newFuses = new address[](1);
-        newFuses[0] = address(testFuse);
-        IPlasmaVaultGovernance(_plasmaVault).addFuses(newFuses);
-
-        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
-            tokenIn: USDC,
-            tokenOut: WETH,
-            amountIn: depositAmount,
-            minAmountOut: 0,
-            swapCallData: ""
-        });
-
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(
-            address(testFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
-        );
-
-        // when/then - expect revert because tokenOut balance didn't increase
+        // when/then
         vm.expectRevert(OdosSwapperFuse.OdosSwapperFuseSlippageFail.selector);
-        PlasmaVault(_plasmaVault).execute(enterCalls);
+        _enterWithPullRouter(10000, 0);
     }
 
-    /// @notice Test MEDIUM PRIORITY: Function returns early when no tokens are consumed
-    /// @dev Covers OdosSwapperFuse.sol lines 156-158: edge case where swap returns all tokens without swapping
-    function testShouldReturnEarlyWhenNoTokensConsumed() public {
+    /// @notice Swap output below minAmountOut reverts with the expected/actual pair
+    function testShouldRevertWhenMinAmountOutNotReachedByRouter() public {
         // given
-        uint256 depositAmount = 1000e6;
-        _depositToVault(depositAmount);
+        _depositToVault(1000e6);
+        _installPullRouter(0.1 ether);
 
-        // Mock an executor that returns all tokenIn without consuming any
-        MockNoOpOdosSwapExecutor mockExecutor = new MockNoOpOdosSwapExecutor();
+        // when/then
+        vm.expectRevert(
+            abi.encodeWithSelector(OdosSwapperFuse.OdosSwapperFuseMinAmountOutNotReached.selector, 1 ether, 0.1 ether)
+        );
+        _enterWithPullRouter(10000, 1 ether);
+    }
 
-        // Deploy a new fuse with our mock executor
-        OdosSwapperFuseWithMockExecutor testFuse = new OdosSwapperFuseWithMockExecutor(
-            IporFusionMarkets.ODOS_SWAPPER,
-            address(mockExecutor)
+    /// @notice Output worth ~45% of the input fails the USD slippage quotient check
+    function testShouldRevertWhenSlippageExceeded() public {
+        // given
+        _depositToVault(1000e6);
+        _installPullRouter(0.15 ether);
+
+        // when/then
+        vm.expectRevert(OdosSwapperFuse.OdosSwapperFuseSlippageFail.selector);
+        _enterWithPullRouter(10000, 0);
+    }
+
+    /// @notice An unset price oracle middleware in vault storage reverts the USD check
+    function testShouldRevertWhenPriceOracleMiddlewareNotConfigured() public {
+        // given
+        _depositToVault(1000e6);
+        _installPullRouter(0.2998 ether);
+        // PlasmaVaultStorageLib.PRICE_ORACLE_MIDDLEWARE slot
+        vm.store(_plasmaVault, 0x0d761ae54d86fc3be4f1f2b44ade677efb1c84a85fc6bb1d087dc42f1e319a00, bytes32(0));
+
+        // when/then
+        vm.expectRevert(OdosSwapperFuse.OdosSwapperFuseInvalidPriceOracleMiddleware.selector);
+        _enterWithPullRouter(10000, 0);
+    }
+
+    /// @notice A zero tokenIn price from the oracle reverts with InvalidPrice(USDC)
+    function testShouldRevertWhenTokenInPriceIsZero() public {
+        // given
+        _depositToVault(1000e6);
+        _installPullRouter(0.2998 ether);
+        vm.mockCall(
+            _priceOracle,
+            abi.encodeWithSignature("getAssetPrice(address)", USDC),
+            abi.encode(uint256(0), uint256(8))
         );
 
-        // Configure the new fuse
-        address[] memory newFuses = new address[](1);
-        newFuses[0] = address(testFuse);
-        IPlasmaVaultGovernance(_plasmaVault).addFuses(newFuses);
+        // when/then
+        vm.expectRevert(abi.encodeWithSelector(OdosSwapperFuse.OdosSwapperFuseInvalidPrice.selector, USDC));
+        _enterWithPullRouter(10000, 0);
+    }
 
+    /// @notice A zero tokenOut price from the oracle reverts with InvalidPrice(WETH)
+    function testShouldRevertWhenTokenOutPriceIsZero() public {
+        // given
+        _depositToVault(1000e6);
+        _installPullRouter(0.2998 ether);
+        vm.mockCall(
+            _priceOracle,
+            abi.encodeWithSignature("getAssetPrice(address)", WETH),
+            abi.encode(uint256(0), uint256(8))
+        );
+
+        // when/then
+        vm.expectRevert(abi.encodeWithSelector(OdosSwapperFuse.OdosSwapperFuseInvalidPrice.selector, WETH));
+        _enterWithPullRouter(10000, 0);
+    }
+
+    /// @notice A route that consumes nothing returns early: no revert, no balance change, no Enter event
+    function testShouldReturnEarlyWhenNoTokensConsumed() public {
+        // given
+        _depositToVault(1000e6);
+        _installPullRouter(0);
         uint256 vaultUsdcBefore = ERC20(USDC).balanceOf(_plasmaVault);
         uint256 vaultWethBefore = ERC20(WETH).balanceOf(_plasmaVault);
 
-        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
-            tokenIn: USDC,
-            tokenOut: WETH,
-            amountIn: depositAmount,
-            minAmountOut: 0,
-            swapCallData: ""
-        });
+        // when
+        vm.recordLogs();
+        _enterWithPullRouter(0, 0);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
 
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(
-            address(testFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
-        );
-
-        // when - execute should succeed (early return, no revert)
-        PlasmaVault(_plasmaVault).execute(enterCalls);
-
-        // then - balances should be unchanged (executor returned all tokens)
-        uint256 vaultUsdcAfter = ERC20(USDC).balanceOf(_plasmaVault);
-        uint256 vaultWethAfter = ERC20(WETH).balanceOf(_plasmaVault);
-
-        assertEq(vaultUsdcAfter, vaultUsdcBefore, "USDC balance should be unchanged");
-        assertEq(vaultWethAfter, vaultWethBefore, "WETH balance should be unchanged");
+        // then
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), vaultUsdcBefore, "USDC balance should be unchanged");
+        assertEq(ERC20(WETH).balanceOf(_plasmaVault), vaultWethBefore, "WETH balance should be unchanged");
+        assertEq(_countEnterEvents(logs), 0, "no Enter event on early return");
     }
 
-    /// @notice Test MEDIUM PRIORITY: Executor returns unused tokenIn back to PlasmaVault
-    /// @dev Covers OdosSwapExecutor.sol lines 48-51: partial swap where not all tokenIn is used
+    /// @notice Partial fill: the unused half of tokenIn comes back to the vault and the event reports the spent half
     function testShouldReturnUnusedTokenIn() public {
-        // given
-        uint256 depositAmount = 1000e6;
-        _depositToVault(depositAmount);
-
-        // Mock executor that uses only half the tokenIn and returns the rest
-        MockPartialSwapExecutor mockExecutor = new MockPartialSwapExecutor();
-
-        // Pre-fund mock executor with WETH for the simulated swap output
-        vm.prank(WETH_WHALE);
-        ERC20(WETH).transfer(address(mockExecutor), 0.2 ether);
-
-        // Deploy a new fuse with our mock executor
-        OdosSwapperFuseWithMockExecutor testFuse = new OdosSwapperFuseWithMockExecutor(
-            IporFusionMarkets.ODOS_SWAPPER,
-            address(mockExecutor)
-        );
-
-        // Configure the new fuse
-        address[] memory newFuses = new address[](1);
-        newFuses[0] = address(testFuse);
-        IPlasmaVaultGovernance(_plasmaVault).addFuses(newFuses);
-
-        uint256 vaultUsdcBefore = ERC20(USDC).balanceOf(_plasmaVault);
-
-        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
-            tokenIn: USDC,
-            tokenOut: WETH,
-            amountIn: depositAmount,
-            minAmountOut: 0,
-            swapCallData: ""
-        });
-
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(
-            address(testFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
-        );
+        // given - 50% of the USDC is pulled, 0.15 WETH is paid (~99.97% of the spent value)
+        _depositToVault(1000e6);
+        _installPullRouter(0.15 ether);
 
         // when
-        PlasmaVault(_plasmaVault).execute(enterCalls);
+        vm.recordLogs();
+        _enterWithPullRouter(5000, 0);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
 
-        // then - half of USDC should be returned, half consumed
-        uint256 vaultUsdcAfter = ERC20(USDC).balanceOf(_plasmaVault);
-        uint256 vaultWethAfter = ERC20(WETH).balanceOf(_plasmaVault);
-
-        // Mock executor uses 50% of tokenIn
-        assertEq(vaultUsdcAfter, vaultUsdcBefore / 2, "Half of USDC should be returned");
-        assertGt(vaultWethAfter, 0, "Should have received some WETH");
+        // then
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), 500e6, "Half of USDC should be returned");
+        assertEq(ERC20(WETH).balanceOf(_plasmaVault), 0.15 ether, "WETH received");
+        _assertSingleEnterEvent(logs, 500e6, 0.15 ether);
     }
 
-    /// @notice Test MEDIUM PRIORITY: Custom slippage from substrates is used instead of default
-    /// @dev Covers OdosSwapperFuse._getSlippageLimit() - verifies 2% custom slippage is read from substrates
+    /// @notice The slippage substrate (2%) is honoured: an output ~98.5% of the input value passes at 2% and
+    /// fails with the 1% default once the slippage substrate is removed
     function testShouldUseCustomSlippageWhenConfigured() public {
-        // given - setup already configures 2% slippage in substrates (line 466)
-        // DEFAULT_SLIPPAGE_WAD is 1% (1e16), custom is 2% (2e16)
-        uint256 depositAmount = 1000e6;
-        _depositToVault(depositAmount);
+        // given - USDC=0.99975919 USD, WETH=3331.66731181 USD at the fork block: 0.2956 WETH is ~98.51% of 1000 USDC
+        uint256 wethOut = 0.2956 ether;
+        _depositToVault(2000e6);
+        _installPullRouter(wethOut);
 
-        // Calldata from Odos API
-        bytes
-            memory odosSwapCallData = hex"83bd37f90001af88d065e77c8cc2239327c5edb3a432268e5831000182af49447d8a07e3bd95bd0d56f35241523fbab1043b9aca0008042954e8079ec480028f5c000103222a2b261a12091bBE271e763A7E26b64E25e20000000000000000000000000003010203004801010102ff00000000000000000000000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583182af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000000000000000000000000000";
+        // when - 2% slippage substrate from _setupMarketConfigs
+        _enterWithPullRouter(10000, 0);
 
-        // Calculate a minAmountOut that would fail with 1% slippage but pass with 2%
-        // Expected output ~0.2998 WETH. With 2% slippage: 0.2998 * 0.98 = 0.2938 WETH
-        uint256 minAmountOut = 0;
+        // then
+        assertEq(ERC20(WETH).balanceOf(_plasmaVault), wethOut, "swap passes at 2%");
 
-        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
-            tokenIn: USDC,
-            tokenOut: WETH,
-            amountIn: depositAmount,
-            minAmountOut: minAmountOut,
-            swapCallData: odosSwapCallData
-        });
+        // given - same route again, slippage substrate removed (default 1% applies)
+        _installPullRouter(wethOut);
+        bytes32[] memory substrates = new bytes32[](4);
+        substrates[0] = OdosSubstrateLib.encodeTokenSubstrate(USDC);
+        substrates[1] = OdosSubstrateLib.encodeTokenSubstrate(WETH);
+        substrates[2] = OdosSubstrateLib.encodeTokenSubstrate(USDT);
+        substrates[3] = OdosSubstrateLib.encodeTokenSubstrate(DAI);
+        IPlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.ODOS_SWAPPER, substrates);
 
-        FuseAction[] memory enterCalls = new FuseAction[](1);
-        enterCalls[0] = FuseAction(
-            address(_odosSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
-        );
-
-        // when - execute should succeed with 2% custom slippage
-        PlasmaVault(_plasmaVault).execute(enterCalls);
-
-        // then - swap completed successfully, proving custom slippage was applied
-        uint256 vaultWethAfter = ERC20(WETH).balanceOf(_plasmaVault);
-        assertGt(vaultWethAfter, 0, "Swap should succeed with custom 2% slippage");
-
-        // Verify the custom slippage is indeed 2%
-        assertEq(_odosSwapperFuse.DEFAULT_SLIPPAGE_WAD(), 1e16, "Default slippage is 1%");
-        // Custom slippage of 2% (2e16) was set in _setupMarketConfigs()
+        // when/then
+        vm.expectRevert(OdosSwapperFuse.OdosSwapperFuseSlippageFail.selector);
+        _enterWithPullRouter(10000, 0);
     }
 
     /// @notice Test LOW PRIORITY: Executor can be called directly by anyone (access control test)
@@ -603,7 +573,7 @@ contract OdosSwapperFuseTest is Test {
         // With empty calldata, Odos Router doesn't revert, but returns without doing swap
         // The executor then sends all tokens back to msg.sender (the attacker!)
         vm.prank(attacker);
-        _odosSwapExecutor.execute(USDC, WETH, amount, "");
+        _odosSwapExecutor.execute(USDC, WETH, amount, "", new address[](0));
 
         // then - tokens are sent to the attacker (msg.sender)
         uint256 attackerUsdcAfter = ERC20(USDC).balanceOf(attacker);
@@ -613,6 +583,23 @@ contract OdosSwapperFuseTest is Test {
         // can be stolen by anyone who calls execute()
         assertEq(attackerUsdcAfter, attackerUsdcBefore + amount, "Attacker should have received all USDC");
         assertEq(executorUsdcAfter, 0, "Executor should have no USDC left");
+
+        // and - the same vector applies to a token left over from a prior swap that was not listed in
+        // tokensToReturn: DAI sitting in the executor (e.g. stranded by a prior multi-output swap) can be
+        // taken by anyone via execute(DAI, DAI, 0, "", []), motivating listing every possible output token.
+        uint256 daiAmount = 10e18;
+        deal(DAI, address(_odosSwapExecutor), daiAmount);
+        uint256 attackerDaiBefore = ERC20(DAI).balanceOf(attacker);
+
+        vm.prank(attacker);
+        _odosSwapExecutor.execute(DAI, DAI, 0, "", new address[](0));
+
+        assertEq(
+            ERC20(DAI).balanceOf(attacker),
+            attackerDaiBefore + daiAmount,
+            "Attacker should have received the stranded DAI"
+        );
+        assertEq(ERC20(DAI).balanceOf(address(_odosSwapExecutor)), 0, "Executor should have no DAI left");
     }
 
     /// @notice Test LOW PRIORITY: Slippage overflow validation at boundary
@@ -643,7 +630,333 @@ contract OdosSwapperFuseTest is Test {
         assertEq(decoded, maxValue, "Decoded slippage should match max uint248");
     }
 
+    // ============ tokensToReturn Tests (IL-7944) ============
+
+    /// @notice Installs a mock Odos router at ODOS_ROUTER_V3 (via vm.etch, code only, no storage/immutables) whose
+    /// fallback pulls the executor's full USDC allowance and pushes a fixed WETH amount (tokenOut) plus a fixed
+    /// DAI amount (a third, unlisted-by-default output) to the caller (the real OdosSwapExecutor).
+    function _installMultiOutputMockRouter() private returns (uint256 wethOut, uint256 daiOut) {
+        wethOut = 0.297 ether; // ~0.99 USD ratio against 1000 USDC at this fork's Chainlink prices, margin over the 2% limit
+        daiOut = 10e18; // third output token, within s * USD(in) = 20 USDC bound
+
+        MockOdosRouterMultiOutput mock = new MockOdosRouterMultiOutput();
+        vm.etch(ODOS_ROUTER_V3, address(mock).code);
+        deal(WETH, ODOS_ROUTER_V3, wethOut);
+        deal(DAI, ODOS_ROUTER_V3, daiOut);
+    }
+
+    /// @notice Test 1: a third output token (DAI) left in the executor by a multi-output route is swept to the
+    /// vault when listed in tokensToReturn.
+    /// Pre-fix (tokensToReturn loop removed from OdosSwapExecutor.execute): executor holds 10e18 DAI, vault 0 -
+    /// the first assertion below fails.
+    function testShouldReturnTokensToReturnToVaultAfterSwap() public {
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+
+        (, uint256 daiOut) = _installMultiOutputMockRouter();
+
+        address[] memory tokensToReturn = new address[](1);
+        tokensToReturn[0] = DAI;
+
+        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: "",
+            tokensToReturn: tokensToReturn
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_odosSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
+        );
+
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        assertEq(ERC20(DAI).balanceOf(address(_odosSwapExecutor)), 0, "Executor should have no DAI left");
+        assertEq(ERC20(DAI).balanceOf(_plasmaVault), daiOut, "Vault should have received the DAI");
+        assertGt(ERC20(WETH).balanceOf(_plasmaVault), 0, "Vault should have received WETH");
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), 0, "Vault should have swapped all USDC");
+    }
+
+    /// @notice Test 2 (control): same route, tokensToReturn empty. DAI stays in the executor before and after the
+    /// fix and is not counted in totalAssets(); pins the documented residual behaviour. Not regression evidence.
+    function testShouldLeaveThirdTokenInExecutorWhenNotListed() public {
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+
+        (, uint256 daiOut) = _installMultiOutputMockRouter();
+
+        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: "",
+            tokensToReturn: new address[](0)
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_odosSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
+        );
+
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        assertEq(ERC20(DAI).balanceOf(address(_odosSwapExecutor)), daiOut, "DAI should remain stranded in executor");
+        assertEq(ERC20(DAI).balanceOf(_plasmaVault), 0, "Vault should not have received the DAI");
+        // The stranded DAI is not counted anywhere: market ODOS_SWAPPER uses ZeroBalanceFuse and no market
+        // carries a placeholder balance for it (assessment IL-7944 section 2.4).
+        assertGt(ERC20(WETH).balanceOf(_plasmaVault), 0, "Vault should still have received WETH from the swap");
+    }
+
+    /// @notice Test 3: tokenIn/tokenOut duplicated in tokensToReturn (and DAI listed twice) are no-ops; no revert,
+    /// and DAI still ends up swept exactly once. Pre-fix: DAI stranded, first DAI assertion fails.
+    function testShouldSkipTokenInTokenOutAndDuplicatesInTokensToReturn() public {
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+
+        (, uint256 daiOut) = _installMultiOutputMockRouter();
+
+        address[] memory tokensToReturn = new address[](4);
+        tokensToReturn[0] = USDC;
+        tokensToReturn[1] = WETH;
+        tokensToReturn[2] = DAI;
+        tokensToReturn[3] = DAI;
+
+        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: "",
+            tokensToReturn: tokensToReturn
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_odosSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
+        );
+
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        assertEq(ERC20(USDC).balanceOf(address(_odosSwapExecutor)), 0, "Executor should have no USDC left");
+        assertEq(ERC20(WETH).balanceOf(address(_odosSwapExecutor)), 0, "Executor should have no WETH left");
+        assertEq(ERC20(DAI).balanceOf(address(_odosSwapExecutor)), 0, "Executor should have no DAI left");
+        assertEq(ERC20(DAI).balanceOf(_plasmaVault), daiOut, "Vault should have received the DAI exactly once");
+    }
+
+    /// @notice Test 4: a tokensToReturn entry that is not a granted token substrate reverts the whole enter.
+    /// This is a validation-guard test, not evidence for the executor-side fix; covered separately by the
+    /// fuse-side re-injection (removing the substrate check).
+    function testShouldRevertWhenTokenToReturnNotGranted() public {
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+
+        _installMultiOutputMockRouter();
+
+        address[] memory tokensToReturn = new address[](1);
+        tokensToReturn[0] = ARB; // not granted per _setupMarketConfigs()
+
+        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: "",
+            tokensToReturn: tokensToReturn
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_odosSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(OdosSwapperFuse.OdosSwapperFuseUnsupportedAsset.selector, ARB));
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    // ============ Slippage Range Tests (IL-8033) ============
+
+    /// @notice IL-8033 test 8: a slippage substrate above 1e18 (100%) is rejected at read time with a
+    /// named error instead of the opaque Panic(0x11) that OdosSwapperFuse._getSlippageLimit produced
+    /// before the fix (the Odos encoder still accepts the value on purpose - it is not the control).
+    /// Fails without part C (Panic(0x11) at the checked subtraction), passes with it.
+    function testShouldRevertWhenSlippageSubstrateAbove100PercentAtReadTime() public {
+        uint256 depositAmount = 1000e6;
+        _depositToVault(depositAmount);
+        _installMultiOutputMockRouter();
+
+        uint256 aboveOneHundredPercent = 1e18 + 1;
+        _grantSubstratesWithSlippage(OdosSubstrateLib.encodeSlippageSubstrate(aboveOneHundredPercent));
+
+        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            swapCallData: "",
+            tokensToReturn: new address[](0)
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_odosSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OdosSwapperFuse.OdosSwapperFuseSlippageExceeds100Percent.selector,
+                aboveOneHundredPercent
+            )
+        );
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
     // ============ Helper Functions ============
+
+    /// @notice Installs the calldata-driven pull router at ODOS_ROUTER_V3 (via vm.etch, code only) and funds it with
+    /// {wethOut_} WETH
+    function _installPullRouter(uint256 wethOut_) private {
+        _routerWethOut = wethOut_;
+        vm.etch(ODOS_ROUTER_V3, address(new OdosMockRouterPull()).code);
+        deal(WETH, ODOS_ROUTER_V3, wethOut_);
+    }
+
+    /// @notice Runs the production fuse through the vault with 1000 USDC; the swap calldata tells the router to pull
+    /// {pullBps_}/10000 of the executor's allowance and to pay `_routerWethOut` WETH
+    function _enterWithPullRouter(uint16 pullBps_, uint256 minAmountOut_) private {
+        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: 1000e6,
+            minAmountOut: minAmountOut_,
+            swapCallData: abi.encode(pullBps_, _routerWethOut),
+            tokensToReturn: new address[](0)
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_odosSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
+        );
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    function _countEnterEvents(Vm.Log[] memory logs_) private view returns (uint256 count_) {
+        for (uint256 i; i < logs_.length; ++i) {
+            if (logs_[i].emitter == _plasmaVault && logs_[i].topics[0] == OdosSwapperFuseEnter.selector) {
+                ++count_;
+            }
+        }
+    }
+
+    function _assertSingleEnterEvent(
+        Vm.Log[] memory logs_,
+        uint256 tokenInDelta_,
+        uint256 tokenOutDelta_
+    ) private view {
+        assertEq(_countEnterEvents(logs_), 1, "exactly one Enter event");
+        for (uint256 i; i < logs_.length; ++i) {
+            if (logs_[i].emitter == _plasmaVault && logs_[i].topics[0] == OdosSwapperFuseEnter.selector) {
+                (uint256 tokenInDelta, uint256 tokenOutDelta) = abi.decode(logs_[i].data, (uint256, uint256));
+                assertEq(tokenInDelta, tokenInDelta_, "event tokenInDelta");
+                assertEq(tokenOutDelta, tokenOutDelta_, "event tokenOutDelta");
+            }
+        }
+    }
+
+    /// @notice IL-8033: grants {Token USDC, Token WETH, Token USDT, Token DAI, slippageSubstrate_} to
+    /// the Odos market, revoking any previously granted substrates (grantMarketSubstrates replaces
+    /// the list).
+    function _grantSubstratesWithSlippage(bytes32 slippageSubstrate_) private {
+        bytes32[] memory substrates = new bytes32[](5);
+        substrates[0] = OdosSubstrateLib.encodeTokenSubstrate(USDC);
+        substrates[1] = OdosSubstrateLib.encodeTokenSubstrate(WETH);
+        substrates[2] = OdosSubstrateLib.encodeTokenSubstrate(USDT);
+        substrates[3] = OdosSubstrateLib.encodeTokenSubstrate(DAI);
+        substrates[4] = slippageSubstrate_;
+
+        IPlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.ODOS_SWAPPER, substrates);
+    }
+
+    // ============ Net-delta measurement tests (IL-8767) ============
+
+    /// @notice Installs a router mock whose behaviour is selected by the swap calldata (vm.etch copies code only,
+    /// so no storage is used) and a permissionless claim distributor paying {rewardToken} to the vault.
+    function _installNetDeltaRouter(address rewardToken_, uint256 rewardAmount_) private returns (address distributor) {
+        OdosMockRouterNetDelta mock = new OdosMockRouterNetDelta();
+        vm.etch(ODOS_ROUTER_V3, address(mock).code);
+        distributor = address(new OdosMockClaimDistributor(rewardToken_, rewardAmount_));
+        deal(rewardToken_, distributor, rewardAmount_);
+    }
+
+    function _netDeltaEnter(uint8 mode_, address claimTarget_, uint256 wethOut_) private {
+        bytes memory swapCallData = abi.encode(mode_, address(0xA1FA), claimTarget_, _plasmaVault, wethOut_);
+        OdosSwapperEnterData memory enterData = OdosSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amountIn: 1000e6,
+            minAmountOut: 0,
+            swapCallData: swapCallData,
+            tokensToReturn: new address[](0)
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_odosSwapperFuse),
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
+        );
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    /// @notice (a) The route sends the vault's tokenIn to a third party and a permissionless claim refills the vault
+    /// with tokenIn: the vault balance is unchanged, but the executor returned nothing, so the enter must revert.
+    /// Pre-fix (vault balance deltas): early return, the theft succeeds.
+    function testShouldRevertWhenClaimRefillsTokenInAfterTheft() public {
+        _depositToVault(1000e6);
+        address distributor = _installNetDeltaRouter(USDC, 1000e6);
+
+        vm.expectRevert(OdosSwapperFuse.OdosSwapperFuseSlippageFail.selector);
+        _netDeltaEnter(1, distributor, 0);
+
+        assertEq(ERC20(USDC).balanceOf(address(0xA1FA)), 0, "thief got nothing");
+    }
+
+    /// @notice (b) Mirror: the route steals tokenIn while a claim pays the vault tokenOut; the claim must not be
+    /// counted as swap output. Pre-fix: tokenOutDelta = claim amount passes minAmountOut and the USD check.
+    function testShouldRevertWhenClaimPaysTokenOutAfterTheft() public {
+        _depositToVault(1000e6);
+        address distributor = _installNetDeltaRouter(WETH, 0.33 ether);
+
+        vm.expectRevert(OdosSwapperFuse.OdosSwapperFuseSlippageFail.selector);
+        _netDeltaEnter(2, distributor, 0);
+
+        assertEq(ERC20(USDC).balanceOf(address(0xA1FA)), 0, "thief got nothing");
+        assertEq(ERC20(WETH).balanceOf(_plasmaVault), 0, "claim rolled back");
+    }
+
+    /// @notice (c) Control: an honest swap passes and the emitted deltas are the executor-measured spent/received.
+    function testShouldEmitExecutorDeltasForHonestSwap() public {
+        _depositToVault(1000e6);
+        // unrelated claim paying the vault tokenIn in the same call must not change the reported deltas
+        address distributor = _installNetDeltaRouter(USDC, 50e6);
+        uint256 wethOut = 0.297 ether;
+        deal(WETH, ODOS_ROUTER_V3, wethOut);
+
+        vm.expectEmit(false, false, false, true, _plasmaVault);
+        emit OdosSwapperFuseEnter(address(_odosSwapperFuse), USDC, WETH, 1000e6, wethOut);
+        _netDeltaEnter(0, distributor, wethOut);
+
+        assertEq(ERC20(WETH).balanceOf(_plasmaVault), wethOut, "tokenOut received");
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), 50e6, "tokenIn spent, claim kept");
+    }
 
     function _depositToVault(uint256 amount_) private {
         address userOne = address(0x1222);
@@ -736,185 +1049,65 @@ contract OdosSwapperFuseTest is Test {
     }
 }
 
-// ============ Mock Contracts for Edge Case Testing ============
-
-/// @notice Mock executor that consumes tokenIn but returns no tokenOut (simulates broken swap)
-contract MockBrokenOdosSwapExecutor {
-    using SafeERC20 for ERC20;
-
-    function execute(
-        address tokenIn_,
-        address, // tokenOut_ - not used
-        uint256, // amountIn_ - not used
-        bytes calldata // swapCallData_ - not used
-    ) external {
-        // Consume ALL tokenIn (don't return anything)
-        // This simulates a broken swap that eats tokens
-        uint256 balance = ERC20(tokenIn_).balanceOf(address(this));
-        // Don't transfer tokenOut - simulating swap failure without revert
-        // Don't return tokenIn - simulating consumed tokens
-        // Just burn by keeping in executor (for test purposes)
-        if (balance > 0) {
-            // Actually, to trigger the slippage fail, we should NOT return tokenIn
-            // The fuse checks: if (tokenInBalanceAfter >= tokenInBalanceBefore) return;
-            // So we need to ensure tokenIn balance decreases, but tokenOut doesn't increase
-            // We do nothing - tokenIn stays in executor, tokenOut never sent
-        }
-    }
-}
-
-/// @notice Mock executor that returns all tokenIn without doing any swap (no-op)
-contract MockNoOpOdosSwapExecutor {
-    using SafeERC20 for ERC20;
-
-    function execute(
-        address tokenIn_,
-        address, // tokenOut_ - not used
-        uint256, // amountIn_ - not used
-        bytes calldata // swapCallData_ - not used
-    ) external {
-        // Return ALL tokenIn to caller (no swap performed)
-        uint256 balance = ERC20(tokenIn_).balanceOf(address(this));
-        if (balance > 0) {
-            ERC20(tokenIn_).safeTransfer(msg.sender, balance);
-        }
-        // No tokenOut transferred - simulating swap that returned early
-    }
-}
-
-/// @notice Mock executor that uses only half of tokenIn and returns rest
-contract MockPartialSwapExecutor {
-    using SafeERC20 for ERC20;
-
-    // WETH address on Arbitrum for mock swap
+/// @notice Mock Odos Router V3 fallback that simulates a multi-output swap: pulls the caller's (the real
+/// OdosSwapExecutor's) full USDC allowance and pushes fixed WETH and DAI amounts back to the caller. Installed
+/// via `vm.etch` at the real ODOS_ROUTER_V3 address so the real OdosSwapExecutor bytecode runs unmodified.
+/// Uses only compile-time constants (no storage, no constructor-set state), so `vm.etch` - which copies runtime
+/// code only - is safe: there is no constructor to run and nothing to lose.
+contract MockOdosRouterMultiOutput {
+    address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
     address private constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
-    address private constant WETH_WHALE = 0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8;
+    address private constant DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
-    function execute(
-        address tokenIn_,
-        address tokenOut_,
-        uint256, // amountIn_ - not used
-        bytes calldata // swapCallData_ - not used
-    ) external {
-        uint256 tokenInBalance = ERC20(tokenIn_).balanceOf(address(this));
+    uint256 private constant WETH_OUT = 0.297 ether;
+    uint256 private constant DAI_OUT = 10e18;
 
-        // Return half of tokenIn (simulating partial swap)
-        if (tokenInBalance > 0) {
-            ERC20(tokenIn_).safeTransfer(msg.sender, tokenInBalance / 2);
+    fallback() external {
+        uint256 allowance = ERC20(USDC).allowance(msg.sender, address(this));
+        if (allowance > 0) {
+            ERC20(USDC).transferFrom(msg.sender, address(this), allowance);
         }
-
-        // Send some tokenOut from whale (simulating successful partial swap)
-        // Note: This is a simplified mock - in real scenario Odos would do the swap
-        // We use vm.prank in test setup, but here we need to actually have tokens
-        // For this mock to work, we need to pre-fund it or use a different approach
-        uint256 mockOutputAmount = 0.1 ether; // ~0.1 WETH for half of 1000 USDC
-        if (tokenOut_ == WETH) {
-            uint256 wethBalance = ERC20(WETH).balanceOf(address(this));
-            if (wethBalance >= mockOutputAmount) {
-                ERC20(WETH).safeTransfer(msg.sender, mockOutputAmount);
-            }
-        }
+        ERC20(WETH).transfer(msg.sender, WETH_OUT);
+        ERC20(DAI).transfer(msg.sender, DAI_OUT);
     }
-
-    // Allow funding the mock executor with WETH for testing
-    receive() external payable {}
 }
 
-/// @notice Test fuse that allows injecting a custom executor address
-/// @dev Used for edge case testing with mock executors
-contract OdosSwapperFuseWithMockExecutor {
-    using SafeERC20 for ERC20;
+/// @notice IL-8767 router mock selected by calldata `abi.encode(mode, thief, claimTarget, vault, wethOut)`.
+/// mode 0: honest swap (pull the USDC allowance, pay `wethOut` WETH to the caller, then claim for the vault);
+/// mode 1/2: pull the USDC allowance to `thief`, then `claimTarget.claim(vault)` (refills the vault with USDC / WETH).
+/// Only constants are used, so `vm.etch` of the runtime code is safe.
+contract OdosMockRouterNetDelta {
+    address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+    address private constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
-    event OdosSwapperFuseEnter(
-        address indexed version,
-        address indexed tokenIn,
-        address indexed tokenOut,
-        uint256 tokenInDelta,
-        uint256 tokenOutDelta
-    );
-
-    error OdosSwapperFuseUnsupportedAsset(address asset);
-    error OdosSwapperFuseMinAmountOutNotReached(uint256 expected, uint256 actual);
-    error OdosSwapperFuseSlippageFail();
-    error OdosSwapperFuseZeroAmount();
-    error OdosSwapperFuseInvalidMarketId();
-
-    uint256 public constant DEFAULT_SLIPPAGE_WAD = 1e16;
-    uint256 private constant _ONE = 1e18;
-
-    address public immutable VERSION;
-    uint256 public immutable MARKET_ID;
-    address public immutable EXECUTOR;
-
-    constructor(uint256 marketId_, address executor_) {
-        if (marketId_ == 0) {
-            revert OdosSwapperFuseInvalidMarketId();
+    fallback() external {
+        (uint8 mode, address thief, address claimTarget, address vault, uint256 wethOut) = abi.decode(
+            msg.data,
+            (uint8, address, address, address, uint256)
+        );
+        uint256 allowance = ERC20(USDC).allowance(msg.sender, address(this));
+        if (mode == 0) {
+            ERC20(USDC).transferFrom(msg.sender, address(this), allowance);
+            ERC20(WETH).transfer(msg.sender, wethOut);
+        } else {
+            ERC20(USDC).transferFrom(msg.sender, thief, allowance);
         }
-        VERSION = address(this);
-        MARKET_ID = marketId_;
-        EXECUTOR = executor_;
+        OdosMockClaimDistributor(claimTarget).claim(vault);
+    }
+}
+
+/// @notice Permissionless reward distributor (anyone may claim on behalf of an account, payout goes to the account).
+contract OdosMockClaimDistributor {
+    address public immutable TOKEN;
+    uint256 public immutable AMOUNT;
+
+    constructor(address token_, uint256 amount_) {
+        TOKEN = token_;
+        AMOUNT = amount_;
     }
 
-    function enter(OdosSwapperEnterData calldata data_) external {
-        // Validate tokenIn is in substrates
-        if (!_isTokenGranted(data_.tokenIn)) {
-            revert OdosSwapperFuseUnsupportedAsset(data_.tokenIn);
-        }
-
-        // Validate tokenOut is in substrates
-        if (!_isTokenGranted(data_.tokenOut)) {
-            revert OdosSwapperFuseUnsupportedAsset(data_.tokenOut);
-        }
-
-        // Revert if amountIn is 0
-        if (data_.amountIn == 0) {
-            revert OdosSwapperFuseZeroAmount();
-        }
-
-        address plasmaVault = address(this);
-
-        // Record balances before swap
-        uint256 tokenInBalanceBefore = ERC20(data_.tokenIn).balanceOf(plasmaVault);
-        uint256 tokenOutBalanceBefore = ERC20(data_.tokenOut).balanceOf(plasmaVault);
-
-        // Transfer tokenIn to executor
-        ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
-
-        // Call mock executor
-        MockBrokenOdosSwapExecutor(EXECUTOR).execute(data_.tokenIn, data_.tokenOut, data_.amountIn, data_.swapCallData);
-
-        // Record balances after swap
-        uint256 tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(plasmaVault);
-        uint256 tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
-
-        // If no tokens were consumed, return early
-        if (tokenInBalanceAfter >= tokenInBalanceBefore) {
-            return;
-        }
-
-        uint256 tokenInDelta = tokenInBalanceBefore - tokenInBalanceAfter;
-
-        // Validate that we received more tokenOut
-        if (tokenOutBalanceAfter <= tokenOutBalanceBefore) {
-            revert OdosSwapperFuseSlippageFail();
-        }
-
-        uint256 tokenOutDelta = tokenOutBalanceAfter - tokenOutBalanceBefore;
-
-        // Validate minAmountOut (alpha check)
-        if (tokenOutDelta < data_.minAmountOut) {
-            revert OdosSwapperFuseMinAmountOutNotReached(data_.minAmountOut, tokenOutDelta);
-        }
-
-        // Skip USD slippage validation for mock tests (no oracle available in mock context)
-
-        // Emit event
-        emit OdosSwapperFuseEnter(VERSION, data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta);
-    }
-
-    function _isTokenGranted(address token_) internal view returns (bool) {
-        bytes32 substrate = OdosSubstrateLib.encodeTokenSubstrate(token_);
-        return PlasmaVaultConfigLib.isMarketSubstrateGranted(MARKET_ID, substrate);
+    function claim(address account_) external {
+        ERC20(TOKEN).transfer(account_, AMOUNT);
     }
 }
 
@@ -923,5 +1116,25 @@ contract OdosSwapperFuseWithMockExecutor {
 contract SlippageEncoderHelper {
     function encodeSlippage(uint256 slippageWad_) external pure returns (bytes32) {
         return OdosSubstrateLib.encodeSlippageSubstrate(slippageWad_);
+    }
+}
+
+/// @notice Router mock whose behaviour is selected by the swap calldata `abi.encode(uint16 pullBps, uint256 wethOut)`:
+/// pulls `allowance * pullBps / 10000` USDC from the caller (the real OdosSwapExecutor) and pays `wethOut` WETH to
+/// it. Installed via `vm.etch` at the real ODOS_ROUTER_V3 address (code only; constants only, no storage), so the real
+/// executor and the production fuse run unmodified.
+contract OdosMockRouterPull {
+    address private constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+    address private constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
+
+    fallback() external {
+        (uint16 pullBps, uint256 wethOut) = abi.decode(msg.data, (uint16, uint256));
+        uint256 pull = (ERC20(USDC).allowance(msg.sender, address(this)) * pullBps) / 10000;
+        if (pull > 0) {
+            ERC20(USDC).transferFrom(msg.sender, address(this), pull);
+        }
+        if (wethOut > 0) {
+            ERC20(WETH).transfer(msg.sender, wethOut);
+        }
     }
 }

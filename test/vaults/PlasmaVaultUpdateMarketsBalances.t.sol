@@ -456,7 +456,7 @@ contract PlasmaVaultUpdateMarketsBalances is Test {
         uint256[] memory markets = new uint256[](1);
         markets[0] = 3;
 
-        bytes memory error = abi.encodeWithSignature("AddressEmptyCode(address)", address(0));
+        bytes memory error = abi.encodeWithSignature("MarketWithoutBalanceFuse(uint256)", markets[0]);
 
         // when
         vm.expectRevert(error);

@@ -19,12 +19,14 @@ import {LibExpiry} from "./utils/LibExpiry.sol";
 import {NapierUniversalRouterFuse} from "./NapierUniversalRouterFuse.sol";
 
 /// @param pool Address of the Napier V2 toki pool
-/// @param amountIn Amount of currency1 token to deposit
-/// @param minLiquidity Minimum amount of liquidity to receive
+/// @param amountIn Amount of currency0 (underlying) tokens to zap
+/// @param minLiquidity Minimum amount of pool liquidity (LP) to receive; also passed to the router's TP_ADD_LIQUIDITY
+/// @param minPrincipalsAmount Minimum amount of YTs to retain (equals the PTs minted by the split); 0 disables the floor
 struct NapierZapDepositFuseEnterData {
     ITokiPoolToken pool;
     uint256 amountIn;
     uint256 minLiquidity;
+    uint256 minPrincipalsAmount;
 }
 
 /// @param pool Address of the Napier V2 toki pool
@@ -64,6 +66,7 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
 
     /// @notice Zap deposits underlying tokens into the pool without price impact
     /// @notice The router spends some of the underlying tokens to mint PTs and YTs and deposits the rest of the underlying tokens and the PTs into the pool
+    /// @dev Reverts with NapierFuseInsufficientAmount when liquidity < minLiquidity or when the retained YTs < minPrincipalsAmount
     function enter(NapierZapDepositFuseEnterData calldata data_) external {
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(data_.pool))) {
             revert NapierFuseInvalidMarketId();
@@ -111,6 +114,12 @@ contract NapierZapDepositFuse is NapierUniversalRouterFuse {
         uint256 liquidity = data_.pool.balanceOf(address(this)) - balanceBefore;
         uint256 principals = ERC20(yt).balanceOf(address(this)) - principalsBefore;
         if (liquidity < data_.minLiquidity) {
+            revert NapierFuseInsufficientAmount();
+        }
+        // The split fraction is read by the router from the pool's live reserves
+        // (TokiPoolRouter._splitUnderlyingTokenLiquidityKeepYt), so the retained-YT count moves
+        // with every swap in the pool. Bound it the same way NapierSupplyFuse bounds principals.
+        if (principals < data_.minPrincipalsAmount) {
             revert NapierFuseInsufficientAmount();
         }
 

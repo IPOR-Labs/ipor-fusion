@@ -31,8 +31,8 @@ contract ConfigureInstantWithdrawalFuse is IFuseCommon {
     function enter(ConfigureInstantWithdrawalFuseEnterData calldata data_) external {
         // Validation is performed inside PlasmaVaultLib.configureInstantWithdrawalFuses:
         // - Validates that each fuse is supported
-        // - Validates fuse parameters
-        // - Validates array lengths and data integrity
+        // - Validates that each params array is not empty
+        // - The content of params is not validated
         PlasmaVaultLib.configureInstantWithdrawalFuses(data_.fuses);
     }
 

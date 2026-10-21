@@ -130,8 +130,8 @@ library RewardsClaimManagersStorageLib {
     /// @notice Linearly-vested portion of `lastUpdateBalance_` at `nowTs_` under the schedule
     /// defined by (vestingTime_, updateBalanceTimestamp_).
     /// @dev Single source of truth for the vesting curve. Used by balanceOf() to compute the
-    /// claimable amount, by setupVestingTime() to derive the safe-boundary cap, and by
-    /// rescheduleVesting() to verify the cross-field invariant before persisting a new schedule.
+    /// claimable amount, and by setupVestingTime() and rescheduleVesting() to verify the
+    /// cross-field invariant before persisting a new schedule.
     /// @param lastUpdateBalance_ Balance snapshot taken at `updateBalanceTimestamp_`.
     /// @param vestingTime_ Vesting duration in seconds. Zero ⇒ returns 0 (handled by the caller).
     /// @param updateBalanceTimestamp_ Anchor timestamp of the linear curve.

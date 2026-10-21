@@ -54,6 +54,9 @@ library PlasmaVaultLib {
     error InvalidManagementFee(uint256 feeInPercentage);
     /// @notice Error thrown when instant withdrawal fuse index is out of bounds
     error InstantWithdrawalFuseIndexOutOfBounds(uint256 index, uint256 arrayLength);
+    /// @notice Error thrown when an instant withdrawal fuse entry is configured with an empty params array
+    /// @param fuse Address of the fuse whose params array is empty
+    error InstantWithdrawalFuseEmptyParams(address fuse);
 
     event InstantWithdrawalFusesConfigured(InstantWithdrawalFusesParamsStruct[] fuses);
     event PriceOracleMiddlewareChanged(address newPriceOracleMiddleware);
@@ -319,6 +322,11 @@ library PlasmaVaultLib {
     /// - Share price computations
     /// - Vault revenue distribution
     /// - Total asset calculations
+    ///
+    /// @dev This function overwrites only the account and the rate. It does not touch the fee clock or the
+    /// pending management fee, so the caller settles the accrual first (IL-8742): otherwise the new rate would
+    /// be applied retroactively to the time elapsed since the last fee realization.
+    /// PlasmaVaultGovernance.configureManagementFee does it before calling this function.
     function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) internal {
         if (feeAccount_ == address(0)) {
             revert Errors.WrongAddress();
@@ -537,7 +545,8 @@ library PlasmaVaultLib {
     ///
     /// Parameter validation:
     /// - Each fuse must be supported
-    /// - Parameters must match fuse requirements
+    /// - Each params array must not be empty (reverts with InstantWithdrawalFuseEmptyParams)
+    /// - The content of params is not validated; it must match the fuse requirements (caller responsibility)
     /// - Fuse order determines execution priority
     /// - Same fuse can appear multiple times
     ///
@@ -548,9 +557,10 @@ library PlasmaVaultLib {
     /// - Maintains parameter ordering
     ///
     /// Security considerations:
-    /// - Only callable by authorized governance
-    /// - Validates all fuse addresses
-    /// - Prevents invalid configurations
+    /// - Callable by authorized governance (CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE) and, through
+    ///   ConfigureInstantWithdrawalFuse, by ALPHA via PlasmaVault.execute
+    /// - Validates that every fuse is supported and that every params array is not empty
+    /// - Does not validate the content or the length of a non-empty params array
     /// - Critical for withdrawal security
     ///
     /// @dev Important: Configuration affects:
@@ -564,6 +574,9 @@ library PlasmaVaultLib {
     /// - Different slippage per path
     /// - Market-specific parameters
     /// - Fallback withdrawal routes
+    ///
+    /// @custom:revert FuseUnsupported When an entry's fuse is not supported
+    /// @custom:revert InstantWithdrawalFuseEmptyParams When an entry's params array is empty
     function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_) internal {
         // Get previous configuration to clean up stale entries
         address[] memory previousFuses = PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
@@ -584,6 +597,10 @@ library PlasmaVaultLib {
         for (uint256 i; i < fuses_.length; ++i) {
             if (!FusesLib.isFuseSupported(fuses_[i].fuse)) {
                 revert FusesLib.FuseUnsupported(fuses_[i].fuse);
+            }
+
+            if (fuses_[i].params.length == 0) {
+                revert InstantWithdrawalFuseEmptyParams(fuses_[i].fuse);
             }
 
             fusesList[i] = fuses_[i].fuse;
@@ -637,15 +654,17 @@ library PlasmaVaultLib {
     /// @dev Updates the price oracle middleware and emits event
     ///
     /// Validation requirements:
-    /// - Must support USD as quote currency
-    /// - Must maintain same quote currency decimals
-    /// - Must be compatible with existing vault operations
-    /// - Address must be non-zero
+    /// - This internal setter performs no validation itself; it is a bare storage write plus
+    ///   event emission
+    /// - Validation is the caller's responsibility:
+    ///   * `PlasmaVaultGovernance.setPriceOracleMiddleware` validates a non-zero address and
+    ///     that the new middleware's quote currency matches the current one's
+    ///   * `PlasmaVault._initializeVault` validates that the quote currency is USD
     ///
     /// Security considerations:
     /// - Only callable by authorized governance
     /// - Critical for vault operations
-    /// - Must validate oracle compatibility
+    /// - Callers must validate oracle compatibility before invoking this setter
     /// - Affects all price-dependent operations
     ///
     /// Integration impacts:

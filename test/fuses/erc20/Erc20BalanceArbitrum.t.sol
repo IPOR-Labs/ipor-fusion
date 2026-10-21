@@ -38,7 +38,7 @@ contract Erc20BalanceArbitrumTest is TestAccountSetup, TestPriceOracleSetup, Tes
 
     uint256 private constant ERROR_DELTA = 10;
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.createSelectFork(vm.envString("ARBITRUM_PROVIDER_URL"), 226213814);
         init();
     }

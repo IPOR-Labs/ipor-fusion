@@ -22,8 +22,8 @@ import {IAgreement, Chain, Account, ChildContractScope} from "./ext/IAgreement.s
  * `transferAgreementOwnership` to a new Registrar (or back to the multisig).
  *
  * Trust model:
- * - Registrar owner (Ownable2Step, expected to be the IPOR multisig): curates the manual allowlist, can force-remove
- *   any vault, can re-point the Registrar at another Agreement and can hand the Agreement ownership over.
+ * - Registrar owner (Ownable2Step, expected to be the IPOR multisig): curates the manual allowlist and the denylist,
+ *   can force-remove any vault, can re-point the Registrar at another Agreement and can hand the Agreement ownership over.
  *   `renounceOwnership` is disabled.
  * - Vault owner (OWNER_ROLE on the vault's IporFusionAccessManager): the only party that can opt its vault in or out.
  *   Execution delay of the role is ignored - membership alone decides.
@@ -33,11 +33,32 @@ import {IAgreement, Chain, Account, ChildContractScope} from "./ext/IAgreement.s
  *   reports `isFusionVault(vault) == true` (IL-8227). The allowlist is checked first; the factory is queried with a
  *   guarded staticcall (zero factory address allowed) so a factory that predates IL-8227, reverts, is not deployed
  *   or returns malformed data simply answers "false" and never blocks the allowlisted path. The configured factory
- *   is trusted: whatever it reports as a Fusion vault is eligible. After eligibility, the caller must hold
+ *   is trusted: whatever it reports as a Fusion vault is eligible. The denylist is checked on every opt-in and wins
+ *   over both the allowlist and the factory (the owner's last decision is final; `setManualAllowlist` does not clear
+ *   a denylist entry). After eligibility, the caller must hold
  *   OWNER_ROLE on the AccessManager returned by the vault's `authority()`.
- * - Residual risk: the account list of the current chain grows with every eligible opt-in and every participation
- *   lookup or mutation reads and scans that whole list (`getDetails()`). Growth is bounded by the number of genuine
- *   vaults. Escape hatch / runbook for the multisig: (1) `forceRemove(vault)` for individual entries;
+ * - Account cap (IL-8746): `FusionFactory.clone` is permissionless and every clone reports `isFusionVault == true`,
+ *   so the factory path alone cannot bound the account list. Every participation lookup or mutation reads and scans
+ *   the whole list of the current chain (`getDetails()`), so an unbounded list would push every operation over the
+ *   tx gas limit. Therefore an opt-in of a vault that is NOT on the manual allowlist reverts with
+ *   AccountLimitReached once the current chain entry already holds `MAX_ACCOUNTS_VIA_FACTORY` accounts (stateless:
+ *   the count is read from the Agreement). Allowlisted vaults bypass the cap (the multisig curates the allowlist;
+ *   vaults cloned before `isFusionVault` existed can only enter through it), so the list is bounded by MAX plus the
+ *   allowlist. Allowlisted participants still count toward MAX: once the chain entry holds MAX accounts of any kind,
+ *   the factory path is closed for every new vault even without an attacker (Base has 261 allowlisted legacy vaults,
+ *   more than MAX), and new genuine vaults then need the allowlist (mind the per-chain ceiling below). Opt-out and `forceRemove` are never capped. D-050: deploy value 200 on every chain. Cold cost is about
+ *   25.0k gas per entry (cold) plus about 133k fixed, so the worst case (an attacker fills the quota first, then every allowlisted vault opts in)
+ *   is Ethereum 200 + 180 = 380 entries, about 9.5M gas, and Base 200 + 261 = 461 entries, about 11.6M gas, i.e.
+ *   about 69% of the 16,777,216 EIP-7825 tx cap; the fork test enforces a 12M budget for headroom. The figures assume
+ *   the Agreement chain entry holds only this chain's accounts; other chains' entries add their own scan cost. With
+ *   MAX 200 the allowlist fits about 275 entries per chain within 12M, so re-check before allowlisting beyond that. When the factory
+ *   quota fills, allowlist genuine vaults and use `setDenylistBatch` plus the escape hatch for hostile clones.
+ * - Denylist (IL-8779): `forceRemove` records the vault in the denylist so the removal is durable; a hostile clone
+ *   owner cannot re-enroll with one `setParticipation(vault, true)`. The owner can also pre-emptively deny vaults
+ *   (`setDenylist` / `setDenylistBatch`) and re-admit them with `denied_ = false`. A denylisted participant can
+ *   still opt out. Residual risk: an attacker can fill the factory quota with fresh clones (new genuine vaults then
+ *   have to be allowlisted by the multisig) and the denylist is reactive for new addresses.
+ *   Escape hatch / runbook for the multisig: (1) `forceRemove(vault)` for individual entries (a single call is durable, also against a front-running opt-out);
  *   (2) `transferAgreementOwnership(multisig)` (does not use the reader) and clean the Agreement directly in bounded
  *   calls (`removeAccounts` / `removeChains` / `setChains`), then `Agreement.transferOwnership(registrar)` to resume;
  *   (3) when retiring an Agreement, transfer its ownership away BEFORE `setAgreement` so no stale ownership is left
@@ -59,7 +80,7 @@ import {IAgreement, Chain, Account, ChildContractScope} from "./ext/IAgreement.s
  *
  * Function permissions:
  * - setParticipation: OWNER_ROLE holders on the vault's access manager, for eligible (genuine) vaults only
- * - forceRemove, setManualAllowlist, setManualAllowlistBatch, setAgreement, transferAgreementOwnership,
+ * - forceRemove, setManualAllowlist, setManualAllowlistBatch, setDenylist, setDenylistBatch, setAgreement, transferAgreementOwnership,
  *   setAssetRecoveryAddress: owner only
  *
  * Misconfigured vaults: eligibility is verified before any call to the vault, so only allowlisted or factory-verified
@@ -69,6 +90,10 @@ import {IAgreement, Chain, Account, ChildContractScope} from "./ext/IAgreement.s
 contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
     /// @notice FusionFactory used to verify that an address is a Plasma Vault deployed by IPOR (zero = not available)
     IFusionFactoryVaultCheck public immutable FUSION_FACTORY;
+
+    /// @notice Maximum number of accounts on the current chain entry that still admits an opt-in of a vault that is
+    /// not on the manual allowlist (IL-8746); D-050 sets 200 on every chain, which keeps every operation below the 12M gas budget
+    uint256 public immutable MAX_ACCOUNTS_VIA_FACTORY;
 
     /// @notice SEAL Agreement currently managed by this Registrar
     address private _agreement;
@@ -82,6 +107,9 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
 
     /// @notice Vaults deployed before the FusionFactory exposed `isFusionVault`, curated by the owner
     mapping(address vault => bool allowed) private _manualAllowlist;
+
+    /// @notice Vaults that cannot opt in (set by `forceRemove` or by the owner); wins over allowlist and factory
+    mapping(address vault => bool denied) private _denylist;
 
     /// @dev View of the current chain entry extracted from the raw `getDetails()` return data
     struct ChainInfo {
@@ -100,9 +128,19 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
     /// @param fusionFactory_ The FusionFactory used for `isFusionVault` checks; zero address allowed (factory path
     /// then always answers false and only the manual allowlist grants eligibility)
     /// @param assetRecoveryAddress_ The non-empty asset recovery address used when (re)creating the chain entry
-    constructor(address initialOwner_, address agreement_, address fusionFactory_, string memory assetRecoveryAddress_)
-        Ownable(initialOwner_)
-    {
+    /// @param maxAccountsViaFactory_ The account count of the current chain entry at which opt-ins of non-allowlisted
+    /// vaults stop; non-zero (zero reverts with Errors.WrongValue)
+    constructor(
+        address initialOwner_,
+        address agreement_,
+        address fusionFactory_,
+        string memory assetRecoveryAddress_,
+        uint256 maxAccountsViaFactory_
+    ) Ownable(initialOwner_) {
+        if (maxAccountsViaFactory_ == 0) {
+            revert Errors.WrongValue();
+        }
+        MAX_ACCOUNTS_VIA_FACTORY = maxAccountsViaFactory_;
         if (agreement_ == address(0)) {
             revert Errors.WrongAddress();
         }
@@ -119,7 +157,8 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
      * @notice Adds the vault to or removes it from the Agreement on the current chain
      * @param vault_ The Plasma Vault, must be eligible (manual allowlist or FusionFactory `isFusionVault`)
      * @param enabled_ True to opt in (added with ChildContractScope.None), false to opt out
-     * @dev Checks, in order: eligibility (NotFusionVault), non-zero `authority()` (NoAccessManager), caller OWNER_ROLE
+     * @dev Checks, in order: eligibility (NotFusionVault), denylist on opt-in (VaultDenylisted; opt-out is always
+     * possible), non-zero `authority()` (NoAccessManager), caller OWNER_ROLE
      * on that access manager (NotVaultOwner), Agreement ownership (AgreementNotOwnedByRegistrar), then the current
      * participation state (AlreadyParticipating / NotParticipating). The Agreement update is atomic with the call.
      * @custom:access Restricted to accounts holding OWNER_ROLE on the AccessManager returned by the vault's
@@ -129,11 +168,14 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
         if (!_isEligibleVault(vault_)) {
             revert NotFusionVault(vault_);
         }
+        if (enabled_ && _denylist[vault_]) {
+            revert VaultDenylisted(vault_);
+        }
         address accessManager = IAccessManaged(vault_).authority();
         if (accessManager == address(0)) {
             revert NoAccessManager(vault_);
         }
-        (bool isMember,) = IAccessManager(accessManager).hasRole(Roles.OWNER_ROLE, msg.sender);
+        (bool isMember, ) = IAccessManager(accessManager).hasRole(Roles.OWNER_ROLE, msg.sender);
         if (!isMember) {
             revert NotVaultOwner(vault_, msg.sender);
         }
@@ -141,7 +183,9 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
         if (enabled_) {
             _optIn(vault_);
         } else {
-            _optOut(vault_);
+            if (!_optOutIfParticipating(vault_)) {
+                revert NotParticipating(vault_);
+            }
         }
         emit ParticipationChanged(vault_, enabled_, msg.sender);
     }
@@ -153,15 +197,62 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
      * may need to remove an entry for a vault that is broken, hostile or no longer managed by IPOR. Only entries
      * whose stored string is a hex address can be targeted; other manual imports (e.g. names) need direct Agreement
      * ownership.
-     * Reverts with NotParticipating
-     * when the vault is not listed and with AgreementNotOwnedByRegistrar when the Registrar cannot modify the
-     * Agreement.
+     * Always sets the denylist (IL-8779) and removes the vault only if it participates (it never reverts with
+     * NotParticipating), so the call is durable even when the vault owner front-runs it by opting out first: the
+     * owner cannot opt back in; it can be re-admitted with `setDenylist(vault_, false)`. Reverts with
+     * AgreementNotOwnedByRegistrar when the Registrar cannot modify the Agreement. Emits DenylistUpdated(vault_, true)
+     * always and ParticipationChanged(vault_, false, sender) only when an entry was actually removed. Never capped
+     * by MAX_ACCOUNTS_VIA_FACTORY.
      * @custom:access Restricted to the owner
      */
     function forceRemove(address vault_) external override onlyOwner {
         _requireAgreementOwnership();
-        _optOut(vault_);
-        emit ParticipationChanged(vault_, false, msg.sender);
+        bool removed = _optOutIfParticipating(vault_);
+        _denylist[vault_] = true;
+        emit DenylistUpdated(vault_, true);
+        if (removed) {
+            emit ParticipationChanged(vault_, false, msg.sender);
+        }
+    }
+
+    /**
+     * @notice Sets the denylist entry of a vault (prevention and re-admission)
+     * @param vault_ The vault address, non-zero
+     * @param denied_ True to deny future opt-ins, false to re-admit
+     * @dev A denied vault cannot opt in even when allowlisted or reported by the factory (deny wins; the allowlist
+     * setters do not clear it). Does not remove an existing Agreement entry; use `forceRemove` for that.
+     * @custom:access Restricted to the owner
+     */
+    function setDenylist(address vault_, bool denied_) external override onlyOwner {
+        if (vault_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+        _denylist[vault_] = denied_;
+        emit DenylistUpdated(vault_, denied_);
+    }
+
+    /**
+     * @notice Sets the denylist entry of several vaults in one transaction
+     * @param vaults_ The vault addresses, non-empty, every entry non-zero (duplicates allowed, idempotent)
+     * @param denied_ True to deny future opt-ins, false to re-admit
+     * @dev Atomic: an empty array reverts with Errors.WrongValue and any zero address reverts with Errors.WrongAddress
+     * before any entry is written. Emits DenylistUpdated once per input address, in input order.
+     * @custom:access Restricted to the owner
+     */
+    function setDenylistBatch(address[] calldata vaults_, bool denied_) external override onlyOwner {
+        uint256 length = vaults_.length;
+        if (length == 0) {
+            revert Errors.WrongValue();
+        }
+        for (uint256 i; i < length; ++i) {
+            if (vaults_[i] == address(0)) {
+                revert Errors.WrongAddress();
+            }
+        }
+        for (uint256 i; i < length; ++i) {
+            _denylist[vaults_[i]] = denied_;
+            emit DenylistUpdated(vaults_[i], denied_);
+        }
     }
 
     /**
@@ -262,13 +353,23 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
 
     /// @inheritdoc ISafeHarborRegistrar
     function isParticipating(address vault_) external view override returns (bool participating) {
-        (uint256 matchCount,,) = _findAccounts(vault_);
+        (uint256 matchCount, , ) = _findAccounts(vault_);
         return matchCount > 0;
     }
 
     /// @inheritdoc ISafeHarborRegistrar
     function isEligibleVault(address vault_) external view override returns (bool eligible) {
-        return _isEligibleVault(vault_);
+        return !_denylist[vault_] && _isEligibleVault(vault_);
+    }
+
+    /// @inheritdoc ISafeHarborRegistrar
+    function isDenylisted(address vault_) external view override returns (bool denied) {
+        return _denylist[vault_];
+    }
+
+    /// @inheritdoc ISafeHarborRegistrar
+    function getMaxAccountsViaFactory() external view override returns (uint256 maxAccounts) {
+        return MAX_ACCOUNTS_VIA_FACTORY;
     }
 
     /// @inheritdoc ISafeHarborRegistrar
@@ -298,32 +399,42 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
 
     /// @dev Adds the vault to the current chain entry, creating the chain entry when it does not exist yet
     function _optIn(address vault_) private {
-        (uint256 matchCount,, ChainInfo memory chainInfo) = _findAccounts(vault_);
+        (uint256 matchCount, , ChainInfo memory chainInfo) = _findAccounts(vault_);
         if (matchCount > 0) {
             revert AlreadyParticipating(vault_);
         }
+        // IL-8746: the permissionless factory path is capped; only the multisig-curated allowlist may exceed it
+        if (!_manualAllowlist[vault_] && chainInfo.accountsCount >= MAX_ACCOUNTS_VIA_FACTORY) {
+            revert AccountLimitReached(chainInfo.accountsCount, MAX_ACCOUNTS_VIA_FACTORY);
+        }
 
         Account[] memory accounts = new Account[](1);
-        accounts[0] =
-            Account({accountAddress: Strings.toHexString(vault_), childContractScope: ChildContractScope.None});
+        accounts[0] = Account({
+            accountAddress: Strings.toHexString(vault_),
+            childContractScope: ChildContractScope.None
+        });
 
         IAgreement agreement = IAgreement(_agreement);
         if (chainInfo.exists) {
             agreement.addAccounts(_caip2ChainId, accounts);
         } else {
             Chain[] memory chains = new Chain[](1);
-            chains[0] =
-                Chain({assetRecoveryAddress: _assetRecoveryAddress, accounts: accounts, caip2ChainId: _caip2ChainId});
+            chains[0] = Chain({
+                assetRecoveryAddress: _assetRecoveryAddress,
+                accounts: accounts,
+                caip2ChainId: _caip2ChainId
+            });
             agreement.addChains(chains);
         }
     }
 
     /// @dev Removes every entry matching the vault from the current chain entry; removes the whole chain entry when
     /// the vault entries are the only accounts on it (upstream forbids chains without accounts)
-    function _optOut(address vault_) private {
+    /// @return removed True when at least one entry was removed, false when the vault did not participate
+    function _optOutIfParticipating(address vault_) private returns (bool removed) {
         (uint256 matchCount, string[] memory matchedStrings, ChainInfo memory chainInfo) = _findAccounts(vault_);
         if (matchCount == 0) {
-            revert NotParticipating(vault_);
+            return false;
         }
 
         IAgreement agreement = IAgreement(_agreement);
@@ -338,6 +449,7 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
         } else {
             agreement.removeAccounts(_caip2ChainId, matchedStrings);
         }
+        return true;
     }
 
     /// @dev Reverts unless this Registrar is the owner of the managed Agreement
@@ -350,7 +462,8 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
     }
 
     /// @notice Returns true when the vault is manually allowlisted or reported by the FusionFactory
-    /// @dev The allowlist short-circuits unconditionally (no factory call). The factory is queried with a guarded
+    /// @dev The denylist is NOT consulted here: it is checked on opt-in only, so a denylisted participant can still
+    /// opt out. The allowlist short-circuits unconditionally (no factory call). The factory is queried with a guarded
     /// staticcall: a zero or undeployed factory, a missing selector, a revert, or a return that is not exactly one
     /// canonical bool word all answer false. The configured factory itself is trusted (its "true" is final)
     /// @param vault_ The address to check
@@ -363,8 +476,9 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
         if (factory.code.length == 0) {
             return false;
         }
-        (bool success, bytes memory returnData) =
-            factory.staticcall(abi.encodeCall(IFusionFactoryVaultCheck.isFusionVault, (vault_)));
+        (bool success, bytes memory returnData) = factory.staticcall(
+            abi.encodeCall(IFusionFactoryVaultCheck.isFusionVault, (vault_))
+        );
         if (!success || returnData.length != 0x20) {
             return false;
         }
@@ -378,11 +492,9 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
     /// @return matchCount Number of matching entries (0 when the chain entry does not exist)
     /// @return matchedStrings Exact stored strings of the matching entries, in Agreement order
     /// @return chainInfo Existence, recovery address and account count of the current chain entry
-    function _findAccounts(address vault_)
-        private
-        view
-        returns (uint256 matchCount, string[] memory matchedStrings, ChainInfo memory chainInfo)
-    {
+    function _findAccounts(
+        address vault_
+    ) private view returns (uint256 matchCount, string[] memory matchedStrings, ChainInfo memory chainInfo) {
         bytes memory data = _getDetailsRaw();
         (bool exists, uint256 chainPos) = _findChainPos(data);
         if (!exists) {
@@ -436,11 +548,11 @@ contract SafeHarborRegistrar is ISafeHarborRegistrar, Ownable2Step {
     /// @param vault_ The vault to match
     /// @return matchCount Number of matching entries
     /// @return matchedStrings Exact stored strings of the matching entries, in Agreement order
-    function _matchAccounts(bytes memory data_, uint256 accountsPos_, address vault_)
-        private
-        pure
-        returns (uint256 matchCount, string[] memory matchedStrings)
-    {
+    function _matchAccounts(
+        bytes memory data_,
+        uint256 accountsPos_,
+        address vault_
+    ) private pure returns (uint256 matchCount, string[] memory matchedStrings) {
         bytes32 vaultHash = keccak256(bytes(Strings.toHexString(vault_)));
         uint256 accountsLength = _count(data_, accountsPos_);
         uint256 elementsPos = accountsPos_ + 0x20;

@@ -114,3 +114,20 @@ Where:
 -   **Proportional Debt Adjustment**: Maintains correct leverage when deposits are reduced
 -   **Price Oracle Integration**: Ensures accurate USD value calculations
 -   **Instant Withdrawal**: Supports emergency liquidity needs
+
+## Instant Withdrawal
+
+`YieldBasisLtSupplyFuse.instantWithdraw` takes the following params (configured via `configureInstantWithdrawalFuses`):
+
+| Index | Value                                                                               |
+| ----- | ----------------------------------------------------------------------------------- |
+| 0     | Amount in underlying assets (set by the vault at withdrawal time, configure as `0`) |
+| 1     | LT address                                                                          |
+| 2     | Optional slippage tolerance in WAD (default `1e16` = 1%, capped at `5e16` = 5%)     |
+
+`LT.withdraw` unwinds single-sided through the Curve pool at its spot state, so a skewed pool can deliver far less
+than the position is worth. The fuse therefore passes a minimum output of
+`ltShares × LT.pricePerShare() × (1 − slippage)`, where `pricePerShare()` is the LT's oracle-based fair price (swap
+fees can only raise it within a block). If the pool cannot meet this floor, the LT reverts, the fuse emits
+`YieldBasisLtSupplyFuseExitFailed` and the vault moves on to the next instant withdrawal fuse instead of absorbing the
+loss.

@@ -99,23 +99,61 @@ pre-hook registration, and ongoing custodian operations.
 | Kind | Stateless fuse (delegatecall from PlasmaVault) |
 | Constructor | `(uint256 marketId)` — reverts `ExternalStateZeroMarketId` on 0 |
 | Immutables | `VERSION = address(this)`, `MARKET_ID` |
-| Entry points | `enter(ExternalStateOperationFuseEnterData)`, `exit(ExternalStateOperationFuseExitData)`, `createExecutor()` |
+| Entry points | `enter(ExternalStateOperationFuseEnterData)`, `exit(ExternalStateOperationFuseExitData)`, `sweepSurplus(address asset)`, `createExecutor()` |
 
 **Enter semantics:**
 1. `_resolveExecutorAndValidate` — revert `ExternalStateEmptyAssetAndActions` if both `amount == 0` and `actions.length == 0`.
 2. `getOrCreateExecutor(MARKET_ID)` — lazy-deploys executor if missing.
-3. If `amount > 0`: validate `ASSET` + `BALANCE_ACCOUNT` substrates. Validate every action's
+3. If `amount > 0`: validate `ASSET` + `BALANCE_ACCOUNT` substrates. Always validate every action's
    `(target, selector)` pair.
-4. If `amount > 0`: `safeTransfer(asset, executor, amount)` → convert to underlying via oracle
-   → `executor.addBalance(ba, valueInUnderlying)`.
-5. If `actions.length > 0`: `executor.execute(actions)`.
+4. Settle a pending custodian confirm, on every call (also actions-only):
+   `ExternalStateBigChangeLib.processCustodianUpdate(executor)` runs the big-change check against the pre-flow
+   baseline BEFORE anything moves `balances[]` (IL-8775, see section 7.1).
+5. If `amount > 0`: `safeTransfer(asset, executor, amount)` → convert to underlying via oracle
+   → `executor.addBalance(ba, valueInUnderlying, asset, amount)` (also records `amount` in `unforwardedCredit[asset]`).
+6. If `actions.length > 0`: `executor.execute(actions)`.
 
 **Exit semantics:**
 1. `_resolveExecutorAndValidate` with `createIfMissing_ = false` — revert `ExternalStateOperationExecutorNotDeployed` if the
    executor has not yet been deployed.
 2. Same substrate validation as enter.
-3. If `actions.length > 0`: `executor.execute(actions)` **first** (to free funds).
-4. If `amount > 0`: convert to underlying → `executor.removeBalance(ba, valueInUnderlying, asset, amount)`.
+3. Same pending-confirm settlement as enter (`processCustodianUpdate`, on every call, also actions-only), before actions
+   and `removeBalance` (IL-8775).
+4. If `actions.length > 0`: `executor.execute(actions)` **first** (to free funds).
+5. If `amount > 0`: convert to underlying → `executor.removeBalance(ba, valueInUnderlying, asset, amount)`.
+
+**Sweep surplus semantics (`sweepSurplus(asset)`, IL-8739):**
+1. Revert `ExternalStateOperationExecutorNotDeployed` if no executor exists (never deploys).
+2. Validate that `asset` is a granted `ASSET` substrate (same rule as enter/exit).
+3. `executor.sweepSurplus(asset)` transfers `balanceOf(executor) - min(unforwardedCredit[asset], balanceOf(executor))`
+   to the vault: exactly the tokens that did not arrive through `enter`/`execute` (donations). `balances[]` and
+   `unforwardedCredit` are untouched, so credited tokens that still sit on the executor are never moved.
+   The swept tokens enter vault NAV immediately only when `asset` is the vault underlying; any other asset is
+   valued through its own balance fuse/market as usual. Zero surplus is a no-op (`SurplusSwept(asset, 0)`).
+4. Trust model: "surplus" means everything not covered by `unforwardedCredit`, so tokens that return to the
+   executor outside a vault call (custody or protocol payouts sent straight to the executor) look like donations.
+   Such tokens are in NAV only while the last confirmed custodian report counts them. Still counted (a custody or
+   protocol payout sent straight to the executor before the next report): book them with `exit`, while
+   `unforwardedCredit(asset) == 0` (forward or exit credited tokens first: `removeBalance` debits the credit by the
+   exited amount, whatever its origin). No longer counted (a donation, or a confirmed report that already excludes
+   them): `sweepSurplus`, never `exit` (an exit would remove the value a second time). Custodians do not propose
+   while `balanceOf(executor) > unforwardedCredit(asset)` for a cached asset unless they know whether their report
+   counts those tokens (the dust check does not block them). Monitoring: alert when
+   `balanceOf(executor) > unforwardedCredit(asset)`.
+   A counterparty that pulls tokens outside `execute` leaves the credit stale (`unforwardedCredit(asset)` above
+   `balanceOf(executor)`). Up to the stale amount, tokens that later reach the executor are covered by it: they count
+   in the dust check, so a donation can block custodians again, and `sweepSurplus` does not move them. Each `exit` or
+   `execute` outflow consumes only its own amount of the credit, so the block can return until outflows totalling the
+   stale credit have run. In this state there are no credited tokens to forward first: `exit` the tokens on the
+   executor (a custody payout leaves `balances[ba]` right; a donation lowers it by tokens it never held, so the account
+   reads low until the next confirm) or forward them to custody with an actions-only `enter` (the next report counts
+   them). Do the pull inside the same `execute` (approve + deposit, see section 10).
+5. `sweepSurplus` does not call `processCustodianUpdate`: it leaves `balances[]` unchanged (only tokens and the
+   vault NAV move), so it cannot move the total the big-change check compares.
+6. Compatibility / deploy: the executor cannot be replaced, so ship the new executor and the new OperationFuse
+   together. A new OperationFuse in front of a pre-IL-8739 executor fails closed: `enter` with `amount > 0` and
+   `sweepSurplus` revert (selector missing), `exit` still works. A vault that already has an old executor (e.g.
+   the Delta-Neutral BTC Demo) must keep the old OperationFuse.
 
 ### 2.2 `ExternalStateExecutor`
 
@@ -123,39 +161,50 @@ pre-hook registration, and ongoing custodian operations.
 |---|---|
 | Kind | Persistent contract (one per `(vault, marketId)`) |
 | Storage | Regular contract storage (NOT ERC-7201 namespaced — the executor owns its own slots) |
-| Reentrancy | `ReentrancyGuard` on `removeBalance`, `execute`, `proposeBalance`, `confirmBalance` |
+| Reentrancy | `ReentrancyGuard` on `removeBalance`, `execute`, `sweepSurplus`, `proposeBalance`, `confirmBalance` |
 | Immutables | `VAULT`, `MARKET_ID` |
 
 **State:**
 - `mapping(address => uint256) balances` — tracked underlying balance per balance account.
+- `mapping(address => uint256) unforwardedCredit` — per asset, tokens that entered the executor through the vault path
+  (`addBalance`, tokens returned inside `execute`) and have not left it yet (`removeBalance`, tokens spent inside
+  `execute`, `withdrawAssetBalance`). Only `onlyVault` functions change it, from balance differences measured inside
+  one vault call, so a plain transfer to the executor never moves it. The dust check reads it (IL-8739).
+- `mapping(address => uint256) proposalBaseBalance` — `balances[ba]` at the moment the pending proposal was stored;
+  `confirmBalance` reverts when `balances[ba]` no longer equals it (IL-8748).
 - `mapping(address => uint256) lastUpdated` — timestamp of last confirmed custodian update per account.
 - `mapping(address => PendingProposal) pendingProposals` — current pending propose per account.
 - Cached substrate arrays: `balanceAccounts[]`, `custodians[]`, `assets[]`.
 - Cached singletons: `stalenessMax`, `bigChangeBps`, `dustThreshold`, `minUpdateInterval`.
-- `lastCustodianUpdateTimestamp` — global timestamp of any `confirmBalance`.
+- `lastCustodianUpdateTimestamp` — global timestamp of any `confirmBalance`. **Informational only** —
+  NOT read by the circuit breaker (a `block.timestamp` watermark cannot distinguish two confirms
+  landing in the same block; see IL-7969). Kept for off-chain staleness observability.
 - `nonce` — monotonically incremented on each `proposeBalance`.
+- `confirmCount` — monotonically incremented on each `confirmBalance`. This is the circuit-breaker
+  watermark: strictly increasing, so it uniquely identifies every confirmation even within one block.
 
 **Access control:**
-- `onlyVault` — `addBalance`, `removeBalance`, `execute`, `withdrawAssetBalance`, `setSubstrates`.
+- `onlyVault` — `addBalance`, `removeBalance`, `execute`, `withdrawAssetBalance`, `sweepSurplus`, `setSubstrates`.
 - `onlyCustodian` — `proposeBalance`, `confirmBalance` (linear scan over cached `custodians[]`).
 - Public — `syncSubstrates()`, view functions.
 
 ### 2.3 `ExternalStateBalanceFuse`
 
 Stateless fuse implementing `IMarketBalanceFuse`. `balanceOf()` is **not view** — it writes to
-`ExternalStateExecutorStorageLib` to update `lastTotalBalance` and `lastCheckedCustodianTimestamp`, and
-may set the pause flag on big-change detection. Returns USD WAD value of the total underlying
+`ExternalStateExecutorStorageLib` to update `lastTotalBalance` and `lastCheckedCustodianConfirmCount`,
+and may set the pause flag on big-change detection. Returns USD WAD value of the total underlying
 balance, computed via the vault's `PriceOracleMiddleware`.
 
 ### 2.4 `ExternalStatePausePreHook`
 
 Pre-hook implementing `IPreHook`. Registered via `PlasmaVaultGovernance.setPreHookImplementations`
 against user-facing ERC-4626 selectors (`deposit`, `mint`, `withdraw`, `redeem`,
-`depositWithPermit`). Enforces:
+`depositWithPermit`). `redeemFromRequest` is not in the default set — see
+[8.3](#83-redeemfromrequest-and-the-withdrawmanager-request-flow). Enforces:
 1. Executor deployed (`ExternalStatePreHookExecutorNotDeployed`).
 2. Pause flag clear (`ExternalStatePreHookPaused`).
 3. Inline big-change check (`ExternalStatePreHookBigChangeDetected`) — closes the window between
-   `confirmBalance` and the next `balanceOf()`.
+   `confirmBalance` and its settlement (the next `balanceOf()` or an ALPHA `enter`/`exit`, see 7.2).
 4. Staleness gate (`ExternalStatePreHookStale`) — aggregate staleness based on oldest balance account update.
 
 ### 2.5 `ExternalStateUnpauseFuse`
@@ -170,6 +219,17 @@ and clears the pause flag. Rejects expired or replayed nonces. Uses OpenZeppelin
 Sweeper fuse that calls `executor.withdrawAssetBalance(asset)` to return the executor's full
 balance of any ERC20 back to the vault. Useful for airdrops or stuck tokens. Reverts
 `ExternalStateZeroAddress` if `asset == address(0)`.
+
+Before sweeping, `rescue(asset)` reverts `ExternalStateRescueOfTrackedAssetForbidden(asset)` when
+`asset` is currently tracked by **either** of two sources: the vault's live substrate set
+(`PlasmaVaultConfigLib.isMarketSubstrateGranted`, read directly since the fuse runs via
+delegatecall inside the vault) **or** the executor's cached `assets[]`. The vault check exists
+because `assets[]` is only rebuilt on `syncSubstrates()` — an ASSET substrate granted after
+deployment is invisible to the cache (and therefore rescuable) until someone calls
+`syncSubstrates()`, even though `enter`/`exit` already honor the grant live (IL-8115). Keeping the
+cache check too preserves the existing "revoked but not yet synced → still blocked" behavior: a
+formerly tracked asset stays un-rescuable until it is both revoked on the vault **and** the cache is
+synced.
 
 ### 2.7 Libraries
 
@@ -204,7 +264,7 @@ All substrates are packed into a single `bytes32`:
 | `4` | `BALANCE_ACCOUNT` | `encodeBalanceAccountSubstrate(address)` | `address` in low 160 bits | N | Logical balance bucket. Each account is rate-limited independently. |
 | `5` | `STALENESS_MAX` | `encodeStalenessMaxSubstrate(uint256)` | `uint248` in low 248 bits | **1** | Seconds. Maximum staleness before user ops are blocked. Also serves as `confirmBalance` TTL. |
 | `6` | `BIG_CHANGE_BPS` | `encodeBigChangeBpsSubstrate(uint256)` | `uint248` in low 248 bits | **1** | Basis points. `|delta|/prevTotal > bigChangeBps` → pause. |
-| `7` | `DUST_THRESHOLD` | `encodeDustThresholdSubstrate(uint256)` | `uint248` in low 248 bits | **1** | Percent of one base token allowed on executor during propose/confirm (100 = 1 token). |
+| `7` | `DUST_THRESHOLD` | `encodeDustThresholdSubstrate(uint256)` | `uint248` in low 248 bits | **1** | Percent of one base token that may be credited to balance accounts but still sit on the executor during propose/confirm (100 = 1 token). Donated tokens are not counted. |
 | `8` | `MIN_UPDATE_INTERVAL` | `encodeMinUpdateIntervalSubstrate(uint256)` | `uint248` in low 248 bits | **1** | Seconds. Per-account rate-limit between confirmed custodian updates. |
 
 Cardinality: **N** = multiple allowed; **1** = strict singleton, duplicate grants revert
@@ -222,8 +282,10 @@ are granted:
 
 Optional singletons (`DUST_THRESHOLD`, `MIN_UPDATE_INTERVAL`) default to 0 if absent. That means:
 
-- `dustThreshold == 0` → zero tolerance; any non-zero executor asset balance blocks propose/confirm
-  (safest default — forces airdrop rescue before reporting).
+- `dustThreshold == 0` → zero tolerance; any amount that was credited to a balance account (enter without
+  forwarding, exit residue) and still sits on the executor blocks propose/confirm (safest default — forces
+  the credited tokens to be forwarded or exited before reporting). Tokens sent to the executor by third parties
+  do not count (see 6.3).
 - `minUpdateInterval == 0` → no per-account rate-limit (custodians can confirm as fast as they want).
 
 ### 3.3 Encoder examples
@@ -298,7 +360,7 @@ Alpha                PlasmaVault         ExternalStateOperationFuse          Exe
   │                       │                           │                               │                         │                         │
   │                       │                           │ safeTransfer(asset, executor, amount)                   │                         │
   │                       │                           │ valueInUnderlying = oracle convert                      │                         │
-  │                       │                           │ executor.addBalance(ba, valueInUnderlying)              │                         │
+  │                       │                           │ executor.addBalance(ba, valueInUnderlying, asset, amount) │                         │
   │                       │                           │────────────────────────────────────────────────────────▶│                         │
   │                       │                           │                               │                         │ balances[ba] += v       │
   │                       │                           │                               │                         │ emit BalanceChangedByFuse
@@ -351,9 +413,10 @@ Custodian A                    ExternalStateExecutor                    Custodia
      │ proposeBalance(ba, newValue) │                              │
      │─────────────────────────────▶│                              │
      │                              │ check: onlyCustodian (A ∈ custodians[])
-     │                              │ check: _checkDust() for each asset
+     │                              │ check: _checkDust() for each asset (credited-but-unforwarded tokens only)
      │                              │ nonce++ ; proposedAt = block.timestamp
      │                              │ pending[ba] = {value, A, proposedAt, nonce}
+     │                              │ proposalBaseBalance[ba] = balances[ba]   (snapshot, also on overwrite)
      │                              │ h = _proposalHash(ba, value, A, proposedAt, nonce)
      │                              │ emit BalanceProposed(ba, A, value, nonce, proposedAt, h)
      │◀─────────────────────────────│
@@ -368,11 +431,14 @@ Custodian A                    ExternalStateExecutor                    Custodia
      │                              │ check: now - proposedAt ≤ stalenessMax → else ExternalStateExecutorProposalExpired
      │                              │ _checkDust()
      │                              │ check: _proposalHash(...) == h      → else ExternalStateExecutorProposalHashMismatch
+     │                              │ check: balances[ba] == proposalBaseBalance[ba]
+     │                              │                                    → else ExternalStateExecutorBalanceChangedSinceProposal
      │                              │ check: (lastUpdated==0) || (now-lastUpdated ≥ minUpdateInterval)
      │                              │                                    → else ExternalStateExecutorMinUpdateIntervalNotMet
      │                              │ balances[ba] = pending.value
      │                              │ lastUpdated[ba] = now
-     │                              │ lastCustodianUpdateTimestamp = now
+     │                              │ lastCustodianUpdateTimestamp = now  (informational only)
+     │                              │ confirmCount++               (circuit-breaker watermark)
      │                              │ delete pending[ba]
      │                              │ emit BalanceConfirmed(ba, B, oldValue, newValue, nonce)
      │                              │──────────────────────────────▶
@@ -386,6 +452,9 @@ event to discard stale hashes.
 
 ### 4.4 Big-change detection + pause + unpause
 
+> The check shown in the balance fuse box is `ExternalStateBigChangeLib.processCustodianUpdate`. It also runs at the start of every
+> ALPHA `enter`/`exit` (before `balances[]` moves), so whichever of the two comes first after a confirm settles it (IL-8775, section 7.1).
+
 ```
 Custodians confirm         PlasmaVault.execute(...)                    PlasmaVault.deposit (user)
 new balance @ T0           triggers balance fuse readout               blocked by pre-hook
@@ -394,7 +463,7 @@ new balance @ T0           triggers balance fuse readout               blocked b
 ┌───────────────────────┐  ┌────────────────────────────────────────┐  ┌──────────────────────────────────────┐
 │ ExternalStateExecutor │  │ ExternalStateBalanceFuse               │  │ ExternalStatePausePreHook            │
 │ confirmBalance()      │  │ balanceOf()                            │  │ run()                                │
-│ lastCustodianTS = T0  │  │                                        │  │                                      │
+│ lastCustodianTS = T0  │  │  (same check runs in OperationFuse)    │  │                                      │
 └───────────┬───────────┘  │ (total, bps, ts)                       │  │ if executor == 0:                    │
             │ (no state    │   = executor.getBalanceData()          │  │   revert PreHookExecutorNotDeployed  │
             │  write yet)  │                                        │  │ if paused: revert PreHookPaused      │
@@ -442,6 +511,8 @@ Alpha ──execute([ExternalStateRescue.rescue(airdroppedToken)])──▶ Plas
                                                            │
                                                            │ require asset != 0
                                                            │ require executor != 0
+                                                           │ require !isMarketSubstrateGranted(MARKET_ID, ASSET(asset))  (vault, live)
+                                                           │ require asset not in executor.assets[]        (executor cache)
                                                            │ executor.withdrawAssetBalance(asset)
                                                            │       │
                                                            │       ▼
@@ -456,7 +527,14 @@ Alpha ──execute([ExternalStateRescue.rescue(airdroppedToken)])──▶ Plas
 Note: `withdrawAssetBalance` does **not** touch `balances[]`. If the swept token is also an ASSET
 substrate, tracked balances remain whatever the last `addBalance`/`removeBalance`/`confirmBalance`
 set them to. That is intentional — rescue is for tokens that were never accounted (airdrops,
-accidental sends), not for reconciling tracked state.
+accidental sends), not for reconciling tracked state. Because rescue never reads or writes
+`balances[]`, the guard above is what prevents a *tracked* asset from ever reaching
+`withdrawAssetBalance` in the first place — if a tracked asset were swept, `balances[]` (still
+counted by `getBalanceFuseSnapshot()`) would double-count it against the swept tokens now also
+sitting on the vault (when the swept asset is the vault's own underlying token; for a non-underlying
+tracked asset the swept tokens instead become invisible idle value, since `totalAssets()` only sums
+the vault's own `asset()` balance plus market totals). Both failure modes are why the guard blocks
+on the *vault's substrate grant*, not on whether the asset happens to equal the underlying.
 
 ---
 
@@ -489,29 +567,52 @@ Flash-loan-manipulable oracles let an attacker inflate / deflate this value — 
 
 ### 5.3 State mutation per operation
 
-| Operation | `balances[ba]` | `lastUpdated[ba]` | `lastCustodianUpdateTimestamp` | Tokens |
-|---|---|---|---|---|
-| `addBalance` (enter) | `+= valueInUnderlying` | untouched | untouched | vault → executor |
-| `removeBalance` (exit) | `-= valueInUnderlying` (revert if >) | untouched | untouched | executor → vault |
-| `execute` (actions) | untouched | untouched | untouched | executor ⇄ external protocol |
-| `confirmBalance` | `= pending.value` (overwrite) | `= now` | `= now` | none |
-| `withdrawAssetBalance` (rescue) | untouched | untouched | untouched | executor → vault |
+| Operation | `balances[ba]` | `lastUpdated[ba]` | `lastCustodianUpdateTimestamp` (informational) | `confirmCount` (breaker watermark) | Tokens |
+|---|---|---|---|---|---|
+| `addBalance` (enter) | `+= valueInUnderlying` | untouched | untouched | untouched | vault → executor (`unforwardedCredit[asset] += amount`) |
+| `removeBalance` (exit) | `-= valueInUnderlying` (revert if >) | untouched | untouched | untouched | executor → vault (`unforwardedCredit[asset]` debited, clamped at 0) |
+| `execute` (actions) | untouched | untouched | untouched | untouched | executor ⇄ external protocol (`unforwardedCredit` of each cached asset follows the balance change: down when tokens leave, up when they return) |
+| `confirmBalance` | `= pending.value` (overwrite; only if `balances[ba]` is unchanged since propose) | `= now` | `= now` | `+= 1` | none |
+| `withdrawAssetBalance` (rescue) | untouched | untouched | untouched | untouched | executor → vault (`unforwardedCredit[asset] = 0`) |
+| `sweepSurplus` | untouched | untouched | untouched | untouched | executor → vault (only the part not covered by `unforwardedCredit`; credit unchanged) |
 
 Custodian updates **overwrite** the tracked balance (they reflect ground truth from bank /
 custodian reports), whereas fuse operations **increment/decrement** (they reflect funds flow).
 The two reconcile when custodians confirm after a round-trip — custodian-reported value is
 authoritative.
 
+A custodian report is an absolute snapshot, so it must not erase an ALPHA flow that ran after the
+the proposal was stored (IL-8748). `proposeBalance` stores `proposalBaseBalance[ba] = balances[ba]` and
+`confirmBalance` reverts with `ExternalStateExecutorBalanceChangedSinceProposal(ba, base, current)` when
+the account changed in between (an `enter` or `exit` on it). Overwriting is therefore allowed only if the
+account did not change since the proposal; otherwise custodians propose again, which re-bases the snapshot.
+A net-zero sequence (enter X, exit X) passes, flows on other balance accounts do not matter.
+
+The check covers only flows after the proposal transaction is stored on-chain, not after the custodians' off-chain
+snapshot: a flow between the custodians' observation and the propose transaction is still overwritten without a
+revert. Runbook: custodians propose promptly after reading their report; ALPHA avoids `enter` / `exit` on an
+account while custodians are preparing a report, and custodian tooling monitors `BalanceChangedByFuse` against the
+report's reference time (re-propose if a flow landed in between).
+
 ### 5.4 Airdrop handling
 
-Tokens that arrive at the executor without going through `addBalance` are NOT counted in
-`balances[]`. They sit on the executor until:
+Tokens that arrive at the executor without going through `addBalance` (airdrops, donations, custody or protocol
+payouts sent straight to the executor) are NOT counted in `unforwardedCredit`; airdrops and donations are also NOT
+counted in `balances[]`, while a custody payout is still counted there until a confirmed report excludes it.
+Which action books them depends on that state: `exit` while a report still counts them and `unforwardedCredit(asset)
+== 0`, `sweepSurplus` (never `exit`) once the report excludes them or for a donation (see 2.1, point 4). They sit on the executor until:
+- `ExternalStateOperationFuse.sweepSurplus(asset)` (ALPHA) moves them to the vault. For a tracked ASSET
+  this moves exactly the surplus over `unforwardedCredit`, never credited tokens; the swept tokens enter
+  NAV immediately only when the asset is the vault underlying (see 2.1); or
 - An Alpha operation moves them out via `execute(actions)` (only if the `(target, selector)` is
   substrate-granted); or
-- `ExternalStateRescueFuse.rescue(asset)` sweeps them back to the vault.
+- `ExternalStateRescueFuse.rescue(asset)` sweeps them back to the vault (untracked assets only).
 
-Non-zero executor balances of cached ASSET substrates **block** new `proposeBalance` /
-`confirmBalance` calls via the dust check — custodians must clear them before reporting.
+Donations do **not** block `proposeBalance` / `confirmBalance` (IL-8739), except while the credit is stale (2.1, point 4): the dust check looks at
+tokens that were *credited* to a balance account and still sit on the executor (enter without forwarding,
+exit residue), because exactly those would be overwritten by a custodian report and drop out of NAV.
+A donation is not in `balances[]`, so a report cannot overwrite it. Before IL-8739 a 1 wei transfer blocked
+custodians and, after `stalenessMax`, froze the vault through the pause pre-hook.
 
 ---
 
@@ -542,10 +643,19 @@ Runs inside both `proposeBalance` and `confirmBalance` before any state mutation
 
 ```
 for each asset in cached assets[]:
-    balance = IERC20(asset).balanceOf(executor)
+    balance = min(unforwardedCredit[asset], IERC20(asset).balanceOf(executor))
     allowed = 10^decimals(asset) * dustThreshold / 100
     if balance > allowed: revert ExternalStateExecutorDustCheckFailed(asset, balance, allowed)
 ```
+
+`balance` is the amount credited to balance accounts through the vault path that still sits on the executor,
+clamped to the real token balance (fee-on-transfer tokens, stale cache). The raw `balanceOf` is deliberately not
+used: anyone can transfer tokens to the executor, and donations are not in `balances[]`, so a custodian report
+cannot overwrite them. `unforwardedCredit` grows on `enter` (`addBalance`) and when an `execute` batch returns
+tokens to the executor; it shrinks on `exit` (`removeBalance`), when an `execute` batch moves tokens out, and on
+`withdrawAssetBalance`. Because it is settled only from balance differences inside one vault call, a donation
+sent before, between or after vault operations never changes it. The settlement covers cached assets only, so
+`syncSubstrates()` is required before the first enter of an asset (13.3).
 
 The `/100` denominator is extracted as a constant (`DUST_THRESHOLD_DENOMINATOR`) so
 `dustThreshold` reads as "percent of one base token". Examples with `decimals(USDC) = 6`:
@@ -584,6 +694,12 @@ Edge cases:
 - **Hash mismatch** (propose was overwritten between propose and confirm) →
   `ExternalStateExecutorProposalHashMismatch(expected, given)`. The old hash becomes invalid — off-chain
   tooling MUST subscribe to `ProposalOverwritten` to invalidate outstanding proposals.
+- **Account changed since propose** (ALPHA `enter` / `exit` on the same balance account between propose and
+  confirm) → `ExternalStateExecutorBalanceChangedSinceProposal(ba, balanceAtProposal, currentBalance)`. The
+  pending proposal stays; custodians must call `proposeBalance` again (this re-bases `proposalBaseBalance`
+  and emits `ProposalOverwritten`). Runbook: ALPHA does not run `enter` / `exit` on an account with an open
+  proposal; monitor `BalanceChangedByFuse` while a proposal is open. If flows and reports keep crossing,
+  after `stalenessMax` without a confirmed update the pre-hook fails closed (see §8.2).
 - **Rate-limit** (per-account) — `block.timestamp - lastUpdated[ba] < minUpdateInterval` and
   `lastUpdated[ba] != 0` → `ExternalStateExecutorMinUpdateIntervalNotMet`. First-ever update for an
   account is exempt (so bootstrap doesn't block).
@@ -594,20 +710,45 @@ Edge cases:
 
 ### 7.1 Big-change detection (balance fuse)
 
-`ExternalStateBalanceFuse.balanceOf()` compares current total to previously observed `lastTotalBalance`,
-but **only when a new custodian update has landed** (`lastCustodianTs != lastChecked`). This is
-critical: alpha-driven enter/exit naturally changes the total in underlying units, and those
-changes must NOT trip the pause.
+The check lives in `ExternalStateBigChangeLib.processCustodianUpdate(executor)` (runs in the vault's delegatecall
+context). It compares the current total to the previously observed `lastTotalBalance`, but **only when a
+new custodian update has landed** (`confirmCount != lastChecked`). This is critical: alpha-driven
+enter/exit naturally changes the total in underlying units, and those changes must NOT trip the pause.
+
+The function is called from three places:
+- `ExternalStateBalanceFuse.balanceOf()` (every NAV refresh),
+- `ExternalStateOperationFuse.enter` and `exit`, **after validation and before** the transfer, `addBalance`,
+  `removeBalance` or actions (IL-8775).
+
+Why: `PlasmaVault.execute` runs the fuses first and refreshes market balances only at the end. Without the early
+call, the first `balanceOf` after a confirm would see custodian change plus ALPHA's flow in one delta: a +1 %
+confirm followed by an enter of 10 % would pause the vault (false pause), and a +10 % confirm followed by an
+exit of 10 % would pass unnoticed (masking). A pending confirm is therefore **settled before the flow**, so
+the baseline is always the state after the last confirm and a delta never contains ALPHA's own enter/exit.
+After the flow only `lastTotalBalance` moves, without a check, exactly as when no confirm is pending. A big
+change found in this call sets `paused` but does not block the ALPHA call that found it. All fuses of the
+family share one per-vault ERC-7201 slot (not keyed by market id); only one ExternalState market per vault is
+supported (`ExternalStateMultipleMarketsNotSupported`), so there is a single watermark per vault. `sweepSurplus` does not need the call because it does not change `balances[]`.
 
 ```
 delta = |totalBalance - prevTotal|
-if lastCustodianTs != lastChecked:
+if custodianConfirmCount != lastChecked:
     if prevTotal != 0 and delta * 10_000 / prevTotal > bigChangeBps:
         setPaused(true)
         emit ExternalStateBigChangeDetected(prevTotal, totalBalance, bigChangeBps)
-    setLastCheckedCustodianTimestamp(lastCustodianTs)
+    setLastCheckedCustodianConfirmCount(custodianConfirmCount)
 setLastTotalBalance(totalBalance)
 ```
+
+`custodianConfirmCount` is `ExternalStateExecutor.confirmCount` — a strictly monotonic
+per-confirmation counter (**not** `lastCustodianUpdateTimestamp`, which is informational only). Two
+confirms landing in the same block would share one `block.timestamp`, making a timestamp watermark
+blind to the second one; the counter cannot collide (IL-7969 fix).
+
+Known limitation (pre-existing): `addBalance` / `removeBalance` do not require the balance account to be in the
+executor cache, while the total only sums cached accounts. An enter / exit into a balance account that is granted
+on the vault but not yet in the executor cache stays out of the total until `syncSubstrates()` (callable by anyone)
+runs. Sync before the first flow (see 13.3, which already requires a sync before the first enter).
 
 Baseline: the first observation after deployment (`prevTotal == 0`) is always accepted without
 triggering pause.
@@ -616,12 +757,13 @@ triggering pause.
 
 The pre-hook performs the same delta check **before** `balanceOf()` runs, to close the window
 between `confirmBalance` and the next balance-fuse readout. This is stateless: the pre-hook
-reads `lastCustodianUpdateTimestamp`, `lastCheckedCustodianTimestamp`, `lastTotalBalance`, and
-`bigChangeBps` but does NOT write `lastChecked` — only the balance fuse advances that cursor.
+reads `confirmCount` (via `getBalanceFuseSnapshot()`), `lastCheckedCustodianConfirmCount`,
+`lastTotalBalance` and `bigChangeBps`, but does NOT write `lastChecked` — only `balanceOf` and the
+OperationFuse `enter`/`exit` settlement (via `ExternalStateBigChangeLib`) advance that cursor.
 
-Consequence: between a custodian confirm and the first `balanceOf` call:
+Consequence: between a custodian confirm and the first `balanceOf` call or ALPHA `enter`/`exit` (whichever comes first):
 1. User attempts `deposit` → pre-hook computes delta > bps → reverts `ExternalStatePreHookBigChangeDetected`.
-2. Keeper / alpha call flows through `_updateMarketsBalances` → balance fuse sets pause flag.
+2. Keeper / alpha call flows through `_updateMarketsBalances` (or an ALPHA `enter`/`exit`) → the pause flag is set.
 3. User attempts `deposit` again → pre-hook reverts `ExternalStatePreHookPaused` instead.
 
 The error code transitions are expected; both are fail-closed.
@@ -651,15 +793,17 @@ revert `ExternalStateUnpauseSignatureExpired`.
 
 ### 8.1 Selectors to register
 
-Pre-hook must be registered against every ERC-4626 entry point that creates or redeems shares.
-Verify selectors against your exact vault build with `cast sig "<signature>"` before registering —
+Pre-hook must be registered against every ERC-4626 entry point that creates or redeems shares
+(the one exception is `redeemFromRequest`, see [8.3](#83-redeemfromrequest-and-the-withdrawmanager-request-flow)).
+Verify selectors against your exact vault build with
+`forge inspect PlasmaVault methodIdentifiers` (or `cast sig "<full signature>"`) before registering —
 the table below lists the canonical IPOR Fusion PlasmaVault selectors at the time of writing.
 
 | Selector | Function | Action type |
 |---|---|---|
 | `0x6e553f65` | `deposit(uint256,address)` | share mint |
 | `0x94bf804d` | `mint(uint256,address)` | share mint |
-| `0x00f714ce` | `depositWithPermit(...)` (exact selector deployment-specific) | share mint |
+| `0x50921b23` | `depositWithPermit(uint256,address,uint256,uint8,bytes32,bytes32)` | share mint |
 | `0xba087652` | `redeem(uint256,address,address)` | share burn |
 | `0xb460af94` | `withdraw(uint256,address,address)` | share burn |
 
@@ -679,9 +823,9 @@ user calls deposit/mint/withdraw/redeem
            │
            ├─ if ExternalStateExecutorStorageLib.getPaused(): revert ExternalStatePreHookPaused
            │
-           ├─ (total, bps, lastCustodianTs) = executor.getBalanceFuseSnapshot()
-           ├─ lastChecked = getLastCheckedCustodianTimestamp()
-           ├─ if lastCustodianTs != lastChecked:
+           ├─ (total, bps, custodianConfirmCount) = executor.getBalanceFuseSnapshot()
+           ├─ lastChecked = getLastCheckedCustodianConfirmCount()
+           ├─ if custodianConfirmCount != lastChecked:
            │     prevTotal = getLastTotalBalance()
            │     if prevTotal != 0 and |total-prevTotal|*10000/prevTotal > bps:
            │         revert ExternalStatePreHookBigChangeDetected
@@ -698,6 +842,33 @@ Note: `getOldestUpdateTimestamp()` returns the minimum **non-zero** `lastUpdated
 cached balance accounts, or 0 when every account still has `lastUpdated == 0` (pre-first-confirm
 bootstrap state). Zero exempts the staleness gate — users can deposit into a freshly deployed
 executor before custodians have reported.
+
+### 8.3 `redeemFromRequest` and the WithdrawManager request flow
+
+`PlasmaVault.redeemFromRequest(uint256,address,address)` (`0xa64099d2`) also burns shares at the
+current NAV and runs through the same `_runPreHook` dispatcher, but it is **not** in the default
+selector set above. Exits through this path are gated by ALPHA instead: a request becomes
+redeemable only after ALPHA calls `WithdrawManager.releaseFunds(timestamp, sharesToRelease)`.
+
+ALPHA cannot un-release a request by timestamp — `lastReleaseFundsTimestamp` is monotonic, so every
+request filed before it stays redeemable until its `endWithdrawWindowTimestamp`, and the payout is
+priced at the NAV of the `redeemFromRequest` call, not at release time. A request released before
+the market was paused, went stale or saw a big change can therefore still exit at the un-gated NAV.
+
+**Operator procedure.** When the market is paused (`ExternalStatePreHookPaused`), a big change is
+detected (`ExternalStatePreHookBigChangeDetected`) or data goes stale (`ExternalStatePreHookStale`):
+
+1. Do not call `releaseFunds` with new shares until the market is unpaused and the balance is fresh.
+2. Freeze already-released requests with `releaseFunds(getLastReleaseFundsTimestamp(), 0)`.
+   `releaseFunds` overwrites `sharesToRelease`, so every `redeemFromRequest` then reverts with
+   `WithdrawManagerInvalidSharesToRelease`.
+3. After the atomist unpause ([7.3](#73-unpause)) and a fresh `updateMarketsBalances`, call
+   `releaseFunds` again with the pending `sharesToRelease` amount (record it before step 2).
+
+This is a manual reaction, so it leaves a window between the custodian `confirmBalance` and the
+ALPHA transaction. A vault that wants the automatic fail-closed guarantee on this path too can add
+`0xa64099d2` to the selector set in [Step 4](#step-4--register-the-pre-hook-against-gated-selectors);
+the pre-hook ignores the selector, so no other change is needed.
 
 ---
 
@@ -717,7 +888,7 @@ step fails, abort the runbook and investigate before proceeding.
 - `AccessManager` on the vault has `ATOMIST_ROLE` granted to the off-chain signing EOA(s) that
   will sign unpause payloads.
 - At least **two** custodian EOAs (or multisigs behaving as EOAs for signatures).
-- The dedicated `MARKET_ID = IporFusionMarkets.EXTERNAL_STATE` (`= 49`). Defined in
+- The dedicated `MARKET_ID = IporFusionMarkets.EXTERNAL_STATE` (`= 50`). Defined in
   `contracts/libraries/IporFusionMarkets.sol`. One vault hosts at most one ExternalState market via this
   fuse family — `ExternalStateExecutorStorageLib.getOrCreateExecutor` reverts with
   `ExternalStateMultipleMarketsNotSupported` if a second market id is later attempted.
@@ -725,6 +896,8 @@ step fails, abort the runbook and investigate before proceeding.
 ### Step 1 — Deploy fuses + pre-hook
 
 Deploy one instance of each contract, all bound to the same `MARKET_ID`:
+
+> Compatibility: a new OperationFuse must be deployed together with a new executor; with a pre-IL-8739 executor it fails closed (see 2.1, point 6).
 
 ```solidity
 ExternalStateOperationFuse opFuse    = new ExternalStateOperationFuse(MARKET_ID);
@@ -765,7 +938,7 @@ vault's gross assets.
 bytes4[] memory selectors = new bytes4[](5);
 selectors[0] = 0x6e553f65; // deposit(uint256,address)
 selectors[1] = 0x94bf804d; // mint(uint256,address)
-selectors[2] = 0x00f714ce; // depositWithPermit(...) — verify for your build
+selectors[2] = 0x50921b23; // depositWithPermit(uint256,address,uint256,uint8,bytes32,bytes32)
 selectors[3] = 0xba087652; // redeem(uint256,address,address)
 selectors[4] = 0xb460af94; // withdraw(uint256,address,address)
 
@@ -856,7 +1029,7 @@ vault layer, publicly advertising the vault, or similar.
 - **Adding / revoking custodians:** `grantMarketSubstrates` / `revokeMarketSubstrates` followed
   by `executor.syncSubstrates()` atomically (see M-2 runbook below).
 - **Regular NAV updates:** keeper / alpha invokes `PlasmaVault.updateMarketsBalances(marketIds)`
-  so `ExternalStateBalanceFuse.balanceOf()` runs and advances `lastCheckedCustodianTimestamp`.
+  so `ExternalStateBalanceFuse.balanceOf()` runs and advances `lastCheckedCustodianConfirmCount`.
 - **Custodian reporting:** custodians propose/confirm as reports arrive.
 - **Unpause after big-change:** atomist signs a payload matching the current confirmed balance;
   alpha submits it via `ExternalStateUnpauseFuse.unpause`.
@@ -1201,6 +1374,14 @@ keeper SHOULD be able to call `syncSubstrates()` if operator misses step 2.
 4. `executor.syncSubstrates()`
 5. Smoke test: alpha enter with small amount of new asset, custodian round-trip, alpha exit.
 
+Step 4 is mandatory before the first `enter` of the asset: the executor settles `unforwardedCredit` and runs
+the dust check only for cached assets, so an unsynced asset is neither settled nor checked (IL-8739).
+
+Note: skipping step 4 does not create a rescue-sweep risk — `ExternalStateRescueFuse.rescue`
+checks the vault's live substrate grant in addition to the executor cache (IL-8115), so a newly
+granted asset stays un-rescuable even before `syncSubstrates()` runs. Step 4 is still required for
+`enter`/`exit` to see the asset as a fully operating balance-fuse and dust-check-tracked substrate.
+
 ### 13.4 Adding a new action target+selector
 
 1. Security review: confirm `target` is NOT in the ASSET set (M-3).
@@ -1235,14 +1416,30 @@ re-read from the vault during sync.
 ### 13.7 Handling airdrops / stuck tokens
 
 1. Identify the token balance on the executor (`IERC20(token).balanceOf(executor)`).
-2. If the token is an ASSET substrate AND part of an expected flow: do NOT rescue; address via
-   normal exit flow.
-3. If it's an airdrop / unexpected: `PlasmaVault.execute([rescueFuse.rescue(token)])`.
-4. Token lands in the vault's underlying balance; NAV reflects the gain at the next
-   `_updateMarketsBalances`.
+2. If the token is currently granted as an ASSET substrate on the vault (regardless of whether the
+   executor cache has been synced yet) AND part of an expected flow: do NOT rescue; address via
+   normal exit flow. `rescue` will revert `ExternalStateRescueOfTrackedAssetForbidden` for any such
+   token — a grant without a follow-up `syncSubstrates()` does NOT open a rescue window (IL-8115).
+   To deliberately sweep a formerly tracked asset, you must both revoke it on the vault AND call
+   `syncSubstrates()` (13.3/13.5 order) — `rescue` checks both sources and blocks unless neither
+   lists the token. `balances[]` is still not reconciled by rescue in that case; see 5.3/5.4.
+3. If it's an airdrop / unexpected (never an ASSET substrate): `PlasmaVault.execute([rescueFuse.rescue(token)])`.
+   If it is a donation of a tracked ASSET: `PlasmaVault.execute([opFuse.sweepSurplus(token)])` moves exactly the
+   donated surplus (everything above `unforwardedCredit`) to the vault without touching `balances[]`; the tokens
+   are vault assets (NAV immediately only for the vault underlying; other assets need their own balance fuse).
+   Tokens that came back from custody outside a vault call: `exit` them while the last confirmed report still counts them
+   and `unforwardedCredit(asset) == 0`; `sweepSurplus` them (never `exit`) once a confirmed report excludes them (see
+   2.1, point 4). No sweep is needed to keep custodians working: donations do
+   not block propose/confirm unless the credit is stale (2.1, point 4), and in that state `sweepSurplus` does not move
+   them (`exit` them instead).
+4. Token lands in the vault's balance as `token`. If `token` is the vault's own underlying asset,
+   NAV reflects the gain at the next `_updateMarketsBalances`; for any other token, `totalAssets()`
+   does not scan for it and the swept balance is not reflected in NAV until another flow moves or
+   accounts for it.
 
 Note: rescue runs dust-check-free because it does not go through `proposeBalance` /
-`confirmBalance`. After rescue, the next custodian round-trip will pass the dust check cleanly.
+`confirmBalance`. Donated tokens block the dust check only while the credit is stale (2.1, point 4); otherwise rescue and
+`sweepSurplus` are housekeeping, not a precondition of the next custodian round-trip.
 
 ### 13.8 Adding / Revoking a balance account
 
@@ -1319,6 +1516,7 @@ that has been revoked from the vault substrate set, even during the race window 
 | `SubstratesSynced` | `balanceAccountCount`, `custodianCount`, `assetCount`, `stalenessMax`, `bigChangeBps`, `dustThreshold`, `minUpdateInterval` | `syncSubstrates` |
 | `BalanceAccountPurged` | `balanceAccount (i)` | `syncSubstrates` (per orphaned BA, audit fix 17.1) |
 | `AssetWithdrawn` | `asset (i)`, `amount` | `withdrawAssetBalance` |
+| `SurplusSwept` | `asset`, `amount` | `sweepSurplus` (amount 0 when there is no donated surplus) |
 | `ExternalStateExecutorDeployed` (on the storage lib) | `executor`, `marketId` | `getOrCreateExecutor` first call |
 
 ### `ExternalStateOperationFuse`
@@ -1328,6 +1526,7 @@ that has been revoked from the vault substrate set, even during the race window 
 | `ExecutorCreated` | `executor (i)`, `marketId (i)` |
 | `ExternalStateOperationFuseEnter` | `version (i)`, `asset (i)`, `amount`, `balanceAccount (i)`, `valueInUnderlying`, `actionsCount` |
 | `ExternalStateOperationFuseExit` | `version (i)`, `asset (i)`, `amount`, `balanceAccount (i)`, `valueInUnderlying`, `actionsCount` |
+| `ExternalStateOperationFuseSweepSurplus` | `version`, `asset`, `amount` |
 
 ### `ExternalStateBalanceFuse`
 
@@ -1384,12 +1583,13 @@ Key custom errors with diagnostic parameters. All declared in `contracts/fuses/e
 |---|---|
 | `ExternalStateExecutorUnauthorizedVault()` | `onlyVault` mismatch on `msg.sender`. |
 | `ExternalStateExecutorUnauthorizedCustodian(address caller)` | `onlyCustodian` miss (address not in cached `custodians[]`). |
-| `ExternalStateExecutorDustCheckFailed(address asset, uint256 balance, uint256 allowed)` | Asset balance above dust allowance. |
+| `ExternalStateExecutorDustCheckFailed(address asset, uint256 balance, uint256 allowed)` | Credited-but-unforwarded amount of an asset (`min(unforwardedCredit, balanceOf)`) above the dust allowance. |
 | `ExternalStateExecutorSameProposerAndConfirmer(address custodian)` | Same custodian tried to confirm their own proposal. |
 | `ExternalStateExecutorProposalHashMismatch(bytes32 expected, bytes32 given)` | Confirm hash does not match pending. |
 | `ExternalStateExecutorProposalExpired(uint256 proposedAt, uint256 now, uint256 ttl)` | `now - proposedAt > stalenessMax`. |
 | `ExternalStateExecutorMinUpdateIntervalNotMet(uint256 lastUpdated, uint256 now, uint256 minInterval)` | Confirm too soon after previous confirm. |
 | `ExternalStateExecutorNoPendingProposal(address ba)` | Confirm before any propose. |
+| `ExternalStateExecutorBalanceChangedSinceProposal(address ba, uint256 balanceAtProposal, uint256 currentBalance)` | `balances[ba]` changed (ALPHA `enter` / `exit`) between propose and confirm; propose again. |
 | `ExternalStateExecutorZeroAddressConstructor()` | Executor constructor called with `vault == address(0)`. |
 | `ExternalStateExecutorZeroMarketId()` | Executor constructor called with `marketId == 0`. |
 | `ExternalStateExecutorBalanceAccountStillFunded(address ba, uint256 residualBalance)` | `syncSubstrates` cannot purge `ba` because `balances[ba] != 0`. Atomist must drain via `ExternalStateOperationFuse.exit` before revoking the substrate (audit fix 17.1, see §13.8). |
@@ -1418,6 +1618,7 @@ Key custom errors with diagnostic parameters. All declared in `contracts/fuses/e
 | Error | Meaning |
 |---|---|
 | `ExternalStateRescueExecutorNotDeployed()` | Rescue before executor exists. |
+| `ExternalStateRescueOfTrackedAssetForbidden(address asset)` | `asset` is granted as an ASSET substrate on the vault (live) or present in the executor's cached `assets[]` — sweeping a tracked asset out-of-band would desynchronize strategy state / double-count NAV (IL-8115). |
 
 ---
 

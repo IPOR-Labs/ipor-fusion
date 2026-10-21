@@ -56,14 +56,6 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
         uint256 coinAmountReceived
     );
 
-    event CurveSupplyStableswapNGSingleSideSupplyFuseExitFailed(
-        address version,
-        address curvePool,
-        uint256 lpTokenAmount,
-        address asset,
-        uint256 minCoinAmountReceived
-    );
-
     error CurveStableswapNGSingleSideSupplyFuseUnsupportedPool(address poolAddress);
     error CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(address asset);
 
@@ -137,6 +129,11 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
         TransientStorageLib.setOutputs(VERSION, outputs);
     }
 
+    /// @dev Reverts propagate: this fuse has no `instantWithdraw()`, so unlike the sibling supply fuses'
+    /// permissionless withdraw path there is no case here where a failed exit should be swallowed instead of
+    /// stopping the ALPHA batch. The requested `lpTokenAmount` is clamped to the vault's current LP balance
+    /// (part of it may be staked elsewhere, e.g. in a gauge) and the emitted/returned amount always reflects the
+    /// clamped amount that was actually burned, never the raw request.
     function exit(
         CurveStableswapNGSingleSideSupplyFuseExitData memory data_
     ) public returns (address curveStableswapNG, uint256 coinAmountReceived) {
@@ -167,28 +164,27 @@ contract CurveStableswapNGSingleSideSupplyFuse is IFuseCommon {
             revert CurveStableswapNGSingleSideSupplyFuseUnsupportedPoolAsset(data_.asset);
         }
 
-        try
-            curvePool.remove_liquidity_one_coin(data_.lpTokenAmount, index, data_.minCoinAmountReceived, address(this))
-        returns (uint256 amount) {
-            coinAmountReceived = amount;
-            emit CurveSupplyStableswapNGSingleSideSupplyFuseExit(
-                VERSION,
-                address(curvePool),
-                data_.lpTokenAmount,
-                data_.asset,
-                coinAmountReceived
-            );
-        } catch {
-            /// @dev if withdraw failed, continue with the next step
-            emit CurveSupplyStableswapNGSingleSideSupplyFuseExitFailed(
-                VERSION,
-                address(curvePool),
-                data_.lpTokenAmount,
-                data_.asset,
-                data_.minCoinAmountReceived
-            );
-            coinAmountReceived = 0;
+        uint256 vaultLpBalance = ERC20(address(curvePool)).balanceOf(address(this));
+        uint256 finalLpTokenAmount = data_.lpTokenAmount > vaultLpBalance ? vaultLpBalance : data_.lpTokenAmount;
+
+        if (finalLpTokenAmount == 0) {
+            return (address(curvePool), 0);
         }
+
+        coinAmountReceived = curvePool.remove_liquidity_one_coin(
+            finalLpTokenAmount,
+            index,
+            data_.minCoinAmountReceived,
+            address(this)
+        );
+
+        emit CurveSupplyStableswapNGSingleSideSupplyFuseExit(
+            VERSION,
+            address(curvePool),
+            finalLpTokenAmount,
+            data_.asset,
+            coinAmountReceived
+        );
 
         return (address(curvePool), coinAmountReceived);
     }

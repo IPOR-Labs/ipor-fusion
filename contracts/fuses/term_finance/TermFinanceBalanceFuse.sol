@@ -45,13 +45,15 @@ import {TermFinanceSubstrateLib} from "./lib/TermFinanceSubstrateLib.sol";
 ///      `_tryReadShortfallHaircut`, `_tryReadServicerTopology`, `_tryReadPurchaseToken`,
 ///      `_tryReadRepoToken`, `_tryReadEndOfRepurchaseWindow`, and the explicit `try` around
 ///      `IExtTermRepoServicer.getBorrowerRepurchaseObligation` in `_debtValueWadForServicer`).
-///      A single broken servicer leg degrades to 0 without affecting other legs.
+///      A single broken servicer leg degrades to 0 without affecting other legs, EXCEPT
+///      when the vault tracks a position on it (see the propagating reverts below).
 ///
 ///      The reverts that DO propagate out of `balanceOf` are:
 ///        - `TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked(servicer)` — propagates
 ///          when ANY leg's oracle read FAILS (revert OR returns 0) AND the servicer carries
-///          TRACKED exposure (held repo position, pending offers in storage, pending bids
-///          in storage, any locked collateral balance > 0, or positive debt obligation).
+///          TRACKED exposure (held or unreadable repo position, pending offers in storage,
+///          pending bids in storage, any locked collateral balance > 0, or positive debt
+///          obligation; a failed collateral-manager read per token counts the same way).
 ///          UNTRACKED legs degrade silently to 0 — a single mis-configured oracle on an
 ///          unused servicer cannot brick `balanceOf`. The collateral-side helpers
 ///          (`_heldTermRepoTokenPv`, `_pendingOffersValueWad`,
@@ -64,6 +66,11 @@ import {TermFinanceSubstrateLib} from "./lib/TermFinanceSubstrateLib.sol";
 ///          debt-side `_debtPvWad` is reached only when `obligationFace > 0`
 ///          (tracked-by-construction) so it re-raises this error directly on oracle
 ///          failure.
+///        - `TermFinanceBalanceFuseLockerReadFailedForTrackedEntry(locker, entryId)` — propagates
+///          when a pending offer / bid locker read (`lockedOffer` / `lockedBid`) reverts for an
+///          entry carried in vault-owned storage. A tracked entry is never dropped on a revert.
+///          Unblock: `TermFinanceCleanupFuse` with `pruneOnLockerRevert = true` once the locker
+///          is confirmed dead.
 ///        - `TermFinanceBalanceFuseDebtReadFailedForTrackedServicer(servicer)` — propagates
 ///          from `_debtValueWadForServicer` ONLY when the borrower-side
 ///          `getBorrowerRepurchaseObligation` read fails AND the vault has tracked exposure
@@ -103,6 +110,23 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     ///      authoritative key for triage.
     /// @param servicer Servicer substrate whose tracked leg failed price reading.
     error TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked(address servicer);
+
+    /// @notice Reverts when a locker proxy read (`lockedOffer` / `lockedBid`) reverts for an entry
+    ///         that the vault tracks in its own storage.
+    /// @dev A tracked storage entry is exposure by definition, so a reverting locker must not be
+    ///      read as "no position" (README "Proxy state"): dropping the leg would under-report NAV
+    ///      and open an ERC4626 share-mint window. Recovery: once ALPHA has confirmed the locker is
+    ///      dead, run `TermFinanceCleanupFuse` with `pruneOnLockerRevert = true` to remove the
+    ///      entry; `balanceOf` then succeeds without it. `PlasmaVault.execute` refreshes markets
+    ///      only AFTER the actions, so Cleanup works directly. If an `UpdateBalancesPreHook` (or
+    ///      its IgnoreDust variant, possibly nested in `ExchangeRateValidatorPreHook`) is wired on
+    ///      `execute`, the market refresh runs BEFORE the actions and reverts with this error, so
+    ///      Cleanup can never run: ATOMIST must unwire the `execute` pre-hook, ALPHA runs Cleanup,
+    ///      then ATOMIST re-wires it. `removeBalanceFuse` is no escape (it calls `balanceOf`) and
+    ///      revoking the substrate makes Cleanup revert.
+    /// @param locker Offer or bid locker whose read reverted.
+    /// @param entryId Pending offer or bid id whose read reverted.
+    error TermFinanceBalanceFuseLockerReadFailedForTrackedEntry(address locker, bytes32 entryId);
 
     /// @notice Reverts when the borrower-side `getBorrowerRepurchaseObligation` read fails on
     ///         a servicer where the vault has positive tracked exposure (collateral locked or
@@ -181,6 +205,18 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     ///      decimals degrade the leg via the tracked gate (same path as a price-
     ///      zero on a tracked servicer).
     uint8 internal constant MAX_TOKEN_DECIMALS = 30;
+
+    /// @notice Lower bound on `IExtTermRepoToken.redemptionValue()` accepted from a held
+    ///         position, symmetric to `TermFinancePresentValueLib.MAX_REDEMPTION_VALUE`.
+    /// @dev `redemptionValue` is a fixed ~1e18 (`RATE_PRECISION`) purchase-per-token mantissa
+    ///      set at term creation; realized losses are expressed via `shortfallHaircutMantissa`,
+    ///      not by moving `redemptionValue` away from ~1e18. `MAX_REDEMPTION_VALUE = 1e22`
+    ///      is `1e4 * RATE_PRECISION` (10,000x); this constant mirrors it on the low side as
+    ///      `RATE_PRECISION / 1e4 = 1e14`. A point check at exactly `== 0` is insufficient: any
+    ///      mantissa orders of magnitude below `1e18` (e.g. `1e5`) is equally corrupted proxy
+    ///      state and still floors `faceValue` to 0 for a material tracked position, silently
+    ///      reproducing the same share-mint window as the exact-zero case (IL-7974 cycle-2).
+    uint256 internal constant MIN_REDEMPTION_VALUE = 1e14;
 
     /// @notice Address of this contract instance, used as the version identifier in event logs.
     address public immutable VERSION;
@@ -313,7 +349,9 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     ///      "tracked but priced to zero by a broken oracle" (must re-raise). The combined
     ///      tracked signal is OR of: cheap pre-call storage signal (`_hasTrackedExposure`),
     ///      the `hasAnyPosition` flag from each helper, and positive `sum`. A debt
-    ///      obligation `> 0` is tracked by construction and handled inside `_debtPvWad`.
+    ///      obligation `> 0` is tracked by construction and handled inside `_debtPvWad`. The
+    ///      pre-call signal inside `_collateralValueWadWithGate` is the broader
+    ///      `_servicerHasExposure` (storage, held or unreadable repo balance, debt).
     /// @param servicer_ Servicer substrate.
     /// @param plasmaVault_ Vault address.
     /// @param priceOracleMiddleware_ Oracle middleware address.
@@ -340,12 +378,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         );
 
         int256 collateralValue = collateralSum.toInt256();
-        int256 debtValue = _debtValueWadForServicer(
-            servicer_,
-            plasmaVault_,
-            priceOracleMiddleware_,
-            collateralValue
-        );
+        int256 debtValue = _debtValueWadForServicer(servicer_, plasmaVault_, priceOracleMiddleware_, collateralValue);
 
         return collateralValue + debtValue;
     }
@@ -354,7 +387,8 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @dev Each helper returns `(bool ok, uint256 valueWad, bool hasAnyPosition)`. We
     ///      accumulate the values, OR the `hasAnyPosition` flags into a single tracked
     ///      signal, and OR the `!ok` bits into a single anyPriceZero signal. The
-    ///      pre-call storage signal `_hasTrackedExposure(servicer_)` covers the case where
+    ///      pre-call exposure signal (`_servicerHasExposure(servicer_)`: storage entries, held or
+    ///      unreadable repo balance, positive debt) covers the case where
     ///      every priced leg returned `(true, 0)` but the vault still has tracked bids in
     ///      storage. If `anyPriceZero && (trackedPre || trackedFromLegs || sum > 0)` we
     ///      re-raise; otherwise an untracked price-zero degrades silently to a 0 leg.
@@ -410,10 +444,12 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         }
 
         if (anyPriceZero) {
-            // Cheap pre-call tracked signal: any pending bid in vault-owned storage means the
-            // vault has expressed borrower intent regardless of the Term proxy state. Matches
-            // the `_hasTrackedExposure` signal used by the debt-leg gate.
-            bool trackedPre = _hasTrackedExposure(servicer_);
+            // CM-independent tracked signal: storage entries, a held (or unreadable) repo token
+            // balance, or a positive borrower obligation. The obligation signal matters when a
+            // collateral-manager read fails mid-loop: the collateral leg then degrades to 0 and
+            // the debt leg would otherwise be subtracted in full. An unused servicer still
+            // evaluates to false and degrades to 0.
+            bool trackedPre = _servicerHasExposure(servicer_, plasmaVault_);
             if (trackedPre || trackedFromLegs || sum > 0) {
                 revert TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked(servicer_);
             }
@@ -425,22 +461,32 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     }
 
     /// @notice Held TermRepoToken present value for a single servicer (lender-side leg).
-    /// @dev Returns `(ok, valueWad, hasAnyPosition)` where `hasAnyPosition` signals
-    ///      that the vault holds a non-zero balance of the servicer's repo token (regardless
-    ///      of pricing success). `ok == false` signals that the IPOR oracle returned
-    ///      `price == 0` for the purchase token — propagated to the caller for tracked-vs-
-    ///      untracked gating.
+    /// @dev Returns `(ok, valueWad, hasAnyPosition)`. `ok == false` means the leg could not be
+    ///      valued and the caller must apply its tracked gate: either the IPOR oracle returned
+    ///      `price == 0` for the purchase token, or the position itself is unreadable (the
+    ///      servicer will not surface its `repoToken`, the repo-token `balanceOf` reverts, or the
+    ///      servicer topology read fails). Every unreadable case pairs `ok == false` with
+    ///      `hasAnyPosition == true`, because a position that cannot be read cannot be proven to
+    ///      be zero — silently zeroing it is exactly what the tracked gate exists to prevent.
+    ///      Gated by `REPO_TOKEN_HOLDING`: without it the leg returns `(true, 0, false)` with no
+    ///      external reads (donated repo tokens lie outside the tracked set, ALPHA rule D-006).
     /// @param servicer_ Servicer substrate.
     /// @param plasmaVault_ Vault address.
     /// @param priceOracleMiddleware_ Oracle middleware address.
-    /// @return ok False iff a pricing-side oracle returned `price == 0`.
+    /// @return ok False iff the leg could not be valued (price zero, or an unreadable position).
     /// @return valueWad WAD-USD value of the held TermRepoToken position (0 on `ok == false`).
-    /// @return hasAnyPosition True iff the vault holds a positive balance of the repo token.
+    /// @return hasAnyPosition True iff the vault holds a positive balance of the repo token, or
+    ///         that balance could not be read at all. Always false when `REPO_TOKEN_HOLDING` is
+    ///         not granted for the servicer.
     function _heldTermRepoTokenPv(
         address servicer_,
         address plasmaVault_,
         address priceOracleMiddleware_
     ) internal view returns (bool ok, uint256 valueWad, bool hasAnyPosition) {
+        // No `REPO_TOKEN_HOLDING` declaration for this servicer: repo tokens it may hold lie outside
+        // the tracked set and do not change NAV (ALPHA rule D-006). Skips every external read.
+        if (!_holdsRepoToken(servicer_)) return (true, 0, false);
+
         // Probe the repoToken address with the standalone wrapper so we
         // can read the vault's held balance EVEN WHEN the broader topology read fails
         // (e.g. one of `purchaseToken` / `decimals` / `redemptionValue` reverts). Without
@@ -449,10 +495,15 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         // repoToken balance without any pending-storage signal.
         (bool rtOk, address repoTokenAddr) = _tryReadRepoToken(servicer_);
         if (!rtOk || repoTokenAddr == address(0)) {
-            // Servicer cannot even surface its repoToken — no held read possible. Degrade
-            // silently; caller's storage signal (`_hasTrackedExposure`) still gates other
-            // legs if pending state exists.
-            return (true, 0, false);
+            // Servicer cannot surface its repoToken, so the held balance is unreadable - exactly
+            // the condition the `!balOk` branch below fails CLOSED on, and it fails closed here
+            // for the same reason. Degrading silently would drop the entire held position from
+            // NAV with no tracked signal at all: once `TermFinanceCleanupFuse` has pruned the
+            // pending offers the vault keeps no storage record of its own, so
+            // `_hasTrackedExposure` cannot gate it either and `totalAssets()` would under-report
+            // through an ERC4626 share-mint window - the very failure mode IL-7974 set out to
+            // close. The debt leg already reverts on this same `!rtOk` (see `_debtPvInPurchase`).
+            return (false, 0, true);
         }
         (bool balOk, uint256 repoBal) = _tryReadRepoTokenBalance(repoTokenAddr, plasmaVault_);
         if (!balOk) {
@@ -474,19 +525,40 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         // returns 0.
         hasAnyPosition = true;
 
-        uint256 price;
-        uint256 priceCombinedDecimals;
-        {
-            (bool priceOk, uint256 p, uint256 pDec) = _tryGetAssetPrice(priceOracleMiddleware_, top.purchaseToken);
-            if (!priceOk) return (false, 0, hasAnyPosition);
-            price = p;
-            priceCombinedDecimals = uint256(top.purchaseDec) + pDec;
-        }
+        (bool pricedOk, uint256 pricedValueWad) = _heldTermRepoTokenPriceAndPv(
+            servicer_,
+            priceOracleMiddleware_,
+            top,
+            repoBal
+        );
+        return (pricedOk, pricedValueWad, hasAnyPosition);
+    }
 
-        uint256 pvHeld = _heldPvInPurchase(servicer_, top, repoBal);
-        if (pvHeld == 0) return (true, 0, hasAnyPosition);
+    /// @notice Tail of `_heldTermRepoTokenPv`: price the purchase token and convert the held
+    ///         position's PV to WAD-USD. Extracted to keep `_heldTermRepoTokenPv` under the
+    ///         16-slot stack limit after `_heldPvInPurchase` gained an `ok` return slot.
+    /// @param servicer_ Servicer substrate.
+    /// @param priceOracleMiddleware_ Oracle middleware address.
+    /// @param top_ Topology snapshot returned by `_tryReadServicerTopology`.
+    /// @param repoBal_ Vault's repo-token balance.
+    /// @return ok False iff the purchase-token oracle read failed or a supporting try/catch
+    ///         read inside `_heldPvInPurchase` failed.
+    /// @return valueWad WAD-USD value of the held TermRepoToken position (0 when `ok ==
+    ///         false`, or genuinely zero PV when `ok == true`).
+    function _heldTermRepoTokenPriceAndPv(
+        address servicer_,
+        address priceOracleMiddleware_,
+        ServicerTopology memory top_,
+        uint256 repoBal_
+    ) internal view returns (bool ok, uint256 valueWad) {
+        (bool priceOk, uint256 price, uint256 pDec) = _tryGetAssetPrice(priceOracleMiddleware_, top_.purchaseToken);
+        if (!priceOk) return (false, 0);
 
-        return (true, IporMath.convertToWad(pvHeld * price, priceCombinedDecimals), hasAnyPosition);
+        (bool pvOk, uint256 pvHeld) = _heldPvInPurchase(servicer_, top_, repoBal_);
+        if (!pvOk) return (false, 0);
+        if (pvHeld == 0) return (true, 0);
+
+        return (true, IporMath.convertToWad(pvHeld * price, uint256(top_.purchaseDec) + pDec));
     }
 
     /// @notice Compute the held position's PV in purchase-token raw units. Extracted from
@@ -495,12 +567,15 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param servicer_ Servicer substrate.
     /// @param top_ Topology snapshot returned by `_tryReadServicerTopology`.
     /// @param repoBal_ Vault's repo-token balance.
-    /// @return pvInPurchase PV of the held position in purchase-token raw units.
+    /// @return ok False iff a supporting try/catch read inside `_pvForFace` failed — the
+    ///         caller must NOT treat this as a genuine zero value.
+    /// @return pvInPurchase PV of the held position in purchase-token raw units, valid only
+    ///         when `ok == true`.
     function _heldPvInPurchase(
         address servicer_,
         ServicerTopology memory top_,
         uint256 repoBal_
-    ) internal view returns (uint256 pvInPurchase) {
+    ) internal view returns (bool ok, uint256 pvInPurchase) {
         uint256 purchasePrec = 10 ** uint256(top_.purchaseDec);
         uint256 repoTokenPrec = 10 ** uint256(top_.repoTokenDec);
         uint256 faceInPurchase = TermFinancePresentValueLib.faceValue(
@@ -519,7 +594,9 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     ///      `_pendingBidsValueWadForServicer` — storage presence is authoritative). `ok ==
     ///      false` signals the purchase-token oracle returned `price == 0` (or reverted)
     ///      whenever the storage has entries, regardless of whether a live entry could be
-    ///      confirmed on the locker. This closes the offers-asymmetry window where a broken
+    ///      confirmed on the locker. A locker that REVERTS on a stored id is not read as "gone":
+    ///      the value loop reverts with `TermFinanceBalanceFuseLockerReadFailedForTrackedEntry`.
+    ///      This closes the offers-asymmetry window where a broken
     ///      locker would short-circuit the helper before the price read, leaving
     ///      `anyPriceZero` unset at the caller and silently degrading NAV on a tracked
     ///      servicer.
@@ -564,10 +641,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         // Always query the oracle when storage has entries. A failed oracle on a tracked
         // servicer is a NAV-blocking signal regardless of whether a live offer can be
         // confirmed on the locker (tracked gate + offers-asymmetry follow-up).
-        (bool priceOk, uint256 price, uint256 priceDecimals) = _tryGetAssetPrice(
-            priceOracleMiddleware_,
-            purchaseToken
-        );
+        (bool priceOk, uint256 price, uint256 priceDecimals) = _tryGetAssetPrice(priceOracleMiddleware_, purchaseToken);
         if (!priceOk) return (false, 0, hasAnyPosition);
 
         uint256 priceCombinedDecimals = uint256(IERC20Metadata(purchaseToken).decimals()) + priceDecimals;
@@ -598,13 +672,14 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             address offerLocker = pendingLockers[j];
             if (offerLocker == address(0)) continue;
             // `callOk` only signals that the staticcall to `lockedOffer` did not revert; it
-            // does NOT imply the offer is still locked. The "still-locked" decision is the
-            // composite check `callOk && onChainAmount != 0` below.
+            // does NOT imply the offer is still locked. A revert is rejected right below, and the
+            // "still-locked" decision is `onChainAmount != 0`.
             (bool callOk, uint256 onChainAmount) = _tryReadLockedOfferAmount(offerLocker, pendingIds[j]);
-            if (!callOk || onChainAmount == 0) {
-                // Cleared / refunded / cancelled / broken proxy — value sits elsewhere.
-                continue;
-            }
+            // A locker that reverts on a tracked storage entry is NOT proof that the offer is
+            // gone (README "Proxy state"): freeze NAV instead of silently dropping the leg.
+            if (!callOk) revert TermFinanceBalanceFuseLockerReadFailedForTrackedEntry(offerLocker, pendingIds[j]);
+            // Cleared / refunded / cancelled — value sits elsewhere.
+            if (onChainAmount == 0) continue;
             // Authoritative amount comes from storage; on-chain read only signals "still locked".
             valueWad += IporMath.convertToWad(pendingAmounts[j] * price, priceCombinedDecimals);
         }
@@ -684,7 +759,10 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
 
         // Canonical stale-bid predicate: prune iff bidder == 0 OR amount == 0.
         (bool callOk, bool isLive) = _tryReadLockedBidIsLive(bidLocker_, bidId_);
-        if (!callOk || !isLive) return (true, 0);
+        // A reverting locker on a tracked storage entry freezes NAV (README "Proxy state");
+        // only a successful read of a stale / cleared bid degrades to 0.
+        if (!callOk) revert TermFinanceBalanceFuseLockerReadFailedForTrackedEntry(bidLocker_, bidId_);
+        if (!isLive) return (true, 0);
 
         uint256 tokenCount = tokens_.length;
         // Defensive: storage lib guarantees parallel arrays, but bail if mismatched.
@@ -753,8 +831,10 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     ///      and prices each via the IPOR oracle. Each `cm.collateralTokens(i)` /
     ///      `cm.getCollateralBalance(vault, t)` pair is wrapped in try/catch so a misreporting
     ///      proxy (OOB on the reported count, or any other read revert) degrades the entire
-    ///      locked-collateral leg to 0 without bubbling out of `balanceOf` (mirror of the
-    ///      pre-refactor outer-catch behaviour but localised here per the file-level NatSpec).
+    ///      locked-collateral leg to `(false, 0, hasAnyPosition)` instead of bubbling out of
+    ///      `balanceOf`; the caller (`_collateralValueWadWithGate`) then re-raises iff the servicer
+    ///      has CM-independent exposure (`_servicerHasExposure`: storage entries, held or
+    ///      unreadable repo token, positive debt), so an unused servicer still degrades to 0.
     /// @param plasmaVault_ Vault address.
     /// @param priceOracleMiddleware_ Oracle middleware address.
     /// @param collateralManager_ Paired CollateralManager.
@@ -944,8 +1024,9 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @notice Cheap predicate: does the vault have any tracked Term Finance exposure on this
     ///         servicer (pending bids OR pending offers tracked in vault-owned storage)?
     /// @dev Used by `_collateralValueWadWithGate` (oracle-zero gate) and
-    ///      `_debtValueWadForServicer` (debt-read-failed gate). Both rely on this
-    ///      signal to distinguish "tracked-but-broken" (re-raise) from "untracked"
+    ///      `_debtValueWadForServicer` (debt-read-failed gate), and as the storage component of
+    ///      `_servicerHasExposure`, which feeds the collateral gate and the CM-probe gate. They rely
+    ///      on this signal to distinguish "tracked-but-broken" (re-raise) from "untracked"
     ///      (silently degrade to 0). The collateral and held-repo legs already carry their
     ///      own `hasAnyPosition` flags from on-chain reads; this helper adds the storage
     ///      signals which are AUTHORITATIVE even when the matching Term proxy is broken
@@ -967,7 +1048,11 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     ///      `numOfAcceptedCollateralTokens()` revert or the accepted-count is out of range — a
     ///      broken / paused / upgraded CM or servicer proxy threat model. Freezing
     ///      a servicer with exposure matches the tracked-gate philosophy; degrading an
-    ///      unused (granted-but-empty) servicer keeps a misconfigured proxy from bricking NAV.
+    ///      unused (granted-but-empty) servicer keeps a misconfigured CM from bricking NAV.
+    ///      Note that "unused" requires the servicer itself to still answer `termRepoToken()`: if
+    ///      it has gone dark too — a blanket proxy pause rather than a broken CM alone — the held
+    ///      balance is unreadable and `_servicerHasExposure` fails closed instead of assuming the
+    ///      servicer is empty.
     /// @param servicer_ Servicer whose CM probe failed.
     /// @param plasmaVault_ Vault address (held-balance / obligation reads target it).
     /// @return Always 0 when it returns; reverts when exposure is detected.
@@ -981,16 +1066,33 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         return 0;
     }
 
+    /// @notice True iff the vault granted the `REPO_TOKEN_HOLDING` substrate for `servicer_`.
+    /// @dev O(1) mapping lookup. Gates the held repo-token leg and the repo-token balance signal.
+    /// @param servicer_ Servicer substrate.
+    /// @return True iff `TermFinanceSubstrateLib.repoTokenHoldingKey(servicer_)` is granted.
+    function _holdsRepoToken(address servicer_) internal view returns (bool) {
+        return
+            PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                TermFinanceSubstrateLib.repoTokenHoldingKey(servicer_)
+            );
+    }
+
     /// @notice Cheap, CM-independent detection of whether the vault holds any Term Finance
-    ///         position on `servicer_`. Used only by the collateral-manager-probe gate.
+    ///         position on `servicer_`. Used by the collateral-manager-probe gate and, as the
+    ///         pre-call signal, by the collateral oracle-zero gate (`_collateralValueWadWithGate`).
     /// @dev Three signals, none of which require the (failed) collateral manager:
     ///        1. pending offers / bids in vault-owned storage (`_hasTrackedExposure`);
-    ///        2. a non-zero held TermRepoToken balance — or an UNREADABLE balance, which is
-    ///           treated as exposure (we cannot prove the held leg is zero, mirroring
-    ///           `_heldTermRepoTokenPv`'s own `!balOk → tracked` behaviour);
+    ///        2. a non-zero held TermRepoToken balance (only when `REPO_TOKEN_HOLDING` is granted
+    ///           for the servicer) — or an UNREADABLE one, which is treated as exposure.
+    ///           Unreadable covers both a reverting `balanceOf` and a servicer that will not
+    ///           surface its repo token at all, mirroring `_heldTermRepoTokenPv`, where both
+    ///           `!rtOk` and `!balOk` fail closed: we cannot prove the held leg is zero;
     ///        3. a positive outstanding borrower repurchase obligation (debt leg).
-    ///      A read that simply succeeds with zero is NOT exposure, so an unused servicer with a
-    ///      merely-broken collateral manager still degrades to 0.
+    ///      A read that simply succeeds with zero is NOT exposure, so an unused servicer whose
+    ///      collateral manager alone is broken — the servicer itself still answering
+    ///      `termRepoToken()` — still degrades to 0. Only a servicer that has gone dark on BOTH
+    ///      reads, i.e. a blanket proxy pause, now freezes NAV.
     /// @param servicer_ Servicer substrate.
     /// @param plasmaVault_ Vault address.
     /// @return True iff the vault appears to hold a position on this servicer.
@@ -998,7 +1100,21 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         if (_hasTrackedExposure(servicer_)) return true;
 
         (bool rtOk, address repoToken) = _tryReadRepoToken(servicer_);
-        if (rtOk && repoToken != address(0)) {
+        if (!rtOk || repoToken == address(0)) {
+            // The servicer will not surface its repo token, so the held balance cannot be read and
+            // a held position cannot be ruled out — the same argument that makes both the `!rtOk`
+            // and `!balOk` branches of `_heldTermRepoTokenPv` fail closed. This matters precisely
+            // where it is reached: a blanket proxy pause breaks the collateral-manager read AND
+            // this one, so control arrives here instead of at the held leg, and treating the
+            // servicer as unused would silently drop a real position from NAV through the one
+            // route the held leg's own gate never sees.
+            return true;
+        }
+
+        // The repo-token balance counts as exposure only when the vault declared holding repo tokens
+        // of this servicer (`REPO_TOKEN_HOLDING`); a donated balance on an undeclared servicer
+        // must not freeze NAV (ALPHA rule D-006). The `!rtOk` signal above stays unconditional.
+        if (_holdsRepoToken(servicer_)) {
             (bool balOk, uint256 repoBal) = _tryReadRepoTokenBalance(repoToken, plasmaVault_);
             if (!balOk || repoBal > 0) return true;
         }
@@ -1042,22 +1158,25 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param tred_ Servicer's redemption timestamp.
     /// @param purchasePrec_ `10 ** purchaseToken.decimals()`.
     /// @param faceInPurchase_ Face value already converted to purchase-token units.
-    /// @return PV in purchase-token raw units; 0 on any try/catch failure.
+    /// @return ok False iff a supporting try/catch read (shortfall haircut post-maturity,
+    ///         discount rate pre-maturity) failed — the caller must NOT treat this as a
+    ///         genuine zero value.
+    /// @return pv PV in purchase-token raw units, valid only when `ok == true`.
     function _pvForFace(
         address servicer_,
         address repoToken_,
         uint256 tred_,
         uint256 purchasePrec_,
         uint256 faceInPurchase_
-    ) internal view returns (uint256) {
+    ) internal view returns (bool ok, uint256 pv) {
         if (block.timestamp >= tred_) {
-            (bool ok, uint256 hcut) = _tryReadShortfallHaircut(servicer_);
-            if (!ok) return 0;
-            return TermFinancePresentValueLib.presentValuePostMaturity(faceInPurchase_, hcut);
+            (bool haircutReadOk, uint256 hcut) = _tryReadShortfallHaircut(servicer_);
+            if (!haircutReadOk) return (false, 0);
+            return (true, TermFinancePresentValueLib.presentValuePostMaturity(faceInPurchase_, hcut));
         }
 
         (bool rateOk, uint256 rate) = _tryGetDiscountRate(repoToken_);
-        if (!rateOk) return 0;
+        if (!rateOk) return (false, 0);
 
         (bool haircutOk, uint256 adapterHcut) = _tryGetRepoRedemptionHaircut(repoToken_);
         if (!haircutOk) adapterHcut = 0;
@@ -1070,14 +1189,16 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         // above (existing Option-B fallback), so this only fires on a genuine non-zero value.
         if (adapterHcut > 0) revert TermFinanceBalanceFuseNonZeroRepoRedemptionHaircut(servicer_);
 
-        return
+        return (
+            true,
             TermFinancePresentValueLib.presentValuePreMaturity(
                 faceInPurchase_,
                 purchasePrec_,
                 tred_ - block.timestamp,
                 rate,
                 adapterHcut
-            );
+            )
+        );
     }
 
     /// @notice Read every field needed for held-RepoToken PV from a single servicer, with
@@ -1132,6 +1253,18 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         // handling above) so the held leg returns `ok = false` and the tracked gate
         // re-raises instead of silently zeroing.
         if (top.redValue > TermFinancePresentValueLib.MAX_REDEMPTION_VALUE) return (false, top);
+        // A `redemptionValue` far below the ~1e18 mantissa (including, but not limited to,
+        // exactly zero) makes `faceValue` floor to 0 for a material tracked position, hitting
+        // the same silent-zero / share-mint window as the over-range case above. On a
+        // TermRepoToken, `redemptionValue` is a fixed ~1e18 purchase-per-token mantissa set
+        // at term creation — realized losses are expressed through `shortfallHaircutMantissa`,
+        // not by moving `redemptionValue` away from ~1e18. Any mantissa below
+        // `MIN_REDEMPTION_VALUE` signals uninitialized, corrupted, or maliciously-upgraded
+        // proxy state ("read broken"), not "worth nothing" or "worth very little" — mirroring
+        // the MAX_REDEMPTION_VALUE range guard above rather than a single point check. Treat
+        // it as a topology failure so the held leg returns `ok = false` and the tracked gate
+        // re-raises.
+        if (top.redValue < MIN_REDEMPTION_VALUE) return (false, top);
 
         try IExtTermRepoServicer(servicer_).redemptionTimestamp() returns (uint256 t) {
             top.tred = t;
@@ -1197,9 +1330,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param servicer_ Servicer substrate.
     /// @return ok True if the call succeeded.
     /// @return endTimestamp End-of-repurchase-window unix timestamp (0 on failure).
-    function _tryReadEndOfRepurchaseWindow(
-        address servicer_
-    ) internal view returns (bool ok, uint256 endTimestamp) {
+    function _tryReadEndOfRepurchaseWindow(address servicer_) internal view returns (bool ok, uint256 endTimestamp) {
         try IExtTermRepoServicer(servicer_).endOfRepurchaseWindow() returns (uint256 ts) {
             return (true, ts);
         } catch {
@@ -1212,9 +1343,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @return ok True if the call succeeded.
     /// @return collateralManager Paired collateral manager address (zero on failure or when the
     ///         servicer legitimately reports no manager).
-    function _tryReadCollateralManager(
-        address servicer_
-    ) internal view returns (bool ok, address collateralManager) {
+    function _tryReadCollateralManager(address servicer_) internal view returns (bool ok, address collateralManager) {
         try IExtTermRepoServicer(servicer_).termRepoCollateralManager() returns (address cm) {
             return (true, cm);
         } catch {
@@ -1226,9 +1355,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param collateralManager_ Collateral manager to query.
     /// @return ok True if the call succeeded.
     /// @return count Reported accepted-collateral-token count (0 on failure).
-    function _tryReadAcceptedCollateralCount(
-        address collateralManager_
-    ) internal view returns (bool ok, uint8 count) {
+    function _tryReadAcceptedCollateralCount(address collateralManager_) internal view returns (bool ok, uint8 count) {
         try IExtTermRepoCollateralManager(collateralManager_).numOfAcceptedCollateralTokens() returns (uint8 n) {
             return (true, n);
         } catch {
@@ -1338,10 +1465,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param bidId_ Pending bid id.
     /// @return ok True if the staticcall succeeded.
     /// @return isLive True iff the bid is still live per the canonical predicate.
-    function _tryReadLockedBidIsLive(
-        address bidLocker_,
-        bytes32 bidId_
-    ) internal view returns (bool ok, bool isLive) {
+    function _tryReadLockedBidIsLive(address bidLocker_, bytes32 bidId_) internal view returns (bool ok, bool isLive) {
         try IExtTermAuctionBidLocker(bidLocker_).lockedBid(bidId_) returns (
             IExtTermAuctionBidLocker.TermAuctionBid memory bid
         ) {
@@ -1368,9 +1492,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @return ok True if the call succeeded.
     /// @return hcut Haircut in 18-dec mantissa.
     function _tryGetRepoRedemptionHaircut(address repoToken_) internal view returns (bool ok, uint256 hcut) {
-        try IExtTermDiscountRateAdapter(DISCOUNT_RATE_ADAPTER).repoRedemptionHaircut(repoToken_) returns (
-            uint256 h
-        ) {
+        try IExtTermDiscountRateAdapter(DISCOUNT_RATE_ADAPTER).repoRedemptionHaircut(repoToken_) returns (uint256 h) {
             return (true, h);
         } catch {
             return (false, 0);
@@ -1413,5 +1535,4 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             return (false, 0, 0);
         }
     }
-
 }

@@ -17,7 +17,7 @@ contract PriceOracleMiddlewareWithRolesIntegerDivisionTest is Test {
     address private constant PENDLE_MARKET = 0xB162B764044697cf03617C2EFbcB1f42e31E4766;
     address public constant PENDLE_ORACLE = 0x9a9Fa8338dd5E5B2188006f1Cd2Ef26d921650C2;
     uint32 private constant TWAP_WINDOW = 300;
-    uint256 private constant USE_PENDLE_ORACLE_METHOD = 0;
+    uint256 private constant USE_PENDLE_ORACLE_METHOD = 1;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 22061720);

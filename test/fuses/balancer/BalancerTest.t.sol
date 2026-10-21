@@ -12,8 +12,13 @@ import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {BalancerBalanceFuse} from "../../../contracts/fuses/balancer/BalancerBalanceFuse.sol";
+import {IPool} from "../../../contracts/fuses/balancer/ext/IPool.sol";
+import {ERC4626PriceFeed} from "../../../contracts/price_oracle/price_feed/ERC4626PriceFeed.sol";
+import {WstETHPriceFeedEthereum} from "../../../contracts/price_oracle/price_feed/chains/ethereum/WstETHPriceFeedEthereum.sol";
+import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 import {BalancerGaugeFuse, BalancerGaugeFuseEnterData, BalancerGaugeFuseExitData} from "../../../contracts/fuses/balancer/BalancerGaugeFuse.sol";
 import {BalancerLiquidityProportionalFuse, BalancerLiquidityProportionalFuseEnterData, BalancerLiquidityProportionalFuseExitData} from "../../../contracts/fuses/balancer/BalancerLiquidityProportionalFuse.sol";
 import {BalancerLiquidityUnbalancedFuse, BalancerLiquidityUnbalancedFuseEnterData, BalancerLiquidityUnbalancedFuseExitData} from "../../../contracts/fuses/balancer/BalancerLiquidityUnbalancedFuse.sol";
@@ -2140,5 +2145,382 @@ contract BalancerTest is Test {
         address[] memory arr = new address[](1);
         arr[0] = addr;
         return arr;
+    }
+
+    /// @dev Regression tests for IL-7953: BalancerBalanceFuse must not double-apply the rate provider.
+    /// `setUp()` deliberately (mis)prices both fwstETH and fwETH with the raw Chainlink ETH/USD aggregator
+    /// (see the price sources set at the end of `setUp`), which happens to mask the double-count. These
+    /// tests install rate-embedding price feeds (ERC4626PriceFeed / WstETHPriceFeedEthereum) for themselves,
+    /// without touching `setUp`, so the other tests in this file keep running against the original config.
+
+    /// @notice Installs ERC4626PriceFeed for fwstETH/fwETH and rate-embedding feeds for their underlyings
+    /// (WstETHPriceFeedEthereum for wstETH, raw Chainlink ETH/USD for WETH), overriding the shortcut
+    /// prices set in `setUp` for the duration of the calling test only.
+    function _installRateEmbeddingPriceFeeds() private {
+        ERC4626PriceFeed fwstEthFeed = new ERC4626PriceFeed(_FWST_ETH);
+        ERC4626PriceFeed fwEthFeed = new ERC4626PriceFeed(_FW_ETH);
+        WstETHPriceFeedEthereum wstEthFeed = new WstETHPriceFeedEthereum();
+
+        address[] memory assets = new address[](4);
+        address[] memory sources = new address[](4);
+
+        assets[0] = _FWST_ETH;
+        sources[0] = address(fwstEthFeed);
+
+        assets[1] = _FW_ETH;
+        sources[1] = address(fwEthFeed);
+
+        assets[2] = _WST_ETH;
+        sources[2] = address(wstEthFeed);
+
+        assets[3] = _W_ETH;
+        sources[3] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+
+        vm.startPrank(_ATOMIST);
+        PriceOracleMiddlewareManager(_fusionInstance.priceManager).setAssetsPriceSources(assets, sources);
+        vm.stopPrank();
+    }
+
+    /// @notice Asserts that the pool granted to this market genuinely contains a WITH_RATE token whose
+    /// rate provider deviates from 1e18 by more than the test's 1% tolerance. This is the precondition
+    /// that makes the double-count scenario actually reachable at the pinned fork block; without it the
+    /// regression assertion below would not bite regardless of the fix.
+    function _assertPoolHasSignificantRateDeviation() private view returns (uint256[] memory balancesRaw) {
+        (, IPool.TokenInfo[] memory tokenInfo, uint256[] memory raw, ) = IPool(_BALANCER_POOL).getTokenInfo();
+
+        bool foundSignificantRate = false;
+        uint256 len = tokenInfo.length;
+        for (uint256 i; i < len; ++i) {
+            if (tokenInfo[i].tokenType == IPool.TokenType.WITH_RATE && address(tokenInfo[i].rateProvider) != address(0)) {
+                uint256 rate = tokenInfo[i].rateProvider.getRate();
+                uint256 deviation = rate > 1e18 ? rate - 1e18 : 1e18 - rate;
+                if (deviation > 1e16) {
+                    foundSignificantRate = true;
+                }
+            }
+        }
+
+        assertTrue(
+            foundSignificantRate,
+            "precondition failed: pool has no WITH_RATE token whose rate deviates from 1e18 by more than 1%"
+        );
+
+        return raw;
+    }
+
+    /// @notice Computes the USD value of the vault's pro-rata share of the pool, independently of
+    /// BalancerBalanceFuse's code path: raw balances -> pro-rata share -> ERC4626 underlying amount ->
+    /// underlying's own USD price. This is the "true" economic value the fuse should report.
+    function _independentBasketValueUsd(uint256 bptBalance, uint256 totalSupply) private view returns (uint256) {
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = IPool(_BALANCER_POOL).getTokenInfo();
+
+        uint256 totalUsd;
+        uint256 tokensLen = tokens.length;
+        for (uint256 i; i < tokensLen; ++i) {
+            uint256 share = (balancesRaw[i] * bptBalance) / totalSupply;
+            address wrapper = address(tokens[i]);
+            address underlying = IERC4626(wrapper).asset();
+            uint256 underlyingAmount = IERC4626(wrapper).convertToAssets(share);
+
+            (uint256 price, uint256 priceDecimals) = PriceOracleMiddlewareManager(_fusionInstance.priceManager)
+                .getAssetPrice(underlying);
+
+            totalUsd += IporMath.convertToWad(
+                underlyingAmount * price,
+                IERC20Metadata(underlying).decimals() + priceDecimals
+            );
+        }
+
+        return totalUsd;
+    }
+
+    /// @notice `PlasmaVault.totalAssetsInMarket()` is denominated in the vault's underlying asset (fwETH
+    /// for this instance), not in raw USD (see `PlasmaVaultMarketsLib.updateMarketsBalances`, which
+    /// divides the fuse's WAD-USD figure by the underlying asset's own USD price). Converts a USD amount
+    /// into that same denomination so it is directly comparable to `totalAssetsInMarket`'s return value.
+    function _usdToVaultUnderlyingUnits(uint256 usdValueWad) private view returns (uint256) {
+        address vaultAsset = IERC4626(_fusionInstance.plasmaVault).asset();
+        (uint256 assetPrice, uint256 assetPriceDecimals) = PriceOracleMiddlewareManager(_fusionInstance.priceManager)
+            .getAssetPrice(vaultAsset);
+
+        return
+            IporMath.convertWadToAssetDecimals(
+                IporMath.division(usdValueWad * (10 ** assetPriceDecimals), assetPrice),
+                IERC20Metadata(vaultAsset).decimals()
+            );
+    }
+
+    function testShouldNotDoubleCountRateProviderInBalancerBalance() public {
+        // given
+        _assertPoolHasSignificantRateDeviation();
+        _installRateEmbeddingPriceFeeds();
+
+        address vault = _fusionInstance.plasmaVault;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = IERC20(_FW_ETH).balanceOf(vault);
+        maxAmountsIn[1] = IERC20(_FWST_ETH).balanceOf(vault);
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 fuseNav = PlasmaVault(vault).totalAssetsInMarket(IporFusionMarkets.BALANCER);
+
+        uint256 bptBalance = IERC20(_BALANCER_POOL).balanceOf(vault);
+        uint256 totalSupply = IERC20(_BALANCER_POOL).totalSupply();
+        uint256 independentBasketValueUsd = _independentBasketValueUsd(bptBalance, totalSupply);
+        uint256 independentBasketValue = _usdToVaultUnderlyingUnits(independentBasketValueUsd);
+
+        assertApproxEqRel(
+            fuseNav,
+            independentBasketValue,
+            1e16, // 1%
+            "BalancerBalanceFuse must not double-apply the rate provider on WITH_RATE pool tokens"
+        );
+    }
+
+    function testShouldValueGaugeStakedBptSameAsUnstaked() public {
+        // given
+        _assertPoolHasSignificantRateDeviation();
+        _installRateEmbeddingPriceFeeds();
+
+        address vault = _fusionInstance.plasmaVault;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = IERC20(_FW_ETH).balanceOf(vault);
+        maxAmountsIn[1] = IERC20(_FWST_ETH).balanceOf(vault);
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+
+        uint256 bptBalance = IERC20(_BALANCER_POOL).balanceOf(vault);
+        uint256 totalSupply = IERC20(_BALANCER_POOL).totalSupply();
+        uint256 independentBasketValueUsd = _independentBasketValueUsd(bptBalance, totalSupply);
+        uint256 independentBasketValue = _usdToVaultUnderlyingUnits(independentBasketValueUsd);
+
+        // Stake the entire BPT balance into the gauge.
+        BalancerGaugeFuseEnterData memory gaugeEnterData = BalancerGaugeFuseEnterData({
+            gaugeAddress: _BALANCER_GAUGE,
+            bptAmount: bptBalance,
+            minBptAmount: 0
+        });
+
+        FuseAction[] memory gaugeEnterCalls = new FuseAction[](1);
+        gaugeEnterCalls[0] = FuseAction({
+            fuse: address(_balancerGaugeFuse),
+            data: abi.encodeWithSignature("enter((address,uint256,uint256))", gaugeEnterData)
+        });
+
+        // when
+        vm.startPrank(_ALPHA);
+        PlasmaVault(vault).execute(gaugeEnterCalls);
+        vm.stopPrank();
+
+        // then
+        uint256 fuseNavAfterStaking = PlasmaVault(vault).totalAssetsInMarket(IporFusionMarkets.BALANCER);
+
+        assertEq(IERC20(_BALANCER_POOL).balanceOf(vault), 0, "all BPT should be staked in the gauge");
+        assertApproxEqRel(
+            fuseNavAfterStaking,
+            independentBasketValue,
+            1e16, // 1%
+            "BalancerBalanceFuse must not double-apply the rate provider on the gauge-staked BPT branch either"
+        );
+    }
+
+    /// @notice Re-grants BALANCER substrates without a TOKEN grant for _FW_ETH (IL-8034 regression fixtures).
+    /// @dev grantMarketSubstrates revokes-then-replaces the market's substrate set, so calling this after
+    ///      setUp() removes the _FW_ETH TOKEN grant that setUp() established, while keeping POOL, GAUGE
+    ///      and the _FWST_ETH TOKEN grant intact.
+    function _grantBalancerSubstratesWithoutFwEth() private {
+        bytes32[] memory balancerSubstrates = new bytes32[](3);
+        balancerSubstrates[0] = BalancerSubstrateLib.substrateToBytes32(
+            BalancerSubstrate({substrateType: BalancerSubstrateType.POOL, substrateAddress: _BALANCER_POOL})
+        );
+        balancerSubstrates[1] = BalancerSubstrateLib.substrateToBytes32(
+            BalancerSubstrate({substrateType: BalancerSubstrateType.GAUGE, substrateAddress: _BALANCER_GAUGE})
+        );
+        balancerSubstrates[2] = BalancerSubstrateLib.substrateToBytes32(
+            BalancerSubstrate({substrateType: BalancerSubstrateType.TOKEN, substrateAddress: _FWST_ETH})
+        );
+
+        vm.startPrank(_FUSE_MANAGER);
+        PlasmaVaultGovernance(_fusionInstance.plasmaVault).grantMarketSubstrates(
+            IporFusionMarkets.BALANCER,
+            balancerSubstrates
+        );
+        vm.stopPrank();
+    }
+
+    /// @notice IL-8034: BalancerSingleTokenFuse.enter must reject a tokenIn that is a pool token
+    ///         but was not granted as a TOKEN substrate for this market.
+    function testShouldRevertWhenEnteringSingleTokenWithUngrantedTokenIn() public {
+        // given
+        _grantBalancerSubstratesWithoutFwEth();
+
+        address vault = _fusionInstance.plasmaVault;
+
+        BalancerSingleTokenFuseEnterData memory enterData = BalancerSingleTokenFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokenIn: _FW_ETH,
+            maxAmountIn: 1e18,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("enter((address,address,uint256,uint256))", enterData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSelector(BalancerSubstrateLib.TokenNotGranted.selector, _FW_ETH));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice IL-8034: the TOKEN substrate check must fire before the zero-maxAmountIn early
+    ///         return, so a zero-amount call with an ungranted tokenIn still reverts.
+    function testShouldRevertWhenEnteringSingleTokenWithZeroMaxAmountInAndUngrantedTokenIn() public {
+        // given
+        _grantBalancerSubstratesWithoutFwEth();
+
+        address vault = _fusionInstance.plasmaVault;
+
+        BalancerSingleTokenFuseEnterData memory enterData = BalancerSingleTokenFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokenIn: _FW_ETH,
+            maxAmountIn: 0,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("enter((address,address,uint256,uint256))", enterData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSelector(BalancerSubstrateLib.TokenNotGranted.selector, _FW_ETH));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice IL-8034: enterTransient() must inherit the same TOKEN substrate check as enter().
+    function testShouldRevertWhenEnteringSingleTokenTransientWithUngrantedTokenIn() public {
+        // given
+        _grantBalancerSubstratesWithoutFwEth();
+
+        address vault = _fusionInstance.plasmaVault;
+
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(_BALANCER_POOL);
+        inputs[1] = TypeConversionLib.toBytes32(_FW_ETH);
+        inputs[2] = TypeConversionLib.toBytes32(uint256(1e18));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(1e15));
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_balancerSingleTokenFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = inputs;
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fuses,
+            inputsByFuse: inputsByFuse
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](2);
+        enterCalls[0] = FuseAction({
+            fuse: address(_transientStorageSetInputsFuse),
+            data: abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        });
+        enterCalls[1] = FuseAction({
+            fuse: address(_balancerSingleTokenFuse),
+            data: abi.encodeWithSignature("enterTransient()")
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSelector(BalancerSubstrateLib.TokenNotGranted.selector, _FW_ETH));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
+    }
+
+    /// @notice IL-8034: BalancerLiquidityProportionalFuse.enter has the same root cause as
+    ///         BalancerSingleTokenFuse.enter (same ticket, part B) and must reject an ungranted
+    ///         pool token with a non-zero maxAmountsIn entry.
+    function testShouldRevertWhenEnteringProportionalWithUngrantedToken() public {
+        // given
+        _grantBalancerSubstratesWithoutFwEth();
+
+        address vault = _fusionInstance.plasmaVault;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _FW_ETH;
+        tokens[1] = _FWST_ETH;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[0] = 10e18;
+        maxAmountsIn[1] = 10e18;
+
+        BalancerLiquidityProportionalFuseEnterData memory enterData = BalancerLiquidityProportionalFuseEnterData({
+            pool: _BALANCER_POOL,
+            tokens: tokens,
+            maxAmountsIn: maxAmountsIn,
+            exactBptAmountOut: 1e15
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction({
+            fuse: address(_balancerLiquidityProportionalFuse),
+            data: abi.encodeWithSignature("enter((address,address[],uint256[],uint256))", enterData)
+        });
+
+        // when & then
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(abi.encodeWithSelector(BalancerSubstrateLib.TokenNotGranted.selector, _FW_ETH));
+        PlasmaVault(vault).execute(enterCalls);
+        vm.stopPrank();
     }
 }

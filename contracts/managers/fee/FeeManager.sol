@@ -19,8 +19,8 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 /// @param iporDaoManagementFee Management fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
 /// @param iporDaoPerformanceFee Performance fee percentage for the DAO (in percentage with 2 decimals, example 10000 is 100%, 100 is 1%)
 /// @param iporDaoFeeRecipientAddress Address of the DAO fee recipient
-/// @param recipientManagementFees Array of recipient management fees
-/// @param recipientPerformanceFees Array of recipient performance fees
+/// @param recipientManagementFees Array of recipient management fees, must not contain duplicate recipient addresses
+/// @param recipientPerformanceFees Array of recipient performance fees, must not contain duplicate recipient addresses
 struct FeeManagerInitData {
     address initialAuthority;
     address plasmaVault;
@@ -67,6 +67,9 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @notice Thrown when trying to set an invalid (zero) address as a fee recipient
     error InvalidFeeRecipientAddress();
 
+    /// @notice Thrown when a recipient address appears more than once in the same recipient fee array
+    error DuplicateFeeRecipientAddress(address recipient);
+
     /// @notice Thrown when trying to set an invalid authority
     error InvalidAuthority();
 
@@ -76,7 +79,13 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @notice Thrown when trying to call a function from a non-plasma vault contract
     error NotPlasmaVault();
 
+    /// @notice Thrown when the deposit fee exceeds DEPOSIT_MAX_FEE_IN_PERCENTAGE
+    error InvalidDepositFee(uint256 fee);
+
     uint64 private constant INITIALIZED_VERSION = 10;
+
+    /// @dev Hard CAP for the deposit fee, WAD-scaled (1e18 = 100%) - 10%
+    uint256 public constant DEPOSIT_MAX_FEE_IN_PERCENTAGE = 1e17;
 
     /// @notice Address of the plasma vault contract
     address public immutable PLASMA_VAULT;
@@ -129,6 +138,12 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
                     revert InvalidFeeRecipientAddress();
                 }
 
+                _revertIfDuplicateRecipient(
+                    managementFeeRecipientAddresses,
+                    i,
+                    initData_.recipientManagementFees[i].recipient
+                );
+
                 totalManagementFee += initData_.recipientManagementFees[i].feeValue;
                 FeeManagerStorageLib.setManagementFeeRecipientFee(
                     initData_.recipientManagementFees[i].recipient,
@@ -147,6 +162,12 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
                 if (initData_.recipientPerformanceFees[i].recipient == address(0)) {
                     revert InvalidFeeRecipientAddress();
                 }
+
+                _revertIfDuplicateRecipient(
+                    performanceFeeRecipientAddresses,
+                    i,
+                    initData_.recipientPerformanceFees[i].recipient
+                );
 
                 totalPerformanceFee += initData_.recipientPerformanceFees[i].feeValue;
                 FeeManagerStorageLib.setPerformanceFeeRecipientFee(
@@ -295,8 +316,14 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @notice Updates management fees for all recipients
     /// @dev Only callable by ATOMIST_ROLE (role id: 100)
     /// @dev Harvests existing management fees before updating
+    /// @dev The harvest covers only shares already minted to the management fee account; the fee accrued since the
+    /// last realization is still pending in the vault and is minted later, then split by the NEW recipients.
+    /// Realize the pending fee first (any deposit, mint, withdraw or redeem in the same batch) to pay the old
+    /// period to the old recipients. With a new total of 0 shares already minted wait in the account until a
+    /// non-zero fee is configured.
     /// @dev Total management fee will be the sum of all recipient fees + DAO fee
-    /// @param recipientFees Array of recipient fees containing address and new fee value
+    /// @dev Reverts with DuplicateFeeRecipientAddress if recipientFees contains a repeated recipient address
+    /// @param recipientFees Array of recipient fees containing address and new fee value, no duplicate addresses allowed
     /// @custom:access Restricted to ATOMIST_ROLE
     function updateManagementFee(RecipientFee[] calldata recipientFees) external restricted {
         harvestManagementFee();
@@ -313,7 +340,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @dev Only callable by ATOMIST_ROLE (role id: 100)
     /// @dev Harvests existing performance fees before updating
     /// @dev Total performance fee will be the sum of all recipient fees + DAO fee
-    /// @param recipientFees Array of recipient fees containing address and new fee value
+    /// @dev Reverts with DuplicateFeeRecipientAddress if recipientFees contains a repeated recipient address
+    /// @param recipientFees Array of recipient fees containing address and new fee value, no duplicate addresses allowed
     /// @custom:access Restricted to ATOMIST_ROLE
     function updatePerformanceFee(RecipientFee[] calldata recipientFees) external restricted {
         harvestPerformanceFee();
@@ -340,7 +368,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
     /// @notice Internal function to completely replace existing fee recipients with new ones
     /// @dev This function will remove all existing recipients and their fees before setting up the new ones
-    /// @param recipientFees Array of recipient fees containing address and new fee value
+    /// @dev Reverts with DuplicateFeeRecipientAddress if recipientFees contains a repeated recipient address
+    /// @param recipientFees Array of recipient fees containing address and new fee value, no duplicate addresses allowed
     /// @param feeData Storage reference to the fee recipient data
     /// @param daoFee The DAO fee percentage to include in total
     /// @param feeAccount The fee account address
@@ -373,6 +402,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
             if (recipientFees[i].recipient == address(0)) {
                 revert InvalidFeeRecipientAddress();
             }
+
+            _revertIfDuplicateRecipient(newRecipients, i, recipientFees[i].recipient);
 
             newRecipients[i] = recipientFees[i].recipient;
             newFees[i] = recipientFees[i].feeValue;
@@ -459,7 +490,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
 
     /// @notice Updates the high water mark (HWM) for performance fee calculation to the current exchange rate
     /// @dev This function should be called to synchronize the HWM with the current vault state.
-    ///      The HWM is used to ensure that performance fees are only charged on new profits above the previous maximum.
+    ///      The HWM is used to ensure that performance fees are only charged on new profits above the HWM (the share price after the last performance fee).
     ///      Only callable by addresses with the `restricted` modifier (e.g., governance or automation).
     ///      The new HWM is set to the current asset value per share (exchange rate) of the vault.
     ///      Reverts if the current exchange rate is zero (prevents setting an invalid HWM).
@@ -493,10 +524,11 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     ///      and is deducted from the user's deposit amount before minting shares.
     ///
     /// @param fee_ Deposit fee percentage with 18 decimal precision (1e18 = 100%, 1e16 = 1%)
-    ///              Must be less than 1e18 (100%) to prevent total loss of deposited assets
+    ///              Must not exceed DEPOSIT_MAX_FEE_IN_PERCENTAGE (1e17 = 10%); reverts with
+    ///              InvalidDepositFee otherwise
     ///
     /// @dev Flow:
-    /// 1. Validates that the fee is within acceptable bounds (should be < 100%)
+    /// 1. Reverts with InvalidDepositFee if fee_ > DEPOSIT_MAX_FEE_IN_PERCENTAGE
     /// 2. Updates the deposit fee in storage via FeeManagerStorageLib
     /// 3. The new fee will apply to all subsequent deposits
     ///
@@ -506,19 +538,23 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @custom:see EIP-4626 for vault fee patterns and best practices
     /// @custom:example Setting fee_ to 1e16 (1e18 * 0.01) sets a 1% deposit fee
     function setDepositFee(uint256 fee_) external restricted {
+        if (fee_ > DEPOSIT_MAX_FEE_IN_PERCENTAGE) {
+            revert InvalidDepositFee(fee_);
+        }
         FeeManagerStorageLib.setPlasmaVaultDepositFee(fee_);
     }
 
     /// @notice Calculates performance fee based on high water mark mechanism
     /// @dev This function implements a high water mark (HWM) based performance fee calculation
-    ///      where fees are only charged on gains above the previous highest value.
+    ///      where fees are only charged on gains above the HWM (the share price after the last performance fee).
     ///      The function can only be called by the plasma vault contract.
     ///
     /// @param actualExchangeRate_ Current exchange rate between shares and assets (assets per 1 unit of share (10**shareDecimals))
     /// @param totalSupply_ Total supply of vault shares
     /// @param performanceFee_ Performance fee percentage with 2 decimal precision (10000 = 100%)
-    /// @param assetDecimals_ Unused. Retained for ABI backward compatibility. No normalization is performed;
-    ///        callers must ensure actualExchangeRate_ is already in share-consistent units.
+    /// @param assetDecimals_ Decimals of the underlying asset (share decimals minus the vault decimals offset).
+    ///        Used only to price the share rate after the fee mint; actualExchangeRate_ is not normalized and
+    ///        callers must ensure it is already in share-consistent units.
     ///
     /// @return recipient Address of the performance fee recipient (PERFORMANCE_FEE_ACCOUNT or address(0))
     /// @return feeShares Number of shares to be minted as performance fee
@@ -531,6 +567,7 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     ///    - If updateInterval > 0 and interval has passed: updates HWM to current rate and returns 0 fee
     /// 3. If current rate is above HWM:
     ///    - Calculates fee based on the gain above HWM
+    ///    - Sets HWM to the share price after the fee mint (IL-8744); if no fee shares result, to the current rate
     ///    - Returns fee recipient and calculated shares
     ///
     /// @custom:security Uses SafeCast for uint256 to uint128 conversion
@@ -568,8 +605,34 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         uint256 sharesToHarvest = Math.mulDiv(totalSupply_, delta, uint256(actualExchangeRate_));
         feeShares = Math.mulDiv(sharesToHarvest, performanceFee_, 10000);
 
-        FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);
+        /// @dev IL-8744: the HWM is the share price after the fee shares are minted (the vault mints right after this
+        ///      call), not the pre-mint rate; otherwise the recovery from the diluted price back to the pre-mint rate
+        ///      would be fee-free and the effective fee would converge to p / (1 + p)
+        FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(
+            feeShares == 0 ? actualExchangeRate_ : _rateAfterFeeMint(totalSupply_ + feeShares, assetDecimals_)
+        );
         return (PERFORMANCE_FEE_ACCOUNT, feeShares);
+    }
+
+    /// @notice Share price right after fee shares were minted on top of the current supply
+    /// @dev Mirrors PlasmaVault.convertToAssets(10 ** decimals()) evaluated with supply = supplyAfterMint_ (Floor):
+    ///      mulDiv(10 ** shareDecimals, totalAssets + 1, supplyAfterMint_ + 10 ** (shareDecimals - assetDecimals)),
+    ///      where 10 ** (shareDecimals - assetDecimals) is the vault share scale multiplier. Minting fee shares
+    ///      does not change totalAssets, so the value is exact. The result never exceeds the pre-mint rate,
+    ///      which the vault guarantees fits uint128.
+    /// @param supplyAfterMint_ Vault share supply including the performance fee shares about to be minted
+    /// @param assetDecimals_ Decimals of the underlying asset (share decimals minus the vault decimals offset)
+    /// @return Assets per 1 unit of share (10 ** shareDecimals) after the mint, as stored in the HWM
+    function _rateAfterFeeMint(uint256 supplyAfterMint_, uint256 assetDecimals_) private view returns (uint128) {
+        uint256 shareDecimals = IERC20Metadata(PLASMA_VAULT).decimals();
+        return
+            Math
+                .mulDiv(
+                    10 ** shareDecimals,
+                    IERC4626(PLASMA_VAULT).totalAssets() + 1,
+                    supplyAfterMint_ + 10 ** (shareDecimals - assetDecimals_)
+                )
+                .toUint128();
     }
 
     /// @notice Calculates the deposit fee for a given amount of assets
@@ -708,6 +771,23 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
 
         return remainingBalance_;
+    }
+
+    /// @notice Reverts when recipient_ already appears among recipients_[0..count_)
+    /// @dev Used by the constructor loops and _updateFees to reject duplicate recipient addresses
+    /// @param recipients_ The in-progress array of recipient addresses already validated in this call
+    /// @param count_ Number of entries in recipients_ that are already populated and must be checked
+    /// @param recipient_ The recipient address about to be added
+    function _revertIfDuplicateRecipient(
+        address[] memory recipients_,
+        uint256 count_,
+        address recipient_
+    ) private pure {
+        for (uint256 j; j < count_; j++) {
+            if (recipients_[j] == recipient_) {
+                revert DuplicateFeeRecipientAddress(recipient_);
+            }
+        }
     }
 
     function _updateHighWaterMarkPerformanceFee() private {

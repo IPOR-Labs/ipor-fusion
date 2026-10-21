@@ -34,6 +34,10 @@ struct UniswapV4ModifyPositionFuseEnterData {
     uint256 amount0Max;
     /// @notice The maximum amount of token1 to spend, which serves as a slippage check
     uint256 amount1Max;
+    /// @notice The minimum amount of token0 that must be spent, which serves as a deposit-ratio slippage check
+    uint256 amount0Min;
+    /// @notice The minimum amount of token1 that must be spent, which serves as a deposit-ratio slippage check
+    uint256 amount1Min;
     /// @notice Arbitrary data passed to the pool's hook (empty for hookless pools)
     bytes hookData;
     /// @notice Deadline for the transaction
@@ -81,6 +85,7 @@ contract UniswapV4ModifyPositionFuse is IFuseCommon {
     error UniswapV4ModifyPositionFuseZeroLiquidity();
     error UniswapV4ModifyPositionFuseInvalidAddress();
     error UniswapV4ModifyPositionFuseTokenIdNotTracked(uint256 tokenId);
+    error UniswapV4ModifyPositionFuseSlippage(uint256 amount0, uint256 amount1, uint256 amount0Min, uint256 amount1Min);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -156,6 +161,10 @@ contract UniswapV4ModifyPositionFuse is IFuseCommon {
         amount0 = balance0Before - IERC20(token0).balanceOf(address(this));
         amount1 = balance1Before - IERC20(token1).balanceOf(address(this));
 
+        if (amount0 < data_.amount0Min || amount1 < data_.amount1Min) {
+            revert UniswapV4ModifyPositionFuseSlippage(amount0, amount1, data_.amount0Min, data_.amount1Min);
+        }
+
         emit UniswapV4ModifyPositionFuseEnter(VERSION, tokenId, liquidity, amount0, amount1);
     }
 
@@ -210,8 +219,18 @@ contract UniswapV4ModifyPositionFuse is IFuseCommon {
     /// @notice Enters the Fuse using transient storage for parameters
     /// @dev Inputs: [0] tokenId, [1] amount0Desired, [2] amount1Desired, [3] amount0Max, [4] amount1Max,
     ///      [5] deadline. hookData is always empty in the transient variant.
+    ///      Optional trailing inputs (only read if inputs.length > 6, kept for backward compatibility with
+    ///      callers that do not supply them; a 7-input call reverts on out-of-bounds indexing):
+    ///        [6] amount0Min, [7] amount1Min. When absent, both default to 0 (slippage check disabled).
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
+
+        uint256 amount0Min;
+        uint256 amount1Min;
+        if (inputs.length > 6) {
+            amount0Min = TypeConversionLib.toUint256(inputs[6]);
+            amount1Min = TypeConversionLib.toUint256(inputs[7]);
+        }
 
         (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = enter(
             UniswapV4ModifyPositionFuseEnterData({
@@ -220,6 +239,8 @@ contract UniswapV4ModifyPositionFuse is IFuseCommon {
                 amount1Desired: TypeConversionLib.toUint256(inputs[2]),
                 amount0Max: TypeConversionLib.toUint256(inputs[3]),
                 amount1Max: TypeConversionLib.toUint256(inputs[4]),
+                amount0Min: amount0Min,
+                amount1Min: amount1Min,
                 hookData: bytes(""),
                 deadline: TypeConversionLib.toUint256(inputs[5])
             })

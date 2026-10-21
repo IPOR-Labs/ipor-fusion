@@ -9,7 +9,31 @@ import {IPool} from "../../../contracts/fuses/aave_v3/ext/IPool.sol";
 import {IAavePriceOracle} from "../../../contracts/fuses/aave_v3/ext/IAavePriceOracle.sol";
 import {IAavePoolDataProvider} from "../../../contracts/fuses/aave_v3/ext/IAavePoolDataProvider.sol";
 import {AaveV3BalanceFuse} from "../../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
+import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
 import {PlasmaVaultMock} from "../PlasmaVaultMock.sol";
+
+interface IAddressesProviderAcl {
+    function getACLManager() external view returns (address);
+    function getACLAdmin() external view returns (address);
+    function getPriceOracle() external view returns (address);
+}
+
+interface IAclManager {
+    function addPoolAdmin(address admin) external;
+}
+
+interface IAaveOracleAdmin {
+    function setAssetSources(address[] calldata assets, address[] calldata sources) external;
+    function setFallbackOracle(address fallbackOracle) external;
+    function getFallbackOracle() external view returns (address);
+}
+
+/// @dev Chainlink-like source that always reports a dead (zero) price
+contract ZeroPriceSource {
+    function latestAnswer() external pure returns (int256) {
+        return 0;
+    }
+}
 
 //https://mirror.xyz/unfrigginbelievable.eth/fzvIBwJZQKOP4sNpkrVZGOJEk5cDr6tarimQHTw6C84
 contract AaveV3BalanceFuseTest is Test {
@@ -29,6 +53,9 @@ contract AaveV3BalanceFuseTest is Test {
     address private constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     /// @dev Binance wallet - USDT whale
     address private constant USDT_WHALE = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
+
+    address private constant _WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address private constant _DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
     SupportedToken private activeTokens;
 
@@ -98,6 +125,87 @@ contract AaveV3BalanceFuseTest is Test {
 
         // then
         assertTrue(balanceAfter < balanceBefore, "Balance should be greater after supply");
+    }
+
+    function testShouldIgnoreAssetWithoutPriceWhenNoPositionInIt() external {
+        // given
+        (AaveV3BalanceFuse fuse, PlasmaVaultMock vaultMock) = _setUpTwoSubstrates();
+        _supplyToAave(address(vaultMock), _WETH, 10 ether);
+        uint256 expected = vaultMock.balanceOf();
+        assertGt(expected, 0, "position in WETH is priced");
+
+        // when
+        vm.mockCall(
+            address(AAVE_PRICE_ORACLE),
+            abi.encodeWithSelector(IAavePriceOracle.getAssetPrice.selector, _DAI),
+            abi.encode(uint256(0))
+        );
+
+        // then
+        assertEq(vaultMock.balanceOf(), expected, "DAI without price and without position must not matter");
+        assertEq(fuse.MARKET_ID(), 1);
+    }
+
+    function testShouldIgnoreAssetWhoseAaveOraclePriceReverts() external {
+        // given
+        (, PlasmaVaultMock vaultMock) = _setUpTwoSubstrates();
+        _supplyToAave(address(vaultMock), _WETH, 10 ether);
+        uint256 expected = vaultMock.balanceOf();
+
+        // when: Aave governance leaves DAI with a dead source and no fallback oracle
+        address acl = IAddressesProviderAcl(ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER).getACLManager();
+        address aclAdmin = IAddressesProviderAcl(ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER).getACLAdmin();
+        vm.prank(aclAdmin);
+        IAclManager(acl).addPoolAdmin(address(this));
+
+        address[] memory assets = new address[](1);
+        assets[0] = _DAI;
+        address[] memory sources = new address[](1);
+        sources[0] = address(new ZeroPriceSource());
+        IAaveOracleAdmin(address(AAVE_PRICE_ORACLE)).setAssetSources(assets, sources);
+        IAaveOracleAdmin(address(AAVE_PRICE_ORACLE)).setFallbackOracle(address(0));
+
+        // then: the real oracle really cannot price DAI ...
+        vm.expectRevert();
+        AAVE_PRICE_ORACLE.getAssetPrice(_DAI);
+        // ... yet the market balance is still computed
+        assertEq(vaultMock.balanceOf(), expected, "balanceOf must not depend on the DAI price");
+    }
+
+    function testShouldRevertWhenPositionInAssetWithZeroPrice() external {
+        // given
+        (, PlasmaVaultMock vaultMock) = _setUpTwoSubstrates();
+        _supplyToAave(address(vaultMock), _WETH, 10 ether);
+        _supplyToAave(address(vaultMock), _DAI, 1e9); // dust position in DAI
+
+        vm.mockCall(
+            address(AAVE_PRICE_ORACLE),
+            abi.encodeWithSelector(IAavePriceOracle.getAssetPrice.selector, _DAI),
+            abi.encode(uint256(0))
+        );
+
+        // when / then
+        vm.expectRevert(Errors.UnsupportedQuoteCurrencyFromOracle.selector);
+        vaultMock.balanceOf();
+    }
+
+    function _setUpTwoSubstrates() private returns (AaveV3BalanceFuse fuse, PlasmaVaultMock vaultMock) {
+        vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 19508857);
+        fuse = new AaveV3BalanceFuse(1, ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER);
+        vaultMock = new PlasmaVaultMock(address(0x0), address(fuse));
+
+        address[] memory assets = new address[](2);
+        assets[0] = _WETH;
+        assets[1] = _DAI;
+        vaultMock.updateMarketConfiguration(1, assets);
+    }
+
+    function _supplyToAave(address vault, address asset, uint256 amount) private {
+        deal(asset, vault, amount);
+        vm.startPrank(vault);
+        ERC20(asset).forceApprove(address(AAVE_POOL), amount);
+        AAVE_POOL.supply(asset, amount, vault, 0);
+        vm.stopPrank();
     }
 
     function _getSupportedAssets() private returns (SupportedToken[] memory supportedTokensTemp) {

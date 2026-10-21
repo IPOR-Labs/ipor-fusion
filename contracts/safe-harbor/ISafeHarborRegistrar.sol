@@ -25,6 +25,11 @@ interface ISafeHarborRegistrar {
     /// @param allowed True when the vault is now allowlisted, false when it is not
     event ManualAllowlistUpdated(address vault, bool allowed);
 
+    /// @notice Emitted when the denylist entry of a vault changes (`forceRemove` also sets it)
+    /// @param vault The vault whose denylist entry changed
+    /// @param denied True when the vault can no longer opt in, false when it is re-admitted
+    event DenylistUpdated(address vault, bool denied);
+
     /// @notice Emitted when the Registrar starts managing a different Agreement
     /// @param oldAgreement The previously managed Agreement
     /// @param newAgreement The newly managed Agreement
@@ -48,6 +53,16 @@ interface ISafeHarborRegistrar {
     /// @notice Thrown when the address is neither reported by the FusionFactory nor manually allowlisted
     /// @param vault The rejected address
     error NotFusionVault(address vault);
+
+    /// @notice Thrown when a denylisted vault tries to opt in
+    /// @param vault The denylisted vault
+    error VaultDenylisted(address vault);
+
+    /// @notice Thrown when a vault that is not on the manual allowlist opts in while the current chain entry already
+    /// holds the maximum number of accounts
+    /// @param accountsCount The number of accounts currently on the chain entry
+    /// @param maxAccounts The configured maximum (`MAX_ACCOUNTS_VIA_FACTORY`)
+    error AccountLimitReached(uint256 accountsCount, uint256 maxAccounts);
 
     /// @notice Thrown when the vault's `authority()` returns the zero address
     /// @param vault The vault without an access manager
@@ -82,6 +97,7 @@ interface ISafeHarborRegistrar {
 
     /// @notice Removes a vault from the Agreement regardless of the vault's own governance
     /// @param vault_ The vault to remove
+    /// @dev Always denylists the vault and removes it only if it participates (never reverts with NotParticipating)
     function forceRemove(address vault_) external;
 
     /// @notice Sets the manual allowlist entry of a vault deployed before the factory exposed `isFusionVault`
@@ -93,6 +109,16 @@ interface ISafeHarborRegistrar {
     /// @param vaults_ The vault addresses, non-empty, every entry non-zero
     /// @param allowed_ True to allowlist, false to remove from the allowlist
     function setManualAllowlistBatch(address[] calldata vaults_, bool allowed_) external;
+
+    /// @notice Sets the denylist entry of a vault; a denied vault cannot opt in (deny wins over the allowlist)
+    /// @param vault_ The vault address, non-zero
+    /// @param denied_ True to deny future opt-ins, false to re-admit
+    function setDenylist(address vault_, bool denied_) external;
+
+    /// @notice Sets the denylist entry of several vaults in one atomic transaction
+    /// @param vaults_ The vault addresses, non-empty, every entry non-zero
+    /// @param denied_ True to deny future opt-ins, false to re-admit
+    function setDenylistBatch(address[] calldata vaults_, bool denied_) external;
 
     /// @notice Points the Registrar at a different Agreement, without migrating participants
     /// @param newAgreement_ The new Agreement address
@@ -111,7 +137,8 @@ interface ISafeHarborRegistrar {
     /// @return participating True when at least one account entry matches the vault address
     function isParticipating(address vault_) external view returns (bool participating);
 
-    /// @notice Returns true when the address is eligible (manual allowlist or FusionFactory `isFusionVault`)
+    /// @notice Returns true when the address is eligible: not denylisted and (manual allowlist or FusionFactory
+    /// `isFusionVault`)
     /// @param vault_ The address to check
     /// @return eligible True when the vault may be opted in
     function isEligibleVault(address vault_) external view returns (bool eligible);
@@ -120,6 +147,16 @@ interface ISafeHarborRegistrar {
     /// @param vault_ The vault to check
     /// @return allowed True when allowlisted
     function isManualAllowlisted(address vault_) external view returns (bool allowed);
+
+    /// @notice Returns true when the vault is denylisted (cannot opt in)
+    /// @param vault_ The vault to check
+    /// @return denied True when denylisted
+    function isDenylisted(address vault_) external view returns (bool denied);
+
+    /// @notice Returns the maximum account count of the current chain entry that still admits opt-ins of vaults that
+    /// are not on the manual allowlist
+    /// @return maxAccounts The configured maximum
+    function getMaxAccountsViaFactory() external view returns (uint256 maxAccounts);
 
     /// @notice Returns the FusionFactory used for vault verification (zero when not configured)
     /// @return fusionFactory The FusionFactory address

@@ -31,6 +31,7 @@ import {LegacyFactoryWithoutVaultCheck} from "./mocks/LegacyFactoryWithoutVaultC
 contract SafeHarborRegistrarTest is Test {
     string private constant CHAIN_ID = "eip155:1";
     string private constant RECOVERY = "0x0000000000000000000000000000000000001234";
+    uint256 private constant MAX_ACCOUNTS = 5;
     string private constant OTHER_ACCOUNT = "0x0000000000000000000000000000000000009876";
     SafeHarborRegistrar private _registrar;
     MockAgreement private _agreement;
@@ -42,6 +43,7 @@ contract SafeHarborRegistrarTest is Test {
     address private _atomist;
     address private _alpha;
     address private _stranger;
+    uint256 private _factoryVaultCounter;
 
     /// @notice Deploys a real Fusion access manager with distinct actors and an empty Agreement.
     function setUp() public {
@@ -58,7 +60,7 @@ contract SafeHarborRegistrarTest is Test {
         _vault = address(new MockSafeHarborVault(address(_manager)));
         _factory = new MockFusionFactory();
         _agreement = new MockAgreement(address(this));
-        _registrar = new SafeHarborRegistrar(_multisig, address(_agreement), address(_factory), RECOVERY);
+        _registrar = new SafeHarborRegistrar(_multisig, address(_agreement), address(_factory), RECOVERY, MAX_ACCOUNTS);
         _agreement.transferOwnership(address(_registrar));
         _allowlist(_vault, true);
     }
@@ -247,7 +249,9 @@ contract SafeHarborRegistrarTest is Test {
         for (uint256 i; i < responses.length; ++i) {
             _allowlist(_vault, false);
             vm.mockCall(
-                address(_factory), abi.encodeCall(IFusionFactoryVaultCheck.isFusionVault, (_vault)), responses[i]
+                address(_factory),
+                abi.encodeCall(IFusionFactoryVaultCheck.isFusionVault, (_vault)),
+                responses[i]
             );
             _assertNotFusionVault(_vault);
             _allowlist(_vault, true);
@@ -482,7 +486,9 @@ contract SafeHarborRegistrarTest is Test {
         _participate(true);
         bytes memory failure = abi.encodeWithSelector(MockAgreement.WriteRejected.selector);
         vm.mockCallRevert(
-            address(_manager), abi.encodeCall(IAccessManager.hasRole, (Roles.OWNER_ROLE, _owner)), failure
+            address(_manager),
+            abi.encodeCall(IAccessManager.hasRole, (Roles.OWNER_ROLE, _owner)),
+            failure
         );
         vm.expectRevert(failure);
         _participate(true);
@@ -553,11 +559,55 @@ contract SafeHarborRegistrarTest is Test {
         assertFalse(_registrar.isParticipating(_vault));
     }
 
-    /// @notice Forced removal also rejects an absent account.
-    function testForceRemoveNonParticipantReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.NotParticipating.selector, _vault));
+    /// @notice D-051: forceRemove on a never-participating vault only denylists it (no NotParticipating revert,
+    /// no ParticipationChanged event).
+    function testForceRemoveNonParticipantOnlyDenylists() public {
+        assertFalse(_registrar.isParticipating(_vault));
+        vm.recordLogs();
         vm.prank(_multisig);
         _registrar.forceRemove(_vault);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1, "only DenylistUpdated");
+        assertEq(logs[0].topics[0], ISafeHarborRegistrar.DenylistUpdated.selector);
+        assertEq(abi.decode(logs[0].data, (address)), _vault);
+        assertTrue(_registrar.isDenylisted(_vault));
+        assertFalse(_registrar.isParticipating(_vault));
+        assertEq(_details(_agreement).chains.length, 0);
+        vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.VaultDenylisted.selector, _vault));
+        _participate(true);
+    }
+
+    /// @notice D-051 / IL-8779 F3: the vault owner front-runs forceRemove by opting out first; the single
+    /// forceRemove still succeeds, denylists the vault and the owner cannot opt back in.
+    function testForceRemoveAfterOwnerFrontRunOptOutIsDurable() public {
+        _participate(true);
+        _participate(false);
+        assertFalse(_registrar.isParticipating(_vault));
+
+        vm.recordLogs();
+        vm.prank(_multisig);
+        _registrar.forceRemove(_vault);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 1, "only DenylistUpdated, no removal happened");
+        assertEq(logs[0].topics[0], ISafeHarborRegistrar.DenylistUpdated.selector);
+
+        assertTrue(_registrar.isDenylisted(_vault));
+        vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.VaultDenylisted.selector, _vault));
+        _participate(true);
+        assertFalse(_registrar.isParticipating(_vault));
+    }
+
+    /// @notice D-051: a participating vault emits DenylistUpdated then ParticipationChanged exactly once each.
+    function testForceRemoveParticipantEmitsBothEvents() public {
+        _participate(true);
+        vm.expectEmit(false, false, false, true, address(_registrar));
+        emit ISafeHarborRegistrar.DenylistUpdated(_vault, true);
+        vm.expectEmit(false, false, false, true, address(_registrar));
+        emit ISafeHarborRegistrar.ParticipationChanged(_vault, false, _multisig);
+        vm.prank(_multisig);
+        _registrar.forceRemove(_vault);
+        assertTrue(_registrar.isDenylisted(_vault));
+        assertFalse(_registrar.isParticipating(_vault));
     }
 
     /// @notice AC6: a second opt-in fails without creating duplicate coverage.
@@ -601,7 +651,7 @@ contract SafeHarborRegistrarTest is Test {
         _participate(false);
         assertFalse(_registrar.isParticipating(_vault));
         assertEq(_agreement.getAccountCount(CHAIN_ID), 1);
-        (string memory remaining,) = _agreement.getAccount(CHAIN_ID, 0);
+        (string memory remaining, ) = _agreement.getAccount(CHAIN_ID, 0);
         assertEq(remaining, OTHER_ACCOUNT);
     }
 
@@ -682,7 +732,9 @@ contract SafeHarborRegistrarTest is Test {
         assertEq(_agreement.owner(), _stranger);
         assertTrue(_registrar.isParticipating(_vault));
         bytes memory failure = abi.encodeWithSelector(
-            ISafeHarborRegistrar.AgreementNotOwnedByRegistrar.selector, address(_agreement), _stranger
+            ISafeHarborRegistrar.AgreementNotOwnedByRegistrar.selector,
+            address(_agreement),
+            _stranger
         );
         vm.expectRevert(failure);
         _participate(false);
@@ -704,7 +756,9 @@ contract SafeHarborRegistrarTest is Test {
         _registrar.setAgreement(address(pending));
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISafeHarborRegistrar.AgreementNotOwnedByRegistrar.selector, address(pending), _multisig
+                ISafeHarborRegistrar.AgreementNotOwnedByRegistrar.selector,
+                address(pending),
+                _multisig
             )
         );
         _participate(true);
@@ -751,9 +805,17 @@ contract SafeHarborRegistrarTest is Test {
         assertEq(_registrar.getFusionFactory(), address(_factory));
         assertEq(_registrar.getAssetRecoveryAddress(), RECOVERY);
         assertEq(_registrar.getCaip2ChainId(), CHAIN_ID);
+        assertEq(_registrar.getMaxAccountsViaFactory(), MAX_ACCOUNTS);
+        assertEq(_registrar.MAX_ACCOUNTS_VIA_FACTORY(), MAX_ACCOUNTS);
         vm.chainId(8453);
         assertEq(_registrar.getCaip2ChainId(), CHAIN_ID);
-        SafeHarborRegistrar base = new SafeHarborRegistrar(_multisig, address(_agreement), address(_factory), RECOVERY);
+        SafeHarborRegistrar base = new SafeHarborRegistrar(
+            _multisig,
+            address(_agreement),
+            address(_factory),
+            RECOVERY,
+            MAX_ACCOUNTS
+        );
         assertEq(base.getCaip2ChainId(), "eip155:8453");
     }
 
@@ -792,11 +854,13 @@ contract SafeHarborRegistrarTest is Test {
     /// @notice Invalid constructor addresses and empty recovery metadata are rejected explicitly.
     function testConstructorRejectsInvalidConfiguration() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
-        new SafeHarborRegistrar(address(0), address(_agreement), address(_factory), RECOVERY);
+        new SafeHarborRegistrar(address(0), address(_agreement), address(_factory), RECOVERY, MAX_ACCOUNTS);
         vm.expectRevert(Errors.WrongAddress.selector);
-        new SafeHarborRegistrar(_multisig, address(0), address(_factory), RECOVERY);
+        new SafeHarborRegistrar(_multisig, address(0), address(_factory), RECOVERY, MAX_ACCOUNTS);
         vm.expectRevert(ISafeHarborRegistrar.EmptyAssetRecoveryAddress.selector);
-        new SafeHarborRegistrar(_multisig, address(_agreement), address(_factory), "");
+        new SafeHarborRegistrar(_multisig, address(_agreement), address(_factory), "", MAX_ACCOUNTS);
+        vm.expectRevert(Errors.WrongValue.selector);
+        new SafeHarborRegistrar(_multisig, address(_agreement), address(_factory), RECOVERY, 0);
     }
 
     /// @notice Administrative setters reject zero addresses and empty recovery metadata.
@@ -861,6 +925,7 @@ contract SafeHarborRegistrarTest is Test {
         vm.assume(vault_ != address(0));
         vm.assume(vault_.code.length == 0);
         vm.assume(uint160(vault_) > 0xffff);
+        assumeNotForgeAddress(vault_);
         // The stub's access-manager address is immutable and therefore embedded in the copied runtime code.
         vm.etch(vault_, _vault.code);
         _allowlist(vault_, true);
@@ -992,6 +1057,237 @@ contract SafeHarborRegistrarTest is Test {
         }
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // IL-8746 (account cap) and IL-8779 (durable forceRemove / denylist)
+    // ---------------------------------------------------------------------------------------------
+
+    /// @notice IL-8779: a factory vault removed by forceRemove cannot re-enroll; re-admission restores opt-in.
+    function testForceRemoveMakesFactoryVaultIneligible() public {
+        (address vault, address vaultOwner) = _factoryVault();
+        vm.prank(vaultOwner);
+        _registrar.setParticipation(vault, true);
+        assertTrue(_registrar.isParticipating(vault));
+        assertTrue(_registrar.isEligibleVault(vault));
+
+        vm.expectEmit(false, false, false, true, address(_registrar));
+        emit ISafeHarborRegistrar.DenylistUpdated(vault, true);
+        vm.prank(_multisig);
+        _registrar.forceRemove(vault);
+
+        assertFalse(_registrar.isParticipating(vault));
+        assertTrue(_registrar.isDenylisted(vault));
+        assertFalse(_registrar.isEligibleVault(vault));
+        vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.VaultDenylisted.selector, vault));
+        vm.prank(vaultOwner);
+        _registrar.setParticipation(vault, true);
+
+        vm.prank(_multisig);
+        _registrar.setDenylist(vault, false);
+        assertTrue(_registrar.isEligibleVault(vault));
+        vm.prank(vaultOwner);
+        _registrar.setParticipation(vault, true);
+        assertTrue(_registrar.isParticipating(vault));
+    }
+
+    /// @notice IL-8779: a denylisted participant (denied while enrolled) can still opt out.
+    function testDenylistedParticipantCanStillOptOut() public {
+        _participate(true);
+        vm.prank(_multisig);
+        _registrar.setDenylist(_vault, true);
+        assertTrue(_registrar.isParticipating(_vault));
+        assertFalse(_registrar.isEligibleVault(_vault));
+        _participate(false);
+        assertFalse(_registrar.isParticipating(_vault));
+        vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.VaultDenylisted.selector, _vault));
+        _participate(true);
+    }
+
+    /// @notice IL-8779: deny wins over the allowlist and setManualAllowlist does not clear it.
+    function testDenylistOverridesAllowlist() public {
+        assertTrue(_registrar.isManualAllowlisted(_vault));
+        vm.prank(_multisig);
+        _registrar.setDenylist(_vault, true);
+        assertTrue(_registrar.isManualAllowlisted(_vault));
+        assertFalse(_registrar.isEligibleVault(_vault));
+        vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.VaultDenylisted.selector, _vault));
+        _participate(true);
+        _allowlist(_vault, true);
+        assertTrue(_registrar.isDenylisted(_vault));
+        vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.VaultDenylisted.selector, _vault));
+        _participate(true);
+    }
+
+    /// @notice IL-8779: setDenylist is owner-only and rejects the zero address.
+    function testSetDenylistAccessAndZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _stranger));
+        vm.prank(_stranger);
+        _registrar.setDenylist(_vault, true);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _stranger));
+        vm.prank(_stranger);
+        _registrar.setDenylistBatch(_singleAddress(_vault), true);
+        vm.expectRevert(Errors.WrongAddress.selector);
+        vm.prank(_multisig);
+        _registrar.setDenylist(address(0), true);
+        vm.expectEmit(false, false, false, true, address(_registrar));
+        emit ISafeHarborRegistrar.DenylistUpdated(_vault, true);
+        vm.prank(_multisig);
+        _registrar.setDenylist(_vault, true);
+        assertTrue(_registrar.isDenylisted(_vault));
+    }
+
+    /// @notice IL-8779: batch is atomic, rejects empty input and zero entries, emits in input order.
+    function testSetDenylistBatch() public {
+        address a = makeAddr("deny a");
+        address b = makeAddr("deny b");
+        address[] memory vaults = new address[](3);
+        vaults[0] = a;
+        vaults[1] = b;
+        vaults[2] = a;
+
+        vm.expectRevert(Errors.WrongValue.selector);
+        vm.prank(_multisig);
+        _registrar.setDenylistBatch(new address[](0), true);
+
+        address[] memory withZero = new address[](2);
+        withZero[0] = a;
+        vm.expectRevert(Errors.WrongAddress.selector);
+        vm.prank(_multisig);
+        _registrar.setDenylistBatch(withZero, true);
+        assertFalse(_registrar.isDenylisted(a));
+
+        vm.recordLogs();
+        vm.prank(_multisig);
+        _registrar.setDenylistBatch(vaults, true);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 3);
+        for (uint256 i; i < logs.length; ++i) {
+            assertEq(logs[i].topics.length, 1);
+            assertEq(logs[i].topics[0], ISafeHarborRegistrar.DenylistUpdated.selector);
+            assertEq(logs[i].data, abi.encode(vaults[i], true));
+        }
+        assertTrue(_registrar.isDenylisted(a));
+        assertTrue(_registrar.isDenylisted(b));
+
+        vm.prank(_multisig);
+        _registrar.setDenylistBatch(vaults, false);
+        assertFalse(_registrar.isDenylisted(a));
+        assertFalse(_registrar.isDenylisted(b));
+    }
+
+    /// @notice IL-8746: factory opt-ins stop at MAX; allowlist opt-in, opt-out and forceRemove still pass.
+    function testFactoryOptInRevertsAtAccountLimit() public {
+        address[] memory vaults = new address[](MAX_ACCOUNTS);
+        address[] memory owners = new address[](MAX_ACCOUNTS);
+        for (uint256 i; i < MAX_ACCOUNTS; ++i) {
+            (vaults[i], owners[i]) = _factoryVault();
+            vm.prank(owners[i]);
+            _registrar.setParticipation(vaults[i], true);
+        }
+        assertEq(_details(_agreement).chains[0].accounts.length, MAX_ACCOUNTS);
+
+        (address extra, address extraOwner) = _factoryVault();
+        vm.expectRevert(
+            abi.encodeWithSelector(ISafeHarborRegistrar.AccountLimitReached.selector, MAX_ACCOUNTS, MAX_ACCOUNTS)
+        );
+        vm.prank(extraOwner);
+        _registrar.setParticipation(extra, true);
+        assertFalse(_registrar.isParticipating(extra));
+
+        // allowlisted vault bypasses the cap
+        _participate(true);
+        assertEq(_details(_agreement).chains[0].accounts.length, MAX_ACCOUNTS + 1);
+
+        // opt-out and forceRemove are never capped
+        vm.prank(owners[0]);
+        _registrar.setParticipation(vaults[0], false);
+        vm.prank(_multisig);
+        _registrar.forceRemove(vaults[1]);
+        assertEq(_details(_agreement).chains[0].accounts.length, MAX_ACCOUNTS - 1);
+
+        // freed slots reopen the factory path (count below MAX)
+        vm.prank(extraOwner);
+        _registrar.setParticipation(extra, true);
+        assertTrue(_registrar.isParticipating(extra));
+    }
+
+    /// @notice IL-8746 F5: once allowlisted entries pushed the count above MAX, a factory opt-in reverts with
+    /// AccountLimitReached(count, MAX) carrying the real (above-MAX) count.
+    function testFactoryOptInRevertsWhenAllowlistedEntriesExceedMax() public {
+        for (uint256 i; i < MAX_ACCOUNTS; ++i) {
+            (address vault, address vaultOwner) = _factoryVault();
+            vm.prank(vaultOwner);
+            _registrar.setParticipation(vault, true);
+        }
+        _participate(true);
+        assertEq(_details(_agreement).chains[0].accounts.length, MAX_ACCOUNTS + 1);
+
+        (address extra, address extraOwner) = _factoryVault();
+        vm.expectRevert(
+            abi.encodeWithSelector(ISafeHarborRegistrar.AccountLimitReached.selector, MAX_ACCOUNTS + 1, MAX_ACCOUNTS)
+        );
+        vm.prank(extraOwner);
+        _registrar.setParticipation(extra, true);
+        assertFalse(_registrar.isParticipating(extra));
+    }
+
+    /// @notice IL-8746 PoC port (e3d8bbba): an attacker with more clones than MAX cannot grow the list beyond MAX and
+    /// honest opt-in/opt-out of an allowlisted vault stays cheap and succeeds.
+    function testAttackerClonesCannotGrowListBeyondCap() public {
+        uint256 attackerClones = MAX_ACCOUNTS * 3;
+        IporFusionAccessManager attackerManager = new IporFusionAccessManager(address(this), 0);
+        address attacker = makeAddr("attacker");
+        attackerManager.grantRole(Roles.OWNER_ROLE, attacker, 0);
+        uint256 admitted;
+        uint256 rejected;
+        for (uint256 i; i < attackerClones; ++i) {
+            address clone = address(new MockSafeHarborVault(address(attackerManager)));
+            _factory.setFusionVault(clone, true);
+            vm.prank(attacker);
+            try _registrar.setParticipation(clone, true) {
+                ++admitted;
+            } catch (bytes memory reason) {
+                assertEq(
+                    reason,
+                    abi.encodeWithSelector(
+                        ISafeHarborRegistrar.AccountLimitReached.selector,
+                        MAX_ACCOUNTS,
+                        MAX_ACCOUNTS
+                    )
+                );
+                ++rejected;
+            }
+        }
+        assertEq(admitted, MAX_ACCOUNTS);
+        assertEq(rejected, attackerClones - MAX_ACCOUNTS);
+        assertEq(_details(_agreement).chains[0].accounts.length, MAX_ACCOUNTS);
+
+        // the genuine (allowlisted) vault is still served, and every call is bounded by MAX + 1 entries
+        vm.prank(_owner);
+        uint256 gasBefore = gasleft();
+        _registrar.setParticipation(_vault, true);
+        uint256 optInGas = gasBefore - gasleft();
+        vm.prank(_owner);
+        gasBefore = gasleft();
+        _registrar.setParticipation(_vault, false);
+        uint256 optOutGas = gasBefore - gasleft();
+        assertLt(optInGas, 1_000_000);
+        assertLt(optOutGas, 1_000_000);
+        assertFalse(_registrar.isParticipating(_vault));
+    }
+
+    function _factoryVault() private returns (address vault_, address vaultOwner_) {
+        vaultOwner_ = makeAddr(string.concat("factory vault owner ", vm.toString(_factoryVaultCounter++)));
+        IporFusionAccessManager manager = new IporFusionAccessManager(address(this), 0);
+        manager.grantRole(Roles.OWNER_ROLE, vaultOwner_, 0);
+        vault_ = address(new MockSafeHarborVault(address(manager)));
+        _factory.setFusionVault(vault_, true);
+    }
+
+    function _singleAddress(address vault_) private pure returns (address[] memory vaults_) {
+        vaults_ = new address[](1);
+        vaults_[0] = vault_;
+    }
+
     function _allowlist(address vault_, bool allowed_) private {
         vm.prank(_multisig);
         _registrar.setManualAllowlist(vault_, allowed_);
@@ -1010,7 +1306,7 @@ contract SafeHarborRegistrarTest is Test {
 
     function _assertUnavailableFactory(address factory_) private {
         _agreement = new MockAgreement(address(this));
-        _registrar = new SafeHarborRegistrar(_multisig, address(_agreement), factory_, RECOVERY);
+        _registrar = new SafeHarborRegistrar(_multisig, address(_agreement), factory_, RECOVERY, MAX_ACCOUNTS);
         _agreement.transferOwnership(address(_registrar));
         assertEq(_registrar.getFusionFactory(), factory_);
         _assertNotFusionVault(_vault);
@@ -1093,11 +1389,10 @@ contract SafeHarborRegistrarTest is Test {
         _registrar.setParticipation(_vault, false);
     }
 
-    function _single(string memory address_, ChildContractScope scope_)
-        private
-        pure
-        returns (HarborAccount[] memory accounts_)
-    {
+    function _single(
+        string memory address_,
+        ChildContractScope scope_
+    ) private pure returns (HarborAccount[] memory accounts_) {
         accounts_ = new HarborAccount[](1);
         accounts_[0] = HarborAccount(address_, scope_);
     }

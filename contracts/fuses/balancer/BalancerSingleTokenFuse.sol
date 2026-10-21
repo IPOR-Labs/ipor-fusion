@@ -145,7 +145,7 @@ contract BalancerSingleTokenFuse is IFuseCommon {
     /// @notice Adds single token liquidity into a Balancer V3 pool
     /// @param data_ Parameters for single token liquidity addition
     /// @return amountIn The actual amount of tokenIn that was spent
-    /// @dev Validates pool substrate, token in pool, and ensures proper approval cleanup.
+    /// @dev Validates pool substrate, token substrate, token in pool, and ensures proper approval cleanup.
     ///      Uses Permit2 for gas-efficient token approvals. Returns 0 if maxAmountIn is 0.
     function enter(BalancerSingleTokenFuseEnterData memory data_) public payable returns (uint256 amountIn) {
         if (data_.pool == address(0) || data_.tokenIn == address(0)) {
@@ -162,6 +162,10 @@ contract BalancerSingleTokenFuse is IFuseCommon {
         ) {
             revert BalancerSingleTokenFuseUnsupportedPool(data_.pool);
         }
+
+        // Validate that the input token is granted as a TOKEN substrate for this market
+        // This prevents spending non-whitelisted tokens out of the vault
+        BalancerSubstrateLib.validateTokenGranted(MARKET_ID, data_.tokenIn);
 
         if (data_.maxAmountIn == 0) {
             return 0;

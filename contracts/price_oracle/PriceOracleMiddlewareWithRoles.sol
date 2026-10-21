@@ -162,7 +162,7 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @param pendleMarket_ Address of the Pendle Market contract associated with the PT
     /// @param twapWindow_ Time window in seconds for TWAP calculations
     /// @param expextedPriceAfterDeployment_ Expected initial price of PT token (used for validation)
-    /// @param usePendleOracleMethod_ Configuration parameter for the PtPriceFeed's oracle method
+    /// @param usePendleOracleMethod_ Configuration parameter for the PtPriceFeed's oracle method (0 for getPtToSyRate, only for an SY that is 1:1 with its asset; 1 for getPtToAssetRate)
     /// @custom:access ADD_PT_TOKEN_PRICE
     /// @return ptPriceFeed Address of the newly deployed PT price feed contract
     function createAndAddPtTokenPriceFeed(

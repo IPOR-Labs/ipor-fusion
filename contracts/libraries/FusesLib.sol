@@ -6,6 +6,7 @@ import {IFuseCommon} from "../fuses/IFuseCommon.sol";
 import {FuseStorageLib} from "./FuseStorageLib.sol";
 import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 import {IporMath} from "./math/IporMath.sol";
+import {Errors} from "./errors/Errors.sol";
 /**
  * @title Fuses Library - Core Component for Plasma Vault's Fuse Management System
  * @notice Library managing the lifecycle and configuration of fuses - specialized contracts that enable
@@ -44,6 +45,9 @@ library FusesLib {
     event FuseRemoved(address fuse);
     event BalanceFuseAdded(uint256 marketId, address fuse);
     event BalanceFuseRemoved(uint256 marketId, address fuse);
+    /// @notice Emitted when a removed market's cached valuation is written off from the vault's accounting
+    /// @dev No indexed params (repo convention)
+    event MarketTotalAssetsCacheCleared(uint256 marketId, uint256 clearedAmount);
 
     error FuseAlreadyExists();
     error FuseDoesNotExist();
@@ -228,7 +232,7 @@ library FusesLib {
      *
      * Error Conditions:
      * - Reverts with FuseAlreadyExists if fuse is already registered
-     * - Zero address handling done at governance level
+     * - Reverts with Errors.WrongAddress if fuse_ is the zero address
      *
      * @param fuse_ The address of the fuse contract to add
      * @custom:events Emits FuseAdded when successful
@@ -245,6 +249,10 @@ library FusesLib {
      * - Event emission
      */
     function addFuse(address fuse_) internal {
+        if (fuse_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
         FuseStorageLib.Fuses storage fuses = FuseStorageLib.getFuses();
 
         uint256 keyIndexValue = fuses.value[fuse_];
@@ -407,7 +415,10 @@ library FusesLib {
      * 3. Clears fuseAddresses mapping entry
      * 4. Updates marketIds array using swap-and-pop
      * 5. Updates indexes mapping for moved market
-     * 6. Emits BalanceFuseRemoved event
+     * 6. Clears the market's cached valuation (MarketTotalAssets) and its contribution to the
+     *    all-markets accumulator (TotalAssets), since the market leaves the valuation system
+     *    together with its balance fuse (IL-7976)
+     * 7. Emits BalanceFuseRemoved event, and MarketTotalAssetsCacheCleared if a non-zero cache was cleared
      *
      * Storage Pattern:
      * - balanceFuses.indexes[marketId_] stores (array index + 1)
@@ -485,6 +496,22 @@ library FusesLib {
         }
 
         _updateBalanceFuseStructWhenRemoving(marketId_);
+
+        uint256 cachedMarketTotalAssets = PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_];
+
+        if (cachedMarketTotalAssets != 0) {
+            PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId_] = 0;
+
+            uint256 totalAssetsInAllMarkets = PlasmaVaultStorageLib.getTotalAssets().value;
+
+            /// @dev the accumulator is the sum of per-market cached values; the min-guard is
+            /// defensive only, so removal can never revert on a broken invariant
+            PlasmaVaultStorageLib.getTotalAssets().value = totalAssetsInAllMarkets > cachedMarketTotalAssets
+                ? totalAssetsInAllMarkets - cachedMarketTotalAssets
+                : 0;
+
+            emit MarketTotalAssetsCacheCleared(marketId_, cachedMarketTotalAssets);
+        }
 
         emit BalanceFuseRemoved(marketId_, fuse_);
     }

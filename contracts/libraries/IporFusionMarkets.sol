@@ -351,8 +351,48 @@ library IporFusionMarkets {
     ///      window opens. REQUIRED mitigation on production vaults: UpdateBalancesPreHook wired to the
     ///      deposit/mint/withdraw/redeem selectors so balances are refreshed before any share pricing;
     ///      additionally the protocol keeper should pair withdrawPOL claims with updateMarketsBalances in
-    ///      the same transaction bundle.
+    ///      the same transaction bundle. On vaults created from a PlasmaVault implementation that predates
+    ///      IL-8310, this mitigation makes ContextManager-relayed deposit/mint/withdraw/redeem revert for
+    ///      callers without UPDATE_MARKETS_BALANCES_ROLE (see UpdateBalancesPreHook).
     uint256 public constant SPOL_UNSTAKE = 424_243;
+
+    /// @dev Crosschain market - a PlasmaVault deploys capital into PlasmaVaults on remote chains via a
+    ///      fuse-driven Stargate V2 (LayerZero V2) crosschain layer.
+    /// @dev Substrate type: typed bytes32 via `CrosschainSubstrateLib`
+    /// @dev Substrate values:
+    ///      - EXECUTOR: the `StargateCrosschainExecutor` address(es) the fuses are allowed to drive; the
+    ///        executor's `MANAGER()` must equal the PlasmaVault (asserted in fuse `enter`). Remote
+    ///        PlasmaVault whitelisting lives on the destination `StargateCrosschainDispatcher`, not here.
+    /// @dev Balance fuse: `CrosschainBalanceFuse` reads `executor.getBalance()` (tracked idle +
+    ///      settled remote balance + outbound-in-flight + return-in-flight, in ASSET decimals) and
+    ///      converts to USD-WAD via `IPriceOracleMiddleware`, mirroring `AsyncActionBalanceFuse`.
+    /// @dev A crosschain NAV validation pre-hook (staleness / blocked-chain fail-closed) gates the
+    ///      source PlasmaVault's share-price-sensitive selectors, mirroring `RWAPausePreHook`.
+    uint256 public constant CROSSCHAIN = 54;
+
+    /// @dev HyperCore positions and actions through the HyperEVM CoreWriter and read precompiles.
+    /// @dev Substrate types: HyperCoreSubstrateLib.SubstrateType (SpotToken = 1, PerpMarket = 2, Destination = 3,
+    ///      Builder = 4, Config = 5, SendCap = 6, PerpPositionCap = 7; 0 is Undefined and invalid).
+    /// @dev Substrate encoding: every substrate is one bytes32 word built and parsed ONLY by HyperCoreSubstrateLib
+    ///      (use its encode* / decode* helpers, never hand-pack). Bits 255..248 hold the SubstrateType; bits
+    ///      247..0 hold the type-specific data; every unused data bit must be zero or decode reverts with
+    ///      HyperCoreInvalidSubstrate. Data layouts (bit ranges inside the 256-bit word):
+    ///      - SpotToken: tokenIndex uint64 in 223..160, evmAsset address in 159..0 (bits 247..224 zero).
+    ///      - PerpMarket: asset uint32 in 247..216, maxNotionalUsd6 uint88 in 215..128 (per-order cap, USD 6
+    ///        decimals), reduceOnlyRequired in bit 120 (0 or 1); bits 127..121 and 119..0 zero.
+    ///      - Destination: address in 159..0 (bits 247..160 zero); a granted spot-send / transfer target.
+    ///      - Builder: maxFeeRateDecibps uint64 in 223..160, builder address in 159..0 (bits 247..224 zero).
+    ///      - Config: ConfigKey uint8 in 247..240, value uint240 in 239..0. ConfigKey values: 1 WindowTransferSeconds,
+    ///        2 WindowOrderSeconds (reserved, ignored since IL-8543), 3 MaxUsdClassTransferUsd6, 4 PerpDexIds
+    ///        (bitmap of enabled HIP-3 dex indices, bit n = dex n, dex 0 is implicit), 5 SettlementMode (reserved,
+    ///        ignored since IL-8543), 6 SpotSendBridgeEnabled, 7 TransferTimeoutSeconds,
+    ///        8 ActivationFeeAllowanceUsdcWei, 9 MaxNavJumpBps, 10 MaxMarkOracleDeviationBps, 11 NavJumpFloorUsd6. A key may be
+    ///        granted at most once; key 0 and keys above 11 are invalid.
+    ///      - SendCap: tokenIndex uint64 in 191..128, maxWei uint128 in 127..0 (bits 247..192 zero); one per token.
+    ///      - PerpPositionCap: asset uint32 in 247..216, maxPositionNotionalUsd6 uint88 in 215..128 (aggregate
+    ///        position cap, USD 6 decimals), bits 127..0 zero; one per asset.
+    /// @dev The vault account is its own HyperCore address; encode helpers live in HyperCoreSubstrateLib.
+    uint256 public constant HYPERCORE = 55;
 
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;

@@ -13,9 +13,17 @@ remappings = [
     'ds-test/=lib/forge-std/lib/ds-test/src/',
     'forge-std/=lib/forge-std/src/',
     "@ethereum-vault-connector/=node_modules/ethereum-vault-connector/",
-    "@pendle/core-v2/=node_modules/@pendle/core-v2/"
+    "@pendle/core-v2/=node_modules/@pendle/core-v2/",
+    # --- Crosschain POC vendored transport deps (contracts/vendor/) ---
+    "@layerzerolabs/lz-evm-protocol-v2/contracts/=contracts/vendor/layerzero/protocol/contracts/",
+    "@layerzerolabs/lz-evm-oapp-v2/contracts/=contracts/vendor/layerzero/oapp/contracts/",
+    "@layerzerolabs/lz-evm-messagelib-v2/contracts/=contracts/vendor/layerzero/messagelib/contracts/",
+    "@stargatefinance/stg-evm-v2/=contracts/vendor/stargate/",
+    "solidity-bytes-utils/=contracts/vendor/solidity-bytes-utils/",
+    "solady/=contracts/vendor/solady/src/"
 ]
-optimizer_runs = 10000000
+optimizer_runs = 2
+bytecode_hash = "none"
 ignored_error_codes = [5667, 9302, 2462, 5574, 8760]
 evm_version = "cancun"
 # Forge 1.8+ defaults to --isolate (each top-level call is a separate tx), which clears
@@ -24,5 +32,28 @@ isolate = false
 ffi = true
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
+[profile.crosschain_deploy]
+# Fixed library addresses are isolated from the default test profile. Deployment
+# scripts must use FOUNDRY_PROFILE=crosschain_deploy so that creation-code hashes
+# and CREATE3 outputs are identical on all three mainnets.
+libraries = [
+    "contracts/crosschain/stargate/lib/StargateExecutorAccountingLib.sol:StargateExecutorAccountingLib:0x1bEa14792F3ebA23fa63b84E954c93d6eF901b04",
+    "contracts/crosschain/stargate/lib/StargateExecutorAttestationLib.sol:StargateExecutorAttestationLib:0xd3b89E73A9e75b68b6FAdb7Bc1150A2660DC690d",
+    "contracts/crosschain/stargate/lib/StargateExecutorDeploymentLib.sol:StargateExecutorDeploymentLib:0x11b710DEB2A6a1d702789ffdfe968193F48559EF",
+    "contracts/crosschain/stargate/lib/StargateLzSendLib.sol:StargateLzSendLib:0x47f52bbcf20AbC6FC6D4AaCc7C59Bd310c63652D",
+    "contracts/crosschain/lib/RescueLogicLib.sol:RescueLogicLib:0xC6F2F07bB9961bdFA11fe3C618F257bDF29EC22b",
+    "contracts/crosschain/stargate/lib/StargateAssetSendLib.sol:StargateAssetSendLib:0x5C746de4cE706F31533C3E18D22c6c5e28435125",
+    "contracts/crosschain/ccip/lib/CcipDecimalsLib.sol:CcipDecimalsLib:0xeffC518316b1dCdbA8501EdB6A13ac04BF06B11a",
+    "contracts/crosschain/ccip/lib/CcipExecutorAttestationLib.sol:CcipExecutorAttestationLib:0xA59998Bff1eCddD9d715A9A1Da6753FB5ab11605",
+    "contracts/crosschain/ccip/lib/CcipExecutorCommandLib.sol:CcipExecutorCommandLib:0x9e3dA1D08aDBe5474D8DeAa6b20165632Bd9b349",
+    "contracts/crosschain/ccip/lib/CcipExecutorTransferLib.sol:CcipExecutorTransferLib:0xC55c215e9a83c934658feA8eAC915f70606faCf9",
+    "contracts/crosschain/ccip/lib/CcipRouteLib.sol:CcipRouteLib:0x77f9C82967621e8dDc0D7E55806A75D59c12D528",
+    "contracts/crosschain/ccip/lib/CcipSendLib.sol:CcipSendLib:0x61fbe9Cc575f44A75fbFf5eBcC4597D229D1eF9b",
+    "contracts/crosschain/lib/CrosschainVaultActionLib.sol:CrosschainVaultActionLib:0x40374659dC3312e0D6e49eDAbCb02f7c48F1c125",
+]
+
 [profile.arbitrum]
-evm_version = "paris"
+# Arbitrum One supports Cancun opcodes (including PUSH0/EIP-1153). Keeping the
+# same EVM target is required for byte-identical CREATE2/CREATE3 artifacts on
+# Ethereum, Base, and Arbitrum.
+evm_version = "cancun"

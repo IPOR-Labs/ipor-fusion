@@ -50,4 +50,24 @@ contract FusesLibMock {
     function setUnderlyingDecimals(uint8 decimals_) external {
         PlasmaVaultStorageLib.getERC4626Storage().underlyingDecimals = decimals_;
     }
+
+    /// @dev Test-only accessor: writes PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId]
+    function setMarketTotalAssets(uint256 marketId, uint256 value) external {
+        PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId] = value;
+    }
+
+    /// @dev Test-only accessor: writes PlasmaVaultStorageLib.getTotalAssets().value
+    function setTotalAssetsInAllMarkets(uint256 value) external {
+        PlasmaVaultStorageLib.getTotalAssets().value = value;
+    }
+
+    /// @dev Test-only accessor: reads PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId]
+    function getMarketTotalAssets(uint256 marketId) external view returns (uint256) {
+        return PlasmaVaultStorageLib.getMarketTotalAssets().value[marketId];
+    }
+
+    /// @dev Test-only accessor: reads PlasmaVaultStorageLib.getTotalAssets().value
+    function getTotalAssetsInAllMarkets() external view returns (uint256) {
+        return PlasmaVaultStorageLib.getTotalAssets().value;
+    }
 }

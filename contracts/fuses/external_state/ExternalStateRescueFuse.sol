@@ -5,6 +5,8 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {IExternalStateExecutor} from "./IExternalStateExecutor.sol";
 import {ExternalStateErrors} from "./errors/ExternalStateErrors.sol";
 import {ExternalStateExecutorStorageLib} from "./lib/ExternalStateExecutorStorageLib.sol";
+import {ExternalStateSubstrateLib} from "./lib/ExternalStateSubstrateLib.sol";
+import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 
 /// @title ExternalStateRescueFuse
 /// @notice Fuse for sweeping stuck or airdropped tokens from the ExternalState executor back to the vault.
@@ -34,15 +36,27 @@ contract ExternalStateRescueFuse is IFuseCommon {
     ///      instead of the opaque EVM revert that would bubble up from
     ///      `IERC20(address(0)).balanceOf(...)`.
     /// @dev Reverts with `ExternalStateRescueOfTrackedAssetForbidden(asset_)` when `asset_` is currently
-    ///      registered as an ASSET substrate on the executor. Rescue is intended for airdrops
-    ///      and accidentally transferred tokens only — moving a tracked asset out-of-band would
-    ///      desynchronize strategy state between custodian confirms.
-    /// @param asset_ ERC20 asset to rescue (airdropped / untracked). MUST NOT be zero and MUST NOT
-    ///        be a currently registered ASSET substrate.
+    ///      registered as an ASSET substrate on the vault or present in the executor's cached `assets[]`.
+    ///      Rescue is intended for airdrops and accidentally transferred tokens only — moving a tracked
+    ///      asset out-of-band would desynchronize strategy state between custodian confirms.
+    /// @param asset_ ERC20 asset to rescue (airdropped / untracked). MUST NOT be zero, MUST NOT be
+    ///        currently granted as an ASSET substrate on the vault, and MUST NOT be a currently
+    ///        registered ASSET substrate in the executor's cache.
     function rescue(address asset_) external {
         if (asset_ == address(0)) revert ExternalStateErrors.ExternalStateZeroAddress();
         address executor = ExternalStateExecutorStorageLib.getExecutor();
         if (executor == address(0)) revert ExternalStateErrors.ExternalStateRescueExecutorNotDeployed();
+
+        // Vault substrate set is the source of truth; the executor cache may lag behind a grant
+        // until `syncSubstrates()` is called (IL-8115).
+        if (
+            PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                ExternalStateSubstrateLib.encodeAssetSubstrate(asset_)
+            )
+        ) {
+            revert ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden(asset_);
+        }
 
         IExternalStateExecutor executor_ = IExternalStateExecutor(executor);
         uint256 assetsLen = executor_.assetsLength();

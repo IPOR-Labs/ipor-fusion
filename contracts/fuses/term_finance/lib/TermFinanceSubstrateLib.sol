@@ -16,7 +16,12 @@ enum TermFinanceSubstrateType {
     SERVICER,
     /// @dev 0x01 - (servicer, collateralToken) pair key produced by
     ///      `TermFinanceSubstrateLib.collateralPairKey`.
-    COLLATERAL_TOKEN
+    COLLATERAL_TOKEN,
+    /// @dev 0x02 - declaration that the vault holds TermRepoTokens of a servicer; address of the
+    ///      servicer in the low 160 bits (bits 247..160 = 0), produced by
+    ///      `TermFinanceSubstrateLib.repoTokenHoldingKey`. Only the held repo-token leg and the
+    ///      repo-token balance exposure signal of the balance fuse depend on it.
+    REPO_TOKEN_HOLDING
 }
 
 /// @title TermFinanceSubstrateLib
@@ -32,6 +37,8 @@ enum TermFinanceSubstrateType {
 ///                        (matches `PlasmaVaultConfigLib.addressToBytes32` output).
 ///      COLLATERAL_TOKEN: data = keccak256(abi.encode(servicer, collateralToken))
 ///                        truncated to 248 bits.
+///      REPO_TOKEN_HOLDING: data = servicer address in low 160 bits; bits 247..160 = 0
+///                        (same shape as SERVICER, TYPE byte 0x02).
 ///
 ///      Layout mirrors `AaveV4SubstrateLib._TYPE_SHIFT = 248` exactly.
 library TermFinanceSubstrateLib {
@@ -54,11 +61,25 @@ library TermFinanceSubstrateLib {
         return bytes32(uint256(TermFinanceSubstrateType.COLLATERAL_TOKEN) << _FLAG_SHIFT) | (data & _DATA_MASK);
     }
 
+    /// @notice Encode a servicer as a `REPO_TOKEN_HOLDING` substrate.
+    /// @dev Upper byte = 0x02 (TYPE), low 160 bits = servicer address, bits 247..160 = 0.
+    ///      Disjoint from `addressToBytes32` (TYPE 0x00) and from `collateralPairKey` (TYPE 0x01).
+    /// @param servicer_ TermRepoServicer proxy address whose repo tokens the vault holds.
+    /// @return Encoded `REPO_TOKEN_HOLDING` substrate.
+    function repoTokenHoldingKey(address servicer_) internal pure returns (bytes32) {
+        return
+            bytes32(
+                (uint256(TermFinanceSubstrateType.REPO_TOKEN_HOLDING) << _FLAG_SHIFT) | uint256(uint160(servicer_))
+            );
+    }
+
     /// @notice Decode the type flag from a substrate.
     /// @dev Defaults to `SERVICER` on an out-of-range type byte to preserve backward
     ///      compatibility with legacy `addressToBytes32` substrates (whose upper byte is
     ///      0x00 and would decode to `SERVICER` naturally). Strict callers should use the
-    ///      `isServicerSubstrate` / `isCollateralTokenSubstrate` predicates.
+    ///      `isServicerSubstrate` / `isCollateralTokenSubstrate` / `isRepoTokenHoldingSubstrate`
+    ///      predicates; a flag of 0x03 or more falls back to `SERVICER` here, which is NOT a valid
+    ///      `SERVICER` substrate.
     /// @param substrate_ Encoded bytes32 substrate.
     /// @return The decoded `TermFinanceSubstrateType`.
     function decodeSubstrateType(bytes32 substrate_) internal pure returns (TermFinanceSubstrateType) {
@@ -70,10 +91,11 @@ library TermFinanceSubstrateLib {
     }
 
     /// @notice Decode the address payload from a substrate.
-    /// @dev Returns the low 160 bits of the substrate. Meaningful only for `SERVICER`
-    ///      substrates (where the data byte holds an address). For `COLLATERAL_TOKEN`
+    /// @dev Returns the low 160 bits of the substrate. Meaningful only for `SERVICER` and
+    ///      `REPO_TOKEN_HOLDING` substrates (where the data holds an address). For `COLLATERAL_TOKEN`
     ///      substrates the result is a truncated keccak hash, NOT an address — callers
-    ///      MUST filter by `isServicerSubstrate(raw)` before invoking this helper.
+    ///      MUST filter by `isServicerSubstrate(raw)` or `isRepoTokenHoldingSubstrate(raw)` before
+    ///      invoking this helper.
     /// @param substrate_ Encoded bytes32 substrate.
     /// @return The decoded address (lower 160 bits).
     function decodeAddress(bytes32 substrate_) internal pure returns (address) {
@@ -102,5 +124,13 @@ library TermFinanceSubstrateLib {
     /// @return True if `raw_` encodes a `COLLATERAL_TOKEN` substrate.
     function isCollateralTokenSubstrate(bytes32 raw_) internal pure returns (bool) {
         return uint8(uint256(raw_) >> _FLAG_SHIFT) == uint8(TermFinanceSubstrateType.COLLATERAL_TOKEN);
+    }
+
+    /// @notice True iff the substrate bytes32 is exactly `repoTokenHoldingKey(address)`.
+    /// @dev STRICT predicate: TYPE byte 0x02 and bits 247..160 all zero. Dirty bits give false.
+    /// @param raw_ Encoded bytes32 substrate.
+    /// @return True if `raw_` encodes a `REPO_TOKEN_HOLDING` substrate.
+    function isRepoTokenHoldingSubstrate(bytes32 raw_) internal pure returns (bool) {
+        return (uint256(raw_) >> 160) == (uint256(TermFinanceSubstrateType.REPO_TOKEN_HOLDING) << 88);
     }
 }

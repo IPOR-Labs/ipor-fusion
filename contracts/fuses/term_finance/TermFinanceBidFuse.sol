@@ -22,7 +22,15 @@ import {TermFinanceSubstrateLib} from "./lib/TermFinanceSubstrateLib.sol";
 ///        (impersonation guard)
 /// @param amount Purchase-token raw units to borrow
 /// @param bidPriceHash keccak256(abi.encode(price, nonce)) — commit-phase rate hash
-/// @param existingBidId 0x0 for a fresh bid; non-zero to edit an existing one (edit-flow)
+/// @param existingBidId 0x0 for a fresh bid; non-zero to edit an existing one. For a TRACKED id (one the vault
+///        already holds in its pending-bid storage) the edit is allowed only on the bid locker that holds it, the
+///        locker must return the same id, and `collateralTokens` must equal the tracked bid's token list (same
+///        tokens, same order; amounts may change, because Term compares collateral by index only), otherwise
+///        `enter` reverts. An UNTRACKED non-zero id that is not a live bid of the vault on `bidLocker` creates a
+///        new bid (e.g. a second bid on the same locker with a nonce id). An untracked id that IS a live vault bid
+///        on `bidLocker` (possible only after `TermFinanceCleanupFuse` dropped it with `pruneOnLockerRevert = true`)
+///        is edited in place by Term, which applies the new amounts by index to the bid's old token list, and none
+///        of the checks above run; unlock such a bid with `exit` instead of editing it.
 /// @param collateralTokens Parallel to `collateralAmounts`; per-token collateral allowlist
 ///        enforced via `TermFinanceSubstrateLib.collateralPairKey(servicer, token)`
 /// @param collateralAmounts Parallel to `collateralTokens`; raw token units to lock per token
@@ -72,7 +80,14 @@ struct TermFinanceBidFuseExitData {
 ///        - `exit` clears pending-bid storage BEFORE the external `unlockBids` interaction
 ///          (strict CEI, mirror of `OfferFuse.exit`).
 ///
-///      Edit-flow (`existingBidId != 0x0`): a single bid id is replaced in place. The fuse
+///      Edit-flow (`existingBidId != 0x0`): a single bid id is replaced in place, only on the
+///      locker that holds the bid (a tracked id bound to another locker reverts with
+///      `TermFinanceBidFuseExistingBidLockerMismatch`) and the locker must return the same id
+///      (`TermFinanceBidFuseEditedBidIdMismatch`). The collateral token list of a tracked bid
+///      cannot change on edit (`TermFinanceBidFuseEditedCollateralTokensMismatch`; only amounts may change),
+///      because Term compares collateral by index and a different list would strand the dropped token.
+///      The check copies the servicer's pending bids (at most 150), an acceptable gas cost on the edit
+///      path. The fuse
 ///      first removes the stale storage entry, then submits with the same id (the locker
 ///      reuses ids per the verified ABI), and finally re-inserts the entry — which
 ///      `TermFinancePendingBidsStorageLib.addPendingBid` resolves as an in-place refresh
@@ -153,11 +168,7 @@ contract TermFinanceBidFuse is IFuseCommon {
     /// @param servicer The servicer whose pairing was checked.
     /// @param expected The collateralManager returned by the servicer.
     /// @param actual The collateralManager supplied via calldata.
-    error TermFinanceBidFuseServicerCollateralManagerMismatch(
-        address servicer,
-        address expected,
-        address actual
-    );
+    error TermFinanceBidFuseServicerCollateralManagerMismatch(address servicer, address expected, address actual);
 
     /// @notice Reverts when `enter` is called with `amount == 0`.
     error TermFinanceBidFuseZeroAmount();
@@ -195,6 +206,27 @@ contract TermFinanceBidFuse is IFuseCommon {
     /// @param count The would-be length (`current + 1`, always > MAX_PENDING_BIDS_PER_SERVICER
     ///        on revert).
     error TermFinanceBidFuseTooManyPendingBids(address servicer, uint256 count);
+
+    /// @notice Reverts when `enter` edits a bid id that is tracked against a different bid locker.
+    /// @param existingBidId The bid id supplied as `existingBidId`.
+    /// @param trackedBidLocker Bid locker the id is tracked against.
+    /// @param suppliedBidLocker Bid locker supplied in the calldata.
+    error TermFinanceBidFuseExistingBidLockerMismatch(
+        bytes32 existingBidId,
+        address trackedBidLocker,
+        address suppliedBidLocker
+    );
+
+    /// @notice Reverts when an edit of a tracked bid returns an id different from `existingBidId`.
+    /// @param existingBidId The bid id supplied as `existingBidId`.
+    /// @param returnedBidId The id returned by `lockBids`.
+    error TermFinanceBidFuseEditedBidIdMismatch(bytes32 existingBidId, bytes32 returnedBidId);
+
+    /// @notice Reverts when an edit of a tracked bid changes the collateral token list.
+    /// @dev Term compares collateral by index only, so a changed list would leave a token locked
+    ///      with nothing referencing it (or record a token that is not the one locked).
+    /// @param existingBidId The tracked bid id being edited.
+    error TermFinanceBidFuseEditedCollateralTokensMismatch(bytes32 existingBidId);
 
     /// @notice Address of this contract instance, used as the version identifier in event logs.
     address public immutable VERSION;
@@ -237,7 +269,12 @@ contract TermFinanceBidFuse is IFuseCommon {
     ///      8. Non-edit-flow only: enforce the pending-bid cap BEFORE
     ///         any approval or external call so a cap-breach reverts cheaply with no side
     ///         effects on the vault or the locker.
-    ///      9. Edit-flow: drop the stale pending entry BEFORE `lockBids` reuses the id.
+    ///      9. Edit-flow: for a TRACKED `existingBidId`, require `collateralTokens` to equal the tracked
+    ///         bid's token list element by element (else revert `EditedCollateralTokensMismatch`;
+    ///         amounts may change; this check copies the servicer's pending bids, at most 150, which is
+    ///         acceptable gas on the edit path), require the bid locker recorded for that id
+    ///         (else revert `ExistingBidLockerMismatch`), then drop the stale pending entry BEFORE
+    ///         `lockBids` reuses the id.
     ///     10. `forceApprove(termRepoLocker, amount)` for the purchase token AND each collateral token.
     ///     11. Build `TermAuctionBidSubmission[]` in the verified on-chain field order
     ///         (id, bidder, bidPriceHash, amount, collateralAmounts, purchaseToken, collateralTokens)
@@ -246,6 +283,10 @@ contract TermFinanceBidFuse is IFuseCommon {
     ///         token (mirror of `OfferFuse.enter`; safeguards against any future locker impl that
     ///         partial-pulls).
     ///     13. Assert `bidIds.length == 1` (else revert `UnexpectedLockResult`).
+    ///         For a tracked `existingBidId` the id returned by `lockBids` must equal it
+    ///         (else revert `EditedBidIdMismatch`); an untracked id is not checked
+    ///         (Term mints a new id, or edits a live untracked vault bid in place, see
+    ///         `TermFinanceBidFuseEnterData`).
     ///     14. Write the entry to `TermFinancePendingBidsStorageLib` (asymmetric vs `exit` — the
     ///         locker is what assigns the id).
     ///     15. Emit `TermFinanceBidLocked`.
@@ -279,7 +320,8 @@ contract TermFinanceBidFuse is IFuseCommon {
             }
         }
 
-        _consumeExistingBidAndEnforceCap(data_.servicer, data_.existingBidId);
+        _assertEditedCollateralTokensUnchanged(data_.servicer, data_.existingBidId, data_.collateralTokens);
+        bool edited = _consumeExistingBidAndEnforceCap(data_.servicer, data_.bidLocker, data_.existingBidId);
 
         address termRepoLocker = IExtTermRepoServicer(data_.servicer).termRepoLocker();
         address purchaseToken = IExtTermRepoServicer(data_.servicer).purchaseToken();
@@ -331,12 +373,12 @@ contract TermFinanceBidFuse is IFuseCommon {
         // a contract bug.
         if (bidIds.length != 1) revert TermFinanceBidFuseUnexpectedLockResult(bidIds.length);
 
-        bytes32 bidId = bidIds[0];
+        _assertEditedBidIdUnchanged(edited, data_.existingBidId, bidIds[0]);
 
         TermFinancePendingBidsStorageLib.addPendingBid(
             data_.servicer,
             data_.bidLocker,
-            bidId,
+            bidIds[0],
             data_.amount,
             data_.collateralTokens,
             data_.collateralAmounts
@@ -346,7 +388,7 @@ contract TermFinanceBidFuse is IFuseCommon {
             VERSION,
             data_.servicer,
             data_.bidLocker,
-            bidId,
+            bidIds[0],
             data_.amount,
             data_.bidPriceHash,
             data_.collateralTokens,
@@ -391,20 +433,71 @@ contract TermFinanceBidFuse is IFuseCommon {
     ///      Extracted into a separate function to keep `enter` under the 16-slot stack
     ///      limit imposed by Solidity without `viaIR`.
     /// @param servicer_ Servicer substrate from the calldata struct.
+    /// @param bidLocker_ Bid locker the new submission is sent to.
     /// @param existingBidId_ Existing bid id from the calldata struct (`0x0` for fresh).
-    function _consumeExistingBidAndEnforceCap(address servicer_, bytes32 existingBidId_) private {
-        bool storageGrows;
-        if (existingBidId_ == bytes32(0)) {
-            storageGrows = true;
-        } else {
-            bool removed = TermFinancePendingBidsStorageLib.removePendingBidIfExists(servicer_, existingBidId_);
-            storageGrows = !removed;
+    /// @return edited True when a tracked entry was removed and the submission is an in-place edit.
+    /// @custom:revert TermFinanceBidFuseExistingBidLockerMismatch when `existingBidId_` is tracked against a
+    ///        different locker than `bidLocker_` (Term only edits an id inside the locker that holds it, so the
+    ///        submission would create a new bid and orphan the tracked one).
+    /// @custom:revert TermFinanceBidFuseTooManyPendingBids when storage would grow past the cap.
+    function _consumeExistingBidAndEnforceCap(
+        address servicer_,
+        address bidLocker_,
+        bytes32 existingBidId_
+    ) private returns (bool edited) {
+        bool storageGrows = true;
+        if (existingBidId_ != bytes32(0)) {
+            address bound = TermFinancePendingBidsStorageLib.getBidLocker(servicer_, existingBidId_);
+            if (bound != address(0) && bound != bidLocker_) {
+                revert TermFinanceBidFuseExistingBidLockerMismatch(existingBidId_, bound, bidLocker_);
+            }
+            edited = TermFinancePendingBidsStorageLib.removePendingBidIfExists(servicer_, existingBidId_);
+            storageGrows = !edited;
         }
         if (storageGrows) {
             uint256 nextLength = TermFinancePendingBidsStorageLib.length(servicer_) + 1;
             if (nextLength > TermFinancePendingBidsStorageLib.MAX_PENDING_BIDS_PER_SERVICER) {
                 revert TermFinanceBidFuseTooManyPendingBids(servicer_, nextLength);
             }
+        }
+    }
+
+    /// @notice Reverts when an edit of a tracked bid supplies a different collateral token list.
+    /// @dev Term's bid locker edits collateral by index with no token-identity check and the Collateral
+    ///      Manager keeps no per-bidder ledger, so [A,B] -> [A] would strand B in the TermRepoLocker and
+    ///      [A] -> [B] would record B while A is locked. The tracked list (what the last `lockBids`
+    ///      locked) must therefore be repeated exactly: same length, order and addresses. No-op for a
+    ///      fresh bid or an untracked id. Extracted to keep `enter` under the 16-slot stack limit.
+    /// @custom:revert TermFinanceBidFuseEditedCollateralTokensMismatch when the lists differ.
+    function _assertEditedCollateralTokensUnchanged(
+        address servicer_,
+        bytes32 existingBidId_,
+        address[] calldata collateralTokens_
+    ) private view {
+        if (existingBidId_ == bytes32(0)) return;
+        if (!TermFinancePendingBidsStorageLib.isBidPending(servicer_, existingBidId_)) return;
+
+        (, bytes32[] memory ids, , address[][] memory tracked, ) = TermFinancePendingBidsStorageLib
+            .getPendingBidsForServicer(servicer_);
+        for (uint256 i; i < ids.length; ++i) {
+            if (ids[i] != existingBidId_) continue;
+            address[] memory old = tracked[i];
+            bool same = old.length == collateralTokens_.length;
+            for (uint256 j; same && j < old.length; ++j) {
+                same = old[j] == collateralTokens_[j];
+            }
+            if (!same) revert TermFinanceBidFuseEditedCollateralTokensMismatch(existingBidId_);
+            return;
+        }
+    }
+
+    /// @notice Reverts when an edit of a tracked bid came back under a different id.
+    /// @dev The tracked entry was removed before `lockBids`; if the locker returned another id the old
+    ///      bid would stay live in the TermRepoLocker without tracking and NAV would be understated.
+    /// @custom:revert TermFinanceBidFuseEditedBidIdMismatch when `edited_` and `returnedBidId_ != existingBidId_`.
+    function _assertEditedBidIdUnchanged(bool edited_, bytes32 existingBidId_, bytes32 returnedBidId_) private pure {
+        if (edited_ && returnedBidId_ != existingBidId_) {
+            revert TermFinanceBidFuseEditedBidIdMismatch(existingBidId_, returnedBidId_);
         }
     }
 
@@ -492,11 +585,7 @@ contract TermFinanceBidFuse is IFuseCommon {
     function _assertServicerCollateralManagerPaired(address servicer_, address collateralManager_) private view {
         address expected = IExtTermRepoServicer(servicer_).termRepoCollateralManager();
         if (expected != collateralManager_) {
-            revert TermFinanceBidFuseServicerCollateralManagerMismatch(
-                servicer_,
-                expected,
-                collateralManager_
-            );
+            revert TermFinanceBidFuseServicerCollateralManagerMismatch(servicer_, expected, collateralManager_);
         }
     }
 }

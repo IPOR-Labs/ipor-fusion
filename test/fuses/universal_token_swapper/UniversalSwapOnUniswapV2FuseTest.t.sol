@@ -125,13 +125,13 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -189,13 +189,13 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -253,13 +253,13 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature(
@@ -311,13 +311,13 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenOut: address(0x76543),
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature(
@@ -368,13 +368,13 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature(
@@ -426,13 +426,13 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature(
@@ -534,6 +534,117 @@ contract UniversalSwapOnUniswapV2FuseTest is Test {
         assertEq(ERC20(USDC).balanceOf(_plasmaVault), 0, "plasmaVaultUsdcBalanceAfter");
         assertEq(plasmaVaultUsdtBalanceBefore, 0, "plasmaVaultUsdtBalanceBefore");
         assertGt(ERC20(USDT).balanceOf(_plasmaVault), 0, "plasmaVaultUsdtBalanceAfter");
+    }
+
+    /// @notice Test 13 (IL-7944): enterTransient() reads the optional trailing tokensToReturn block and forwards
+    /// it to the executor, while remaining backward compatible with callers that stop after the data arrays
+    /// (see testShouldEnterUsingTransient above, kept byte-identical as the compatibility control).
+    /// @dev Deviation from the plan: the plan's test 13 sketch lists USDT in tokensToReturn, but this hop's
+    /// tokenOut is already USDT, so USDT would already be swept by the unconditional tokenOut sweep regardless
+    /// of the tokensToReturn loop - not a discriminating regression test. DAI is used instead: a granted token
+    /// distinct from tokenIn/tokenOut, dealt directly to the executor to simulate dust left by a prior step in a
+    /// sequential swap (the scenario tokensDustToCheck/tokensToReturn exists for).
+    /// Pre-fix (tokensToReturn loop removed from SwapExecutor.execute): the executor keeps the DAI dust, and the
+    /// first assertion below (executor DAI == 0) fails.
+    function testShouldEnterUsingTransientWithTokensToReturn() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        // Simulate DAI dust left in the executor by a prior step (e.g. a preceding hop in a sequential swap)
+        uint256 daiDust = 5e18;
+        address executor = _universalTokenSwapperFuse.EXECUTOR();
+        deal(DAI, executor, daiDust);
+
+        address[] memory path = new address[](2);
+        path[0] = USDC;
+        path[1] = USDT;
+
+        address[] memory targets = new address[](2);
+        targets[0] = USDC;
+        targets[1] = _UNIVERSAL_ROUTER;
+
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(_INDICATOR_OF_SENDER_FROM_UNIVERSAL_ROUTER, depositAmount, 0, path, false);
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("transfer(address,uint256)", _UNIVERSAL_ROUTER, depositAmount);
+        data[1] = abi.encodeWithSignature(
+            "execute(bytes,bytes[])",
+            abi.encodePacked(bytes1(uint8(_V2_SWAP_EXACT_IN))),
+            inputs
+        );
+
+        address[] memory tokensToReturn = new address[](1);
+        tokensToReturn[0] = DAI;
+
+        // Calculate total inputs count dynamically: base layout (tokenIn, tokenOut, amountIn, targetsLength,
+        // targets[], dataLength, data[]) plus the optional trailing tokensToReturn block.
+        uint256 totalInputs = 4 + targets.length + 1;
+        for (uint256 i; i < data.length; ++i) {
+            totalInputs += 1 + (data[i].length + 31) / 32;
+        }
+        totalInputs += 1 + tokensToReturn.length;
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](totalInputs);
+
+        uint256 inputIndex = 0;
+        inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(USDC);
+        inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(USDT);
+        inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(depositAmount);
+        inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(uint256(targets.length));
+        for (uint256 i; i < targets.length; ++i) {
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(targets[i]);
+        }
+        inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(uint256(data.length));
+        for (uint256 i; i < data.length; ++i) {
+            bytes memory callData = data[i];
+            uint256 dataLen = callData.length;
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(dataLen);
+            uint256 chunksCount = (dataLen + 31) / 32;
+            for (uint256 j; j < chunksCount; ++j) {
+                bytes32 chunk;
+                assembly {
+                    chunk := mload(add(add(callData, 0x20), mul(j, 32)))
+                }
+                inputsByFuse[0][inputIndex++] = chunk;
+            }
+        }
+        // Optional trailing block: tokensToReturnLength, tokensToReturn[]
+        inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(uint256(tokensToReturn.length));
+        for (uint256 i; i < tokensToReturn.length; ++i) {
+            inputsByFuse[0][inputIndex++] = TypeConversionLib.toBytes32(tokensToReturn[i]);
+        }
+
+        // when
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_universalTokenSwapperFuse);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fusesToSet, inputsByFuse: inputsByFuse})
+            )
+        );
+        calls[1] = FuseAction(address(_universalTokenSwapperFuse), abi.encodeWithSignature("enterTransient()"));
+
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        // then
+        assertEq(ERC20(DAI).balanceOf(executor), 0, "Executor should have no DAI dust left");
+        assertEq(ERC20(DAI).balanceOf(_plasmaVault), daiDust, "Vault should have received the DAI dust");
+        assertGt(ERC20(USDT).balanceOf(_plasmaVault), 0, "Vault should have received USDT from the swap");
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {

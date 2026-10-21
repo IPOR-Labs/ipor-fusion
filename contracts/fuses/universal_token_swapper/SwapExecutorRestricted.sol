@@ -17,6 +17,9 @@ struct SwapExecutorData {
     address[] dexs;
     /// @notice Array of encoded function call data for each DEX
     bytes[] dexsData;
+    /// @notice Additional output/intermediate tokens the DEX calls may leave in the executor; the full balance
+    /// of each is transferred to the caller after the existing tokenIn/tokenOut sweep
+    address[] tokensToReturn;
 }
 
 /// @title SwapExecutorRestricted
@@ -102,6 +105,7 @@ contract SwapExecutorRestricted is ReentrancyGuard {
      * - `dexsData`: An array of encoded function call data corresponding to each DEX.
      * - `tokenIn`: The address of the input token.
      * - `tokenOut`: The address of the output token.
+     * - `tokensToReturn`: Additional tokens whose full balance is swept to the caller after the tokenIn/tokenOut sweep.
      * @custom:revert ArrayLengthMismatch When dexs and dexsData arrays have different lengths
      * @custom:revert SwapExecutorRestrictedInvalidSender When caller is not the RESTRICTED address
      * @custom:security External calls to DEX addresses are protected by nonReentrant modifier
@@ -136,6 +140,18 @@ contract SwapExecutorRestricted is ReentrancyGuard {
 
             if (balanceTokenOut > 0) {
                 IERC20(data_.tokenOut).safeTransfer(msg.sender, balanceTokenOut);
+            }
+        }
+
+        // Transfer every additional listed token to caller
+        uint256 tokensToReturnLength = data_.tokensToReturn.length;
+        address tokenToReturn;
+        uint256 tokenToReturnBalance;
+        for (uint256 i; i < tokensToReturnLength; ++i) {
+            tokenToReturn = data_.tokensToReturn[i];
+            tokenToReturnBalance = IERC20(tokenToReturn).balanceOf(address(this));
+            if (tokenToReturnBalance > 0) {
+                IERC20(tokenToReturn).safeTransfer(msg.sender, tokenToReturnBalance);
             }
         }
     }

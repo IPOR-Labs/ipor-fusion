@@ -26,9 +26,21 @@ import {NapierCollectFuse, NapierCollectFuseEnterData} from "../../../contracts/
 import {NapierUniversalRouterFuse} from "../../../contracts/fuses/napier/NapierUniversalRouterFuse.sol";
 import {NapierCombineFuse, NapierCombineFuseEnterData} from "../../../contracts/fuses/napier/NapierCombineFuse.sol";
 import {NapierSwapPtFuse, NapierSwapPtFuseData} from "../../../contracts/fuses/napier/NapierSwapPtFuse.sol";
-import {NapierSwapYtFuse, NapierSwapYtEnterFuseData, NapierSwapYtExitFuseData} from "../../../contracts/fuses/napier/NapierSwapYtFuse.sol";
-import {NapierZapDepositFuse, NapierZapDepositFuseEnterData, NapierZapDepositFuseExitData} from "../../../contracts/fuses/napier/NapierZapDepositFuse.sol";
-import {NapierDepositFuse, NapierDepositFuseEnterData, NapierDepositFuseExitData} from "../../../contracts/fuses/napier/NapierDepositFuse.sol";
+import {
+    NapierSwapYtFuse,
+    NapierSwapYtEnterFuseData,
+    NapierSwapYtExitFuseData
+} from "../../../contracts/fuses/napier/NapierSwapYtFuse.sol";
+import {
+    NapierZapDepositFuse,
+    NapierZapDepositFuseEnterData,
+    NapierZapDepositFuseExitData
+} from "../../../contracts/fuses/napier/NapierZapDepositFuse.sol";
+import {
+    NapierDepositFuse,
+    NapierDepositFuseEnterData,
+    NapierDepositFuseExitData
+} from "../../../contracts/fuses/napier/NapierDepositFuse.sol";
 
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
@@ -37,11 +49,22 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {Erc4626BalanceFuse} from "../../../contracts/fuses/erc4626/Erc4626BalanceFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FuseAction, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    FuseAction,
+    FeeConfig
+} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../../contracts/vaults/PlasmaVault.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -55,6 +78,16 @@ import {NapierConstants} from "./NapierConstants.sol";
 
 interface IPermit2 {
     function approve(address token, address spender, uint160 amount, uint48 expiration) external;
+
+    function allowance(
+        address owner,
+        address token,
+        address spender
+    ) external view returns (uint160 amount, uint48 expiration, uint48 nonce);
+}
+
+interface ITokiHookView {
+    function getTotalBalances(bytes32 id) external view returns (uint256 packed);
 }
 
 interface INapierFactory {
@@ -84,7 +117,6 @@ contract NapierFuseTest is Test {
     address private constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     address private constant POOL_MANAGER = 0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32;
 
-
     // IPOR role accounts
     address constant SET_ASSETS_PRICES_SOURCES_ACCOUNT = 0xF6a9bd8F6DC537675D499Ac1CA14f2c55d8b5569;
 
@@ -113,7 +145,6 @@ contract NapierFuseTest is Test {
     IporFusionAccessManager private _accessManager;
     PriceOracleMiddleware private _priceOracleMiddleware =
         PriceOracleMiddleware(0xd19D0C917844b996B09c48A9FF622177Af219C79);
-
 
     // Price feeds
     address private _ptLinearOracle;
@@ -418,11 +449,11 @@ contract NapierFuseTest is Test {
         _napierPtPriceFeed = address(new NapierPtLpPriceFeed(_ptLinearOracle));
         _napierLpPriceFeed = address(new NapierPtLpPriceFeed(_lpTwapOracle));
         _napierYtPriceFeed = address(new NapierYtLinearPriceFeed(_ptLinearOracle));
-        _gauntletUSDCPriceFeed = address(new ERC4626PriceFeed(GAUNTLET_USDC_PRIME)); 
+        _gauntletUSDCPriceFeed = address(new ERC4626PriceFeed(GAUNTLET_USDC_PRIME));
         address[] memory assets = new address[](4);
         assets[0] = principalToken;
         assets[1] = pool;
-        assets[2] = yt; 
+        assets[2] = yt;
         assets[3] = GAUNTLET_USDC_PRIME;
         address[] memory sources = new address[](4); // Price feed contract address
         sources[0] = _napierPtPriceFeed;
@@ -568,6 +599,45 @@ contract NapierFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
+    function test_Supply_RevertWhen_YtNotGranted() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        _regrantNapierSubstrates(pt.i_yt());
+
+        NapierSupplyFuseEnterData memory data = NapierSupplyFuseEnterData({
+            principalToken: pt,
+            tokenIn: pt.underlying(),
+            amountIn: 10 ** ERC20(pt.underlying()).decimals(),
+            minPrincipalsAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _supplyFuse, data: abi.encodeCall(NapierSupplyFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    /// @dev The YT check runs before the `amountIn == 0` early return (same order as NapierCombineFuse).
+    function test_Supply_RevertWhen_YtNotGranted_AmountInZero() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        _regrantNapierSubstrates(pt.i_yt());
+
+        NapierSupplyFuseEnterData memory data = NapierSupplyFuseEnterData({
+            principalToken: pt,
+            tokenIn: pt.underlying(),
+            amountIn: 0,
+            minPrincipalsAmount: 0
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _supplyFuse, data: abi.encodeCall(NapierSupplyFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
     function testFuzz_Supply_RevertWhen_TokenInNotGranted(address tokenIn) public {
         IPrincipalToken pt = IPrincipalToken(principalToken);
         address underlying = pt.underlying();
@@ -622,6 +692,7 @@ contract NapierFuseTest is Test {
 
     function _test_Supply(NapierSupplyFuseEnterData memory data) internal {
         uint256 ptBalanceBefore = data.principalToken.balanceOf(address(_plasmaVault));
+        uint256 ytBalanceBefore = ERC20(data.principalToken.i_yt()).balanceOf(address(_plasmaVault));
 
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({fuse: _supplyFuse, data: abi.encodeCall(NapierSupplyFuse.enter, data)});
@@ -645,6 +716,10 @@ contract NapierFuseTest is Test {
         // Then
         uint256 ptBalanceAfter = data.principalToken.balanceOf(address(_plasmaVault));
         assertApproxEqAbs(ptBalanceAfter, ptBalanceBefore + preview, 2, "PT balance");
+        // PT_SUPPLY mints the same amount of YT to the vault
+        uint256 ytBalanceAfter = ERC20(data.principalToken.i_yt()).balanceOf(address(_plasmaVault));
+        assertEq(ytBalanceAfter - ytBalanceBefore, ptBalanceAfter - ptBalanceBefore, "YT minted equals PT minted");
+        assertGt(ytBalanceAfter, ytBalanceBefore, "YT balance grows");
     }
 
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -655,7 +730,12 @@ contract NapierFuseTest is Test {
         IPrincipalToken pt = IPrincipalToken(principalToken);
 
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         // Get the actual PT balance after supply
@@ -759,7 +839,12 @@ contract NapierFuseTest is Test {
         IPrincipalToken pt = IPrincipalToken(principalToken);
 
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         uint256 ptBalance = pt.balanceOf(address(_plasmaVault));
@@ -810,7 +895,12 @@ contract NapierFuseTest is Test {
 
         // First, supply some PTs so the vault has a position to collect from
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         uint256 mockScale = (IResolver(pt.i_resolver()).scale() * 15) / 10;
@@ -861,6 +951,20 @@ contract NapierFuseTest is Test {
         PlasmaVault(_plasmaVault).execute(actions);
     }
 
+    function test_Collect_RevertWhen_UnderlyingNotGranted() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        _regrantNapierSubstrates(pt.underlying());
+
+        NapierCollectFuseEnterData memory data = NapierCollectFuseEnterData({principalToken: pt});
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _collectFuse, data: abi.encodeCall(NapierCollectFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
     /*                       COMBINE TESTS                       */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -871,7 +975,12 @@ contract NapierFuseTest is Test {
 
         // Arrange: ensure the vault holds PTs and YTs by supplying underlying
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
@@ -976,7 +1085,12 @@ contract NapierFuseTest is Test {
         address yt = pt.i_yt();
 
         _test_Supply(
-            NapierSupplyFuseEnterData({principalToken: pt, tokenIn: USDC, amountIn: 10 ** ERC20(USDC).decimals(), minPrincipalsAmount: 0})
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
         );
 
         uint256 ptBalanceBefore = pt.balanceOf(address(_plasmaVault));
@@ -999,6 +1113,168 @@ contract NapierFuseTest is Test {
         vm.prank(ALPHA);
         vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInsufficientAmount.selector);
         PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    /// @notice Arranges the vault with a PT+YT position, then has ALICE (a fixture actor, not a
+    /// live on-chain holder) mint PT+YT permissionlessly and donate `donatedPt`/`donatedYt` wei of
+    /// them directly to the shared Napier Universal Router, ahead of any vault combine. This
+    /// models the IL-8027 griefing donation: the router holds no balances at rest, so any nonzero
+    /// leftover is attacker-placed dust, not a legitimate protocol state.
+    function _arrangeCombineWithRouterDonation(
+        uint256 donatedPt,
+        uint256 donatedYt
+    ) internal returns (IPrincipalToken pt, uint256 principals) {
+        pt = IPrincipalToken(principalToken);
+        address yt = pt.i_yt();
+
+        _test_Supply(
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
+        );
+
+        uint256 ptBalance = pt.balanceOf(address(_plasmaVault));
+        uint256 ytBalance = ERC20(yt).balanceOf(address(_plasmaVault));
+        principals = ptBalance < ytBalance ? ptBalance : ytBalance;
+        assertGt(principals, 0, "Principals must be positive");
+
+        // Attacker mints PT+YT permissionlessly and donates to the shared router
+        vm.startPrank(ALICE);
+        pt.supply(10 ** ERC20(GAUNTLET_USDC_PRIME).decimals(), ALICE);
+        if (donatedPt > 0) {
+            ERC20(address(pt)).transfer(NapierConstants.ARB_UNIVERSAL_ROUTER, donatedPt);
+        }
+        if (donatedYt > 0) {
+            ERC20(yt).transfer(NapierConstants.ARB_UNIVERSAL_ROUTER, donatedYt);
+        }
+        vm.stopPrank();
+    }
+
+    /// @notice IL-8027 regression: a 1-wei PT donation to the shared router must not block the
+    /// vault's combine into the underlying token. Without the fix, `enter` reverts with the
+    /// router's `Zap_InsufficientYieldTokenBalance()` (`0x5cd0ea2f`) because `PT_COMBINE` resolves
+    /// `CONTRACT_BALANCE` against the router's whole (donated) PT balance.
+    function test_Combine_UnderlyingToken_WhenPtDonatedToRouter() public {
+        (IPrincipalToken pt, uint256 principals) = _arrangeCombineWithRouterDonation(1, 0);
+        address yt = pt.i_yt();
+
+        NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
+            principalToken: pt,
+            tokenOut: GAUNTLET_USDC_PRIME,
+            principals: principals,
+            minTokenOutAmount: 0
+        });
+
+        _test_Combine(data);
+
+        assertEq(pt.balanceOf(NapierConstants.ARB_UNIVERSAL_ROUTER), 1, "PT donation left on router");
+        assertEq(ERC20(yt).balanceOf(NapierConstants.ARB_UNIVERSAL_ROUTER), 0, "No YT donation on router");
+    }
+
+    /// @notice Same as above for the asset-out branch (`PT_COMBINE` + `VAULT_CONNECTOR_REDEEM`).
+    function test_Combine_AssetToken_WhenPtDonatedToRouter() public {
+        (IPrincipalToken pt, uint256 principals) = _arrangeCombineWithRouterDonation(1, 0);
+        address yt = pt.i_yt();
+
+        NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
+            principalToken: pt,
+            tokenOut: pt.i_asset(),
+            principals: principals,
+            minTokenOutAmount: 0
+        });
+
+        _test_Combine(data);
+
+        assertEq(pt.balanceOf(NapierConstants.ARB_UNIVERSAL_ROUTER), 1, "PT donation left on router");
+        assertEq(ERC20(yt).balanceOf(NapierConstants.ARB_UNIVERSAL_ROUTER), 0, "No YT donation on router");
+    }
+
+    /// @notice IL-8027 regression, mirrored direction: the fuse must combine exactly `principals`
+    /// even when the router also holds a matched PT+YT donation. Without the fix, `CONTRACT_BALANCE`
+    /// sweeps the donation into the combine and the vault receives `previewCombine(principals +
+    /// donated)` instead of `previewCombine(principals)`, breaking `_test_Combine`'s token-out
+    /// equality assertion.
+    function test_Combine_ConsumesExactPrincipals_WhenPtAndYtDonatedToRouter() public {
+        (IPrincipalToken pt, uint256 principals) = _arrangeCombineWithRouterDonation(1000, 1000);
+        address yt = pt.i_yt();
+
+        NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
+            principalToken: pt,
+            tokenOut: GAUNTLET_USDC_PRIME,
+            principals: principals,
+            minTokenOutAmount: 0
+        });
+
+        _test_Combine(data);
+
+        assertEq(pt.balanceOf(NapierConstants.ARB_UNIVERSAL_ROUTER), 1000, "PT donation left on router");
+        assertEq(ERC20(yt).balanceOf(NapierConstants.ARB_UNIVERSAL_ROUTER), 1000, "YT donation left on router");
+    }
+
+    /// @notice Guard, not a regression test: a YT-only donation never blocks the combine, on HEAD
+    /// or after the fix (the router's inequality guard only trips when PT exceeds YT).
+    function test_Combine_WhenYtDonatedToRouter() public {
+        (IPrincipalToken pt, uint256 principals) = _arrangeCombineWithRouterDonation(0, 1);
+        address yt = pt.i_yt();
+
+        NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
+            principalToken: pt,
+            tokenOut: GAUNTLET_USDC_PRIME,
+            principals: principals,
+            minTokenOutAmount: 0
+        });
+
+        _test_Combine(data);
+
+        assertEq(pt.balanceOf(NapierConstants.ARB_UNIVERSAL_ROUTER), 0, "No PT donation on router");
+        assertEq(ERC20(yt).balanceOf(NapierConstants.ARB_UNIVERSAL_ROUTER), 1, "YT donation left on router");
+    }
+
+    /// @notice Guard, not a regression test: the fuse's one-shot Permit2 allowance to the router is
+    /// zeroed after `enter`. Trivially true before the fix too (no allowance was ever granted), so
+    /// this only guards the reset added by the fix, not the IL-8027 defect itself.
+    function test_Combine_ResetsPermit2Allowance() public {
+        IPrincipalToken pt = IPrincipalToken(principalToken);
+        address yt = pt.i_yt();
+
+        _test_Supply(
+            NapierSupplyFuseEnterData({
+                principalToken: pt,
+                tokenIn: USDC,
+                amountIn: 10 ** ERC20(USDC).decimals(),
+                minPrincipalsAmount: 0
+            })
+        );
+
+        uint256 ptBalance = pt.balanceOf(address(_plasmaVault));
+        uint256 ytBalance = ERC20(yt).balanceOf(address(_plasmaVault));
+        uint256 principals = ptBalance < ytBalance ? ptBalance : ytBalance;
+        assertGt(principals, 0, "Principals must be positive");
+
+        NapierCombineFuseEnterData memory data = NapierCombineFuseEnterData({
+            principalToken: pt,
+            tokenOut: GAUNTLET_USDC_PRIME,
+            principals: principals,
+            minTokenOutAmount: 0
+        });
+
+        _test_Combine(data);
+
+        (uint160 ptAllowance, , ) = IPermit2(PERMIT2).allowance(
+            address(_plasmaVault),
+            address(pt),
+            NapierConstants.ARB_UNIVERSAL_ROUTER
+        );
+        (uint160 ytAllowance, , ) = IPermit2(PERMIT2).allowance(
+            address(_plasmaVault),
+            yt,
+            NapierConstants.ARB_UNIVERSAL_ROUTER
+        );
+        assertEq(ptAllowance, 0, "PT Permit2 allowance reset");
+        assertEq(ytAllowance, 0, "YT Permit2 allowance reset");
     }
 
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -1509,7 +1785,8 @@ contract NapierFuseTest is Test {
         NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
             pool: ITokiPoolToken(pool),
             amountIn: amountIn,
-            minLiquidity: 100
+            minLiquidity: 100,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -1529,7 +1806,8 @@ contract NapierFuseTest is Test {
         NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
             pool: ITokiPoolToken(makeAddr("badPool")),
             amountIn: 1,
-            minLiquidity: 0
+            minLiquidity: 0,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -1547,7 +1825,8 @@ contract NapierFuseTest is Test {
         NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
             pool: ITokiPoolToken(pool),
             amountIn: amountIn,
-            minLiquidity: type(uint256).max
+            minLiquidity: type(uint256).max,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -1556,6 +1835,88 @@ contract NapierFuseTest is Test {
         vm.prank(ALPHA);
         vm.expectRevert();
         PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_ZapDeposit_Enter_RevertWhen_InsufficientPrincipals() public {
+        uint256 amountIn = 25 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+
+        uint256 snap = vm.snapshotState();
+        (, uint256 quoted) = _zapDepositEnter(amountIn, 0, 0);
+        vm.revertToState(snap);
+        assertGt(quoted, 0, "quoted principals");
+
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: amountIn,
+            minLiquidity: 0,
+            minPrincipalsAmount: quoted + 1
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amountIn);
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInsufficientAmount.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_ZapDeposit_Enter_WhenPrincipalsAtFloor() public {
+        uint256 amountIn = 25 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+
+        uint256 snap = vm.snapshotState();
+        (, uint256 quoted) = _zapDepositEnter(amountIn, 0, 0);
+        vm.revertToState(snap);
+
+        (, uint256 principals) = _zapDepositEnter(amountIn, 0, quoted);
+        assertEq(principals, quoted, "principals at floor");
+    }
+
+    function test_ZapDeposit_Enter_RevertWhen_PoolSkewedBelowPrincipalsFloor() public {
+        uint256 amountIn = 25 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+
+        uint256 snap = vm.snapshotState();
+        (uint256 quotedLiquidity, uint256 quoted) = _zapDepositEnter(amountIn, 0, 0);
+        vm.revertToState(snap);
+
+        _skewPoolSellUnderlying(1_000);
+
+        uint256 skewSnap = vm.snapshotState();
+        (uint256 skewedLiquidity, uint256 skewedPrincipals) = _zapDepositEnter(amountIn, 0, 0);
+        vm.revertToState(skewSnap);
+
+        uint256 floor = (quoted * 95) / 100;
+        assertLt(skewedPrincipals, floor, "skewed pool retains >5% fewer YT than quoted");
+        assertGe(skewedLiquidity, (quotedLiquidity * 995) / 1000, "LP leg still within a 0.5% minLiquidity");
+
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: amountIn,
+            minLiquidity: 0,
+            minPrincipalsAmount: floor
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amountIn);
+        vm.prank(ALPHA);
+        vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInsufficientAmount.selector);
+        PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    function test_ZapDeposit_Enter_WhenPoolSkewedWithinPrincipalsFloor() public {
+        uint256 amountIn = 25 * 10 ** ERC20(GAUNTLET_USDC_PRIME).decimals();
+
+        uint256 snap = vm.snapshotState();
+        (, uint256 quoted) = _zapDepositEnter(amountIn, 0, 0);
+        vm.revertToState(snap);
+
+        _skewPoolSellUnderlying(1_000);
+
+        (, uint256 principals) = _zapDepositEnter(amountIn, 0, (quoted * 70) / 100);
+        assertGe(principals, (quoted * 70) / 100, "above floor");
+        assertLt(principals, quoted, "skew reduced the YT leg");
     }
 
     function testFuzz_ZapDeposit_Enter_RevertWhen_TokenNotGranted(uint8 omitIndex) public {
@@ -1571,7 +1932,8 @@ contract NapierFuseTest is Test {
         NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
             pool: ITokiPoolToken(pool),
             amountIn: 1,
-            minLiquidity: 0
+            minLiquidity: 0,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -1590,7 +1952,8 @@ contract NapierFuseTest is Test {
         NapierZapDepositFuseEnterData memory enterData = NapierZapDepositFuseEnterData({
             pool: ITokiPoolToken(pool),
             amountIn: amountIn,
-            minLiquidity: 100
+            minLiquidity: 100,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -1637,7 +2000,8 @@ contract NapierFuseTest is Test {
         NapierZapDepositFuseEnterData memory enterData = NapierZapDepositFuseEnterData({
             pool: ITokiPoolToken(pool),
             amountIn: amountIn,
-            minLiquidity: 100
+            minLiquidity: 100,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -1700,7 +2064,8 @@ contract NapierFuseTest is Test {
         NapierZapDepositFuseEnterData memory enterData = NapierZapDepositFuseEnterData({
             pool: ITokiPoolToken(pool),
             amountIn: amountIn,
-            minLiquidity: 100
+            minLiquidity: 100,
+            minPrincipalsAmount: 0
         });
 
         FuseAction[] memory actions = new FuseAction[](1);
@@ -1996,6 +2361,52 @@ contract NapierFuseTest is Test {
         vm.prank(ALPHA);
         vm.expectRevert(NapierUniversalRouterFuse.NapierFuseInvalidToken.selector);
         PlasmaVault(_plasmaVault).execute(actions);
+    }
+
+    /// @dev Live pool reserves as the router's split handler reads them (underlying shares, PT)
+    function _poolReserves() private view returns (uint256 balance0, uint256 balance1) {
+        PoolKey memory key = ITokiPoolToken(pool).i_poolKey();
+        uint256 packed = ITokiHookView(address(key.hooks)).getTotalBalances(keccak256(abi.encode(key)));
+        balance0 = packed >> 128;
+        balance1 = packed & type(uint128).max;
+    }
+
+    /// @dev Executes NapierZapDepositFuse.enter for `amountIn` and returns the liquidity/YT deltas
+    function _zapDepositEnter(
+        uint256 amountIn,
+        uint256 minLiquidity,
+        uint256 minPrincipalsAmount
+    ) private returns (uint256 liquidity, uint256 principals) {
+        address yt = IPrincipalToken(principalToken).i_yt();
+        deal(GAUNTLET_USDC_PRIME, address(_plasmaVault), amountIn);
+        uint256 lpBefore = ERC20(pool).balanceOf(address(_plasmaVault));
+        uint256 ytBefore = ERC20(yt).balanceOf(address(_plasmaVault));
+
+        NapierZapDepositFuseEnterData memory data = NapierZapDepositFuseEnterData({
+            pool: ITokiPoolToken(pool),
+            amountIn: amountIn,
+            minLiquidity: minLiquidity,
+            minPrincipalsAmount: minPrincipalsAmount
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({fuse: _zapDepositFuse, data: abi.encodeCall(NapierZapDepositFuse.enter, data)});
+
+        vm.prank(ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+
+        liquidity = ERC20(pool).balanceOf(address(_plasmaVault)) - lpBefore;
+        principals = ERC20(yt).balanceOf(address(_plasmaVault)) - ytBefore;
+    }
+
+    /// @dev Third party sells `bps` of the pool's underlying reserve into the pool right before the vault's zap
+    function _skewPoolSellUnderlying(uint256 bps) private {
+        (uint256 balance0, ) = _poolReserves();
+        uint256 amount = (balance0 * bps) / 10_000;
+        deal(GAUNTLET_USDC_PRIME, ALICE, amount);
+        vm.startPrank(ALICE);
+        NapierHelper.swap(NapierConstants.ARB_UNIVERSAL_ROUTER, ITokiPoolToken(pool).i_poolKey(), true, amount, 0);
+        vm.stopPrank();
     }
 
     function _regrantNapierSubstrates(address omit) private {

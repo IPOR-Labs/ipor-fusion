@@ -27,21 +27,29 @@ contract VeloraSwapExecutor {
     ///      3. Resets the approval to 0 (security best practice)
     ///      4. Transfers any remaining `tokenIn_` balance back to the caller (PlasmaVault)
     ///      5. Transfers all `tokenOut_` balance to the caller (PlasmaVault)
+    ///      6. Transfers the full balance of every entry of `tokensToReturn_` to the caller (PlasmaVault)
     ///      Side Effects:
-    ///      - Token transfers: All tokens held by this contract after the swap are transferred to msg.sender
+    ///      - Token transfers: only `tokenIn_`, `tokenOut_` and the listed `tokensToReturn_` are transferred to msg.sender;
+    ///        any other token the route leaves here stays and is claimable by the next `execute` caller
     ///      - Approval changes: tokenIn_ approval is set to amountIn_, then reset to 0
-    ///      - No return value: This function does not return any value
+    ///      - Return values: the amounts of `tokenIn_` and `tokenOut_` transferred to the caller (added without
+    ///        changing the selector); the fuse measures the swap with them instead of with the vault balances
     /// @custom:security Token approval operations require careful handling. Approval is reset to 0 after swap to prevent unauthorized spending.
     /// @param tokenIn_ The input token address
     /// @param tokenOut_ The output token address
     /// @param amountIn_ The amount of tokenIn to approve for the swap
     /// @param swapCallData_ Raw calldata from Velora/ParaSwap API
+    /// @param tokensToReturn_ Additional output/intermediate tokens the router may leave in this executor;
+    ///        the full balance of each is transferred to the caller after the existing tokenIn_/tokenOut_ sweeps
+    /// @return tokenInReturned Amount of `tokenIn_` transferred to the caller (includes any pre-existing balance)
+    /// @return tokenOutReturned Amount of `tokenOut_` transferred to the caller (includes any pre-existing balance)
     function execute(
         address tokenIn_,
         address tokenOut_,
         uint256 amountIn_,
-        bytes calldata swapCallData_
-    ) external {
+        bytes calldata swapCallData_,
+        address[] calldata tokensToReturn_
+    ) external returns (uint256 tokenInReturned, uint256 tokenOutReturned) {
         // Approve Augustus v6.2 to spend tokenIn
         IERC20(tokenIn_).forceApprove(AUGUSTUS_V6_2, amountIn_);
 
@@ -59,12 +67,26 @@ contract VeloraSwapExecutor {
         uint256 tokenInBalance = IERC20(tokenIn_).balanceOf(address(this));
         if (tokenInBalance > 0) {
             IERC20(tokenIn_).safeTransfer(msg.sender, tokenInBalance);
+            tokenInReturned = tokenInBalance;
         }
 
         // Transfer tokenOut to caller (PlasmaVault)
         uint256 tokenOutBalance = IERC20(tokenOut_).balanceOf(address(this));
         if (tokenOutBalance > 0) {
             IERC20(tokenOut_).safeTransfer(msg.sender, tokenOutBalance);
+            tokenOutReturned = tokenOutBalance;
+        }
+
+        // Transfer every additional listed token to caller (PlasmaVault)
+        uint256 tokensToReturnLength = tokensToReturn_.length;
+        address tokenToReturn;
+        uint256 tokenToReturnBalance;
+        for (uint256 i; i < tokensToReturnLength; ++i) {
+            tokenToReturn = tokensToReturn_[i];
+            tokenToReturnBalance = IERC20(tokenToReturn).balanceOf(address(this));
+            if (tokenToReturnBalance > 0) {
+                IERC20(tokenToReturn).safeTransfer(msg.sender, tokenToReturnBalance);
+            }
         }
     }
 }

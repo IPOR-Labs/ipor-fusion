@@ -3,15 +3,22 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
-import {EulerV2SwapDeployFuse, EulerV2SwapDeployFuseEnterData, EulerV2SwapDeployFuseExitData} from "../../../contracts/fuses/euler/EulerV2SwapDeployFuse.sol";
+import {
+    EulerV2SwapDeployFuse,
+    EulerV2SwapDeployFuseEnterData,
+    EulerV2SwapDeployFuseExitData
+} from "../../../contracts/fuses/euler/EulerV2SwapDeployFuse.sol";
 import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
 import {IEulerV2Swap} from "../../../contracts/fuses/euler/ext/IEulerV2Swap.sol";
 import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
+
+import {EulerV2SwapCurveLib} from "../../../contracts/fuses/euler/EulerV2SwapCurveLib.sol";
 
 import {EulerV2SwapTestVault} from "./mocks/EulerV2SwapTestVault.sol";
 import {MockEVC} from "./mocks/MockEVC.sol";
 import {MockEulerV2SwapFactory} from "./mocks/MockEulerV2SwapFactory.sol";
 import {MockEulerV2SwapPool} from "./mocks/MockEulerV2SwapPool.sol";
+import {MockPriceOracleMiddlewareForEulerSwap} from "./mocks/MockPriceOracleMiddlewareForEulerSwap.sol";
 
 /// @title EulerV2SwapDeployFuse Unit Tests
 /// @notice Tests the deploy/exit lifecycle of the EulerV2SwapDeployFuse executed via delegatecall
@@ -19,12 +26,14 @@ import {MockEulerV2SwapPool} from "./mocks/MockEulerV2SwapPool.sol";
 contract EulerV2SwapDeployFuseTest is Test {
     uint256 public constant MARKET_ID = 11; // EULER_V2
     bytes1 public constant SUB_ACCOUNT = 0x01;
+    uint256 public constant PRICE_DEVIATION_WAD = 1e16; // 1%
 
     EulerV2SwapDeployFuse public fuse;
     EulerV2SwapTestVault public harness;
     MockEVC public evc;
     MockEulerV2SwapFactory public factory;
     MockEulerV2SwapPool public pool;
+    MockPriceOracleMiddlewareForEulerSwap public oracle;
 
     address public eulerAccount;
     address public predictedPool;
@@ -52,7 +61,7 @@ contract EulerV2SwapDeployFuseTest is Test {
         evc = new MockEVC();
         factory = new MockEulerV2SwapFactory();
         harness = new EulerV2SwapTestVault();
-        fuse = new EulerV2SwapDeployFuse(MARKET_ID, address(evc), address(factory));
+        fuse = new EulerV2SwapDeployFuse(MARKET_ID, address(evc), address(factory), PRICE_DEVIATION_WAD);
 
         // Under delegatecall, address(this) inside the fuse == harness.
         eulerAccount = EulerFuseLib.generateSubAccountAddress(address(harness), SUB_ACCOUNT);
@@ -65,6 +74,18 @@ contract EulerV2SwapDeployFuseTest is Test {
         _grantAllSubstrates();
 
         factory.setComputeResult(predictedPool);
+
+        // Curve pricing guard wiring: supplyVault0/1 -> asset0/asset1 (mirrors EulerSwap.getAssets),
+        // asset0/asset1 decimals, and an oracle quoting both at parity (1:1, both 18 decimals) so the
+        // default fixture's priceX == priceY == 1e18 curve sits exactly at the oracle ratio.
+        oracle = new MockPriceOracleMiddlewareForEulerSwap();
+        harness.setPriceOracle(address(oracle));
+        vm.mockCall(supplyVault0, abi.encodeWithSignature("asset()"), abi.encode(asset0));
+        vm.mockCall(supplyVault1, abi.encodeWithSignature("asset()"), abi.encode(asset1));
+        vm.mockCall(asset0, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
+        vm.mockCall(asset1, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
+        oracle.setAssetPrice(asset0, 1e18, 18);
+        oracle.setAssetPrice(asset1, 1e18, 18);
     }
 
     // ============================================
@@ -102,7 +123,18 @@ contract EulerV2SwapDeployFuseTest is Test {
         sp.feeRecipient = address(0);
 
         IEulerV2Swap.DynamicParams memory dp;
+        dp.equilibriumReserve0 = uint112(1e18);
+        dp.equilibriumReserve1 = uint112(1e18);
+        dp.priceX = uint80(1e18);
+        dp.priceY = uint80(1e18);
+        dp.concentrationX = uint64(5e17);
+        dp.concentrationY = uint64(5e17);
+        dp.fee0 = uint64(1e15);
+        dp.fee1 = uint64(1e15);
+
         IEulerV2Swap.InitialState memory init;
+        init.reserve0 = uint112(1e18);
+        init.reserve1 = uint112(1e18);
 
         data = EulerV2SwapDeployFuseEnterData({
             staticParams: sp,
@@ -115,10 +147,7 @@ contract EulerV2SwapDeployFuseTest is Test {
     }
 
     function _enter(EulerV2SwapDeployFuseEnterData memory data) internal returns (address deployed) {
-        bytes memory ret = harness.delegateExecute(
-            address(fuse),
-            abi.encodeCall(EulerV2SwapDeployFuse.enter, (data))
-        );
+        bytes memory ret = harness.delegateExecute(address(fuse), abi.encodeCall(EulerV2SwapDeployFuse.enter, (data)));
         deployed = abi.decode(ret, (address));
     }
 
@@ -134,12 +163,19 @@ contract EulerV2SwapDeployFuseTest is Test {
 
     function test_constructorRevertsWhenEVCIsZero() public {
         vm.expectRevert(Errors.WrongAddress.selector);
-        new EulerV2SwapDeployFuse(MARKET_ID, address(0), address(factory));
+        new EulerV2SwapDeployFuse(MARKET_ID, address(0), address(factory), PRICE_DEVIATION_WAD);
     }
 
     function test_constructorRevertsWhenFactoryIsZero() public {
         vm.expectRevert(Errors.WrongAddress.selector);
-        new EulerV2SwapDeployFuse(MARKET_ID, address(evc), address(0));
+        new EulerV2SwapDeployFuse(MARKET_ID, address(evc), address(0), PRICE_DEVIATION_WAD);
+    }
+
+    function test_constructorRevertsWhenPriceDeviationAbove100Percent() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(EulerV2SwapCurveLib.EulerV2SwapPriceDeviationTooHigh.selector, 1e18 + 1)
+        );
+        new EulerV2SwapDeployFuse(MARKET_ID, address(evc), address(factory), 1e18 + 1);
     }
 
     function test_constructorSetsImmutables() public view {
@@ -147,6 +183,7 @@ contract EulerV2SwapDeployFuseTest is Test {
         assertEq(fuse.MARKET_ID(), MARKET_ID, "MARKET_ID");
         assertEq(address(fuse.EVC()), address(evc), "EVC");
         assertEq(address(fuse.FACTORY()), address(factory), "FACTORY");
+        assertEq(fuse.PRICE_DEVIATION_WAD(), PRICE_DEVIATION_WAD, "PRICE_DEVIATION_WAD");
     }
 
     // ============================================
@@ -194,6 +231,111 @@ contract EulerV2SwapDeployFuseTest is Test {
         assertEq(deployed, predictedPool, "supply-only pool deploys");
         assertEq(factory.deployCallCount(), 1, "deployPool called once");
         assertTrue(evc.isAccountOperatorAuthorized(eulerAccount, predictedPool), "operator authorized");
+    }
+
+    /// @dev Grants supply substrates with the given collateral flags plus both borrow substrates.
+    function _grantWithCollateralFlags(bool collateral0, bool collateral1) internal {
+        bytes32[] memory substrates = new bytes32[](4);
+        substrates[0] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({
+                eulerVault: supplyVault0,
+                isCollateral: collateral0,
+                canBorrow: false,
+                subAccounts: SUB_ACCOUNT
+            })
+        );
+        substrates[1] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({
+                eulerVault: supplyVault1,
+                isCollateral: collateral1,
+                canBorrow: false,
+                subAccounts: SUB_ACCOUNT
+            })
+        );
+        substrates[2] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: borrowVault0, isCollateral: false, canBorrow: true, subAccounts: SUB_ACCOUNT})
+        );
+        substrates[3] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: borrowVault1, isCollateral: false, canBorrow: true, subAccounts: SUB_ACCOUNT})
+        );
+        _grantSubstrates(substrates);
+    }
+
+    // ============================================
+    // Enter - reverts: collateral flag required where the pool enables collateral (IL-8758)
+    // ============================================
+
+    /// @dev EulerSwapManagement.activate enables supplyVault0 as collateral iff borrowVault1 != 0, which
+    ///      bypasses EulerV2CollateralFuse, so isCollateral=false on supplyVault0 must be rejected.
+    function test_enterRevertsSupplyVault0NotCollateralWhenBorrowVault1Set() public {
+        _grantWithCollateralFlags(false, true);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapDeployFuse.EulerV2SwapDeployFuseUnsupportedVault.selector,
+                supplyVault0,
+                SUB_ACCOUNT
+            )
+        );
+        _enterExpectRevert(data);
+    }
+
+    /// @dev Mirror: supplyVault1 is enabled as collateral iff borrowVault0 != 0.
+    function test_enterRevertsSupplyVault1NotCollateralWhenBorrowVault0Set() public {
+        _grantWithCollateralFlags(true, false);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapDeployFuse.EulerV2SwapDeployFuseUnsupportedVault.selector,
+                supplyVault1,
+                SUB_ACCOUNT
+            )
+        );
+        _enterExpectRevert(data);
+    }
+
+    /// @dev One-sided pool (only borrowVault0): the pool enables supplyVault1 only, so supplyVault0 may be
+    ///      a plain supply substrate.
+    function test_enterAcceptsOneSidedBorrowWithoutCollateralOnUnusedSide() public {
+        _grantWithCollateralFlags(false, true);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.staticParams.borrowVault1 = address(0);
+
+        _enter(data);
+    }
+
+    /// @dev Mirror one-sided pool (only borrowVault1): the pool enables supplyVault0 only, so supplyVault1 may
+    ///      be a plain supply substrate.
+    function test_enterAcceptsMirrorOneSidedBorrowWithoutCollateralOnUnusedSide() public {
+        _grantWithCollateralFlags(true, false);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.staticParams.borrowVault0 = address(0);
+
+        _enter(data);
+    }
+
+    /// @dev Supply-only pool: no collateral is enabled by the pool, so isCollateral=false is fine.
+    function test_enterHappyPathSupplyOnlyNoCollateralFlags() public {
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: supplyVault0, isCollateral: false, canBorrow: false, subAccounts: SUB_ACCOUNT})
+        );
+        substrates[1] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: supplyVault1, isCollateral: false, canBorrow: false, subAccounts: SUB_ACCOUNT})
+        );
+        _grantSubstrates(substrates);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.staticParams.borrowVault0 = address(0);
+        data.staticParams.borrowVault1 = address(0);
+
+        _enter(data);
     }
 
     // ============================================
@@ -348,6 +490,161 @@ contract EulerV2SwapDeployFuseTest is Test {
             )
         );
         _enterExpectRevert(data);
+    }
+
+    // ============================================
+    // Enter - reverts: curve pricing guard (IL-8039)
+    // ============================================
+
+    function test_enterRevertsCurvePriceAboveOracleBand() public {
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.dynamicParams.priceX = uint80(1.02e18); // oracle ratio is 1:1, band is 1%
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapCurveLib.EulerV2SwapCurvePriceOutOfBounds.selector,
+                uint256(1.02e18),
+                PRICE_DEVIATION_WAD
+            )
+        );
+        _enterExpectRevert(data);
+        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
+    }
+
+    function test_enterRevertsCurvePriceBelowOracleBand() public {
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.dynamicParams.priceX = uint80(0.98e18);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapCurveLib.EulerV2SwapCurvePriceOutOfBounds.selector,
+                uint256(0.98e18),
+                PRICE_DEVIATION_WAD
+            )
+        );
+        _enterExpectRevert(data);
+        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
+    }
+
+    /// @dev Boundary/positive control: the band is inclusive at +-1%. This passes both before and after
+    ///      the fix (the guard did not exist before) and merely guards against an off-by-one at the edges.
+    function test_enterAcceptsCurvePriceAtBandEdges() public {
+        EulerV2SwapDeployFuseEnterData memory dataHigh = _buildEnterData();
+        dataHigh.dynamicParams.priceX = uint80(1.01e18);
+        address deployedHigh = _enter(dataHigh);
+        assertEq(deployedHigh, predictedPool, "upper edge deploys");
+
+        EulerV2SwapDeployFuseEnterData memory dataLow = _buildEnterData();
+        dataLow.dynamicParams.priceX = uint80(0.99e18);
+        address deployedLow = _enter(dataLow);
+        assertEq(deployedLow, predictedPool, "lower edge deploys");
+
+        assertEq(factory.deployCallCount(), 2, "deployPool called twice");
+    }
+
+    function test_enterRevertsCurvePriceZero() public {
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.dynamicParams.priceX = 0;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapCurveLib.EulerV2SwapCurvePriceOutOfBounds.selector,
+                uint256(0),
+                PRICE_DEVIATION_WAD
+            )
+        );
+        _enterExpectRevert(data);
+        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
+    }
+
+    /// @dev priceX/priceY embeds 10^(dec1-dec0): a USDC(6)/WETH(18) pool at 1 WETH = 2000 USDC needs
+    ///      priceX/priceY = 1e18 / (2000 * 1e6) = 5e8. The raw 1:1 ratio (which would be correct for two
+    ///      18-decimal assets) must be rejected once decimals differ.
+    function test_enterUsesDecimalsNormalisedRatio() public {
+        vm.mockCall(asset0, abi.encodeWithSignature("decimals()"), abi.encode(uint8(6)));
+        vm.mockCall(asset1, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
+        oracle.setAssetPrice(asset0, 1e18, 18); // 1 USD
+        oracle.setAssetPrice(asset1, 2000e18, 18); // 2000 USD
+
+        // priceX/priceY = 5e18 / 1e10 = 5e8, matching 1e18 / (2000 * 1e6). Scaled to keep both values
+        // well within uint80's ~1.2089e24 range (the ratio, not the absolute scale, is what matters).
+        EulerV2SwapDeployFuseEnterData memory consistent = _buildEnterData();
+        consistent.dynamicParams.priceX = uint80(5e18);
+        consistent.dynamicParams.priceY = uint80(1e10);
+        address deployed = _enter(consistent);
+        assertEq(deployed, predictedPool, "decimals-normalised ratio accepted");
+
+        EulerV2SwapDeployFuseEnterData memory raw = _buildEnterData();
+        raw.dynamicParams.priceX = uint80(1e18);
+        raw.dynamicParams.priceY = uint80(1e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapCurveLib.EulerV2SwapCurvePriceOutOfBounds.selector,
+                uint256(2e9),
+                PRICE_DEVIATION_WAD
+            )
+        );
+        _enterExpectRevert(raw);
+    }
+
+    function test_enterRevertsInitialStateNotAtEquilibriumReserve0() public {
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.initialState.reserve0 = uint112(data.dynamicParams.equilibriumReserve0) - 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapCurveLib.EulerV2SwapInitialStateNotAtEquilibrium.selector,
+                data.initialState.reserve0,
+                data.initialState.reserve1,
+                data.dynamicParams.equilibriumReserve0,
+                data.dynamicParams.equilibriumReserve1
+            )
+        );
+        _enterExpectRevert(data);
+        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
+    }
+
+    function test_enterRevertsInitialStateNotAtEquilibriumReserve1() public {
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.initialState.reserve1 = uint112(data.dynamicParams.equilibriumReserve1) - 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapCurveLib.EulerV2SwapInitialStateNotAtEquilibrium.selector,
+                data.initialState.reserve0,
+                data.initialState.reserve1,
+                data.dynamicParams.equilibriumReserve0,
+                data.dynamicParams.equilibriumReserve1
+            )
+        );
+        _enterExpectRevert(data);
+        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
+    }
+
+    function test_enterRevertsWhenOraclePriceZero() public {
+        oracle.setAssetPrice(asset1, 0, 18);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+
+        vm.expectRevert(abi.encodeWithSelector(EulerV2SwapCurveLib.EulerV2SwapUnsupportedOraclePrice.selector, asset1));
+        _enterExpectRevert(data);
+        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
+    }
+
+    function test_enterRevertsCurveGuardBeforeOperatorInstall() public {
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.dynamicParams.priceX = uint80(1.02e18);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapCurveLib.EulerV2SwapCurvePriceOutOfBounds.selector,
+                uint256(1.02e18),
+                PRICE_DEVIATION_WAD
+            )
+        );
+        _enterExpectRevert(data);
+
+        assertEq(evc.setOperatorCallCount(), 0, "setAccountOperator must not run before the curve guard");
     }
 
     // ============================================

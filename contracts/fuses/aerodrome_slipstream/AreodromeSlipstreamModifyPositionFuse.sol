@@ -10,9 +10,14 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrateType,
+    AreodromeSlipstreamSubstrate
+} from "./AreodromeSlipstreamLib.sol";
 
 /// @title AreodromeSlipstreamModifyPositionFuseEnterData
 /// @notice Input data structure for increasing liquidity in an existing Aerodrome Slipstream position
@@ -61,6 +66,10 @@ struct AreodromeSlipstreamModifyPositionFuseExitData {
 ///      It validates that the pool is granted as a substrate. Token addresses are derived from the position
 ///      (not user input) to ensure correct approvals and avoid mismatches.
 ///      Supports both standard function calls and transient storage-based calls.
+///      Untracked vault-owned NFTs (minted by a NewPosition fuse built before the tracked list, 2026-01, or donated)
+///      cannot be modified with this fuse. Unwind them (decreaseLiquidity + collect) with the previous Modify fuse
+///      before `removeFuses`; `NewPositionFuse.exit` can then burn the empty NFT. Swap the NewPosition, Modify,
+///      Collect and gauge fuses together; never pair this fuse with a NewPosition fuse that does not write the list.
 /// @author IPOR Labs
 contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
@@ -90,6 +99,10 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     /// @notice Thrown when attempting to modify a position in a pool that is not granted as a substrate
     /// @param pool The address of the pool that is not supported
     error AreodromeSlipstreamModifyPositionFuseUnsupportedPool(address pool);
+
+    /// @notice Thrown when the tokenId is not in the vault's tracked Aerodrome Slipstream position list
+    /// @param tokenId The NFT token ID that is not tracked
+    error AreodromeSlipstreamModifyPositionFuseTokenIdNotTracked(uint256 tokenId);
 
     /// @notice Thrown when an invalid address (zero address) is provided
     error InvalidAddress();
@@ -155,11 +168,13 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     /// @return amount1 The amount of token1 actually used to increase liquidity
     /// @custom:revert DeadlineExpired When deadline is in the past
     /// @custom:revert InvalidAmount When both amount0Desired and amount1Desired are zero
-    /// @custom:revert InvalidTokenId When tokenId is zero
+    /// @custom:revert AreodromeSlipstreamModifyPositionFuseTokenIdNotTracked When tokenId is not in the vault's tracked position list
     /// @custom:revert AreodromeSlipstreamModifyPositionFuseUnsupportedPool When pool is not granted as a substrate
     function enter(
         AreodromeSlipstreamModifyPositionFuseEnterData memory data_
     ) public returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
+        _requireTracked(data_.tokenId);
+
         // Validate deadline is not in the past
         if (data_.deadline < block.timestamp) {
             revert DeadlineExpired();
@@ -244,17 +259,23 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
     /// @notice Decreases liquidity in an existing position
     /// @dev Validates liquidity amount and pool before decreasing liquidity.
     ///      Returns the amounts of token0 and token1 received from the position.
+    ///      Untracked vault-owned NFTs (minted by a NewPosition fuse built before the tracked list, 2026-01, or donated)
+    ///      cannot be modified with this fuse. Unwind them (decreaseLiquidity + collect) with the previous Modify fuse
+    ///      before `removeFuses`; `NewPositionFuse.exit` can then burn the empty NFT. Swap the NewPosition, Modify,
+    ///      Collect and gauge fuses together; never pair this fuse with a NewPosition fuse that does not write the list.
     /// @param data_ The data containing tokenId, liquidity amount, minimum amounts, and deadline
     /// @return tokenId The ID of the token position
     /// @return amount0 The amount of token0 received from decreasing liquidity
     /// @return amount1 The amount of token1 received from decreasing liquidity
     /// @custom:revert DeadlineExpired When deadline is in the past
     /// @custom:revert InvalidAmount When liquidity is zero
-    /// @custom:revert InvalidTokenId When tokenId is zero
+    /// @custom:revert AreodromeSlipstreamModifyPositionFuseTokenIdNotTracked When tokenId is not in the vault's tracked position list
     /// @custom:revert AreodromeSlipstreamModifyPositionFuseUnsupportedPool When pool is not granted as a substrate
     function exit(
         AreodromeSlipstreamModifyPositionFuseExitData memory data_
     ) public returns (uint256 tokenId, uint256 amount0, uint256 amount1) {
+        _requireTracked(data_.tokenId);
+
         // Validate deadline is not in the past
         if (data_.deadline < block.timestamp) {
             revert DeadlineExpired();
@@ -393,5 +414,23 @@ contract AreodromeSlipstreamModifyPositionFuse is IFuseCommon {
         }
 
         return (token0, token1);
+    }
+
+    /// @notice Reverts unless the tokenId is registered in the vault's tracked Aerodrome Slipstream position list
+    /// @dev NPM increaseLiquidity does not check ownership, and the balance fuse values only tracked positions.
+    ///      Only tokenIds registered by the NewPosition fuse (and therefore owned and valued by the vault) can be
+    ///      modified or staked.
+    ///      Untracked vault-owned NFTs (minted by a NewPosition fuse built before the tracked list, 2026-01, or donated)
+    ///      cannot be modified with this fuse. Unwind them (decreaseLiquidity + collect) with the previous Modify fuse
+    ///      before `removeFuses`; `NewPositionFuse.exit` can then burn the empty NFT. Swap the NewPosition, Modify,
+    ///      Collect and gauge fuses together; never pair this fuse with a NewPosition fuse that does not write the list.
+    function _requireTracked(uint256 tokenId_) private view {
+        FuseStorageLib.AerodromeSlipstreamTokenIds storage tokensIds = FuseStorageLib.getAerodromeSlipstreamTokenIds();
+
+        uint256 index = tokensIds.indexes[tokenId_];
+
+        if (index >= tokensIds.tokenIds.length || tokensIds.tokenIds[index] != tokenId_) {
+            revert AreodromeSlipstreamModifyPositionFuseTokenIdNotTracked(tokenId_);
+        }
     }
 }

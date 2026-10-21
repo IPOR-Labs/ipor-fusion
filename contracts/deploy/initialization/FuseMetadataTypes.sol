@@ -51,6 +51,7 @@ library FuseMetadataTypes {
     string public constant FUSE_METADATA_PROTOCOL_INFO_META_MORPHO_CODE = "META_MORPHO";
     string public constant FUSE_METADATA_PROTOCOL_INFO_UNISWAP_CODE = "UNISWAP";
     string public constant FUSE_METADATA_PROTOCOL_INFO_PENDLE_CODE = "PENDLE";
+    string public constant FUSE_METADATA_PROTOCOL_INFO_HYPERCORE_CODE = "HYPERCORE";
 
     function getAllFuseMetadataTypeIds() internal pure returns (uint16[] memory) {
         uint16[] memory fuseMetadataTypeIds = new uint16[](5);

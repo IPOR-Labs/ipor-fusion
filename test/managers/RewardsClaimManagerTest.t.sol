@@ -8,6 +8,7 @@ import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaim
 import {MockPlasmaVault} from "./MockPlasmaVault.sol";
 import {MockToken} from "./MockToken.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
+import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 contract RewardsClaimManagerTest is Test {
     uint64 private constant _REWARD_MANAGER_ROLE = 1001;
 
@@ -271,6 +272,24 @@ contract RewardsClaimManagerTest is Test {
 
         assertEq(isSupportedBefore, false, "Fuse should not be supported before");
         assertEq(isSupportedAfter, false, "Fuse should not be supported after");
+    }
+
+    function testShouldRevertWhenAddRewardFusesWithZeroAddress() external {
+        //given
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(0);
+
+        //when
+        vm.prank(_userOne);
+        vm.expectRevert(Errors.WrongAddress.selector);
+        _rewardsClaimManager.addRewardFuses(fuses);
+
+        //then
+        assertEq(
+            _rewardsClaimManager.isRewardFuseSupported(address(0)),
+            false,
+            "Zero address must never become a supported reward fuse"
+        );
     }
 
     function testShouldBeAbleToRemoveRewardFuses() external {

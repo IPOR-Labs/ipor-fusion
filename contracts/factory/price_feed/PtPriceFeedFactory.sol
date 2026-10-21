@@ -9,6 +9,7 @@ import {PendlePYOracleLib} from "@pendle/core-v2/contracts/oracles/PendlePYOracl
 import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {PendleOracleMethodLib} from "../../price_oracle/price_feed/lib/PendleOracleMethodLib.sol";
 
 /// @title PtPriceFeedFactory
 /// @notice Factory contract for creating price feeds for Pendle Principal Tokens (PT)
@@ -56,7 +57,7 @@ contract PtPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     /// @param pendleMarket_ Address of the Pendle market contract associated with the PT
     /// @param twapWindow_ Time window in seconds for TWAP calculations
     /// @param priceMiddleware_ Address of the price oracle middleware
-    /// @param usePendleOracleMethod_ Configuration parameter for the PtPriceFeed's oracle method (0 for getPtToSyRate, 1 for getPtToAssetRate)
+    /// @param usePendleOracleMethod_ Configuration parameter for the PtPriceFeed's oracle method (0 for getPtToSyRate, only for an SY that is 1:1 with its asset; 1 for getPtToAssetRate)
     /// @param expextedPriceAfterDeployment_ Expected initial price of PT token (used for validation with 1% tolerance)
     /// @return priceFeedAddress The address of the newly created price feed
     function create(
@@ -104,7 +105,7 @@ contract PtPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     /// @param pendleMarket_ Address of the Pendle market contract associated with the PT
     /// @param twapWindow_ Time window in seconds for TWAP calculations
     /// @param priceMiddleware_ Address of the price oracle middleware
-    /// @param usePendleOracleMethod_ Configuration parameter for the oracle method (0 for getPtToSyRate, 1 for getPtToAssetRate)
+    /// @param usePendleOracleMethod_ Configuration parameter for the oracle method (0 for getPtToSyRate, only for an SY that is 1:1 with its asset; 1 for getPtToAssetRate)
     /// @return price The calculated price in the same format as PtPriceFeed returns
     function calculatePrice(
         address pendleMarket_,
@@ -114,10 +115,12 @@ contract PtPriceFeedFactory is UUPSUpgradeable, Ownable2StepUpgradeable {
     ) external view returns (int256 price) {
         (IStandardizedYield sy, , ) = IPMarket(pendleMarket_).readTokens();
 
+        PendleOracleMethodLib.validate(sy, usePendleOracleMethod_);
+
         (, address assetAddress, ) = sy.assetInfo();
 
         uint256 unitPrice;
-        if (usePendleOracleMethod_ == 1) {
+        if (usePendleOracleMethod_ == PendleOracleMethodLib.PT_TO_ASSET) {
             unitPrice = PendlePYOracleLib.getPtToAssetRate(IPMarket(pendleMarket_), twapWindow_);
         } else {
             unitPrice = PendlePYOracleLib.getPtToSyRate(IPMarket(pendleMarket_), twapWindow_);

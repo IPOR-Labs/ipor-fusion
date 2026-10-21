@@ -167,4 +167,9 @@ interface INonfungiblePositionManager {
     /// @param _approved The new approved NFT controller
     /// @param _tokenId The NFT to approve
     function approve(address _approved, uint256 _tokenId) external payable;
+
+    /// @notice Returns the owner of the NFT of the given tokenId
+    /// @param tokenId The NFT to check the owner of
+    /// @return owner The address of the owner of the NFT
+    function ownerOf(uint256 tokenId) external view returns (address owner);
 }

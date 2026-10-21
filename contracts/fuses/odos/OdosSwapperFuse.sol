@@ -18,20 +18,15 @@ import {OdosSubstrateLib, OdosSubstrateType} from "./OdosSubstrateLib.sol";
 /// @param amountIn Amount of tokenIn to swap
 /// @param minAmountOut Minimum acceptable amount of tokenOut (alpha-specified slippage protection)
 /// @param swapCallData Raw calldata from Odos API (/sor/assemble response)
+/// @param tokensToReturn Additional output/intermediate tokens the router may leave in the executor; each must be
+///        a granted token substrate; swept to the vault in the same call
 struct OdosSwapperEnterData {
     address tokenIn;
     address tokenOut;
     uint256 amountIn;
     uint256 minAmountOut;
     bytes swapCallData;
-}
-
-/// @notice Internal structure for tracking token balances during swap
-struct Balances {
-    uint256 tokenInBalanceBefore;
-    uint256 tokenOutBalanceBefore;
-    uint256 tokenInBalanceAfter;
-    uint256 tokenOutBalanceAfter;
+    address[] tokensToReturn;
 }
 
 /// @title OdosSwapperFuse
@@ -70,6 +65,9 @@ contract OdosSwapperFuse is IFuseCommon {
 
     /// @notice Error thrown when USD slippage exceeds the configured limit
     error OdosSwapperFuseSlippageFail();
+
+    /// @notice Error thrown when the configured slippage substrate exceeds 100% (1e18 WAD)
+    error OdosSwapperFuseSlippageExceeds100Percent(uint256 slippageWad);
 
     /// @notice Error thrown when amountIn is zero
     error OdosSwapperFuseZeroAmount();
@@ -121,6 +119,11 @@ contract OdosSwapperFuse is IFuseCommon {
 
     /// @notice Execute a swap operation via Odos
     /// @dev Called via delegatecall from PlasmaVault.execute()
+    ///      spent/received are the amounts the executor transferred, not the amounts the vault received: a
+    ///      token that delivers less than the nominal amount on transfer loosens minAmountOut and the USD
+    ///      slippage check by that difference on the final transfer. Do not grant tokens with an active
+    ///      transfer fee as tokenIn/tokenOut; stETH-style share rounding (1-2 wei) is accepted; USDT is
+    ///      accepted while its fee is 0 (Tether can set at most 19 bps, capped at 49 USDT per transfer).
     /// @custom:security This is the main entry point for swaps. Validates token addresses, amounts, and slippage.
     /// @param data_ Encoded OdosSwapperEnterData struct
     function enter(OdosSwapperEnterData calldata data_) external {
@@ -142,44 +145,52 @@ contract OdosSwapperFuse is IFuseCommon {
             revert OdosSwapperFuseUnsupportedAsset(data_.tokenOut);
         }
 
+        // Validate every tokensToReturn entry is in substrates
+        uint256 tokensToReturnLength = data_.tokensToReturn.length;
+        for (uint256 i; i < tokensToReturnLength; ++i) {
+            if (!_isTokenGranted(data_.tokensToReturn[i])) {
+                revert OdosSwapperFuseUnsupportedAsset(data_.tokensToReturn[i]);
+            }
+        }
+
         // Revert if amountIn is 0
         if (data_.amountIn == 0) {
             revert OdosSwapperFuseZeroAmount();
         }
 
-        address plasmaVault = address(this);
-
-        // Record balances before swap
-        Balances memory balances = Balances({
-            tokenInBalanceBefore: ERC20(data_.tokenIn).balanceOf(plasmaVault),
-            tokenOutBalanceBefore: ERC20(data_.tokenOut).balanceOf(plasmaVault),
-            tokenInBalanceAfter: 0,
-            tokenOutBalanceAfter: 0
-        });
+        // Measure the swap on the executor, not on the vault balances: an inflow to the vault during execution
+        // (e.g. a permissionless claim paid to the vault) must neither mask a theft nor count as swap output.
+        uint256 executorTokenInBefore = ERC20(data_.tokenIn).balanceOf(EXECUTOR);
+        uint256 executorTokenOutBefore = ERC20(data_.tokenOut).balanceOf(EXECUTOR);
 
         // Transfer tokenIn to executor
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
         // Call executor.execute()
-        OdosSwapExecutor(EXECUTOR).execute(data_.tokenIn, data_.tokenOut, data_.amountIn, data_.swapCallData);
+        (uint256 tokenInReturned, uint256 tokenOutReturned) = OdosSwapExecutor(EXECUTOR).execute(
+            data_.tokenIn,
+            data_.tokenOut,
+            data_.amountIn,
+            data_.swapCallData,
+            data_.tokensToReturn
+        );
 
-        // Record balances after swap
-        balances.tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(plasmaVault);
-        balances.tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
+        // tokenIn the vault put in (plus anything already held by the executor) minus what came back
+        uint256 tokenInDelta = data_.amountIn + executorTokenInBefore > tokenInReturned
+            ? data_.amountIn + executorTokenInBefore - tokenInReturned
+            : 0;
 
-        // If no tokens were consumed, return early
-        if (balances.tokenInBalanceAfter >= balances.tokenInBalanceBefore) {
+        // If no tokenIn was consumed, return early
+        if (tokenInDelta == 0) {
             return;
         }
 
-        uint256 tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
-
-        // Validate that we received more tokenOut
-        if (balances.tokenOutBalanceAfter <= balances.tokenOutBalanceBefore) {
+        // Validate that the executor returned more tokenOut than it held before
+        if (tokenOutReturned <= executorTokenOutBefore) {
             revert OdosSwapperFuseSlippageFail();
         }
 
-        uint256 tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
+        uint256 tokenOutDelta = tokenOutReturned - executorTokenOutBefore;
 
         // Validate minAmountOut (alpha check)
         if (tokenOutDelta < data_.minAmountOut) {
@@ -273,7 +284,11 @@ contract OdosSwapperFuse is IFuseCommon {
         // Iterate through substrates to find slippage config
         for (uint256 i; i < length; ++i) {
             if (OdosSubstrateLib.isSlippageSubstrate(substrates[i])) {
-                return OdosSubstrateLib.decodeSlippage(substrates[i]);
+                slippageWad = OdosSubstrateLib.decodeSlippage(substrates[i]);
+                if (slippageWad > _ONE) {
+                    revert OdosSwapperFuseSlippageExceeds100Percent(slippageWad);
+                }
+                return slippageWad;
             }
         }
 

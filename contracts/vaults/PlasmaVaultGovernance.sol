@@ -13,6 +13,9 @@ import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 import {IIporFusionAccessManager} from "../interfaces/IIporFusionAccessManager.sol";
 import {PreHooksLib} from "../handlers/pre_hooks/PreHooksLib.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IPlasmaVault} from "../interfaces/IPlasmaVault.sol";
 /// @title Plasma Vault Governance
 /// @notice Core governance contract for managing Plasma Vault configuration, security, and operational parameters
 /// @dev Inherits AccessManagedUpgradeable for role-based access control and security management
@@ -1070,10 +1073,13 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Enables standardized pricing
     ///
     /// Validation Requirements:
-    /// - New oracle must match existing:
-    ///   * Quote currency (e.g., USD)
-    ///   * Quote currency decimals
-    /// - Prevents incompatible oracle updates
+    /// - `priceOracleMiddleware_` must not be the zero address
+    /// - New oracle must match the existing one's quote currency (e.g., USD)
+    /// - Quote currency decimals are intentionally NOT compared: since IL-5334 every consumer
+    ///   scales prices by the `decimals` value returned per call from `getAssetPrice`, so a
+    ///   replacement middleware with a different quote precision is valid and this setter is the
+    ///   supported migration path between precisions
+    /// - Prevents incompatible oracle updates (quote currency mismatch)
     /// - Maintains valuation consistency
     ///
     /// Integration Context:
@@ -1089,16 +1095,26 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Validates oracle compatibility
     /// - Critical for system integrity
     /// - Affects all price-dependent operations
+    /// - Cached market balances (`totalAssets()`) are NOT refreshed by this call; they keep the
+    ///   valuations computed with the previous middleware until `updateMarketsBalances`,
+    ///   `execute` or a withdrawal/redemption next touches each market. Operators should call
+    ///   `updateMarketsBalances` for all active markets right after the swap (same transaction
+    ///   via `ContextManager` — the sender then needs both ATOMIST_ROLE and
+    ///   UPDATE_MARKETS_BALANCES_ROLE — or immediately after)
     ///
     /// Error Conditions:
-    /// - Reverts if quote currency mismatch
-    /// - Reverts if decimal precision mismatch
-    /// - Reverts with UnsupportedPriceOracleMiddleware
+    /// - Reverts with WrongAddress if `priceOracleMiddleware_` is the zero address
+    /// - Reverts with UnsupportedPriceOracleMiddleware if the new middleware's QUOTE_CURRENCY()
+    ///   differs from the current one's
     ///
     /// @param priceOracleMiddleware_ The new price oracle middleware address
     /// @custom:access ATOMIST_ROLE restricted
     /// @custom:security Critical for price discovery integrity
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external override restricted {
+        if (priceOracleMiddleware_ == address(0)) {
+            revert Errors.WrongAddress();
+        }
+
         IPriceOracleMiddleware oldPriceOracleMiddleware = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         );
@@ -1199,9 +1215,21 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     ///
     /// @param feeAccount_ Address to receive management fees
     /// @param feeInPercentage_ Fee percentage with 2 decimals (100 = 1%)
-    /// @custom:access TECH_REWARDS_CLAIM_MANAGER_ROLE (held by RewardsClaimManager) restricted
+    /// @dev Checkpoint (IL-8742): before the new settings are written, the fee accrued so far at the OLD rate
+    /// is moved into the pending management fee and the fee clock restarts, so a rate change never applies
+    /// retroactively. The pending fee is minted by the next fee realization (deposit, mint, withdraw, redeem)
+    /// to the management fee account and is then split by the recipient split in force at that moment.
+    /// @dev Operational rule: a recipient change sends the old period to the new split. With a new total of 0
+    /// (possible only when IPOR_DAO_MANAGEMENT_FEE is 0) FeeManager.harvestManagementFee returns early, so the
+    /// shares wait in the management fee account until a non-zero fee is configured and then go to the recipients
+    /// in force at that time. To pay the old period to the old recipients, realize the fee first: in the same
+    /// transaction batch, before FeeManager.updateManagementFee, make any deposit, mint, withdraw or redeem.
+    /// Shares already waiting can be released in one block with updateManagementFee([recipient, 1]),
+    /// harvestManagementFee(), updateManagementFee([]) (no new accrual in the same block).
+    /// @custom:access TECH_MANAGEMENT_FEE_MANAGER_ROLE (held by FeeManager) restricted
     /// @custom:security Critical for vault revenue model
     function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
+        _checkpointManagementFee();
         PlasmaVaultLib.configureManagementFee(feeAccount_, feeInPercentage_);
     }
 
@@ -1666,6 +1694,52 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         IIporFusionAccessManager(authority()).setRedemptionDelay(redemptionDelayInSeconds_);
     }
 
+    /// @notice Adds or removes accounts from the list exempt from the redemption delay
+    /// @dev Forwards to IporFusionAccessManager.setRedemptionDelayExemption, which the access manager exposes only
+    /// to the TECH_PLASMA_VAULT_ROLE held by this vault. The owner-facing entry point lives on the vault for the
+    /// same reason as setRedemptionDelay: OpenZeppelin AccessManager cannot schedule or execute its own custom
+    /// functions, so a setter restricted directly on the access manager could never be put behind the OWNER_ROLE
+    /// execution delay. Routing the call through the vault makes it eligible for the same timelock
+    /// (schedule -> wait -> execute, cancellable by the GUARDIAN_ROLE) as every other governance function.
+    ///
+    /// Timelock is opt-in, not a default:
+    /// - The default initializer grants OWNER_ROLE with executionDelay 0, so out of the box the change is immediate
+    /// - To get the guarantee, governance must configure the OWNER_ROLE execution delay
+    ///
+    /// Exemption Semantics:
+    /// - An exempt account is not subject to the redemption delay when withdrawing, redeeming, transferring or
+    ///   transferring from
+    /// - BOTH parties are checked (the caller and the share owner / from): an exempt operator cannot move the shares
+    ///   of a locked owner, and a non-exempt operator of an exempt owner is still locked on its own deposit
+    /// - Revoking an exemption re-locks the account from its own last deposit
+    /// - Reverts with Errors.WrongAddress if any account is the zero address
+    /// - The access manager emits RedemptionDelayExemptionUpdated(address,bool) for every address, also when the
+    ///   state does not change
+    /// - There is no getter on the vault: read isRedemptionDelayExempt, getRedemptionDelayExemptions,
+    ///   getRedemptionDelayExemptionsCount and getRedemptionDelayExemptionsAt(offset, limit) on the access manager
+    ///
+    /// Security Considerations:
+    /// - Only callable by OWNER_ROLE
+    /// - Subject to the OWNER_ROLE execution delay only when one is configured (default: none)
+    ///
+    /// Related Components:
+    /// - IporFusionAccessManager
+    /// - RedemptionDelayLib
+    /// - Access Control System
+    ///
+    /// @param accounts_ The accounts to add to or remove from the exemption list
+    /// @param exempt_ True to exempt the accounts, false to remove the exemption
+    /// @custom:access OWNER_ROLE restricted
+    /// @custom:security Reduces the depositor lock for the listed accounts, timelock possible only through the vault
+    /// @custom:risk An exempt address exits immediately under a non-zero vault delay and can pass fresh shares to a
+    /// never-deposited address (transfers do not lock the receiver). The lock check sees only the address the vault
+    /// passes (caller, share owner, from), so exempting a contract that acts for many users (a wrapper, router, zap or
+    /// ContextManager-relayed path) exempts all of its users at once. An exemption also removes the same-block
+    /// deposit -> withdraw guard that a 1-second delay provides. Exempt only trusted, specific addresses
+    function setRedemptionDelayExemption(address[] calldata accounts_, bool exempt_) external override restricted {
+        IIporFusionAccessManager(authority()).setRedemptionDelayExemption(accounts_, exempt_);
+    }
+
     /// @notice Sets or updates pre-hook implementations for function selectors
     /// @dev Manages the configuration of pre-execution hooks through PreHooksLib
     ///
@@ -1731,13 +1805,6 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         return PreHooksLib.getPreHookImplementation(selector_);
     }
 
-    function _addFuse(address fuse_) internal {
-        if (fuse_ == address(0)) {
-            revert Errors.WrongAddress();
-        }
-        FusesLib.addFuse(fuse_);
-    }
-
     /// @notice Internal helper to add a balance fuse
     /// @param marketId_ The ID of the market
     /// @param fuse_ The address of the fuse to add
@@ -1753,5 +1820,20 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
             revert Errors.WrongAddress();
         }
         FusesLib.addBalanceFuse(marketId_, fuse_);
+    }
+
+    /// @notice Settles the management fee accrued at the current rate into the pending management fee
+    /// @dev Runs in the vault context (fallback delegatecall into PlasmaVaultBase). The accrual is read through
+    /// the vault's own views (`getUnrealizedManagementFee` = pending fee + total assets x elapsed time x current
+    /// rate, the gross formula of `_realizeManagementFee`), stored as the pending fee, and the fee clock is moved
+    /// to now. Without assets or without shares nobody can be charged, so the accrual is dropped exactly as
+    /// `_realizeManagementFee` does (IL-8318). No shares are minted here (IL-8742).
+    function _checkpointManagementFee() private {
+        uint256 pendingFee;
+        if (IERC4626(address(this)).totalAssets() != 0 && IERC20(address(this)).totalSupply() != 0) {
+            pendingFee = IPlasmaVault(address(this)).getUnrealizedManagementFee();
+        }
+        PlasmaVaultStorageLib.setPendingManagementFee(pendingFee);
+        PlasmaVaultLib.updateManagementFeeData();
     }
 }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "./IActivePool.sol";
 import "./IBorrowerOperations.sol";
+import "./ICollSurplusPool.sol";
 import "./IPriceFeed.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./ITroveManager.sol";
@@ -23,6 +24,7 @@ interface IAddressesRegistry {
     function troveManager() external view returns (ITroveManager);
     function priceFeed() external view returns (IPriceFeed);
     function activePool() external view returns (IActivePool);
+    function collSurplusPool() external view returns (ICollSurplusPool);
     function gasPoolAddress() external view returns (address);
     function borrowerOperationsHelper() external view returns (address);
 }

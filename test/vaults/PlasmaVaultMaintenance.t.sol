@@ -2,13 +2,22 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {PlasmaVault, MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FuseAction,
+    PlasmaVaultInitData
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVaultConfigLib} from "./../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {AaveV3SupplyFuse, AaveV3SupplyFuseEnterData} from "../../contracts/fuses/aave_v3/AaveV3SupplyFuse.sol";
 import {AaveV3BalanceFuse} from "../../contracts/fuses/aave_v3/AaveV3BalanceFuse.sol";
 import {CompoundV3BalanceFuse} from "../../contracts/fuses/compound_v3/CompoundV3BalanceFuse.sol";
-import {CompoundV3SupplyFuse, CompoundV3SupplyFuseEnterData} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
+import {
+    CompoundV3SupplyFuse,
+    CompoundV3SupplyFuseEnterData
+} from "../../contracts/fuses/compound_v3/CompoundV3SupplyFuse.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PriceOracleMiddlewareMock} from "../price_oracle/PriceOracleMiddlewareMock.sol";
@@ -23,6 +32,7 @@ import {InstantWithdrawalFusesParamsStruct} from "../../contracts/libraries/Plas
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
+import {Errors} from "../../contracts/libraries/errors/Errors.sol";
 
 contract PlasmaVaultMaintenanceTest is Test {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -134,7 +144,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IPlasmaVaultGovernance(address(plasmaVault)).addFuses(fuses);
 
         InstantWithdrawalFusesParamsStruct[] memory fusesCfg = new InstantWithdrawalFusesParamsStruct[](1);
-        bytes32[] memory params = new bytes32[](0);
+        bytes32[] memory params = new bytes32[](2);
         fusesCfg[0] = InstantWithdrawalFusesParamsStruct(supportedFuse, params);
 
         // when
@@ -718,6 +728,78 @@ contract PlasmaVaultMaintenanceTest is Test {
         assertTrue(
             IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseCompoundV3)),
             "Fuse CompoundV3 should be supported"
+        );
+    }
+
+    function testShouldRevertWhenAddFusesWithZeroAddress() public {
+        // given
+        address underlyingToken = DAI;
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        PlasmaVault plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            new address[](0),
+            new MarketSubstratesConfig[](0),
+            new MarketBalanceFuseConfig[](0),
+            withdrawManager
+        );
+
+        address[] memory newFuses = new address[](1);
+        newFuses[0] = address(0);
+
+        // when
+        vm.expectRevert(Errors.WrongAddress.selector);
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(newFuses);
+
+        // then
+        assertFalse(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(0)),
+            "Zero address must never become a supported fuse"
+        );
+    }
+
+    function testShouldRevertWhenAddFusesWithZeroAddressInBatch() public {
+        // given
+        address underlyingToken = DAI;
+
+        AaveV3SupplyFuse supplyFuseAaveV3 = new AaveV3SupplyFuse(
+            AAVE_V3_MARKET_ID,
+            ETHEREUM_AAVE_V3_POOL_ADDRESSES_PROVIDER
+        );
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        PlasmaVault plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            new address[](0),
+            new MarketSubstratesConfig[](0),
+            new MarketBalanceFuseConfig[](0),
+            withdrawManager
+        );
+
+        address[] memory newFuses = new address[](2);
+        newFuses[0] = address(supplyFuseAaveV3);
+        newFuses[1] = address(0);
+
+        // when
+        vm.expectRevert(Errors.WrongAddress.selector);
+        IPlasmaVaultGovernance(address(plasmaVault)).addFuses(newFuses);
+
+        // then
+        assertFalse(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(supplyFuseAaveV3)),
+            "Batch add must be atomic: valid fuse must not be registered when the batch reverts"
+        );
+        assertFalse(
+            IPlasmaVaultGovernance(address(plasmaVault)).isFuseSupported(address(0)),
+            "Zero address must never become a supported fuse"
         );
     }
 
@@ -1419,6 +1501,100 @@ contract PlasmaVaultMaintenanceTest is Test {
             priceOracleAfter,
             address(priceOracleMiddlewareProxy),
             "Price oracle after should be equal to priceOracleMiddlewareProxy"
+        );
+    }
+
+    function testShouldRevertWithWrongAddressWhenSettingZeroPriceOracleMiddleware() external {
+        // given
+        address underlyingToken = DAI;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        PlasmaVault plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            new address[](0),
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
+
+        address priceOracleBefore = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
+
+        // when
+        vm.expectRevert(Errors.WrongAddress.selector);
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracleMiddleware(address(0));
+
+        // then
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
+
+        assertEq(
+            priceOracleBefore,
+            address(priceOracleMiddlewareProxy),
+            "Price oracle before should be equal to priceOracleMiddlewareProxy"
+        );
+        assertEq(
+            priceOracleAfter,
+            address(priceOracleMiddlewareProxy),
+            "Price oracle after should be unchanged when zero address is rejected"
+        );
+    }
+
+    function testShouldAcceptPriceOracleMiddlewareWithDifferentQuoteCurrencyDecimals() external {
+        // given
+        address underlyingToken = DAI;
+
+        bytes32[] memory assets = new bytes32[](1);
+        assets[0] = PlasmaVaultConfigLib.addressToBytes32(DAI);
+        MarketSubstratesConfig[] memory marketConfigs = new MarketSubstratesConfig[](0);
+
+        address[] memory fuses = new address[](0);
+        MarketBalanceFuseConfig[] memory balanceFuses = new MarketBalanceFuseConfig[](0);
+
+        UsersToRoles memory usersToRoles;
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        PlasmaVault plasmaVault = _setupPlasmaVault(
+            underlyingToken,
+            accessManager,
+            new address[](0),
+            marketConfigs,
+            balanceFuses,
+            withdrawManager
+        );
+
+        PriceOracleMiddlewareMock newPriceOracleMiddlewareMock = new PriceOracleMiddlewareMock(USD, 8, address(0));
+        address newPriceOracleMiddleware = address(newPriceOracleMiddlewareMock);
+
+        uint256 oldQuoteCurrencyDecimals = priceOracleMiddlewareProxy.QUOTE_CURRENCY_DECIMALS();
+        uint256 newQuoteCurrencyDecimals = newPriceOracleMiddlewareMock.QUOTE_CURRENCY_DECIMALS();
+
+        assertNotEq(
+            oldQuoteCurrencyDecimals,
+            newQuoteCurrencyDecimals,
+            "This test intentionally pins the fact that QUOTE_CURRENCY_DECIMALS differs between the two middlewares"
+        );
+
+        // when
+        IPlasmaVaultGovernance(address(plasmaVault)).setPriceOracleMiddleware(newPriceOracleMiddleware);
+
+        // then
+        address priceOracleAfter = IPlasmaVaultGovernance(address(plasmaVault)).getPriceOracleMiddleware();
+
+        assertEq(
+            priceOracleAfter,
+            newPriceOracleMiddleware,
+            "Middleware with a different QUOTE_CURRENCY_DECIMALS must be accepted (decimals are not compared since IL-5334)"
         );
     }
 

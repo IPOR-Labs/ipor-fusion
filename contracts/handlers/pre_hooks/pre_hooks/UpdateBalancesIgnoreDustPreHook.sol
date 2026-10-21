@@ -15,15 +15,27 @@ import {PreHooksLib} from "../PreHooksLib.sol";
 ///
 /// Key features:
 /// - Configurable dust threshold through substrates
-/// - Filters out markets with balances below the dust threshold
-/// - Updates balances only for markets with significant amounts
+/// - Filters out markets whose cached balance is below the dust threshold
+/// - Refreshes only markets whose cached balance is at or above the threshold, plus their dependency graphs
 /// - Gas efficient implementation using dynamic arrays
 ///
 /// Substrates Configuration:
 /// - The contract expects exactly one substrate value configured through PlasmaVaultGovernance
-/// - The substrate value represents the dust threshold in the vault's underlying token decimals
+/// - The substrate value is the dust threshold in the underlying asset's decimals (not WAD, not 18 decimals)
 /// - Example: For USDC (6 decimals), a substrate value of 1e6 means 1 USDC dust threshold
-/// - Markets with balance changes below this threshold will be ignored during updates
+/// - A value written in 18 decimals on a 6-decimal asset (1e18 on USDC = 1e12 USDC) puts every market
+///   below the threshold: the hook then refreshes nothing and does not revert
+/// - Markets whose cached balance (the value stored by the previous balance update, read via
+///   PlasmaVaultLib.getTotalAssetsInMarket) is below this threshold are left out of the refresh list
+/// - The filter does not read the live balance from the balance fuse. A market left out of the list is
+///   still refreshed when it is in the balance dependency graph of a market at or above the threshold.
+///   Otherwise its cached value, and therefore totalAssets, stays stale until one of: execute on that
+///   market or on a market whose dependency graph includes it, UpdateMarketsBalancesFuse, an instant
+///   withdrawal from that market (withdraw / redeem / redeemFromRequest), or an explicit
+///   updateMarketsBalances call (e.g. by a keeper)
+/// - A market whose balance fuse reads below the threshold even once (e.g. 0 during a transient failure
+///   of the venue or its oracle) is cached below the threshold and is not re-read by this hook afterwards.
+///   UpdateBalancesPreHook does not have this limitation
 /// - This configuration is set during hook registration via setPreHookImplementations
 ///
 /// Example substrate configuration from tests:
@@ -38,6 +50,18 @@ import {PreHooksLib} from "../PreHooksLib.sol";
 /// - Validates substrate configuration
 /// - Protected by PlasmaVault's access control
 /// - Dust threshold can only be modified by governance
+///
+/// ContextManager (runWithContext / runWithContextAndSignature):
+/// - The hook calls PlasmaVault(address(this)).updateMarketsBalances. PlasmaVault authorizes its own
+///   self-calls against the vault, so relayed calls on hooked selectors work like direct calls (IL-8310).
+/// - Vaults created from a PlasmaVault implementation that predates IL-8310 authorize this self-call
+///   against the context sender instead. There, a relayed call on a hooked selector reverts with
+///   AccessManagedUnauthorized unless the context sender itself holds UPDATE_MARKETS_BALANCES_ROLE;
+///   direct calls are not affected. The same applies when the hook is nested under
+///   ExchangeRateValidatorPreHook. Such vaults must treat relayed user operations on hooked selectors
+///   as unsupported, or move users to a vault created from a fixed implementation. Do not remove the
+///   vault from ContextManager's approved targets (admin batches rely on it) and do not make
+///   updateMarketsBalances public as a workaround.
 contract UpdateBalancesIgnoreDustPreHook is IPreHook {
     /// @notice Immutable version address used for substrate configuration lookup
     /// @dev This address is set during construction and used to retrieve the dust threshold
@@ -61,11 +85,11 @@ contract UpdateBalancesIgnoreDustPreHook is IPreHook {
     ///      1. Retrieves active markets from balance fuses
     ///      2. Gets the dust threshold from substrates
     ///      3. Filters markets based on the dust threshold
-    ///      4. Updates balances for markets with significant amounts
+    ///      4. Updates balances for markets whose cached balance is at or above the threshold
     ///
     /// The process involves:
     /// - Reading the dust threshold from substrates[0]
-    /// - Checking each market's balance against the threshold
+    /// - Checking each market's cached balance (not its live balance) against the threshold
     /// - Creating a filtered list of markets to update
     /// - Calling updateMarketsBalances on the PlasmaVault
     ///

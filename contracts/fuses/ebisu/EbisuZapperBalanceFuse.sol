@@ -8,9 +8,14 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
-import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
+import {
+    EbisuZapperSubstrateLib,
+    EbisuZapperSubstrate,
+    EbisuZapperSubstrateType
+} from "./lib/EbisuZapperSubstrateLib.sol";
 import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
 import {ITroveManager} from "./ext/ITroveManager.sol";
+import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 
 /**
  * @title Fuse for Ebisu protocol responsible for calculating the balance of the Plasma Vault in Ebisu protocol based on preconfigured market substrates
@@ -36,14 +41,17 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
     }
 
     /**
-     * @notice Calculates the total balance of the Plasma Vault in Ebisu protocol based on configured zapper substrates
+     * @notice Calculates the total balance of the Plasma Vault in Ebisu protocol based on configured zapper and registry substrates
      * @dev The value contained in an open Trove is collateral - debt (each with its own price).
      *      Since interest fees automatically increase the entireDebt of the trove, we do not need to include it explicitly.
      *      This function iterates through all configured substrates, filters for ZAPPER type substrates,
      *      retrieves trove data for each zapper, calculates the total collateral and debt values,
      *      and returns the net value (collateral - debt, minimum 0).
+     *      For every REGISTRY substrate the collateral surplus that liquidations credited to the vault in the
+     *      branch's CollSurplusPool (not yet claimed with EbisuClaimCollateralFuse) is added to the collateral value.
      * @return The total balance of the vault in Ebisu protocol, calculated as the sum of all trove values
-     *         (collateral - debt) across all configured zapper substrates
+     *         (collateral - debt) across all configured zapper substrates, plus the valued collateral surplus
+     *         of all configured registry substrates
      */
     function balanceOf() external view returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
@@ -69,6 +77,11 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
 
         for (uint256 i; i < substratesNumber; ++i) {
             target = EbisuZapperSubstrateLib.bytes32ToSubstrate(substrates[i]);
+
+            if (target.substrateType == EbisuZapperSubstrateType.REGISTRY) {
+                entireCollValue += _collSurplusValue(target.substrateAddress, priceOracleMiddleware);
+                continue;
+            }
 
             if (target.substrateType != EbisuZapperSubstrateType.ZAPPER) continue;
 
@@ -101,5 +114,19 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
 
         /// @dev max(coll - debt, 0)
         return entireCollValue - IporMath.min(entireDebtValue, entireCollValue);
+    }
+
+    /// @dev Value (WAD) of the collateral surplus the vault has in the CollSurplusPool of the branch; the collateral
+    ///      price is only requested when there is a surplus, so branches without one never depend on the price feed.
+    function _collSurplusValue(
+        address registry_,
+        IPriceOracleMiddleware priceOracleMiddleware_
+    ) private view returns (uint256) {
+        uint256 surplus = IAddressesRegistry(registry_).collSurplusPool().getCollateral(address(this));
+        if (surplus == 0) return 0;
+
+        address collToken = address(IAddressesRegistry(registry_).collToken());
+        (uint256 price, uint256 priceDecimals) = priceOracleMiddleware_.getAssetPrice(collToken);
+        return IporMath.convertToWad(surplus * price, IERC20Metadata(collToken).decimals() + priceDecimals);
     }
 }

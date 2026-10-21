@@ -7,4 +7,6 @@ interface ICurveStableSwapNG {
     function balances(uint256) external view returns (uint256);
     function decimals() external view returns (uint256);
     function coins(uint256) external view returns (address);
+    function get_virtual_price() external view returns (uint256);
+    function stored_rates() external view returns (uint256[] memory);
 }

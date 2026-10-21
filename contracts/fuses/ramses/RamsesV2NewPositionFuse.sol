@@ -81,6 +81,8 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
     /// @param token0 The address of token0
     /// @param token1 The address of token1
     error RamsesV2NewPositionFuseUnsupportedToken(address token0, address token1);
+    /// @notice Thrown when exit is asked to burn a tokenId that is not registered in the vault
+    error RamsesV2NewPositionFuseTokenIdNotTracked(uint256 tokenId);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -191,6 +193,7 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
      * @notice Function to close liquidity positions
      * @param closePositions The data containing the token IDs of the positions to close
      * @return tokenIds The array of token IDs that were closed
+     * @custom:revert RamsesV2NewPositionFuseTokenIdNotTracked when a tokenId is not tracked by the vault
      */
     function exit(RamsesV2NewPositionFuseExitData memory closePositions) public returns (uint256[] memory tokenIds) {
         FuseStorageLib.RamsesV2TokenIds storage tokensIds = FuseStorageLib.getRamsesV2TokenIds();
@@ -204,9 +207,17 @@ contract RamsesV2NewPositionFuse is IFuseCommon {
         uint256 lastTokenId;
         for (uint256 i; i < closePositions.tokenIds.length; ++i) {
             tokenId = closePositions.tokenIds[i];
-            INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
 
             tokenIndex = tokensIds.indexes[tokenId];
+
+            // An NFT donated to the vault is not in the list: indexes[] would read 0 and the swap-and-pop below
+            // would remove a real position (tokenIds[0]) from the list.
+            if (tokenIndex >= len || tokensIds.tokenIds[tokenIndex] != tokenId) {
+                revert RamsesV2NewPositionFuseTokenIdNotTracked(tokenId);
+            }
+
+            INonfungiblePositionManagerRamses(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
+
             if (tokenIndex != len - 1) {
                 lastTokenId = tokensIds.tokenIds[len - 1];
                 tokensIds.tokenIds[tokenIndex] = lastTokenId;

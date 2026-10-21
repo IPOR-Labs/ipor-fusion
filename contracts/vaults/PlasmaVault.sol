@@ -29,9 +29,6 @@ import {FeeManagerData, FeeManagerFactory, FeeConfig} from "../managers/fee/FeeM
 
 import {FeeManagerInitData} from "../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../managers/withdraw/WithdrawManager.sol";
-import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
-import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
-import {IPlasmaVaultVotesPlugin} from "../interfaces/IPlasmaVaultVotesPlugin.sol";
 import {UniversalReader} from "../universal_reader/UniversalReader.sol";
 import {ContextClientStorageLib} from "../managers/context/ContextClientStorageLib.sol";
 import {PreHooksHandler} from "../handlers/pre_hooks/PreHooksHandler.sol";
@@ -256,7 +253,7 @@ contract PlasmaVault is
     ///    - Processes protocol-specific responses
     ///
     /// 2. Normal Operation:
-    ///    - Delegates calls to PlasmaVaultBase
+    ///    - Delegates calls to PlasmaVaultBase (which also routes the Votes selectors to the votes plugin)
     ///    - Maintains vault functionality
     ///    - Preserves upgrade safety
     ///
@@ -276,48 +273,8 @@ contract PlasmaVault is
             return "";
         }
 
-        bytes4 sig = msg.sig;
-
-        // Route Votes functions to dedicated plugin contract (optional)
-        if (_isVotesFunction(sig)) {
-            address votesPlugin = PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
-            if (votesPlugin != address(0)) {
-                return votesPlugin.functionDelegateCall(msg.data);
-            }
-            revert VotesPluginNotEnabled();
-        }
-
+        /// @dev Votes selectors are routed to the votes plugin by the PlasmaVaultBase fallback (code size)
         return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
-    }
-
-    /// @notice Checks if the function selector is a Votes function
-    /// @param sig_ The function selector to check
-    /// @return True if the selector is a Votes function (IERC5805/IVotes/IERC6372)
-    function _isVotesFunction(bytes4 sig_) internal pure returns (bool) {
-        // IVotes functions (OpenZeppelin standard)
-        if (
-            sig_ == IVotes.getVotes.selector ||
-            sig_ == IVotes.getPastVotes.selector ||
-            sig_ == IVotes.getPastTotalSupply.selector ||
-            sig_ == IVotes.delegates.selector ||
-            sig_ == IVotes.delegate.selector ||
-            sig_ == IVotes.delegateBySig.selector
-        ) {
-            return true;
-        }
-
-        // IERC6372 functions (clock interface)
-        if (sig_ == IERC6372.clock.selector || sig_ == IERC6372.CLOCK_MODE.selector) {
-            return true;
-        }
-
-        // Extension-specific functions (ERC20VotesUpgradeable)
-        // Note: _transferVotingUnits is internal in OpenZeppelin, so it's not included here
-        if (sig_ == IPlasmaVaultVotesPlugin.numCheckpoints.selector || sig_ == IPlasmaVaultVotesPlugin.checkpoints.selector) {
-            return true;
-        }
-
-        return false;
     }
 
     /// @notice The plasma vault base contract address
@@ -658,7 +615,10 @@ contract PlasmaVault is
     /// - Reentrancy protection
     /// - Access control checks
     ///
-    /// @param shares_ Number of vault shares to mint
+    /// @dev The deposit fee is a share of the gross shares, the same base as deposit: the receiver gets
+    ///      `shares_`, the fee shares minted to the fee recipient are `shares_ * fee / (1 - fee)` rounded up,
+    ///      so the assets paid equal what a deposit that yields `shares_` costs (IL-8743)
+    /// @param shares_ Number of vault shares to mint (net of the deposit fee)
     /// @param receiver_ Address to receive the minted shares
     /// @return depositAssets Amount of assets deposited
     /// @custom:security Non-reentrant and role-restricted
@@ -677,7 +637,7 @@ contract PlasmaVault is
 
         _realizeManagementFee();
 
-        (address feeRecipient, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(shares_);
+        (address feeRecipient, uint256 feeShares) = PlasmaVaultFeesLib.calculateMintDepositFee(shares_);
 
         depositAssets = super.mint(shares_, receiver_);
 
@@ -716,6 +676,8 @@ contract PlasmaVault is
     /// - Balance verification
     /// - Market safety checks
     ///
+    /// @dev The withdraw fee is a share of the gross shares burned, the same base as redeem: the shares burned
+    ///      equal what a redeem that pays `assets_` burns (gross = net / (1 - fee), rounded up) (IL-8751)
     /// @param assets_ Amount of underlying assets to withdraw
     /// @param receiver_ Address to receive the withdrawn assets
     /// @param owner_ Owner of the vault shares
@@ -744,12 +706,25 @@ contract PlasmaVault is
 
         uint256 sharesToRelease = WithdrawManager(withdrawManager).getSharesToRelease();
 
+        uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
+
         uint256 assetsToWithdrawFromMarkets;
 
         if (sharesToRelease > 0) {
             /// @dev When shares are in withdrawal request, we need to withdraw more assets to cover the shares and use offset
             /// @dev Offset of 0.01% (10001/10000) is added to account for potential rounding errors and price fluctuations during withdrawal
-            assetsToWithdrawFromMarkets = assets_ + (convertToAssets(sharesToRelease) * 10001) / 10000;
+            /// @dev WITHDRAW_FROM_MARKETS_OFFSET is kept so a dust release does not strip the buffer for assets_ (IL-8357)
+            /// @dev The WithdrawManager check needs the released shares plus the GROSS shares (fee included)
+            ///      unallocated, so the pull is sized on the gross amount, as redeem does (IL-8751)
+            /// @dev WITHDRAW_FROM_MARKETS_OFFSET is grossed up together with assets_: PlasmaVault grosses up the ceil-rounded
+            ///      shares before canWithdrawFromUnallocated (the WithdrawManager only compares), so their rounding
+            ///      error grows by 1 / (1 - fee) and the buffer must grow with it (IL-8357, IL-8838)
+            assetsToWithdrawFromMarkets =
+                (
+                    withdrawFee < 1e18
+                        ? PlasmaVaultFeesLib.grossUpForWithdrawFee(assets_ + WITHDRAW_FROM_MARKETS_OFFSET, withdrawFee)
+                        : assets_ + WITHDRAW_FROM_MARKETS_OFFSET
+                ) + (convertToAssets(sharesToRelease) * 10001) / 10000;
         } else {
             assetsToWithdrawFromMarkets = assets_ + WITHDRAW_FROM_MARKETS_OFFSET;
         }
@@ -770,7 +745,10 @@ contract PlasmaVault is
             revert NoSharesToWithdraw();
         }
 
-        uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(sharesForAssets);
+        // The withdraw fee is a share of the gross shares, as in redeem: gross = net / (1 - fee) (IL-8751)
+        uint256 feeSharesToBurn = WithdrawManager(withdrawManager).canWithdrawFromUnallocated(
+            PlasmaVaultFeesLib.grossUpForWithdrawFee(sharesForAssets, withdrawFee)
+        );
 
         withdrawnShares = sharesForAssets + feeSharesToBurn;
 
@@ -790,39 +768,46 @@ contract PlasmaVault is
         return feeShares > 0 ? shares - feeShares : shares;
     }
 
+    /// @dev The deposit fee is a share of the gross shares, as in deposit: the caller pays for
+    ///      shares_ / (1 - fee) shares and receives shares_ (IL-8743)
     function previewMint(uint256 shares_) public view override returns (uint256) {
-        (, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(shares_);
+        (, uint256 feeShares) = PlasmaVaultFeesLib.calculateMintDepositFee(shares_);
         return super.previewMint(shares_ + feeShares);
     }
 
+    /// @dev Priced after the pending management fee realization that redeem performs first (IL-8343)
+    /// @dev Prices the pending management fee only. redeem can also crystallize a pending performance fee
+    ///      (rate above the high-water mark) and refresh stale market balances before it pays, so this can
+    ///      overestimate the assets paid by the caller's share of that fee and of the refresh delta (IL-8489)
     function previewRedeem(uint256 shares_) public view override returns (uint256) {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
 
         if (withdrawManager != address(0)) {
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
             if (withdrawFee > 0) {
-                return super.previewRedeem(Math.mulDiv(shares_, 1e18 - withdrawFee, 1e18));
+                shares_ = Math.mulDiv(shares_, 1e18 - withdrawFee, 1e18);
             }
         }
 
-        return super.previewRedeem(shares_);
+        return _convertToAssetsWithSupply(shares_, _totalSupplyAfterManagementFee(), Math.Rounding.Floor);
     }
 
+    /// @dev Priced after the pending management fee realization that withdraw performs first (IL-8343)
+    /// @dev The withdraw fee is a share of the gross shares (as in redeem): returns net / (1 - fee) rounded up,
+    ///      type(uint256).max when the fee is 100% (nothing can be withdrawn) (IL-8751)
+    /// @dev Prices the pending management fee only. withdraw can also crystallize a pending performance fee
+    ///      (rate above the high-water mark) and refresh stale market balances before it prices the burn, so
+    ///      this can underestimate the shares burned by the caller's share of that fee and of the refresh delta (IL-8489)
     function previewWithdraw(uint256 assets_) public view override returns (uint256) {
         address withdrawManager = PlasmaVaultStorageLib.getWithdrawManager().manager;
+        uint256 shares = _convertToSharesWithSupply(assets_, _totalSupplyAfterManagementFee(), Math.Rounding.Ceil);
 
         if (withdrawManager != address(0)) {
-            uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
-
-            if (withdrawFee > 0) {
-                // Calculate total shares needed: sharesForAssets + feeShares
-                // where feeShares = sharesForAssets * withdrawFee / 1e18
-                // So totalShares = sharesForAssets * (1e18 + withdrawFee) / 1e18
-                // Round up since we're computing required shares
-                return Math.mulDiv(super.previewWithdraw(assets_), 1e18 + withdrawFee, 1e18, Math.Rounding.Ceil);
-            }
+            // Gross shares that leave `shares` after the fee: gross = shares / (1 - withdrawFee), rounded up.
+            // A 100% fee leaves nothing to withdraw: type(uint256).max (IL-8751)
+            return PlasmaVaultFeesLib.grossUpForWithdrawFee(shares, WithdrawManager(withdrawManager).getWithdrawFee());
         }
-        return super.previewWithdraw(assets_);
+        return shares;
     }
 
     /// @notice Redeems vault shares for underlying assets
@@ -895,6 +880,9 @@ contract PlasmaVault is
     /// - Share amount validation
     /// - State consistency checks
     /// - Atomic execution
+    /// - Reentrancy protection: shares the ReentrancyGuard flag with deposit/mint/withdraw/redeem/execute,
+    ///   so an instant withdrawal fuse that yields control to an external protocol during the market unwind
+    ///   cannot re-enter the vault while totalAssets() is transiently inflated
     ///
     /// Integration Points:
     /// - WithdrawManager for request validation
@@ -918,7 +906,7 @@ contract PlasmaVault is
         uint256 shares_,
         address receiver_,
         address owner_
-    ) external override restricted returns (uint256) {
+    ) external override nonReentrant restricted returns (uint256) {
         bool canWithdraw = WithdrawManager(PlasmaVaultStorageLib.getWithdrawManager().manager).canWithdrawFromRequest(
             owner_,
             shares_
@@ -943,7 +931,7 @@ contract PlasmaVault is
     /// Calculation Flow:
     /// 1. Supply Validation
     ///    - Retrieves total supply cap
-    ///    - Gets current total supply
+    ///    - Gets current total supply plus the pending management fee shares
     ///    - Checks available capacity
     ///
     /// 2. Conversion Logic
@@ -957,25 +945,27 @@ contract PlasmaVault is
     /// - Considers share/asset ratio
     /// - Maintains vault integrity
     ///
+    /// @dev Priced after the pending management fee realization that deposit performs before it checks this
+    ///      limit: the fee shares it mints bypass the cap, so they are counted in the supply here (IL-8490)
     /// @return uint256 Maximum amount of assets that can be deposited
     /// @custom:access Public view function, no role restrictions
     function maxDeposit(address) public view virtual override returns (uint256) {
         uint256 totalSupplyCap = PlasmaVaultLib.getTotalSupplyCap();
-        uint256 totalSupply = totalSupply();
+        uint256 supply = _totalSupplyAfterManagementFee();
 
-        if (totalSupply >= totalSupplyCap) {
+        if (supply >= totalSupplyCap) {
             return 0;
         }
 
-        uint256 exchangeRate = convertToAssets(10 ** uint256(decimals()));
-        (, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(totalSupplyCap - totalSupply);
-        uint256 sharesToMint = totalSupplyCap - totalSupply - feeShares;
+        uint256 exchangeRate = _convertToAssetsWithSupply(10 ** uint256(decimals()), supply, Math.Rounding.Floor);
+        (, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(totalSupplyCap - supply);
+        uint256 sharesToMint = totalSupplyCap - supply - feeShares;
 
         if (type(uint256).max / exchangeRate < sharesToMint) {
             return type(uint256).max;
         }
 
-        return convertToAssets(sharesToMint);
+        return _convertToAssetsWithSupply(sharesToMint, supply, Math.Rounding.Floor);
     }
 
     /// @notice Calculates maximum number of shares that can be minted
@@ -984,7 +974,7 @@ contract PlasmaVault is
     /// Calculation Flow:
     /// 1. Supply Validation
     ///    - Retrieves total supply cap
-    ///    - Gets current total supply
+    ///    - Gets current total supply plus the pending management fee shares
     ///    - Validates remaining capacity
     ///
     /// 2. Share Calculation
@@ -998,23 +988,35 @@ contract PlasmaVault is
     /// - Direct share calculation
     /// - No asset conversion needed
     ///
+    /// @dev Priced after the pending management fee realization that mint performs before it checks this
+    ///      limit: the fee shares it mints bypass the cap, so they are counted in the supply here (IL-8490)
+    /// @dev Returns the net shares whose gross (net plus the deposit fee, a share of the gross) fits into
+    ///      the remaining cap, so mint(maxMint) does not exceed the cap (IL-8743)
     /// @return uint256 Maximum number of shares that can be minted
     /// @custom:access Public view function, no role restrictions
     function maxMint(address) public view virtual override returns (uint256) {
         uint256 totalSupplyCap = PlasmaVaultLib.getTotalSupplyCap();
-        uint256 totalSupply = totalSupply();
+        uint256 supply = _totalSupplyAfterManagementFee();
 
-        if (totalSupply >= totalSupplyCap) {
+        if (supply >= totalSupplyCap) {
             return 0;
         }
-        (, uint256 feeShares) = PlasmaVaultFeesLib.prepareForRealizeDepositFee(totalSupplyCap - totalSupply);
 
-        /// @dev we need to subtract fee shares to get the maximum number of shares that can be minted, We accept the error of calculating a higher fee than will actually be charged.
-        return totalSupplyCap - totalSupply - feeShares;
+        /// @dev net shares whose gross (net plus the fee minted on top) still fits into the remaining cap (IL-8743)
+        return PlasmaVaultFeesLib.netSharesForRoom(totalSupplyCap - supply);
     }
 
     /// @notice Calculates maximum withdrawal amount considering withdrawal fees
     /// @dev Overrides ERC4626 maxWithdraw to account for withdrawal fee deduction
+    /// @dev Priced after the pending management fee realization that withdraw performs before it checks
+    ///      this limit, so withdraw(maxWithdraw(owner)) does not revert on the management fee shares it mints (IL-8319)
+    /// @dev Not a hard guarantee: withdraw also crystallizes a pending performance fee (rate above the high-water
+    ///      mark, e.g. after vesting rewards, a donation or a withdraw fee burn) and refreshes stale market
+    ///      balances before it checks this limit, neither of which is simulated here. The in-call limit can then
+    ///      be lower by the owner's share of that fee, and withdraw(maxWithdraw(owner)) reverts with
+    ///      ERC4626ExceededMaxWithdraw. To exit a whole position, use redeem(balanceOf(owner)) (IL-8489)
+    /// @dev The withdraw fee is a share of the gross shares (as in redeem and previewRedeem): the owner's
+    ///      balance is worth balance * (1 - fee) net shares; 0 when the fee is 100% (IL-8751)
     /// @param owner_ The address to calculate max withdrawal for
     /// @return uint256 Maximum amount of assets that can be withdrawn
     function maxWithdraw(address owner_) public view override returns (uint256) {
@@ -1025,17 +1027,12 @@ contract PlasmaVault is
             uint256 withdrawFee = WithdrawManager(withdrawManager).getWithdrawFee();
 
             if (withdrawFee > 0) {
-                // With a fee, effective shares = ownerShares / (1 + feeRate)
-                // Because totalShares = sharesForAssets + feeShares
-                // And feeShares = sharesForAssets * feeRate
-                // So totalShares = sharesForAssets * (1 + feeRate)
-                // Therefore sharesForAssets = totalShares / (1 + feeRate)
-                uint256 effectiveShares = Math.mulDiv(ownerShares, 1e18, 1e18 + withdrawFee, Math.Rounding.Floor);
-                return convertToAssets(effectiveShares);
+                // The fee is a share of the gross shares (as in redeem): net = gross * (1 - feeRate) (IL-8751)
+                ownerShares = Math.mulDiv(ownerShares, 1e18 - withdrawFee, 1e18, Math.Rounding.Floor);
             }
         }
 
-        return convertToAssets(ownerShares);
+        return _convertToAssetsWithSupply(ownerShares, _totalSupplyAfterManagementFee(), Math.Rounding.Floor);
     }
 
     /// @notice Claims rewards from integrated protocols through fuse contracts
@@ -1390,11 +1387,19 @@ contract PlasmaVault is
             return;
         }
 
+        uint256 actualExchangeRate = convertToAssets(10 ** uint256(decimals()));
+
+        /// @dev FeeManager stores the high-water mark as uint128; above that bound skip the performance fee
+        /// instead of reverting, otherwise a donation into a dust-supply vault would block withdraw/redeem/execute
+        if (actualExchangeRate > type(uint128).max) {
+            return;
+        }
+
         (address recipient, uint256 feeShares) = PlasmaVaultFeesLib.prepareForAddPerformanceFee(
             totalSupply(),
             decimals(),
             _decimalsOffset(),
-            convertToAssets(10 ** uint256(decimals()))
+            actualExchangeRate
         );
 
         if (recipient == address(0) || feeShares == 0) {
@@ -1411,16 +1416,17 @@ contract PlasmaVault is
     }
 
     /// @notice Realizes management fees by minting shares to fee recipient
-    /// @dev Only updates timestamp when fees are actually minted to prevent fee suppression
-    ///      from small/frequent operations where fees round to zero (IL-6959 fix).
-    ///      When vault is empty (totalAssets == 0), timestamp is updated to prevent
-    ///      retroactive fee accrual after the first deposit.
+    /// @dev The fee clock advances on every realization. A fee that rounds to zero shares is kept
+    ///      in the pending management fee and minted later, so small/frequent operations cannot
+    ///      suppress it (IL-6959), while a stale clock can never price a dormant period on assets
+    ///      deposited later (IL-8318). With no assets or no shares there is nobody to charge,
+    ///      so the accrual is dropped.
     function _realizeManagementFee() internal {
         uint256 grossTotalAssets = _getGrossTotalAssets();
 
-        /// @dev If vault is empty, update timestamp but don't try to mint.
-        /// This prevents fee accumulation from before first deposit.
-        if (grossTotalAssets == 0) {
+        /// @dev Empty vault (or dust without shareholders): drop the accrual and restart the clock
+        if (grossTotalAssets == 0 || totalSupply() == 0) {
+            PlasmaVaultStorageLib.setPendingManagementFee(0);
             PlasmaVaultLib.updateManagementFeeData();
             return;
         }
@@ -1431,9 +1437,15 @@ contract PlasmaVault is
 
         uint256 unrealizedFeeInShares = convertToShares(unrealizedFeeInUnderlying);
 
-        if (unrealizedFeeInShares == 0) {
+        PlasmaVaultLib.updateManagementFeeData();
+
+        if (recipient == address(0) || unrealizedFeeInShares == 0) {
+            /// @dev Keep the fee that rounded to zero shares for a later realization
+            PlasmaVaultStorageLib.setPendingManagementFee(unrealizedFeeInUnderlying);
             return;
         }
+
+        PlasmaVaultStorageLib.setPendingManagementFee(0);
 
         /// @dev minting is an act of management fee realization
         /// @dev total supply cap validation is disabled for fee minting
@@ -1443,10 +1455,6 @@ contract PlasmaVault is
 
         /// @dev total supply cap validation is enabled when fee minting is finished
         PlasmaVaultLib.setTotalSupplyCapValidation(0);
-
-        /// @dev Update timestamp ONLY after successful fee minting
-        /// This prevents fee suppression through many small transactions
-        PlasmaVaultLib.updateManagementFeeData();
 
         emit ManagementFeeRealized(unrealizedFeeInUnderlying, unrealizedFeeInShares);
     }
@@ -1519,6 +1527,12 @@ contract PlasmaVault is
      * is less than 4 bytes long.
      */
     function _checkCanCall(address caller_, bytes calldata data_) internal virtual override {
+        /// @dev The vault's own external self-calls (e.g. UpdateBalancesPreHook -> updateMarketsBalances) are
+        ///      authorized against the vault, not against a ContextManager context sender.
+        if (msg.sender == address(this)) {
+            caller_ = msg.sender;
+        }
+
         bytes4 sig = bytes4(data_[0:4]);
         bool immediate;
         uint32 delay;
@@ -1590,20 +1604,53 @@ contract PlasmaVault is
     }
 
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual override returns (uint256) {
-        uint256 supply = totalSupply();
-
-        return
-            supply == 0
-                ? assets * _SHARE_SCALE_MULTIPLIER()
-                : assets.mulDiv(supply + _SHARE_SCALE_MULTIPLIER(), totalAssets() + 1, rounding);
+        return _convertToSharesWithSupply(assets, totalSupply(), rounding);
     }
 
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual override returns (uint256) {
-        uint256 supply = totalSupply();
+        return _convertToAssetsWithSupply(shares, totalSupply(), rounding);
+    }
 
+    function _convertToSharesWithSupply(
+        uint256 assets_,
+        uint256 supply_,
+        Math.Rounding rounding_
+    ) private view returns (uint256) {
         return
-            supply == 0
-                ? shares.mulDiv(1, _SHARE_SCALE_MULTIPLIER(), rounding)
-                : shares.mulDiv(totalAssets() + 1, supply + _SHARE_SCALE_MULTIPLIER(), rounding);
+            supply_ == 0
+                ? assets_ * _SHARE_SCALE_MULTIPLIER()
+                : assets_.mulDiv(supply_ + _SHARE_SCALE_MULTIPLIER(), totalAssets() + 1, rounding_);
+    }
+
+    function _convertToAssetsWithSupply(
+        uint256 shares_,
+        uint256 supply_,
+        Math.Rounding rounding_
+    ) private view returns (uint256) {
+        return
+            supply_ == 0
+                ? shares_.mulDiv(1, _SHARE_SCALE_MULTIPLIER(), rounding_)
+                : shares_.mulDiv(totalAssets() + 1, supply_ + _SHARE_SCALE_MULTIPLIER(), rounding_);
+    }
+
+    /// @notice Total supply after minting the management fee shares that `_realizeManagementFee` would mint now
+    /// @dev Mirrors `_realizeManagementFee` exactly (same guards, same Floor rounding on the pre-mint supply), so
+    ///      once withdraw/redeem have realized the fee this returns `totalSupply()` and their in-call checks are
+    ///      unchanged. Used by the max/preview views that withdraw/redeem price after realization (IL-8319, IL-8343).
+    function _totalSupplyAfterManagementFee() private view returns (uint256 supply) {
+        supply = totalSupply();
+        uint256 grossTotalAssets = _getGrossTotalAssets();
+
+        if (grossTotalAssets == 0 || supply == 0) {
+            return supply;
+        }
+
+        (address recipient, uint256 unrealizedFeeInUnderlying) = PlasmaVaultFeesLib.prepareForRealizeManagementFee(
+            grossTotalAssets
+        );
+
+        if (recipient != address(0)) {
+            supply += _convertToShares(unrealizedFeeInUnderlying, Math.Rounding.Floor);
+        }
     }
 }

@@ -9,7 +9,13 @@ import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernanc
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {ExchangeRateValidatorConfigLib, ExchangeRateValidatorConfig, HookType, ValidatorData, Hook} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
+import {
+    ExchangeRateValidatorConfigLib,
+    ExchangeRateValidatorConfig,
+    HookType,
+    ValidatorData,
+    Hook
+} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
 import {SimpleExecutePreHook} from "./SimpleExecutePreHook.sol";
 
 /// @title ExchangeRateValidatorPreHookTest
@@ -90,12 +96,13 @@ contract ExchangeRateValidatorPreHookTest is Test {
         uint256 currentExchangeRate = plasmaVault.convertToAssets(10 ** plasmaVault.decimals());
 
         // 1% threshold in 1e18 precision (0.01e18 = 1e16)
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Create validator data with current exchange rate and 1% threshold
         ValidatorData memory validatorData = ValidatorData({
             exchangeRate: uint128(currentExchangeRate),
-            threshold: threshold
+            threshold: threshold,
+            lastUpdateTimestamp: 0
         });
 
         // Encode validator data to bytes31
@@ -162,12 +169,13 @@ contract ExchangeRateValidatorPreHookTest is Test {
         uint256 expectedExchangeRate = (currentExchangeRate * 102e16) / 1e18;
 
         // 1% threshold in 1e18 precision (0.01e18 = 1e16)
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Create validator data with exchange rate 2% higher than current and 1% threshold
         ValidatorData memory validatorData = ValidatorData({
             exchangeRate: uint128(expectedExchangeRate),
-            threshold: threshold
+            threshold: threshold,
+            lastUpdateTimestamp: 0
         });
 
         // Encode validator data to bytes31
@@ -239,12 +247,13 @@ contract ExchangeRateValidatorPreHookTest is Test {
         uint256 expectedExchangeRate = (currentExchangeRate * 98e16) / 1e18;
 
         // 1% threshold in 1e18 precision (0.01e18 = 1e16)
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Create validator data with exchange rate 2% lower than current and 1% threshold
         ValidatorData memory validatorData = ValidatorData({
             exchangeRate: uint128(expectedExchangeRate),
-            threshold: threshold
+            threshold: threshold,
+            lastUpdateTimestamp: 0
         });
 
         // Encode validator data to bytes31
@@ -312,7 +321,7 @@ contract ExchangeRateValidatorPreHookTest is Test {
         PlasmaVault plasmaVault = PlasmaVault(PLASMA_VAULT);
         uint256 currentExchangeRate = plasmaVault.convertToAssets(10 ** plasmaVault.decimals());
         uint256 expectedExchangeRate = (currentExchangeRate * 10075e14) / 1e18;
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Create and encode substrate
         bytes32[] memory substrates = new bytes32[](1);
@@ -320,7 +329,11 @@ contract ExchangeRateValidatorPreHookTest is Test {
             ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
                 data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
-                    ValidatorData({exchangeRate: uint128(expectedExchangeRate), threshold: threshold})
+                    ValidatorData({
+                        exchangeRate: uint128(expectedExchangeRate),
+                        threshold: threshold,
+                        lastUpdateTimestamp: 0
+                    })
                 )
             })
         );
@@ -367,6 +380,7 @@ contract ExchangeRateValidatorPreHookTest is Test {
             "Exchange rate should be updated to current"
         );
         assertEq(updatedValidatorData.threshold, threshold, "Threshold should remain unchanged");
+        assertEq(updatedValidatorData.lastUpdateTimestamp, block.timestamp, "Re-anchor timestamp should be recorded");
     }
 
     /// @notice Test that substrate exchange rate is NOT updated during deposit when deviation is <= threshold/2
@@ -380,7 +394,7 @@ contract ExchangeRateValidatorPreHookTest is Test {
         // This is <= threshold/2 (0.5%), so it should NOT update
         // Using 1e18 precision: 0.3% = 0.003e18 = 3e15
         uint256 expectedExchangeRate = (currentExchangeRate * 1003e15) / 1e18;
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Create and encode substrate
         bytes32[] memory substrates = new bytes32[](1);
@@ -388,7 +402,11 @@ contract ExchangeRateValidatorPreHookTest is Test {
             ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
                 data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
-                    ValidatorData({exchangeRate: uint128(expectedExchangeRate), threshold: threshold})
+                    ValidatorData({
+                        exchangeRate: uint128(expectedExchangeRate),
+                        threshold: threshold,
+                        lastUpdateTimestamp: 0
+                    })
                 )
             })
         );
@@ -444,7 +462,7 @@ contract ExchangeRateValidatorPreHookTest is Test {
         // given - calculate current exchange rate
         PlasmaVault plasmaVault = PlasmaVault(PLASMA_VAULT);
         uint256 currentExchangeRate = plasmaVault.convertToAssets(10 ** plasmaVault.decimals());
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Deploy SimpleExecutePreHook
         SimpleExecutePreHook simplePreHook = new SimpleExecutePreHook(123);
@@ -467,7 +485,11 @@ contract ExchangeRateValidatorPreHookTest is Test {
             ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
                 data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
-                    ValidatorData({exchangeRate: uint128(currentExchangeRate), threshold: threshold})
+                    ValidatorData({
+                        exchangeRate: uint128(currentExchangeRate),
+                        threshold: threshold,
+                        lastUpdateTimestamp: 0
+                    })
                 )
             })
         );
@@ -506,7 +528,7 @@ contract ExchangeRateValidatorPreHookTest is Test {
         // given - calculate current exchange rate
         PlasmaVault plasmaVault = PlasmaVault(PLASMA_VAULT);
         uint256 currentExchangeRate = plasmaVault.convertToAssets(10 ** plasmaVault.decimals());
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Deploy SimpleExecutePreHook for both pre and post hooks
         SimpleExecutePreHook preHook = new SimpleExecutePreHook(123);
@@ -528,7 +550,11 @@ contract ExchangeRateValidatorPreHookTest is Test {
             ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
                 data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
-                    ValidatorData({exchangeRate: uint128(currentExchangeRate), threshold: threshold})
+                    ValidatorData({
+                        exchangeRate: uint128(currentExchangeRate),
+                        threshold: threshold,
+                        lastUpdateTimestamp: 0
+                    })
                 )
             })
         );
@@ -578,7 +604,7 @@ contract ExchangeRateValidatorPreHookTest is Test {
         // given - calculate current exchange rate
         PlasmaVault plasmaVault = PlasmaVault(PLASMA_VAULT);
         uint256 currentExchangeRate = plasmaVault.convertToAssets(10 ** plasmaVault.decimals());
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Deploy multiple SimpleExecutePreHook instances
         SimpleExecutePreHook preHook1 = new SimpleExecutePreHook(111);
@@ -610,7 +636,11 @@ contract ExchangeRateValidatorPreHookTest is Test {
             ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
                 data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
-                    ValidatorData({exchangeRate: uint128(currentExchangeRate), threshold: threshold})
+                    ValidatorData({
+                        exchangeRate: uint128(currentExchangeRate),
+                        threshold: threshold,
+                        lastUpdateTimestamp: 0
+                    })
                 )
             })
         );
@@ -674,7 +704,7 @@ contract ExchangeRateValidatorPreHookTest is Test {
         // given - calculate current exchange rate
         PlasmaVault plasmaVault = PlasmaVault(PLASMA_VAULT);
         uint256 currentExchangeRate = plasmaVault.convertToAssets(10 ** plasmaVault.decimals());
-        uint120 threshold = 1e16;
+        uint80 threshold = 1e16;
 
         // Deploy hooks with different identifiers
         SimpleExecutePreHook preHook1 = new SimpleExecutePreHook(111); // Will be at index 0
@@ -713,7 +743,11 @@ contract ExchangeRateValidatorPreHookTest is Test {
             ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
                 data: ExchangeRateValidatorConfigLib.validatorDataToBytes31(
-                    ValidatorData({exchangeRate: uint128(currentExchangeRate), threshold: threshold})
+                    ValidatorData({
+                        exchangeRate: uint128(currentExchangeRate),
+                        threshold: threshold,
+                        lastUpdateTimestamp: 0
+                    })
                 )
             })
         );

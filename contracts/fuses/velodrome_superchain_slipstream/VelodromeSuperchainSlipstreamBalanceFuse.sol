@@ -5,11 +5,16 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
+import {OracleSqrtPriceX96Lib} from "../../libraries/math/OracleSqrtPriceX96Lib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IMarketBalanceFuse} from "../IMarketBalanceFuse.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
+import {
+    VelodromeSuperchainSlipstreamSubstrateLib,
+    VelodromeSuperchainSlipstreamSubstrateType,
+    VelodromeSuperchainSlipstreamSubstrate
+} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 import {ICLPool} from "./ext/ICLPool.sol";
 import {ISlipstreamSugar} from "./ext/ISlipstreamSugar.sol";
@@ -26,6 +31,14 @@ import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 ///      The balance calculations support both direct pool positions and staked gauge positions
 /// @dev Security: This fuse enforces a maximum positions limit per substrate to prevent gas exhaustion DoS attacks.
 ///      If the limit is exceeded, balanceOf() will revert, requiring position consolidation before proceeding.
+/// @dev Security: the token0/token1 composition of every position is derived from an oracle-implied
+///      `sqrtPriceX96` (computed from `PriceOracleMiddleware` prices), never from the pool's live
+///      `slot0().sqrtPriceX96`. The pool spot price is single-block manipulable (e.g. via a flash-loan
+///      swap that pushes the price to a position's range edge); pricing the composition with it while
+///      valuing the resulting legs with an independent oracle would let an attacker inflate or deflate
+///      the reported market NAV within one transaction. Deriving the composition price from the same
+///      oracle that prices the legs makes the two mutually consistent, so a same-transaction pool swap
+///      cannot move NAV.
 contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
     using Address for address;
 
@@ -106,14 +119,25 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
      * @notice Calculates the total balance of the Plasma Vault in Velodrome Slipstream protocol
      * @dev This function:
      *      1. Retrieves all substrates (pool and gauge addresses) configured for the market
-     *      2. For Pool substrates: uses curated storage list and filters by pool to prevent DoS attacks
+     *      2. For Pool substrates: uses curated storage list, filters by pool, and counts only
+     *         positions still custodied by the vault (ownerOf == address(this)) to prevent DoS
+     *         attacks and to avoid double-counting gauge-staked positions
      *      3. For Gauge substrates: uses stakedValues which is already filtered by gauge
      *      4. Converts token amounts to USD using price oracle middleware
      *      5. Sums all balances and returns the total
      *
+     *      Each tokenId is valued by exactly one branch: Pool if the vault owns the NFT, Gauge if
+     *      the gauge does. Once a position is staked, its NFT is transferred to the gauge, so the
+     *      Pool branch skips it (via the ownerOf check) and only the Gauge branch (principal-only,
+     *      since staked positions no longer accrue collectable LP fees) values it.
+     *
      *      Security: This function enforces MAX_POSITIONS_PER_SUBSTRATE to prevent gas exhaustion DoS.
      *      If any substrate has more positions than the limit, the function will revert with TooManyPositions.
      *      This requires operational intervention (position consolidation) before proceeding.
+     *
+     *      The token0/token1 split used for both branches (`sqrtPriceX96`) is NOT read from the pool's
+     *      live `slot0()` - it is derived from `PriceOracleMiddleware` prices via `_oracleSqrtPriceX96`,
+     *      so it cannot be moved by a same-transaction pool swap.
      * @return The total balance of the Plasma Vault in USD, normalized to WAD (18 decimals)
      */
     function balanceOf() external view override returns (uint256) {
@@ -154,11 +178,17 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
 
                 token0 = ICLPool(substrate.substrateAddress).token0();
                 token1 = ICLPool(substrate.substrateAddress).token1();
-                sqrtPriceX96 = ICLPool(substrate.substrateAddress).slot0().sqrtPriceX96;
+                sqrtPriceX96 = _oracleSqrtPriceX96(token0, token1, priceOracleMiddleware);
 
                 for (uint256 j; j < tokenIdsLen; j++) {
-                    // Filter: only include positions that belong to the current substrate pool
-                    if (_isPositionForPool(storedTokenIds[j], substrate.substrateAddress)) {
+                    // Filter: skip positions no longer custodied by the vault (e.g. staked in a
+                    // gauge, where the NFT has been transferred out) before the more expensive
+                    // pool-membership check, then only include positions that belong to the
+                    // current substrate pool
+                    if (
+                        _isOwnedByVault(storedTokenIds[j]) &&
+                        _isPositionForPool(storedTokenIds[j], substrate.substrateAddress)
+                    ) {
                         (amount0, amount1) = _addPrincipal(amount0, amount1, storedTokenIds[j], sqrtPriceX96);
                         (amount0, amount1) = _addFees(amount0, amount1, storedTokenIds[j]);
                     }
@@ -177,7 +207,7 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
 
                 token0 = ILeafCLGauge(substrate.substrateAddress).token0();
                 token1 = ILeafCLGauge(substrate.substrateAddress).token1();
-                sqrtPriceX96 = ILeafCLGauge(substrate.substrateAddress).pool().slot0().sqrtPriceX96;
+                sqrtPriceX96 = _oracleSqrtPriceX96(token0, token1, priceOracleMiddleware);
 
                 for (uint256 j; j < tokenIdsLen; j++) {
                     (amount0, amount1) = _addPrincipal(amount0, amount1, tokenIds[j], sqrtPriceX96);
@@ -188,6 +218,18 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
             }
         }
         return balance;
+    }
+
+    /// @notice Checks if the vault (this contract, via delegatecall) still custodies the position NFT
+    /// @dev Positions that have been staked in a gauge have their NFT transferred out of the vault,
+    ///      so this check excludes them from the Pool branch, leaving them to be valued exactly once
+    ///      by the Gauge branch. Checked before `_isPositionForPool` because it is cheaper (one
+    ///      staticcall returning a single word vs. `positions()` plus a pool-address computation),
+    ///      so positions that fail this check are filtered out at the lowest possible cost.
+    /// @param tokenId_ The NFT token ID to check
+    /// @return True if the vault currently owns the NFT, false otherwise
+    function _isOwnedByVault(uint256 tokenId_) internal view returns (bool) {
+        return INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).ownerOf(tokenId_) == address(this);
     }
 
     /// @notice Checks if a position NFT belongs to a specific pool
@@ -244,7 +286,8 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
      * @param amount0_ Current accumulated amount for token0
      * @param amount1_ Current accumulated amount for token1
      * @param tokenId_ The NFT token ID of the position
-     * @param sqrtPriceX96_ The current sqrt price of the pool (Q64.96 format)
+     * @param sqrtPriceX96_ The oracle-implied sqrt price used to split the position's liquidity into
+     *        amount0/amount1 (Q64.96 format) - see `_oracleSqrtPriceX96`
      * @return newAmount0 Updated accumulated amount for token0 (principal + previous amount)
      * @return newAmount1 Updated accumulated amount for token1 (principal + previous amount)
      */
@@ -307,5 +350,36 @@ contract VelodromeSuperchainSlipstreamBalanceFuse is IMarketBalanceFuse {
         );
 
         return IporMath.convertToWad((amount_) * priceToken, IERC20Metadata(token_).decimals() + priceDecimals);
+    }
+
+    /**
+     * @notice Derives the sqrt price (Q64.96) that would make the pool's raw token1/token0 price
+     * consistent with the independent `PriceOracleMiddleware` prices of token0 and token1
+     * @dev This replaces reading the pool's live `slot0().sqrtPriceX96`, which is manipulable within
+     *      a single transaction (e.g. a flash-loan swap that pushes the price to a position's range
+     *      edge). Using an oracle-implied price for the composition split, while the resulting legs
+     *      are also priced by the oracle in `_convertToUsd`, means both the composition and the legs
+     *      come from the same manipulation-resistant source, so a same-transaction pool swap cannot
+     *      change the reported NAV.
+     *      `getAssetPrice` returns `(price, priceDecimals)` = USD value of one WHOLE token scaled by
+     *      `10^priceDecimals`. Given `p0`/`d0` for token0 and `p1`/`d1` for token1, and raw-unit
+     *      decimals `t0`/`t1`, the raw token1-per-token0 price is:
+     *        P = (p0 * 10^(d1+t1)) / (p1 * 10^(d0+t0))
+     *      and `sqrtPriceX96 = floor(sqrt(P) * 2^96) = floor(sqrt(P * 2^192))` for P < 2^64; above that it is rounded down
+     *      by at most 2^32 units (relative error <= 2^-96, see OracleSqrtPriceX96Lib.fromRatio).
+     *      The computation is delegated to `OracleSqrtPriceX96Lib.fromOracle` (single 512-bit `mulDiv`, decimal
+     *      scale applied before it) and supports the full Q64.96 range; for realistic prices and decimals it reverts
+     *      only when the oracle-implied P >= 2^128.
+     * @param token0_ The pool's token0 address
+     * @param token1_ The pool's token1 address
+     * @param priceOracleMiddleware_ The address of the price oracle middleware
+     * @return The oracle-implied sqrt price of the pool, in Q64.96 format
+     */
+    function _oracleSqrtPriceX96(
+        address token0_,
+        address token1_,
+        address priceOracleMiddleware_
+    ) internal view returns (uint160) {
+        return OracleSqrtPriceX96Lib.fromOracle(token0_, token1_, priceOracleMiddleware_);
     }
 }

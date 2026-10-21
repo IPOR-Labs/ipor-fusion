@@ -82,4 +82,19 @@ interface ICurveStableswapNG {
      * @return Number of decimals
      */
     function decimals() external view returns (uint256);
+
+    /**
+     * @dev The current virtual price of the pool LP token, i.e. D / totalSupply, in 18 decimals.
+     * @dev Guarded by a read-only reentrancy lock (`@nonreentrant('lock')`) in StableSwap-NG.
+     * @return LP token virtual price
+     */
+    function get_virtual_price() external view returns (uint256);
+
+    /**
+     * @dev Per-coin rate multipliers used to build the invariant: `xp[j] = balances[j] * rate[j] / 1e18`.
+     *      Equals `10**(36 - decimals_j)` for a coin with no external rate, and additionally carries a
+     *      rate-oracle / ERC-4626 conversion for `asset_type` 1 and 3.
+     * @return Rate multiplier per coin, in the pool's coin order
+     */
+    function stored_rates() external view returns (uint256[] memory);
 }

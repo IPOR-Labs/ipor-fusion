@@ -50,23 +50,30 @@ The main entry point and orchestrator. Contains:
 
 **Key mechanism - Fallback Router:**
 ```solidity
+// PlasmaVault
 fallback(bytes calldata) external returns (bytes memory) {
-    bytes4 sig = msg.sig;
-
-    // Route ERC4626 view functions
-    if (_isERC4626ViewFunction(sig)) {
-        return erc4626.functionDelegateCall(msg.data);
+    if (PlasmaVaultLib.isExecutionStarted()) {
+        CallbackHandlerLib.handleCallback(); // callbacks during execute()
+        return "";
     }
-
-    // Route Votes functions to plugin
-    if (_isVotesFunction(sig)) {
-        return votesPlugin.functionDelegateCall(msg.data);
-    }
-
     // Default: route to PlasmaVaultBase
     return PLASMA_VAULT_BASE().functionDelegateCall(msg.data);
 }
+
+// PlasmaVaultBase (reached by the delegatecall above)
+fallback(bytes calldata) external returns (bytes memory) {
+    // Route the 10 Votes selectors (IVotes, IERC6372, numCheckpoints, checkpoints) to the plugin
+    if (msg.sig is one of the 10 Votes selectors) {
+        address votesPlugin = PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
+        if (votesPlugin == address(0)) revert VotesPluginNotEnabled();
+        return votesPlugin.functionDelegateCall(msg.data);
+    }
+    revert(); // unknown selector
+}
 ```
+
+The Votes routing lives in PlasmaVaultBase to keep PlasmaVault under the EIP-170 limit at the deploy setting
+(optimizer runs 200). PlasmaVault and PlasmaVaultBase must be deployed and updated together.
 
 ### PlasmaVaultBase
 
@@ -157,9 +164,63 @@ User → PlasmaVault.previewDeposit()
 ```
 User → PlasmaVault.delegate()
      → fallback()
-     → _isVotesFunction() = true
+     → PlasmaVaultBase.functionDelegateCall()
+     → PlasmaVaultBase fallback(): Votes selector = true
      → PlasmaVaultVotesPlugin.functionDelegateCall()
 ```
+
+## ERC-4626 views: known limitations
+
+### What the views price
+
+`maxWithdraw`, `previewRedeem`, `previewWithdraw`, `maxDeposit` and `maxMint` are priced after the pending management fee. `withdraw`, `redeem`, `deposit` and `mint` realize that fee first, so the views convert against the supply that includes the fee shares (IL-8319, IL-8343, IL-8490).
+
+**Gas cost (IL-8491).** Each of `maxWithdraw`, `previewRedeem` and `previewWithdraw` computes gross total assets up to three times per call: in `_totalSupplyAfterManagementFee()`, again in the `_convertToShares` of the pending fee, and a third time in the final conversion. Every pass reads the asset `balanceOf` and, when a RewardsClaimManager is set, makes an external `RewardsClaimManager.balanceOf()` call; the in-call `maxWithdraw` inside `withdraw` pays the same cost. Measured at optimizer runs = 200 with a RewardsClaimManager, from before IL-8319 to now: `maxWithdraw` 8,864 to 18,709 gas, `previewRedeem` 6,430 to 16,275, `withdraw` 158,750 to 168,204, of which about 7.2k of the roughly +9.8k per view is the repeated computation. This is accepted: passing gross assets once costs +22 B (as a parameter) to +170 B (naive) of PlasmaVault bytecode, and the 487 B (446 B with the IPFS metadata hash) of EIP-170 headroom at 200 runs is kept for security fixes. Revisit it if the views ever simulate the performance fee (IL-8489 option (a)), because one shared helper can then take gross assets once.
+
+### What the views do not price
+
+These two effects are accepted limitations (IL-8489):
+
+- A pending performance fee that `withdraw` and `redeem` crystallize before the limit check. This happens when the share rate is above the high-water mark, for example after vesting rewards, a donation, or the withdraw fee burn of an earlier exit.
+- A refresh of stale market balances during `withdraw` or `redeem`.
+
+On vaults created with the IL-8744 FeeManager the high-water mark is the share price right after the last performance fee, so the price equals the HWM after every fee. Any later accretion (a burned withdraw fee, vesting rewards, a donation) therefore creates a pending performance fee immediately. This is correct HWM behaviour, but it makes the effects above occur more often, including exits from nested child vaults through the old `Erc4626SupplyFuse`, and the performance fee now also applies to withdraw fee income. Deposits and mints do not crystallize the performance fee (IL-8327, IL-8756), so a depositor who enters after such accretion pays a price that includes it and is diluted by the fee charged on it at the next `execute`, `updateMarketsBalances`, `withdraw` or `redeem`. With the post-fee high-water mark this applies from the first wei of accretion, not only after the post-fee gap is recovered. Vaults that run `UpdateBalancesPreHook` on deposit and mint crystallize the fee first. Live vaults are unaffected: each has its own non-upgradeable FeeManager and keeps its current behaviour.
+
+As a result, `maxWithdraw` and `previewRedeem` can overestimate, and `previewWithdraw` can underestimate, by the caller's share of that fee or refresh delta. `withdraw(maxWithdraw(owner))` can then revert with `ERC4626ExceededMaxWithdraw`. To exit a whole position, use `redeem(balanceOf(owner))`.
+
+These residuals are pinned by:
+
+- `test/vaults/PlasmaVaultPreviewResidualsTest.t.sol`
+- `test/vaults/PlasmaVaultPerformanceFeeFullExitTest.t.sol`
+- `test/vaults/PlasmaVaultManagementFeeMaxPreviewTest.t.sol`
+
+### Legacy clones (IL-8492)
+
+Deployed PlasmaVaults are EIP-1167 clones created by FusionFactory and stay on the implementation they were created with. The view fixes above do not reach them, nor will any future fix. Implementations from before the IL-8319/IL-8343 fix do not price the pending management fee in these views either.
+
+A parent vault that fully exits a nested PlasmaVault child through the old `Erc4626SupplyFuse` clamps the amount to the child's `maxWithdraw` and calls `withdraw`. If the child has a pending fee, that exit can revert in `execute`. In `instantWithdraw` the fuse catches the error, skips the exit and emits `Erc4626SupplyFuseExitFailed`.
+
+The `Erc4626SupplyFuse` from IL-8489 handles this: an exit amount greater than or equal to the child's `maxWithdraw` redeems `min(balanceOf, maxRedeem)` shares. That also works against legacy children, but only for parents that use the new fuse deployment.
+
+### Runbook: full exit from a nested PlasmaVault child
+
+Until the parent uses the IL-8489 `Erc4626SupplyFuse` deployment, exit fully in one of these ways:
+
+1. Call `redeem(balanceOf)` on the child directly, where the integration allows it.
+2. Put a small `withdraw` earlier in the same `execute`. It realizes the child's pending management and performance fees, so the later `maxWithdraw` no longer includes them. This is not exact when the child charges a withdraw fee (burning the fee shares lifts the rate above the high-water mark again) or when the exit refreshes a stale market balance.
+3. Request slightly less than `maxWithdraw`.
+
+After the new fuse is deployed and wired on the parent (`addFuses` and the instant withdrawal configuration), an exit amount greater than or equal to `maxWithdraw` redeems the whole redeemable balance, also for legacy children.
+
+Before a child PlasmaVault enables a management or performance fee, re-run the nested-vault scan and check that full exits of its parents still succeed. The scan script is attached to Jira IL-8492 and needs the keeper DB and an RPC.
+
+## Management fee changes (IL-8742)
+
+The checkpoint moves the fee accrued at the old rate into the pending management fee; it is minted to the management fee account at the next realization (deposit, mint, withdraw, redeem) and split by the recipient fees in force when `harvestManagementFee` runs. A recipient change therefore sends the old period to the new split, and with a new total of 0 (possible only when `IPOR_DAO_MANAGEMENT_FEE == 0`) `harvestManagementFee` returns early and the shares wait in the management fee account until a non-zero fee is configured, then go to the recipients in force at that time.
+
+To pay the old period to the old recipients, realize the fee first: in the same transaction batch, before `FeeManager.updateManagementFee`, make any deposit, mint, withdraw or redeem (e.g. 1 unit by the atomist Safe; it needs deposit access on a private vault).
+
+Shares already waiting can be released in one batch: `updateManagementFee([recipient, 1])`, `harvestManagementFee()`, `updateManagementFee([])` (same block, no new accrual).
 
 ## Creating New Plugins
 
@@ -168,7 +229,7 @@ To create a new plugin:
 1. **Create the plugin contract** in `plugins/` directory
 2. **Use ERC-7201 namespaced storage** that doesn't conflict with existing slots
 3. **Create an interface** in `interfaces/`
-4. **Add routing logic** in PlasmaVault's fallback function
+4. **Add routing logic** in the PlasmaVaultBase fallback function (PlasmaVault forwards unknown selectors there)
 5. **Add storage slot** for plugin address in PlasmaVaultStorageLib
 6. **Update PlasmaVaultInitData** struct if plugin is configured at init time
 

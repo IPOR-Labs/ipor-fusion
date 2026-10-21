@@ -5,6 +5,9 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PtPriceFeedFactory} from "../../../contracts/factory/price_feed/PtPriceFeedFactory.sol";
 import {PtPriceFeed} from "../../../contracts/price_oracle/price_feed/PtPriceFeed.sol";
+import {PendleOracleMethodLib} from "../../../contracts/price_oracle/price_feed/lib/PendleOracleMethodLib.sol";
+import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
+import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
 
 struct TestItem {
     address market;
@@ -252,6 +255,48 @@ contract PtPriceFeedFactoryTest is Test {
         assertTrue(priceDeltaPercentage <= 1, "Price should be within 1% of expected");
     }
 
+    function testCalculatePriceRevertsWhenPendleOracleMethodIsUnknown() public {
+        // given
+        TestItem memory item = _getTestItems()[0];
+        uint256 unknownMethod = 2;
+
+        // when & then
+        vm.expectRevert(
+            abi.encodeWithSelector(PendleOracleMethodLib.InvalidPendleOracleMethod.selector, unknownMethod)
+        );
+        factoryProxy.calculatePrice(item.market, TWAP_WINDOW, PRICE_ORACLE, unknownMethod);
+    }
+
+    function testCalculatePriceRevertsWhenPtToSyMethodUsedWithSyNotOneToOne() public {
+        // given - SY-sUSDe is not 1:1 with USDe, so method 0 would misprice PT-sUSDe by the SY exchange rate
+        TestItem memory item = _getTestItems()[0];
+        (IStandardizedYield sy, , ) = IPMarket(item.market).readTokens();
+        uint256 syExchangeRate = sy.exchangeRate();
+
+        // when & then
+        vm.expectRevert(abi.encodeWithSelector(PendleOracleMethodLib.SyExchangeRateNotOne.selector, syExchangeRate));
+        factoryProxy.calculatePrice(item.market, TWAP_WINDOW, PRICE_ORACLE, PendleOracleMethodLib.PT_TO_SY);
+    }
+
+    function testCreateRevertsWhenPtToSyMethodUsedWithSyNotOneToOne() public {
+        // given
+        TestItem memory item = _getTestItems()[0];
+        (IStandardizedYield sy, , ) = IPMarket(item.market).readTokens();
+        uint256 syExchangeRate = sy.exchangeRate();
+
+        // when & then
+        vm.expectRevert(abi.encodeWithSelector(PendleOracleMethodLib.SyExchangeRateNotOne.selector, syExchangeRate));
+        vm.prank(ADMIN);
+        factoryProxy.create(
+            PENDLE_ORACLE,
+            item.market,
+            TWAP_WINDOW,
+            PRICE_ORACLE,
+            PendleOracleMethodLib.PT_TO_SY,
+            item.price
+        );
+    }
+
     function testCalculatePriceForMultipleMarkets() public view {
         // given
         TestItem[] memory testItems = _getTestItems();
@@ -327,8 +372,8 @@ contract PtPriceFeedFactoryTest is Test {
         testItems = new TestItem[](5);
         testItems[0] = TestItem({
             market: 0xB162B764044697cf03617C2EFbcB1f42e31E4766,
-            price: int256(84102754),
-            usePendleOracleMethod: 0
+            price: int256(99320033),
+            usePendleOracleMethod: 1
         });
         testItems[1] = TestItem({
             market: 0x85667e484a32d884010Cf16427D90049CCf46e97,

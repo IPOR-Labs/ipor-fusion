@@ -668,6 +668,8 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
                     amount1Desired: 1_500e6,
                     amount0Max: 1e18,
                     amount1Max: 3_000e6,
+                    amount0Min: 0,
+                    amount1Min: 0,
                     hookData: bytes(""),
                     deadline: block.timestamp + 100
                 })
@@ -709,6 +711,8 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
                     amount1Desired: 1_500e6,
                     amount0Max: 1e18,
                     amount1Max: 3_000e6,
+                    amount0Min: 0,
+                    amount1Min: 0,
                     hookData: bytes(""),
                     deadline: block.timestamp + 100
                 })
@@ -723,6 +727,191 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
         assertLt(ERC20(USDC).balanceOf(_plasmaVault), usdcBefore, "vault spent USDC");
         assertGt(_v4MarketBalance(), marketBalanceBefore, "market balance increased");
         assertEq(ERC20(USDC).allowance(_plasmaVault, PERMIT2), 0, "USDC allowance to Permit2 reset");
+    }
+
+    // ------------------------------------------------------------------
+    // IL-7952 — deposit-ratio slippage guard (amount0Min / amount1Min)
+    // ------------------------------------------------------------------
+
+    function testShouldRevertIncreaseLiquidityWhenPriceMovedBelowRange() external {
+        // given — an in-range WETH/USDC position, then a front-run swap that pushes the price
+        // below the position's lower tick boundary (sell currency0 / WETH into the pool)
+        uint256 tokenId = _openPosition(_wethUsdcKey, 1000, 1e18, 3_000e6);
+        (, int24 tickLower, ) = _positionTickRange(tokenId);
+
+        _swapV4(_wethUsdcKey, true, 500e18);
+
+        (, int24 currentTick, , ) = IPoolManager(POOL_MANAGER).getSlot0(_wethUsdcKey.toId());
+        assertLt(currentTick, tickLower, "test-validity: price did not move below the position's lower tick");
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_modifyPositionFuse),
+            abi.encodeWithSelector(
+                UniswapV4ModifyPositionFuse.enter.selector,
+                UniswapV4ModifyPositionFuseEnterData({
+                    tokenId: tokenId,
+                    amount0Desired: 5e17,
+                    amount1Desired: 1_500e6,
+                    amount0Max: 1e18,
+                    amount1Max: 3_000e6,
+                    amount0Min: 4e17,
+                    amount1Min: 1_200e6,
+                    hookData: bytes(""),
+                    deadline: block.timestamp + 100
+                })
+            )
+        );
+
+        // when / then — below range the increase settles 100% token0 / 0% token1, tripping amount1Min
+        vm.expectPartialRevert(UniswapV4ModifyPositionFuse.UniswapV4ModifyPositionFuseSlippage.selector);
+        PlasmaVault(_plasmaVault).execute(calls);
+    }
+
+    function testShouldRevertIncreaseLiquidityWhenPriceMovedAboveRange() external {
+        // given — an in-range WETH/USDC position, then a front-run swap that pushes the price
+        // above the position's upper tick boundary (sell currency1 / USDC into the pool)
+        uint256 tokenId = _openPosition(_wethUsdcKey, 1000, 1e18, 3_000e6);
+        (, , int24 tickUpper) = _positionTickRange(tokenId);
+
+        _swapV4(_wethUsdcKey, false, 1_000_000e6);
+
+        (, int24 currentTick, , ) = IPoolManager(POOL_MANAGER).getSlot0(_wethUsdcKey.toId());
+        assertGt(currentTick, tickUpper, "test-validity: price did not move above the position's upper tick");
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_modifyPositionFuse),
+            abi.encodeWithSelector(
+                UniswapV4ModifyPositionFuse.enter.selector,
+                UniswapV4ModifyPositionFuseEnterData({
+                    tokenId: tokenId,
+                    amount0Desired: 5e17,
+                    amount1Desired: 1_500e6,
+                    amount0Max: 1e18,
+                    amount1Max: 3_000e6,
+                    amount0Min: 4e17,
+                    amount1Min: 1_200e6,
+                    hookData: bytes(""),
+                    deadline: block.timestamp + 100
+                })
+            )
+        );
+
+        // when / then — above range the increase settles 100% token1 / 0% token0, tripping amount0Min
+        vm.expectPartialRevert(UniswapV4ModifyPositionFuse.UniswapV4ModifyPositionFuseSlippage.selector);
+        PlasmaVault(_plasmaVault).execute(calls);
+    }
+
+    function testShouldIncreaseLiquidityWhenMinimumsMet() external {
+        // given — no price move; mins set below the amounts the unguarded testShouldIncreaseLiquidity
+        // observes being spent (5e17 WETH / 1_500e6 USDC desired, in-range so both sides are used)
+        uint256 tokenId = _openPosition(_wethUsdcKey, 1000, 1e18, 3_000e6);
+        uint128 liquidityBefore = _positionLiquidity(tokenId);
+        uint256 wethBefore = ERC20(WETH).balanceOf(_plasmaVault);
+        uint256 usdcBefore = ERC20(USDC).balanceOf(_plasmaVault);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_modifyPositionFuse),
+            abi.encodeWithSelector(
+                UniswapV4ModifyPositionFuse.enter.selector,
+                UniswapV4ModifyPositionFuseEnterData({
+                    tokenId: tokenId,
+                    amount0Desired: 5e17,
+                    amount1Desired: 1_500e6,
+                    amount0Max: 1e18,
+                    amount1Max: 3_000e6,
+                    amount0Min: 4.5e17,
+                    amount1Min: 1_350e6,
+                    hookData: bytes(""),
+                    deadline: block.timestamp + 100
+                })
+            )
+        );
+
+        // when
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        // then
+        assertGt(_positionLiquidity(tokenId), liquidityBefore, "position liquidity increased");
+        assertGe(wethBefore - ERC20(WETH).balanceOf(_plasmaVault), 4.5e17, "WETH spent meets amount0Min");
+        assertGe(usdcBefore - ERC20(USDC).balanceOf(_plasmaVault), 1_350e6, "USDC spent meets amount1Min");
+    }
+
+    function testShouldRevertIncreaseLiquidityTransientWhenPriceMovedBelowRange() external {
+        // given — same below-range setup as the direct-call variant, but via enterTransient's 8-input layout
+        uint256 tokenId = _openPosition(_wethUsdcKey, 1000, 1e18, 3_000e6);
+        (, int24 tickLower, ) = _positionTickRange(tokenId);
+
+        _swapV4(_wethUsdcKey, true, 500e18);
+
+        (, int24 currentTick, , ) = IPoolManager(POOL_MANAGER).getSlot0(_wethUsdcKey.toId());
+        assertLt(currentTick, tickLower, "test-validity: price did not move below the position's lower tick");
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_modifyPositionFuse);
+
+        // enterTransient 8-input layout: [tokenId, a0Desired, a1Desired, a0Max, a1Max, deadline, a0Min, a1Min]
+        bytes32[][] memory inputs = new bytes32[][](1);
+        inputs[0] = new bytes32[](8);
+        inputs[0][0] = TypeConversionLib.toBytes32(tokenId);
+        inputs[0][1] = TypeConversionLib.toBytes32(uint256(5e17));
+        inputs[0][2] = TypeConversionLib.toBytes32(uint256(1_500e6));
+        inputs[0][3] = TypeConversionLib.toBytes32(uint256(1e18));
+        inputs[0][4] = TypeConversionLib.toBytes32(uint256(3_000e6));
+        inputs[0][5] = TypeConversionLib.toBytes32(block.timestamp + 100);
+        inputs[0][6] = TypeConversionLib.toBytes32(uint256(4e17));
+        inputs[0][7] = TypeConversionLib.toBytes32(uint256(1_200e6));
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputs})
+            )
+        );
+        calls[1] = FuseAction(address(_modifyPositionFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when / then
+        vm.expectPartialRevert(UniswapV4ModifyPositionFuse.UniswapV4ModifyPositionFuseSlippage.selector);
+        PlasmaVault(_plasmaVault).execute(calls);
+    }
+
+    function testShouldIncreaseLiquidityTransientWithLegacySixInputs() external {
+        // given — no price move; legacy callers supplying only the original 6 transient inputs must
+        // keep working byte-for-byte (mins default to 0, i.e. the slippage check is a no-op)
+        uint256 tokenId = _openPosition(_wethUsdcKey, 1000, 1e18, 3_000e6);
+        uint128 liquidityBefore = _positionLiquidity(tokenId);
+
+        address[] memory fuses = new address[](1);
+        fuses[0] = address(_modifyPositionFuse);
+
+        bytes32[][] memory inputs = new bytes32[][](1);
+        inputs[0] = new bytes32[](6);
+        inputs[0][0] = TypeConversionLib.toBytes32(tokenId);
+        inputs[0][1] = TypeConversionLib.toBytes32(uint256(5e17));
+        inputs[0][2] = TypeConversionLib.toBytes32(uint256(1_500e6));
+        inputs[0][3] = TypeConversionLib.toBytes32(uint256(1e18));
+        inputs[0][4] = TypeConversionLib.toBytes32(uint256(3_000e6));
+        inputs[0][5] = TypeConversionLib.toBytes32(block.timestamp + 100);
+
+        FuseAction[] memory calls = new FuseAction[](2);
+        calls[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature(
+                "enter((address[],bytes32[][]))",
+                TransientStorageSetInputsFuseEnterData({fuse: fuses, inputsByFuse: inputs})
+            )
+        );
+        calls[1] = FuseAction(address(_modifyPositionFuse), abi.encodeWithSignature("enterTransient()"));
+
+        // when
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        // then — succeeds exactly as before the fix; outputs shape (4 slots) unchanged
+        assertGt(_positionLiquidity(tokenId), liquidityBefore, "position liquidity increased via legacy transient");
     }
 
     function testShouldRevertIncreaseWhenZeroLiquidity() external {
@@ -740,6 +929,8 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
                     amount1Desired: 0,
                     amount0Max: 1e9,
                     amount1Max: 1e3,
+                    amount0Min: 0,
+                    amount1Min: 0,
                     hookData: bytes(""),
                     deadline: block.timestamp + 100
                 })
@@ -890,6 +1081,8 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
                     amount1Desired: 1e18,
                     amount0Max: 2e18,
                     amount1Max: 2e18,
+                    amount0Min: 0,
+                    amount1Min: 0,
                     hookData: bytes(""),
                     deadline: block.timestamp + 100
                 })
@@ -923,6 +1116,8 @@ contract UniswapV4PositionFuseTest is UniswapV4TestBase {
                     amount1Desired: 1_500e6,
                     amount0Max: 1e18,
                     amount1Max: 3_000e6,
+                    amount0Min: 0,
+                    amount1Min: 0,
                     hookData: bytes(""),
                     deadline: block.timestamp + 100
                 })

@@ -9,6 +9,7 @@ import {IPrincipalToken} from "./ext/IPrincipalToken.sol";
 import {IUniversalRouter} from "./ext/IUniversalRouter.sol";
 import {Commands} from "./utils/Commands.sol";
 import {ActionConstants} from "./utils/ActionsConstants.sol";
+import {LibPermit2} from "./utils/LibPermit2.sol";
 
 import {NapierUniversalRouterFuse} from "./NapierUniversalRouterFuse.sol";
 
@@ -75,7 +76,7 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
             // Combine PT and YT for underlying token
             commands = abi.encodePacked(bytes1(uint8(Commands.PT_COMBINE)));
             inputs = new bytes[](1);
-            inputs[0] = abi.encode(pt, ActionConstants.CONTRACT_BALANCE, address(this));
+            inputs[0] = abi.encode(pt, data_.principals, address(this));
         } else if (data_.tokenOut == asset) {
             // Combine PT and YT for tokenOut through VaultConnector
             commands = abi.encodePacked(
@@ -84,7 +85,7 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
             );
 
             inputs = new bytes[](2);
-            inputs[0] = abi.encode(pt, ActionConstants.CONTRACT_BALANCE, ActionConstants.ADDRESS_THIS);
+            inputs[0] = abi.encode(pt, data_.principals, ActionConstants.ADDRESS_THIS);
             inputs[1] = abi.encode(underlying, asset, data_.tokenOut, ActionConstants.CONTRACT_BALANCE, address(this));
         } else {
             revert NapierFuseInvalidToken();
@@ -92,11 +93,17 @@ contract NapierCombineFuse is NapierUniversalRouterFuse {
 
         uint256 balanceBefore = ERC20(data_.tokenOut).balanceOf(address(this));
 
-        // Pre-transfer PT and YT to the router
-        ERC20(address(pt)).safeTransfer(address(ROUTER), data_.principals);
-        ERC20(yt).safeTransfer(address(ROUTER), data_.principals);
+        // Grant the router a Permit2 allowance, revoked right after the call.
+        // PT_COMBINE pulls exactly `data_.principals` of PT and of YT from the vault (msgSender) itself,
+        // so any PT/YT already sitting on the shared router is ignored rather than combined
+        // (a PT-only surplus on the router would otherwise revert the combine, see IL-8027).
+        LibPermit2.setupPermit2Approval(address(pt), address(ROUTER));
+        LibPermit2.setupPermit2Approval(yt, address(ROUTER));
 
         ROUTER.execute(commands, inputs);
+
+        LibPermit2.resetPermit2Approval(address(pt), address(ROUTER));
+        LibPermit2.resetPermit2Approval(yt, address(ROUTER));
 
         uint256 amountOut = ERC20(data_.tokenOut).balanceOf(address(this)) - balanceBefore;
         if (amountOut < data_.minTokenOutAmount) {

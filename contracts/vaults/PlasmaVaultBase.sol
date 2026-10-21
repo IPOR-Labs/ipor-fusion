@@ -2,6 +2,8 @@
 pragma solidity 0.8.30;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {IPlasmaVaultBase} from "../interfaces/IPlasmaVaultBase.sol";
@@ -80,6 +82,10 @@ contract PlasmaVaultBase is
      */
     error ERC20InvalidCap(uint256 cap);
 
+    /// @dev The votes plugin is not configured for this vault. Declared in PlasmaVault as well so that the
+    ///      selector stays part of the vault ABI; both declarations have the same signature.
+    error VotesPluginNotEnabled();
+
     /// @notice Initializes the PlasmaVaultBase contract
     /// @param assetName_ The name of the asset
     /// @param accessManager_ The address of the access manager contract
@@ -98,6 +104,39 @@ contract PlasmaVaultBase is
         super.__ERC20Permit_init(assetName_);
         super.__AccessManaged_init(accessManager_);
         __init(totalSupplyCap_);
+    }
+
+    /// @notice Routes the Votes selectors (IVotes, IERC6372, checkpoints) to the votes plugin, rejects everything else
+    /// @dev Reached only through the PlasmaVault fallback (delegatecall), so `address(this)` is the vault and the
+    ///      plugin address is read from the vault storage. PlasmaVault keeps the callback-handler routing during
+    ///      `execute`; this fallback is never reached in that phase. Selectors that are neither implemented by
+    ///      PlasmaVaultBase nor Votes selectors revert with empty data, as before the routing moved here.
+    ///      Called directly on the PlasmaVaultBase implementation no plugin is stored, so it reverts too.
+    ///      The plugin's external `transferVotingUnits` is unprotected (it moves voting units for any address) and is
+    ///      reached only from `_update` through `functionDelegateCall`; it must never be added to this list (pinned by
+    ///      `testTransferVotingUnitsIsNotRoutedThroughVault`).
+    // solhint-disable-next-line no-unused-vars
+    fallback(bytes calldata) external returns (bytes memory) {
+        bytes4 sig = msg.sig;
+        if (
+            sig == IVotes.getVotes.selector ||
+            sig == IVotes.getPastVotes.selector ||
+            sig == IVotes.getPastTotalSupply.selector ||
+            sig == IVotes.delegates.selector ||
+            sig == IVotes.delegate.selector ||
+            sig == IVotes.delegateBySig.selector ||
+            sig == IERC6372.clock.selector ||
+            sig == IERC6372.CLOCK_MODE.selector ||
+            sig == IPlasmaVaultVotesPlugin.numCheckpoints.selector ||
+            sig == IPlasmaVaultVotesPlugin.checkpoints.selector
+        ) {
+            address votesPlugin = PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
+            if (votesPlugin != address(0)) {
+                return votesPlugin.functionDelegateCall(msg.data);
+            }
+            revert VotesPluginNotEnabled();
+        }
+        revert();
     }
 
     function __init(uint256 cap_) internal {
@@ -269,6 +308,12 @@ contract PlasmaVaultBase is
     }
 
     function _checkCanCall(address caller_, bytes calldata data_) internal override {
+        /// @dev The vault's own external self-calls reach this code through the PlasmaVault fallback and are
+        ///      authorized against the vault, not against a ContextManager context sender (see PlasmaVault).
+        if (msg.sender == address(this)) {
+            caller_ = msg.sender;
+        }
+
         super._checkCanCall(caller_, data_);
         _runPreHook(bytes4(data_[0:4]));
     }

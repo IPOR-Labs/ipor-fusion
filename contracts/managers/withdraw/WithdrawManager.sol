@@ -135,7 +135,8 @@ contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClie
      *
      * 2. Fee Calculation
      *    - Retrieves current withdraw fee rate for unallocated withdrawals
-     *    - Calculates fee amount in shares
+     *    - Calculates fee amount in shares: fee = gross shares x rate, where gross shares are the shares
+     *      the caller burns (redeem passes its shares, withdraw passes net shares / (1 - rate))
      *    - Uses WAD precision (18 decimals)
      *    - Returns 0 if no fee configured
      *
@@ -252,7 +253,7 @@ contract WithdrawManager is Initializable, AccessManagedUpgradeable, ContextClie
      * Fee System:
      * - Fee rate is specified in WAD (18 decimals)
      * - 1e18 represents 100% fee
-     * - Fee is calculated as: amount * feeRate / 1e18
+     * - Fee is calculated as: gross shares * feeRate / 1e18 (gross = shares burned, fee included)
      * - Collected fees are burned through BurnRequestFeeFuse
      *
      * Access Control:

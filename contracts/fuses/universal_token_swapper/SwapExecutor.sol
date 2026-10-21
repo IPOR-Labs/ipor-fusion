@@ -17,6 +17,9 @@ struct SwapExecutorData {
     address[] dexs;
     /// @notice Array of encoded function call data for each DEX
     bytes[] dexsData;
+    /// @notice Additional output/intermediate tokens the DEX calls may leave in the executor; the full balance
+    /// of each is transferred to the caller after the existing tokenIn/tokenOut sweep
+    address[] tokensToReturn;
 }
 
 /// @title SwapExecutor
@@ -44,12 +47,20 @@ contract SwapExecutor is ReentrancyGuard {
      * - `dexsData`: An array of encoded function call data corresponding to each DEX.
      * - `tokenIn`: The address of the input token.
      * - `tokenOut`: The address of the output token.
+     * - `tokensToReturn`: Additional tokens whose full balance is swept to the caller after the tokenIn/tokenOut sweep.
+     * @return tokenInReturned Amount of `tokenIn` transferred to the caller (the full executor balance, including any
+     * balance that was already here before the call). When `tokenIn == tokenOut` the whole balance is reported here.
+     * @return tokenOutReturned Amount of `tokenOut` transferred to the caller (0 when `tokenIn == tokenOut`).
+     * Additional `tokensToReturn` are not reported. The fuse uses these values, not the vault balances, to measure
+     * what the swap spent and received, so that third-party inflows to the vault cannot influence the checks.
      * @custom:revert ArrayLengthMismatch When dexs and dexsData arrays have different lengths
      * @custom:security External calls to DEX addresses are protected by nonReentrant modifier
      * @custom:security Caller must transfer tokens to this contract before calling
      * @custom:security Caller is responsible for providing valid and trusted DEX addresses
      */
-    function execute(SwapExecutorData calldata data_) external nonReentrant {
+    function execute(
+        SwapExecutorData calldata data_
+    ) external nonReentrant returns (uint256 tokenInReturned, uint256 tokenOutReturned) {
         uint256 len = data_.dexs.length;
         if (len != data_.dexsData.length) {
             revert ArrayLengthMismatch();
@@ -66,6 +77,7 @@ contract SwapExecutor is ReentrancyGuard {
             uint256 balance = IERC20(data_.tokenIn).balanceOf(address(this));
             if (balance > 0) {
                 IERC20(data_.tokenIn).safeTransfer(msg.sender, balance);
+                tokenInReturned = balance;
             }
         } else {
             uint256 balanceTokenIn = IERC20(data_.tokenIn).balanceOf(address(this));
@@ -73,10 +85,24 @@ contract SwapExecutor is ReentrancyGuard {
 
             if (balanceTokenIn > 0) {
                 IERC20(data_.tokenIn).safeTransfer(msg.sender, balanceTokenIn);
+                tokenInReturned = balanceTokenIn;
             }
 
             if (balanceTokenOut > 0) {
                 IERC20(data_.tokenOut).safeTransfer(msg.sender, balanceTokenOut);
+                tokenOutReturned = balanceTokenOut;
+            }
+        }
+
+        // Transfer every additional listed token to caller
+        uint256 tokensToReturnLength = data_.tokensToReturn.length;
+        address tokenToReturn;
+        uint256 tokenToReturnBalance;
+        for (uint256 i; i < tokensToReturnLength; ++i) {
+            tokenToReturn = data_.tokensToReturn[i];
+            tokenToReturnBalance = IERC20(tokenToReturn).balanceOf(address(this));
+            if (tokenToReturnBalance > 0) {
+                IERC20(tokenToReturn).safeTransfer(msg.sender, tokenToReturnBalance);
             }
         }
     }

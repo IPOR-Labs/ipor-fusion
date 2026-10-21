@@ -17,9 +17,12 @@ import {UniversalTokenSwapperSubstrateLib} from "./UniversalTokenSwapperSubstrat
 /// @notice Data structure used for executing a swap operation.
 /// @param targets The array of addresses to which the call will be made
 /// @param data Data to be executed on the targets
+/// @param tokensToReturn Additional output/intermediate tokens the swap calls may leave in the executor; each
+///        must be a granted token substrate; swept to the vault in the same call
 struct UniversalTokenSwapperData {
     address[] targets;
     bytes[] data;
+    address[] tokensToReturn;
 }
 
 /// @notice Data structure used for entering a swap operation.
@@ -36,28 +39,18 @@ struct UniversalTokenSwapperEnterData {
     UniversalTokenSwapperData data;
 }
 
-/// @notice Data structure used to track token balances before and after swap operations
-/// @param tokenInBalanceBefore The balance of input token before the swap operation
-/// @param tokenOutBalanceBefore The balance of output token before the swap operation
-/// @param tokenInBalanceAfter The balance of input token after the swap operation
-/// @param tokenOutBalanceAfter The balance of output token after the swap operation
-struct Balances {
-    uint256 tokenInBalanceBefore;
-    uint256 tokenOutBalanceBefore;
-    uint256 tokenInBalanceAfter;
-    uint256 tokenOutBalanceAfter;
-}
-
 /// @notice Struct containing validated substrate data (tokens, targets, slippage)
 /// @param tokenInGranted Whether tokenIn is in the allowed substrates
 /// @param tokenOutGranted Whether tokenOut is in the allowed substrates
 /// @param slippageWad The slippage limit in WAD (or 0 if not found)
 /// @param grantedTargets Bitmask of which targets are granted (bit i = targets[i] granted)
+/// @param grantedTokensToReturn Bitmask of which tokensToReturn entries are granted (bit i = tokensToReturn[i] granted)
 struct SubstrateValidationResult {
     bool tokenInGranted;
     bool tokenOutGranted;
     uint256 slippageWad;
     uint256 grantedTargets;
+    uint256 grantedTokensToReturn;
 }
 
 /// @title UniversalTokenSwapperFuse
@@ -125,6 +118,9 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     }
 
     /// @notice Enters the swap operation
+    /// @dev tokenIn spent and tokenOut received are measured on EXECUTOR, not on the vault. The route must deliver
+    ///      tokenOut to EXECUTOR (never directly to the vault); a route paying the vault directly reverts with
+    ///      SlippageFail.
     /// @param data_ The input data for the swap
     /// @return tokenIn The input token address
     /// @return tokenOut The output token address
@@ -148,7 +144,8 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         SubstrateValidationResult memory validation = _validateSubstrates(
             data_.tokenIn,
             data_.tokenOut,
-            data_.data.targets
+            data_.data.targets,
+            data_.data.tokensToReturn
         );
         if (!validation.tokenInGranted) {
             revert UniversalTokenSwapperFuseUnsupportedAsset(data_.tokenIn);
@@ -168,46 +165,29 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
             }
         }
 
+        // Check all tokensToReturn entries are granted using bitmask
+        uint256 tokensToReturnLength = data_.data.tokensToReturn.length;
+        if (tokensToReturnLength > 0) {
+            uint256 expectedTokensToReturnMask = (1 << tokensToReturnLength) - 1;
+            if (validation.grantedTokensToReturn != expectedTokensToReturnMask) {
+                for (uint256 i; i < tokensToReturnLength; ++i) {
+                    if ((validation.grantedTokensToReturn & (1 << i)) == 0) {
+                        revert UniversalTokenSwapperFuseUnsupportedAsset(data_.data.tokensToReturn[i]);
+                    }
+                }
+            }
+        }
+
         tokenIn = data_.tokenIn;
         tokenOut = data_.tokenOut;
 
-        address plasmaVault = address(this);
+        (tokenInDelta, tokenOutDelta) = _swapViaExecutor(data_);
 
-        Balances memory balances = Balances({
-            tokenInBalanceBefore: ERC20(data_.tokenIn).balanceOf(plasmaVault),
-            tokenOutBalanceBefore: ERC20(data_.tokenOut).balanceOf(plasmaVault),
-            tokenInBalanceAfter: 0,
-            tokenOutBalanceAfter: 0
-        });
-
-        ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
-
-        SwapExecutor(EXECUTOR).execute(
-            SwapExecutorData({
-                tokenIn: data_.tokenIn,
-                tokenOut: data_.tokenOut,
-                dexs: data_.data.targets,
-                dexsData: data_.data.data
-            })
-        );
-
-        balances.tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(plasmaVault);
-        balances.tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
-
-        if (balances.tokenInBalanceAfter >= balances.tokenInBalanceBefore) {
-            tokenInDelta = 0;
-            tokenOutDelta = 0;
-            _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
-            return (tokenIn, tokenOut, tokenInDelta, tokenOutDelta);
+        if (tokenInDelta == 0) {
+            // Nothing of the vault's tokenIn was used
+            _emitUniversalTokenSwapperFuseEnter(data_, 0, 0);
+            return (tokenIn, tokenOut, 0, 0);
         }
-
-        tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
-
-        if (balances.tokenOutBalanceAfter <= balances.tokenOutBalanceBefore) {
-            revert UniversalTokenSwapperFuseSlippageFail();
-        }
-
-        tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
 
         // Check minAmountOut protection (if specified)
         if (data_.minAmountOut > 0 && tokenOutDelta < data_.minAmountOut) {
@@ -217,6 +197,52 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         _validateUsdSlippage(data_.tokenIn, data_.tokenOut, tokenInDelta, tokenOutDelta, validation.slippageWad);
 
         _emitUniversalTokenSwapperFuseEnter(data_, tokenInDelta, tokenOutDelta);
+    }
+
+    /// @notice Transfers amountIn to the executor, runs the swap and measures it on the executor side
+    /// @dev Vault balances are deliberately not used: an inflow to the vault during execution (e.g. a permissionless
+    ///      claim paid to the vault) must neither mask a theft nor count as swap output. Whatever the executor held
+    ///      before the call is excluded from both deltas.
+    ///      spent/received are the amounts the executor transferred, not the amounts the vault received: a
+    ///      token that delivers less than the nominal amount on transfer loosens minAmountOut and the USD
+    ///      slippage check by that difference on the final transfer. Do not grant tokens with an active
+    ///      transfer fee as tokenIn/tokenOut; stETH-style share rounding (1-2 wei) is accepted; USDT is
+    ///      accepted while its fee is 0 (Tether can set at most 19 bps, capped at 49 USDT per transfer).
+    /// @param data_ The input data for the swap
+    /// @return tokenInDelta The amount of the vault's tokenIn that was not returned by the executor
+    /// @return tokenOutDelta The amount of tokenOut the executor returned (0 when tokenInDelta is 0)
+    function _swapViaExecutor(
+        UniversalTokenSwapperEnterData memory data_
+    ) internal returns (uint256 tokenInDelta, uint256 tokenOutDelta) {
+        uint256 executorTokenInBefore = ERC20(data_.tokenIn).balanceOf(EXECUTOR);
+        uint256 executorTokenOutBefore = ERC20(data_.tokenOut).balanceOf(EXECUTOR);
+
+        ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
+
+        (uint256 tokenInReturned, uint256 tokenOutReturned) = SwapExecutor(EXECUTOR).execute(
+            SwapExecutorData({
+                tokenIn: data_.tokenIn,
+                tokenOut: data_.tokenOut,
+                dexs: data_.data.targets,
+                dexsData: data_.data.data,
+                tokensToReturn: data_.data.tokensToReturn
+            })
+        );
+
+        // tokenIn the vault put in (plus anything already held by the executor) minus what came back
+        tokenInDelta = data_.amountIn + executorTokenInBefore > tokenInReturned
+            ? data_.amountIn + executorTokenInBefore - tokenInReturned
+            : 0;
+
+        if (tokenInDelta == 0) {
+            return (0, 0);
+        }
+
+        if (tokenOutReturned <= executorTokenOutBefore) {
+            revert UniversalTokenSwapperFuseSlippageFail();
+        }
+
+        tokenOutDelta = tokenOutReturned - executorTokenOutBefore;
     }
 
     /// @notice Validates USD-based slippage protection
@@ -276,19 +302,22 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     /// @param tokenIn_ The input token address to validate
     /// @param tokenOut_ The output token address to validate
     /// @param targets_ The array of target addresses to validate
+    /// @param tokensToReturn_ The array of additional tokens to validate
     /// @return result Struct containing validation results for all checked items
     function _validateSubstrates(
         address tokenIn_,
         address tokenOut_,
-        address[] memory targets_
+        address[] memory targets_,
+        address[] memory tokensToReturn_
     ) internal view returns (SubstrateValidationResult memory result) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 substratesLength = substrates.length;
         uint256 targetsLength = targets_.length;
+        uint256 tokensToReturnLength = tokensToReturn_.length;
         bytes32 substrate;
         address token;
         address target;
-        
+
         for (uint256 i; i < substratesLength; ++i) {
             substrate = substrates[i];
 
@@ -299,6 +328,11 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
                 }
                 if (token == tokenOut_) {
                     result.tokenOutGranted = true;
+                }
+                for (uint256 j; j < tokensToReturnLength; ++j) {
+                    if (tokensToReturn_[j] == token) {
+                        result.grantedTokensToReturn |= (1 << j);
+                    }
                 }
             } else if (UniversalTokenSwapperSubstrateLib.isTargetSubstrate(substrate)) {
                 target = UniversalTokenSwapperSubstrateLib.decodeTarget(substrate);
@@ -339,6 +373,10 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
     ///      For each data (i from 0 to dataLength-1):
     ///        Input 3+targetsLength+1+i*2+1: dataLength (uint256)
     ///        Inputs 3+targetsLength+1+i*2+2 to 3+targetsLength+1+i*2+1+ceil(dataLength/32): data chunks (bytes32[])
+    ///      Optional trailing block (only present if currentIndex < inputs.length after reading data, kept for
+    ///      backward compatibility with callers that do not supply it):
+    ///        Input currentIndex: tokensToReturnLength (uint256)
+    ///        Inputs currentIndex+1 to currentIndex+tokensToReturnLength: tokensToReturn (address[])
     ///      Writes returned tokenIn, tokenOut, tokenInDelta, and tokenOutDelta to transient storage outputs.
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
@@ -353,12 +391,17 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         bytes[] memory data;
         (data, currentIndex) = _readData(currentIndex);
 
+        address[] memory tokensToReturn;
+        if (currentIndex < inputs.length) {
+            (tokensToReturn, currentIndex) = _readTokensToReturn(currentIndex);
+        }
+
         UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
             tokenIn: tokenIn,
             tokenOut: tokenOut,
             amountIn: amountIn,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: tokensToReturn})
         });
 
         (address returnedTokenIn, address returnedTokenOut, uint256 tokenInDelta, uint256 tokenOutDelta) = enter(
@@ -388,6 +431,27 @@ contract UniversalTokenSwapperFuse is IFuseCommon {
         targets = new address[](len);
         for (uint256 i; i < len; ++i) {
             targets[i] = TypeConversionLib.toAddress(TransientStorageLib.getInput(VERSION, nextIndex));
+            ++nextIndex;
+        }
+    }
+
+    /**
+     * @notice Reads the optional trailing tokensToReturn addresses from transient storage inputs
+     * @dev Same shape as `_readTargets`. Present only for backward compatibility with callers that supply the
+     *      optional trailing block; callers of `enterTransient()` that stop after the data arrays are unaffected
+     *      because this is invoked only when `currentIndex < inputs.length`.
+     * @param currentIndex The current index in transient storage where tokensToReturn length is stored
+     * @return tokensToReturn The array of tokensToReturn addresses read from transient storage
+     * @return nextIndex The next index in transient storage after reading all tokensToReturn entries
+     */
+    function _readTokensToReturn(
+        uint256 currentIndex
+    ) private view returns (address[] memory tokensToReturn, uint256 nextIndex) {
+        uint256 len = TypeConversionLib.toUint256(TransientStorageLib.getInput(VERSION, currentIndex));
+        nextIndex = currentIndex + 1;
+        tokensToReturn = new address[](len);
+        for (uint256 i; i < len; ++i) {
+            tokensToReturn[i] = TypeConversionLib.toAddress(TransientStorageLib.getInput(VERSION, nextIndex));
             ++nextIndex;
         }
     }

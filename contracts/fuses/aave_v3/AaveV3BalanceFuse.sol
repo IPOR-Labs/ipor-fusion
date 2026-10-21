@@ -18,6 +18,9 @@ import {IPoolAddressesProvider} from "./ext/IPoolAddressesProvider.sol";
 ///      For each asset, it retrieves the balance of aTokens (supplied assets) and subtracts the balances of debt tokens
 ///      (stable and variable debt). The final balance is converted to USD using Aave's price oracle and normalized to WAD (18 decimals).
 ///      Substrates in this fuse are the assets that are used in the Aave V3 protocol for a given MARKET_ID.
+/// @dev Deprecated - no longer used for new vaults. It prices positions with the Aave oracle while the vault converts
+///      with its PriceOracleMiddleware, so a feed divergence moves the share price (IL-7601, IL-8771).
+///      Install AaveV3WithPriceOracleMiddlewareBalanceFuse instead.
 /// @author IPOR Labs
 contract AaveV3BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
@@ -74,6 +77,13 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
     ///        * getPoolDataProvider(): Returns the Aave V3 pool data provider contract address
     ///      - These addresses are validated to be non-zero before use to prevent potential failures
     ///      - The Aave V3 protocol is considered a trusted external dependency
+    /// @dev The oracle price (and asset decimals) are read only for assets with a non-zero net position, so an asset
+    ///      without a price (e.g. removed from the Aave oracle) does not block the market while the vault holds
+    ///      nothing in it.
+    ///      For an asset with a position a zero price still reverts (fail-closed).
+    ///      Residual risk: aTokens are transferable and `supply(onBehalfOf = vault)` needs no consent, so donated aToken
+    ///      dust on an unpriced asset restores the revert; unblock by removing the substrate. Debt cannot be donated
+    ///      (it requires credit delegation).
     /// @return The total balance of the Plasma Vault in Aave V3 protocol, normalized to WAD (18 decimals)
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
@@ -115,13 +125,6 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
                 revert Errors.WrongAddress();
             }
 
-            decimals = ERC20(asset).decimals();
-            price = IAavePriceOracle(aavePriceOracle).getAssetPrice(asset);
-
-            if (price == 0) {
-                revert Errors.UnsupportedQuoteCurrencyFromOracle();
-            }
-
             (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(poolDataProvider)
                 .getReserveTokensAddresses(asset);
 
@@ -133,6 +136,18 @@ contract AaveV3BalanceFuse is IMarketBalanceFuse {
             }
             if (variableDebtTokenAddress != address(0)) {
                 balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(plasmaVault));
+            }
+
+            // No position in this asset: its value is 0 regardless of price, so the oracle is not queried.
+            if (balanceInLoop == 0) {
+                continue;
+            }
+
+            decimals = ERC20(asset).decimals();
+            price = IAavePriceOracle(aavePriceOracle).getAssetPrice(asset);
+
+            if (price == 0) {
+                revert Errors.UnsupportedQuoteCurrencyFromOracle();
             }
 
             balanceTemp += IporMath.convertToWadInt(

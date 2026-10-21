@@ -11,6 +11,7 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {IExtTermAuctionOfferLocker} from "./ext/IExtTermAuctionOfferLocker.sol";
 import {IExtTermController} from "./ext/IExtTermController.sol";
 import {IExtTermRepoServicer} from "./ext/IExtTermRepoServicer.sol";
+import {TermFinanceSubstrateLib} from "./lib/TermFinanceSubstrateLib.sol";
 import {TermFinancePendingOffersStorageLib} from "./lib/TermFinancePendingOffersStorageLib.sol";
 
 /// @notice Data for locking (committing) a sealed-bid lender offer.
@@ -18,7 +19,12 @@ import {TermFinancePendingOffersStorageLib} from "./lib/TermFinancePendingOffers
 /// @param offerLocker Auction-paired TermAuctionOfferLocker proxy
 /// @param amount Purchase-token raw units to lend
 /// @param offerPriceHash keccak256(abi.encode(price, nonce)) — commit-phase rate hash
-/// @param existingOfferId 0x0 for a fresh offer; non-zero to edit an existing one
+/// @param existingOfferId 0x0 for a fresh offer; non-zero to edit an existing one. For a TRACKED id (one the vault
+///        already holds in its pending-offer storage) the edit is allowed only on the offer locker that holds it, and
+///        the locker must return the same id, otherwise `enter` reverts. An UNTRACKED non-zero id that is not a live
+///        offer of the vault on `offerLocker` creates a new offer. A live untracked vault offer (only after a forced
+///        Cleanup prune) is edited in place by Term and tracked again with the new amount, without the locker and id
+///        checks.
 struct TermFinanceOfferFuseEnterData {
     address servicer;
     address offerLocker;
@@ -42,7 +48,10 @@ struct TermFinanceOfferFuseExitData {
 ///      NOT the OfferLocker - this is a load-bearing correction from the upstream call
 ///      chain.
 ///
-///      Edit-flow (`existingOfferId != 0x0`): a single offer id is replaced in place. The
+///      Edit-flow (`existingOfferId != 0x0`): a single offer id is replaced in place, only on the
+///      locker that holds the offer (tracked against another locker reverts with
+///      `TermFinanceOfferFuseExistingOfferLockerMismatch`) and the locker must return the same id
+///      (`TermFinanceOfferFuseEditedOfferIdMismatch`). The
 ///      fuse first removes the stale storage entry, then submits with the same id, and finally
 ///      re-inserts the entry which `addPendingOffer` resolves as an in-place refresh (storage
 ///      length does not change). The edit path is exempt from the cap ONLY when the entry was
@@ -62,7 +71,12 @@ contract TermFinanceOfferFuse is IFuseCommon {
 
     /// @notice Emitted when a sealed-bid offer is successfully locked in a Term Finance auction.
     event TermFinanceOfferLocked(
-        address version, address servicer, address offerLocker, bytes32 offerId, uint256 amount, bytes32 offerPriceHash
+        address version,
+        address servicer,
+        address offerLocker,
+        bytes32 offerId,
+        uint256 amount,
+        bytes32 offerPriceHash
     );
 
     /// @notice Emitted on a pre-reveal cancel (`exit`).
@@ -78,6 +92,10 @@ contract TermFinanceOfferFuse is IFuseCommon {
     error TermFinanceOfferFuseUnsupportedMarket(address servicer);
     /// @notice Reverts when `controller.isTermDeployed(servicer)` returns false.
     error TermFinanceOfferFuseTermNotDeployed(address servicer);
+    /// @notice Reverts on `enter` when the `REPO_TOKEN_HOLDING` substrate is not granted for `servicer`.
+    /// @dev Won offers mint repo tokens to the vault; without the declaration the balance fuse
+    ///      would not count them (ALPHA rule D-006).
+    error TermFinanceOfferFuseRepoTokenHoldingNotGranted(address servicer);
     /// @notice Reverts when the supplied offerLocker is paired with a different servicer than expected.
     /// @param expected Servicer the locker is actually paired with.
     /// @param actual Servicer supplied by the caller.
@@ -98,6 +116,21 @@ contract TermFinanceOfferFuse is IFuseCommon {
     /// @param count The would-be length (`current + 1`, always > MAX_PENDING_OFFERS_PER_SERVICER
     ///        on revert).
     error TermFinanceOfferFuseTooManyPendingOffers(address servicer, uint256 count);
+
+    /// @notice Reverts when `enter` edits an offer id that is tracked against a different offer locker.
+    /// @param existingOfferId The offer id supplied as `existingOfferId`.
+    /// @param trackedOfferLocker Offer locker the id is tracked against.
+    /// @param suppliedOfferLocker Offer locker supplied in the calldata.
+    error TermFinanceOfferFuseExistingOfferLockerMismatch(
+        bytes32 existingOfferId,
+        address trackedOfferLocker,
+        address suppliedOfferLocker
+    );
+
+    /// @notice Reverts when an edit of a tracked offer returns an id different from `existingOfferId`.
+    /// @param existingOfferId The offer id supplied as `existingOfferId`.
+    /// @param returnedOfferId The id returned by `lockOffers`.
+    error TermFinanceOfferFuseEditedOfferIdMismatch(bytes32 existingOfferId, bytes32 returnedOfferId);
 
     /// @notice Address of this contract instance, used as the version identifier in event logs.
     address public immutable VERSION;
@@ -123,21 +156,27 @@ contract TermFinanceOfferFuse is IFuseCommon {
     function enter(TermFinanceOfferFuseEnterData calldata data_) external {
         _assertWithdrawManagerSet();
         _assertServicerAllowed(data_.servicer);
+        if (
+            !PlasmaVaultConfigLib.isMarketSubstrateGranted(
+                MARKET_ID,
+                TermFinanceSubstrateLib.repoTokenHoldingKey(data_.servicer)
+            )
+        ) revert TermFinanceOfferFuseRepoTokenHoldingNotGranted(data_.servicer);
         _assertOfferLockerPaired(data_.offerLocker, data_.servicer);
         if (data_.amount == 0) revert TermFinanceOfferFuseZeroAmount();
 
         // Drop the stale entry on the edit-flow path and enforce the
         // pending-offer cap on any path that actually grows storage. BEFORE forceApprove /
         // lockOffers so a cap-breach reverts cheaply with no side effects.
-        _consumeExistingOfferAndEnforceCap(data_.servicer, data_.existingOfferId);
+        bool edited = _consumeExistingOfferAndEnforceCap(data_.servicer, data_.offerLocker, data_.existingOfferId);
 
         address termRepoLocker = IExtTermRepoServicer(data_.servicer).termRepoLocker();
         address purchaseToken = IExtTermRepoServicer(data_.servicer).purchaseToken();
 
         ERC20(purchaseToken).forceApprove(termRepoLocker, data_.amount);
 
-        IExtTermAuctionOfferLocker.TermAuctionOfferSubmission[] memory submissions =
-            new IExtTermAuctionOfferLocker.TermAuctionOfferSubmission[](1);
+        IExtTermAuctionOfferLocker.TermAuctionOfferSubmission[]
+            memory submissions = new IExtTermAuctionOfferLocker.TermAuctionOfferSubmission[](1);
         submissions[0] = IExtTermAuctionOfferLocker.TermAuctionOfferSubmission({
             id: data_.existingOfferId,
             offeror: address(this),
@@ -155,11 +194,18 @@ contract TermFinanceOfferFuse is IFuseCommon {
         // Submissions array length is exactly 1 above, so any other return is a contract bug.
         if (ids.length != 1) revert TermFinanceOfferFuseUnexpectedLockResult(ids.length);
 
+        _assertEditedOfferIdUnchanged(edited, data_.existingOfferId, ids[0]);
+
         bytes32 offerId = ids[0];
         TermFinancePendingOffersStorageLib.addPendingOffer(data_.servicer, data_.offerLocker, offerId, data_.amount);
 
         emit TermFinanceOfferLocked(
-            VERSION, data_.servicer, data_.offerLocker, offerId, data_.amount, data_.offerPriceHash
+            VERSION,
+            data_.servicer,
+            data_.offerLocker,
+            offerId,
+            data_.amount,
+            data_.offerPriceHash
         );
     }
 
@@ -175,20 +221,46 @@ contract TermFinanceOfferFuse is IFuseCommon {
     ///      OOG-bomb every subsequent `balanceOf`. Mirror of
     ///      `TermFinanceBidFuse._consumeExistingBidAndEnforceCap`.
     /// @param servicer_ Servicer substrate from the calldata struct.
+    /// @param offerLocker_ Offer locker the new submission is sent to.
     /// @param existingOfferId_ Existing offer id from the calldata struct (`0x0` for fresh).
-    function _consumeExistingOfferAndEnforceCap(address servicer_, bytes32 existingOfferId_) private {
-        bool storageGrows;
-        if (existingOfferId_ == bytes32(0)) {
-            storageGrows = true;
-        } else {
-            bool removed = TermFinancePendingOffersStorageLib.removePendingOfferIfExists(servicer_, existingOfferId_);
-            storageGrows = !removed;
+    /// @return edited True when a tracked entry was removed and the submission is an in-place edit.
+    /// @custom:revert TermFinanceOfferFuseExistingOfferLockerMismatch when `existingOfferId_` is tracked against
+    ///        a different locker than `offerLocker_` (Term only edits an id inside the locker that holds it, so
+    ///        the submission would create a new offer and orphan the tracked one).
+    /// @custom:revert TermFinanceOfferFuseTooManyPendingOffers when storage would grow past the cap.
+    function _consumeExistingOfferAndEnforceCap(
+        address servicer_,
+        address offerLocker_,
+        bytes32 existingOfferId_
+    ) private returns (bool edited) {
+        bool storageGrows = true;
+        if (existingOfferId_ != bytes32(0)) {
+            address bound = TermFinancePendingOffersStorageLib.getOfferLocker(servicer_, existingOfferId_);
+            if (bound != address(0) && bound != offerLocker_) {
+                revert TermFinanceOfferFuseExistingOfferLockerMismatch(existingOfferId_, bound, offerLocker_);
+            }
+            edited = TermFinancePendingOffersStorageLib.removePendingOfferIfExists(servicer_, existingOfferId_);
+            storageGrows = !edited;
         }
         if (storageGrows) {
             uint256 nextLength = TermFinancePendingOffersStorageLib.length(servicer_) + 1;
             if (nextLength > TermFinancePendingOffersStorageLib.MAX_PENDING_OFFERS_PER_SERVICER) {
                 revert TermFinanceOfferFuseTooManyPendingOffers(servicer_, nextLength);
             }
+        }
+    }
+
+    /// @notice Reverts when an edit of a tracked offer came back under a different id.
+    /// @dev The tracked entry was removed before `lockOffers`; if the locker returned another id the old
+    ///      offer would stay live in the TermRepoLocker without tracking and NAV would be understated.
+    /// @custom:revert TermFinanceOfferFuseEditedOfferIdMismatch when `edited_` and `returnedOfferId_ != existingOfferId_`.
+    function _assertEditedOfferIdUnchanged(
+        bool edited_,
+        bytes32 existingOfferId_,
+        bytes32 returnedOfferId_
+    ) private pure {
+        if (edited_ && returnedOfferId_ != existingOfferId_) {
+            revert TermFinanceOfferFuseEditedOfferIdMismatch(existingOfferId_, returnedOfferId_);
         }
     }
 

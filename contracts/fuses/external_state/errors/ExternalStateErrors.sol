@@ -47,7 +47,11 @@ library ExternalStateErrors {
     /// @param balanceAccount The balance account being decremented.
     /// @param valueInUnderlying The amount (in underlying units) attempted to remove.
     /// @param trackedBalance The currently tracked balance for the account.
-    error ExternalStateExitExceedsTrackedBalance(address balanceAccount, uint256 valueInUnderlying, uint256 trackedBalance);
+    error ExternalStateExitExceedsTrackedBalance(
+        address balanceAccount,
+        uint256 valueInUnderlying,
+        uint256 trackedBalance
+    );
 
     /// @notice Thrown when the PriceOracleMiddleware address is not configured on the plasma vault.
     error ExternalStatePriceOracleNotSet();
@@ -187,6 +191,18 @@ library ExternalStateErrors {
     ///         the strategy state between custodian confirms.
     /// @param asset The tracked asset that the caller attempted to rescue.
     error ExternalStateRescueOfTrackedAssetForbidden(address asset);
+
+    /// @notice Thrown by `confirmBalance` when `balances[balanceAccount]` differs from the value it had when the
+    ///         proposal was stored, i.e. an ALPHA `enter` / `exit` ran on the account in between. Custodians must
+    ///         report again with a new `proposeBalance`.
+    /// @param balanceAccount The balance account of the proposal.
+    /// @param balanceAtProposal `balances[balanceAccount]` when the proposal was stored.
+    /// @param currentBalance Current `balances[balanceAccount]`.
+    error ExternalStateExecutorBalanceChangedSinceProposal(
+        address balanceAccount,
+        uint256 balanceAtProposal,
+        uint256 currentBalance
+    );
 
     // ============================================================
     // Substrate cache errors

@@ -11,8 +11,6 @@ contract MockDexActionEthereum is Test{
 
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
-    // USDT whale address with sufficient balance
-    address private constant USDT_WHALE = 0xF977814e90dA44bFA03b6295A0616a897441aceC; // Binance 8
 
     /// @notice Returns 1000 USDC to the executor. Contract must be pre-funded with USDC.
     function returnExtra1000Usdc(address executor) external {
@@ -22,16 +20,15 @@ contract MockDexActionEthereum is Test{
     }
 
     /// @notice Returns 1000 USDT to the executor. Contract must be pre-funded with USDT.
+    /// @dev The contract is already pre-funded with USDT by the caller's setUp(); no extra pull from the whale
+    /// is needed here (real USDT's non-standard `transfer` return value makes the plain ERC20 interface call
+    /// used elsewhere in this file revert on ABI-decode, so this function avoids it rather than relying on it).
     function returnExtra1000Usdt(address executor) external {
-        vm.prank(USDT_WHALE);
-        ERC20(USDT).transfer(address(this), 1_000e6);
         ERC20(USDT).safeTransfer(executor, 1_000e6);
     }
 
     /// @notice Returns 500 USDT to the executor. Contract must be pre-funded with USDT.
     function returnExtra500Usdt(address executor) external {
-        vm.prank(USDT_WHALE);
-        ERC20(USDT).transfer(address(this), 1_000e6);
         ERC20(USDT).safeTransfer(executor, 500e6);
     }
 }

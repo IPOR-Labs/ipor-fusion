@@ -103,7 +103,7 @@ Constructor parameters (all immutable):
 | Fuse | Constructor args |
 |------|------------------|
 | Supply / Borrow / Collateral / Controller / Batch / Balance | `(uint256 marketId, address evc)` |
-| `EulerV2SwapDeployFuse` / `EulerV2SwapReconfigureFuse` | `(uint256 marketId, address evc, address eulerV2SwapFactory)` |
+| `EulerV2SwapDeployFuse` / `EulerV2SwapReconfigureFuse` | `(uint256 marketId, address evc, address eulerV2SwapFactory, uint256 priceDeviationWad)` |
 | `EulerV2SwapRegistryFuse` | `(uint256 marketId, address evc, address eulerV2SwapRegistry)` |
 
 > **`address(0)` validation is not uniform.** Only `EulerV2SupplyFuse`, `EulerV2BorrowFuse`,
@@ -427,11 +427,35 @@ What `enter` enforces and does:
    would cede control of vault funds to external code.
 4. `supplyVault0/1` must be granted **supply** substrates; any non-zero `borrowVault0/1` must be
    a granted **borrow** substrate (borrow vaults may be `address(0)` for supply-only pools).
-5. `FACTORY.computePoolAddress(staticParams, salt) == predictedPool` (anti-substitution).
-6. `EVC.setAccountOperator(eulerAccount, predictedPool, true)` (direct call — the vault is the EVC owner).
-7. `FACTORY.deployPool(...)` routed through `EVC.call` on behalf of `eulerAccount`
+   The pool also enables collateral **cross-wise** on activation (`supplyVault0` iff
+   `borrowVault1 != 0`, `supplyVault1` iff `borrowVault0 != 0`), bypassing `EulerV2CollateralFuse`;
+   so those supply vaults must also be granted with `isCollateral = true`
+   (`EulerV2SwapDeployFuseUnsupportedVault` otherwise). Supply-only pools and the unused side of a
+   one-sided pool need no collateral flag. Release note: JIT pool configurations must grant the
+   cross-side supply vault with `isCollateral = true` (in addition to `canBorrow` on the borrow vaults).
+5. **Curve pricing guard** (`EulerV2SwapCurveLib`, shared with `EulerV2SwapReconfigureFuse`):
+   `priceX/priceY` (asset1 base units per asset0 base unit, so it embeds `10^(dec1-dec0)`) must be
+   within `PRICE_DEVIATION_WAD` of the `PriceOracleMiddleware` ratio of `asset0/asset1`, and
+   `initialState` must equal `(equilibriumReserve0, equilibriumReserve1)`. Errors:
+   `EulerV2SwapCurvePriceOutOfBounds`, `EulerV2SwapInitialStateNotAtEquilibrium`,
+   `EulerV2SwapUnsupportedOraclePrice`. Without this, ALPHA could open a permanent,
+   permissionless off-market standing order over vault inventory (see "Curve pricing risk" below).
+6. `FACTORY.computePoolAddress(staticParams, salt) == predictedPool` (anti-substitution).
+7. `EVC.setAccountOperator(eulerAccount, predictedPool, true)` (direct call — the vault is the EVC owner).
+8. `FACTORY.deployPool(...)` routed through `EVC.call` on behalf of `eulerAccount`
    (the factory is `EVCUtil` and requires `_msgSender() == eulerAccount`).
-8. Asserts the deployed address equals `predictedPool`.
+9. Asserts the deployed address equals `predictedPool`.
+
+> **Curve pricing risk.** `PRICE_DEVIATION_WAD` is chosen by governance per fuse deployment (it is
+> a constructor immutable, like `EulerV2SwapDeployFuse`/`EulerV2SwapReconfigureFuse` themselves) and
+> must exceed the oracle's expected lag for the pair — a band tighter than the pair's oracle
+> deviation threshold makes legitimate deploys/reconfigures revert during volatility.
+> `PRICE_DEVIATION_WAD == 1e18` disables the lower bound (any ratio from 0 up to 2x the oracle is
+> accepted), effectively "unbounded". Zero fees (`fee0 == fee1 == 0`) stay allowed: once the price is
+> pinned to the oracle, the fee is an LP yield policy, not a safety bound — the band is what caps the
+> arbitrage loss. Virtual reserves are **not** inventory: with non-zero borrow vaults the pool can
+> just-in-time borrow up to the eVault LTV, so the deliverable side of a trade (and the loss exposure)
+> is bounded by Euler's LTV and the `canBorrow` and `isCollateral` grants, not by the reserve numbers themselves.
 
 `exit` just removes operator authorization (`setAccountOperator(..., false)`); withdrawing the
 underlying positions is done with the Supply/Borrow fuses.
@@ -537,8 +561,14 @@ struct EulerV2SwapReconfigureFuseEnterData {
 
 1. `FACTORY.deployedPools(pool)` — the pool must be a genuine factory deployment.
 2. `pool.getStaticParams().eulerAccount == vault XOR subAccount`.
-3. The pool's `supplyVault0/1` (and non-zero `borrowVault0/1`) are still granted substrates.
-4. Same dynamic-param bounds (fee, expiration, **no swap hook**).
+3. The pool's `supplyVault0/1` (and non-zero `borrowVault0/1`) are still granted substrates, and the
+   supply vaults the pool enables as collateral (cross-wise, see Deploy) still carry `isCollateral = true`
+   (`EulerV2SwapReconfigureFuseUnsupportedVault` otherwise).
+4. Same dynamic-param bounds (fee, expiration, **no swap hook**) **and the same curve pricing
+   guard** (`EulerV2SwapCurveLib.requireCurveAtOraclePrice`, reserves pinned at equilibrium) as
+   `EulerV2SwapDeployFuse.enter` — `reconfigure` resets the live reserves and re-prices the curve
+   in one call, so an unpinned reconfigure is the same off-market bypass on a position that already
+   holds funds.
 5. `IEulerV2Swap.reconfigure(dynamicParams, initialState)` routed through `EVC.call`.
 
 `exit()` reverts (`UnsupportedOperation`) — decommission via `EulerV2SwapDeployFuse.exit`.

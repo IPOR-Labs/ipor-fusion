@@ -8,3 +8,5 @@ smart-contracts-build.yml
 contracts/fuses/uniswap/ext/
 contracts/fuses/ramses/ext/
 
+contracts/vendor/
+test/fuses/hypercore/simulation/

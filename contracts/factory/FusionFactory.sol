@@ -8,6 +8,7 @@ import {FusionFactoryLogicLib} from "./lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryLib} from "./lib/FusionFactoryLib.sol";
 
 import {FusionFactoryAccessControl} from "./FusionFactoryAccessControl.sol";
+import {PlasmaVaultLib} from "../libraries/PlasmaVaultLib.sol";
 
 /// @title FusionFactory
 /// @notice Factory contract for creating and managing Fusion Managers
@@ -47,9 +48,6 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
         address updatedBy
     );
     event BusinessClientFeePackagesRemoved(address indexed client, address removedBy);
-
-    /// @notice Maximum fee value in basis points (100% = 10_000)
-    uint256 private constant MAX_FEE_BASIS_POINTS = 10_000;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -144,7 +142,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
     /// @notice Sets the DAO fee packages array (replaces entire array)
     /// @param packages_ Array of DAO fee packages to set
-    /// @dev Each package must have valid fees (<=MAX_FEE_BASIS_POINTS) and non-zero recipient
+    /// @dev Each package must have managementFee <= PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE (500 = 5%),
+    /// performanceFee <= PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE (5000 = 50%) and a non-zero recipient
     function setDaoFeePackages(
         FusionFactoryStorageLib.FeePackage[] calldata packages_
     ) external onlyRole(DAO_FEE_MANAGER_ROLE) {
@@ -152,11 +151,17 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
         uint256 length = packages_.length;
         for (uint256 i; i < length; ++i) {
-            if (packages_[i].managementFee > MAX_FEE_BASIS_POINTS) {
-                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].managementFee, MAX_FEE_BASIS_POINTS);
+            if (packages_[i].managementFee > PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE) {
+                revert FusionFactoryLib.FeeExceedsMaximum(
+                    packages_[i].managementFee,
+                    PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE
+                );
             }
-            if (packages_[i].performanceFee > MAX_FEE_BASIS_POINTS) {
-                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].performanceFee, MAX_FEE_BASIS_POINTS);
+            if (packages_[i].performanceFee > PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE) {
+                revert FusionFactoryLib.FeeExceedsMaximum(
+                    packages_[i].performanceFee,
+                    PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE
+                );
             }
             if (packages_[i].feeRecipient == address(0)) {
                 revert FusionFactoryLib.FeeRecipientZeroAddress();
@@ -177,6 +182,8 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     /// @param client_ Address of the business client
     /// @param packages_ Array of fee packages to assign
     /// @dev Only callable by DAO_FEE_MANAGER_ROLE
+    /// @dev Each package must have managementFee <= PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE (500 = 5%),
+    /// performanceFee <= PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE (5000 = 50%) and a non-zero recipient
     function setBusinessClientFeePackages(
         address client_,
         FusionFactoryStorageLib.FeePackage[] calldata packages_
@@ -186,11 +193,17 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
 
         uint256 length = packages_.length;
         for (uint256 i; i < length; ++i) {
-            if (packages_[i].managementFee > MAX_FEE_BASIS_POINTS) {
-                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].managementFee, MAX_FEE_BASIS_POINTS);
+            if (packages_[i].managementFee > PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE) {
+                revert FusionFactoryLib.FeeExceedsMaximum(
+                    packages_[i].managementFee,
+                    PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE
+                );
             }
-            if (packages_[i].performanceFee > MAX_FEE_BASIS_POINTS) {
-                revert FusionFactoryLib.FeeExceedsMaximum(packages_[i].performanceFee, MAX_FEE_BASIS_POINTS);
+            if (packages_[i].performanceFee > PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE) {
+                revert FusionFactoryLib.FeeExceedsMaximum(
+                    packages_[i].performanceFee,
+                    PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE
+                );
             }
             if (packages_[i].feeRecipient == address(0)) {
                 revert FusionFactoryLib.FeeRecipientZeroAddress();
@@ -355,6 +368,9 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
     function updateVestingPeriodInSeconds(
         uint256 newVestingPeriodInSeconds_
     ) external onlyRole(MAINTENANCE_MANAGER_ROLE) {
+        if (newVestingPeriodInSeconds_ == 0 || newVestingPeriodInSeconds_ > type(uint32).max) {
+            revert FusionFactoryLib.InvalidVestingPeriod();
+        }
         FusionFactoryStorageLib.setVestingPeriodInSeconds(newVestingPeriodInSeconds_);
         emit VestingPeriodInSecondsUpdated(newVestingPeriodInSeconds_);
     }

@@ -7,6 +7,7 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {EulerFuseLib} from "./EulerFuseLib.sol";
 import {IEulerV2Swap} from "./ext/IEulerV2Swap.sol";
 import {IEulerV2SwapFactory} from "./ext/IEulerV2SwapFactory.sol";
+import {EulerV2SwapCurveLib} from "./EulerV2SwapCurveLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 
 /// @notice Data structure for reconfiguring an EulerSwap pool
@@ -36,7 +37,8 @@ contract EulerV2SwapReconfigureFuse is IFuseCommon {
     error EulerV2SwapReconfigureFuseUnknownPool(address pool);
     /// @notice Thrown when the pool is not owned by the vault's derived sub-account
     error EulerV2SwapReconfigureFuseInvalidOwner(address pool, address expectedEulerAccount);
-    /// @notice Thrown when a pool supply/borrow vault is not granted on the EULER_V2 market
+    /// @notice Thrown when a pool supply/borrow vault is not granted on the EULER_V2 market, or a supply vault
+    ///         the pool enables as collateral lacks the `isCollateral` flag
     error EulerV2SwapReconfigureFuseUnsupportedVault(address vault, bytes1 subAccount);
     /// @notice Thrown when dynamic parameters fail sanity bounds (fee, expiration) or request a swap hook
     error EulerV2SwapReconfigureFuseInvalidParams();
@@ -51,18 +53,26 @@ contract EulerV2SwapReconfigureFuse is IFuseCommon {
     IEVC public immutable EVC;
     /// @notice EulerSwap factory used to verify the pool is a genuine factory deployment
     IEulerV2SwapFactory public immutable FACTORY;
+    /// @notice Maximum allowed deviation of priceX/priceY from the oracle ratio (1e18 == 100%)
+    uint256 public immutable PRICE_DEVIATION_WAD;
 
     /// @param marketId_ The EULER_V2 market ID
     /// @param eulerV2EVC_ The Ethereum Vault Connector address (must not be address(0))
     /// @param eulerV2SwapFactory_ The EulerSwap factory address (must not be address(0))
-    constructor(uint256 marketId_, address eulerV2EVC_, address eulerV2SwapFactory_) {
+    /// @param priceDeviationWad_ Maximum allowed deviation of priceX/priceY from the oracle ratio of
+    ///        asset0/asset1 (1e18 == 100%; must be <= 1e18)
+    constructor(uint256 marketId_, address eulerV2EVC_, address eulerV2SwapFactory_, uint256 priceDeviationWad_) {
         if (eulerV2EVC_ == address(0) || eulerV2SwapFactory_ == address(0)) {
             revert Errors.WrongAddress();
+        }
+        if (priceDeviationWad_ > EulerV2SwapCurveLib.WAD) {
+            revert EulerV2SwapCurveLib.EulerV2SwapPriceDeviationTooHigh(priceDeviationWad_);
         }
         VERSION = address(this);
         MARKET_ID = marketId_;
         EVC = IEVC(eulerV2EVC_);
         FACTORY = IEulerV2SwapFactory(eulerV2SwapFactory_);
+        PRICE_DEVIATION_WAD = priceDeviationWad_;
     }
 
     /// @notice Reconfigures the pool's dynamic parameters and virtual reserves
@@ -92,6 +102,14 @@ contract EulerV2SwapReconfigureFuse is IFuseCommon {
         if (sp.borrowVault1 != address(0)) {
             _requireBorrow(sp.borrowVault1, data_.subAccount);
         }
+        // The pool enables collateral cross-wise (supplyVault0 iff borrowVault1 != 0, supplyVault1 iff
+        // borrowVault0 != 0), so those supply vaults must be granted collateral substrates (see Deploy fuse).
+        if (sp.borrowVault1 != address(0)) {
+            _requireCollateral(sp.supplyVault0, data_.subAccount);
+        }
+        if (sp.borrowVault0 != address(0)) {
+            _requireCollateral(sp.supplyVault1, data_.subAccount);
+        }
 
         // A swap hook is rejected outright: it would let an external contract execute arbitrary
         // state-changing code in the swap context of vault-owned funds, ceding control of the position.
@@ -104,6 +122,19 @@ contract EulerV2SwapReconfigureFuse is IFuseCommon {
         ) {
             revert EulerV2SwapReconfigureFuseInvalidParams();
         }
+
+        // Curve pricing guard (shared with EulerV2SwapDeployFuse): priceX/priceY must sit within
+        // PRICE_DEVIATION_WAD of the oracle ratio of asset0/asset1 and the initial reserves must be the
+        // equilibrium reserves, otherwise reconfiguring would re-price and re-pin a live position as an
+        // off-market standing order over vault inventory. asset0/asset1 are derived from the genuine
+        // pool's own supply vaults (sp), validated above as granted substrates.
+        EulerV2SwapCurveLib.requireCurveAtOraclePrice(
+            sp.supplyVault0,
+            sp.supplyVault1,
+            data_.dynamicParams,
+            data_.initialState,
+            PRICE_DEVIATION_WAD
+        );
 
         // Routed through the EVC on behalf of eulerAccount: the pool is an EVCUtil contract enforcing
         // `_msgSender() == eulerAccount` (or an installed manager). A direct call would revert Unauthorized.
@@ -139,6 +170,13 @@ contract EulerV2SwapReconfigureFuse is IFuseCommon {
     /// @notice Reverts unless `vault`/`subAccount` is a supply substrate on the EULER_V2 market
     function _requireSupply(address vault, bytes1 subAccount) private view {
         if (!EulerFuseLib.canSupply(MARKET_ID, vault, subAccount)) {
+            revert EulerV2SwapReconfigureFuseUnsupportedVault(vault, subAccount);
+        }
+    }
+
+    /// @notice Reverts unless `vault`/`subAccount` is a collateral substrate on the EULER_V2 market
+    function _requireCollateral(address vault, bytes1 subAccount) private view {
+        if (!EulerFuseLib.canCollateral(MARKET_ID, vault, subAccount)) {
             revert EulerV2SwapReconfigureFuseUnsupportedVault(vault, subAccount);
         }
     }

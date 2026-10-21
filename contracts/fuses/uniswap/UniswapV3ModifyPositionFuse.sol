@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
@@ -62,6 +63,8 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
     event UniswapV3ModifyPositionFuseExit(address version, uint256 tokenId, uint256 amount0, uint256 amount1);
 
     error UniswapV3ModifyPositionFuseUnsupportedToken(address token0, address token1);
+    /// @notice Thrown when the tokenId is not registered in the vault by UniswapV3NewPositionFuse.enter
+    error UniswapV3ModifyPositionFuseTokenIdNotTracked(uint256 tokenId);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -80,9 +83,12 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
     /// @return liquidity The amount of liquidity added
     /// @return amount0 The amount of token0 added
     /// @return amount1 The amount of token1 added
+    /// @custom:revert UniswapV3ModifyPositionFuseTokenIdNotTracked when data_.tokenId is not a position tracked by the vault
     function enter(
         UniswapV3ModifyPositionFuseEnterData memory data_
     ) public returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
+        _requireTracked(data_.tokenId);
+
         if (
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token0) ||
             !PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, data_.token1)
@@ -121,9 +127,12 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
     /// @return tokenId The ID of the token for which liquidity was decreased
     /// @return amount0 The amount of token0 received
     /// @return amount1 The amount of token1 received
+    /// @custom:revert UniswapV3ModifyPositionFuseTokenIdNotTracked when data_.tokenId is not a position tracked by the vault
     function exit(
         UniswapV3ModifyPositionFuseExitData memory data_
     ) public returns (uint256 tokenId, uint256 amount0, uint256 amount1) {
+        _requireTracked(data_.tokenId);
+
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
                 tokenId: data_.tokenId,
@@ -139,6 +148,19 @@ contract UniswapV3ModifyPositionFuse is IFuseCommon {
         tokenId = data_.tokenId;
 
         emit UniswapV3ModifyPositionFuseExit(VERSION, tokenId, amount0, amount1);
+    }
+
+    /// @dev The position manager does not check the owner on increaseLiquidity (it pulls funds from msg.sender), so
+    /// vault funds could otherwise be added to an NFT the vault neither owns nor tracks. Only tokenIds registered by
+    /// UniswapV3NewPositionFuse.enter (owned by the vault and counted by the balance fuse) may be modified.
+    function _requireTracked(uint256 tokenId_) private view {
+        FuseStorageLib.UniswapV3TokenIds storage tokensIds = FuseStorageLib.getUniswapV3TokenIds();
+
+        uint256 index = tokensIds.indexes[tokenId_];
+
+        if (index >= tokensIds.tokenIds.length || tokensIds.tokenIds[index] != tokenId_) {
+            revert UniswapV3ModifyPositionFuseTokenIdNotTracked(tokenId_);
+        }
     }
 
     /// @notice Enters the Fuse using transient storage for parameters

@@ -2,7 +2,10 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {TermFinanceSubstrateType} from "../../../../../contracts/fuses/term_finance/lib/TermFinanceSubstrateLib.sol";
+import {
+    TermFinanceSubstrateLib,
+    TermFinanceSubstrateType
+} from "../../../../../contracts/fuses/term_finance/lib/TermFinanceSubstrateLib.sol";
 import {TermFinanceSubstrateLibHarness} from "./mocks/TermFinanceSubstrateLibHarness.sol";
 
 /// @title TermFinanceSubstrateLibTest
@@ -10,12 +13,13 @@ import {TermFinanceSubstrateLibHarness} from "./mocks/TermFinanceSubstrateLibHar
 ///         of the TYPE-byte substrate encoder/decoder used by every Term Finance fuse.
 /// @dev Coverage of the following behaviour. This suite covers:
 ///       - `collateralPairKey` encoding and TYPE-byte placement
-///       - `decodeSubstrateType` for SERVICER, COLLATERAL_TOKEN, and the
-///         "fall-open" branch (out-of-range TYPE byte defaults to SERVICER)
+///       - `repoTokenHoldingKey` / `isRepoTokenHoldingSubstrate` (TYPE 0x02, IL-8753)
+///       - `decodeSubstrateType` for SERVICER, COLLATERAL_TOKEN, REPO_TOKEN_HOLDING and the
+///         "fall-open" branch (TYPE byte >= 0x03 defaults to SERVICER)
 ///       - `decodeAddress` for both SERVICER (real address) and COLLATERAL_TOKEN
 ///         (low-160-bits-of-hash, NOT an address — documents the footgun)
 ///       - `isServicerSubstrate` / `isCollateralTokenSubstrate` predicates on every
-///         relevant TYPE byte (0x00, 0x01, and other).
+///         relevant TYPE byte (0x00, 0x01, 0x02, and other).
 contract TermFinanceSubstrateLibTest is Test {
     // Bit position of the TYPE flag (mirrors the library constant; kept here so the
     // test does not depend on a private library symbol).
@@ -104,13 +108,22 @@ contract TermFinanceSubstrateLibTest is Test {
         assertEq(uint8(t), uint8(TermFinanceSubstrateType.COLLATERAL_TOKEN));
     }
 
-    /// @notice TYPE byte 0x02 (out-of-range) falls back to SERVICER.
+    /// @notice TYPE byte 0x02 decodes to REPO_TOKEN_HOLDING.
+    function test_decodeSubstrateType_typeTwo_returnsRepoTokenHolding() public view {
+        bytes32 substrate = TermFinanceSubstrateLib.repoTokenHoldingKey(SERVICER_A);
+        TermFinanceSubstrateType t = lib.decodeSubstrateType(substrate);
+        assertEq(uint8(t), uint8(TermFinanceSubstrateType.REPO_TOKEN_HOLDING));
+        assertEq(uint8(t), 2, "flag value 0x02");
+    }
+
+    /// @notice TYPE byte 0x03 (out-of-range) falls back to SERVICER.
     /// @dev Documents the fall-open behaviour. This is an intentional backward-compat
     ///      choice: legacy `addressToBytes32(servicer)` substrates have TYPE byte 0x00 and
     ///      must decode to SERVICER without migration. Strict callers must use the
-    ///      `isServicerSubstrate` / `isCollateralTokenSubstrate` predicates instead.
-    function test_decodeSubstrateType_typeTwo_fallsBackToServicer() public view {
-        bytes32 substrate = bytes32(uint256(0x02) << FLAG_SHIFT);
+    ///      `isServicerSubstrate` / `isCollateralTokenSubstrate` / `isRepoTokenHoldingSubstrate`
+    ///      predicates instead.
+    function test_decodeSubstrateType_typeThree_fallsBackToServicer() public view {
+        bytes32 substrate = bytes32(uint256(0x03) << FLAG_SHIFT);
         TermFinanceSubstrateType t = lib.decodeSubstrateType(substrate);
         assertEq(uint8(t), uint8(TermFinanceSubstrateType.SERVICER), "unknown TYPE falls open to SERVICER");
     }
@@ -122,7 +135,7 @@ contract TermFinanceSubstrateLibTest is Test {
         assertEq(uint8(t), uint8(TermFinanceSubstrateType.SERVICER), "0xFF TYPE falls open to SERVICER");
     }
 
-    /// @notice Fuzz the fall-open branch: any TYPE byte > 1 must decode to SERVICER.
+    /// @notice Fuzz the fall-open branch: any TYPE byte > 2 must decode to SERVICER.
     function testFuzz_decodeSubstrateType_outOfRange_fallsBackToServicer(uint8 typeByte, uint248 data) public view {
         vm.assume(typeByte > uint8(type(TermFinanceSubstrateType).max));
         bytes32 substrate = bytes32((uint256(typeByte) << FLAG_SHIFT) | uint256(data));
@@ -181,9 +194,9 @@ contract TermFinanceSubstrateLibTest is Test {
     }
 
     function test_isServicerSubstrate_typeOutOfRange_returnsFalse() public view {
-        // TYPE byte 0x02 is not SERVICER (even though `decodeSubstrateType` falls back).
+        // TYPE byte 0x03 is not SERVICER (even though `decodeSubstrateType` falls back).
         // `isServicerSubstrate` is the STRICT predicate — checks raw TYPE byte equality.
-        bytes32 substrate = bytes32(uint256(0x02) << FLAG_SHIFT);
+        bytes32 substrate = bytes32(uint256(0x03) << FLAG_SHIFT);
         assertFalse(lib.isServicerSubstrate(substrate));
     }
 
@@ -223,13 +236,60 @@ contract TermFinanceSubstrateLibTest is Test {
     }
 
     function test_isCollateralTokenSubstrate_typeOutOfRange_returnsFalse() public view {
-        bytes32 substrate = bytes32(uint256(0x02) << FLAG_SHIFT);
+        bytes32 substrate = bytes32(uint256(0x03) << FLAG_SHIFT);
         assertFalse(lib.isCollateralTokenSubstrate(substrate));
     }
 
     function test_isCollateralTokenSubstrate_typeMaxByte_returnsFalse() public view {
         bytes32 substrate = bytes32(uint256(0xFF) << FLAG_SHIFT);
         assertFalse(lib.isCollateralTokenSubstrate(substrate));
+    }
+
+    // ============================================================
+    // repoTokenHoldingKey / isRepoTokenHoldingSubstrate (IL-8753)
+    // ============================================================
+
+    function test_repoTokenHoldingKey_encoding() public pure {
+        bytes32 key = TermFinanceSubstrateLib.repoTokenHoldingKey(SERVICER_A);
+        assertEq(key, bytes32((uint256(0x02) << FLAG_SHIFT) | uint256(uint160(SERVICER_A))), "TYPE 0x02 + address");
+        assertEq(uint256(key) >> 160, uint256(0x02) << 88, "bits 247..160 are zero");
+        assertEq(TermFinanceSubstrateLib.decodeAddress(key), SERVICER_A);
+    }
+
+    function test_isRepoTokenHoldingSubstrate_strict() public pure {
+        assertTrue(
+            TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(TermFinanceSubstrateLib.repoTokenHoldingKey(SERVICER_A))
+        );
+        // Dirty bits 247..160 -> false.
+        bytes32 dirty = bytes32(
+            (uint256(0x02) << FLAG_SHIFT) | (uint256(0xCAFE) << 160) | uint256(uint160(SERVICER_A))
+        );
+        assertFalse(TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(dirty));
+        // Other types / legacy servicer -> false.
+        assertFalse(TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(bytes32(uint256(uint160(SERVICER_A)))));
+        assertFalse(
+            TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(
+                TermFinanceSubstrateLib.collateralPairKey(SERVICER_A, TOKEN_A)
+            )
+        );
+        assertFalse(TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(bytes32(uint256(0x03) << FLAG_SHIFT)));
+        assertFalse(TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(bytes32(0)));
+    }
+
+    /// @notice The three encodings are pairwise disjoint under their strict predicates, and
+    ///         HOLDING is never read as a SERVICER by the balance fuse's substrate loop.
+    function testFuzz_holdingKey_disjointFromOtherTypes(address servicer_, address token_) public view {
+        bytes32 holding = TermFinanceSubstrateLib.repoTokenHoldingKey(servicer_);
+        assertTrue(TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(holding));
+        assertFalse(lib.isServicerSubstrate(holding));
+        assertFalse(lib.isCollateralTokenSubstrate(holding));
+        assertEq(uint8(lib.decodeSubstrateType(holding)), uint8(TermFinanceSubstrateType.REPO_TOKEN_HOLDING));
+        assertEq(lib.decodeAddress(holding), servicer_);
+
+        bytes32 servicerKey = bytes32(uint256(uint160(servicer_)));
+        assertTrue(servicerKey != holding);
+        assertFalse(TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(servicerKey));
+        assertFalse(TermFinanceSubstrateLib.isRepoTokenHoldingSubstrate(lib.collateralPairKey(servicer_, token_)));
     }
 
     // ============================================================

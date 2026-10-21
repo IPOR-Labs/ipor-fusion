@@ -73,6 +73,12 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuse is IMarketBalanceFuse {
     ///      - All balances are converted to a common USD-denominated value using oracle prices
     ///      - Final result is normalized to WAD precision (18 decimals) for consistency
     ///      - Zero price from oracle triggers a revert to prevent incorrect balance calculations
+    /// @dev The oracle price (and asset decimals) are read only for assets with a non-zero net position, so an asset
+    ///      without a price in the middleware does not block the market while the vault holds nothing in it.
+    ///      For an asset with a position a zero price still reverts (fail-closed).
+    ///      Residual risk: aTokens are transferable and `supply(onBehalfOf = vault)` needs no consent, so donated aToken
+    ///      dust on an unpriced asset restores the revert; unblock by removing the substrate. Debt cannot be donated
+    ///      (it requires credit delegation).
     /// @return The total balance of the Plasma Vault in Aave V3 protocol, normalized to WAD (18 decimals)
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory assetsRaw = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
@@ -100,15 +106,6 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuse is IMarketBalanceFuse {
             balanceInLoop = 0;
             asset = PlasmaVaultConfigLib.bytes32ToAddress(assetsRaw[i]);
 
-            decimals = ERC20(asset).decimals();
-            (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
-
-            // Validate that price oracle returns a non-zero price
-            // Zero price indicates unsupported asset or oracle failure, which could lead to incorrect balance calculations
-            if (price == 0) {
-                revert AaveV3WithPriceOracleMiddlewareBalanceFuseZeroPrice(asset);
-            }
-
             (aTokenAddress, stableDebtTokenAddress, variableDebtTokenAddress) = IAavePoolDataProvider(poolDataProvider)
                 .getReserveTokensAddresses(asset);
 
@@ -120,6 +117,20 @@ contract AaveV3WithPriceOracleMiddlewareBalanceFuse is IMarketBalanceFuse {
             }
             if (variableDebtTokenAddress != address(0)) {
                 balanceInLoop -= int256(ERC20(variableDebtTokenAddress).balanceOf(plasmaVault));
+            }
+
+            // No position in this asset: its value is 0 regardless of price, so the oracle is not queried.
+            if (balanceInLoop == 0) {
+                continue;
+            }
+
+            decimals = ERC20(asset).decimals();
+            (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
+
+            // Validate that price oracle returns a non-zero price
+            // Zero price indicates unsupported asset or oracle failure, which could lead to incorrect balance calculations
+            if (price == 0) {
+                revert AaveV3WithPriceOracleMiddlewareBalanceFuseZeroPrice(asset);
             }
 
             balanceTemp += IporMath.convertToWadInt(balanceInLoop * int256(price), decimals + priceDecimals);

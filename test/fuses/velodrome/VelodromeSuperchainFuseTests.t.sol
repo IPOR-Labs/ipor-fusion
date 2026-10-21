@@ -141,7 +141,7 @@ contract VelodromeSuperchainFuseTests is Test {
         _velodromeGaugeClaimFuse = new VelodromeSuperchainGaugeClaimFuse(IporFusionMarkets.VELODROME_SUPERCHAIN);
         _transientStorageSetInputsFuse = new TransientStorageSetInputsFuse();
 
-        address[] memory fuses = new address[](4);
+        address[] memory fuses = new address[](3);
         fuses[0] = address(_velodromeLiquidityFuse);
         fuses[1] = address(_velodromeGaugeFuse);
         fuses[2] = address(_transientStorageSetInputsFuse);

@@ -7,6 +7,7 @@ import {Errors} from "../../libraries/errors/Errors.sol";
 import {EulerFuseLib} from "./EulerFuseLib.sol";
 import {IEulerV2Swap} from "./ext/IEulerV2Swap.sol";
 import {IEulerV2SwapFactory} from "./ext/IEulerV2SwapFactory.sol";
+import {EulerV2SwapCurveLib} from "./EulerV2SwapCurveLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 
@@ -60,7 +61,8 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
 
     /// @notice Thrown when staticParams.eulerAccount does not match the vault's derived sub-account
     error EulerV2SwapDeployFuseInvalidEulerAccount(address expected, address provided);
-    /// @notice Thrown when a supply/borrow vault is not granted on the EULER_V2 market for the sub-account
+    /// @notice Thrown when a supply/borrow vault is not granted on the EULER_V2 market for the sub-account, or a
+    ///         supply vault the pool enables as collateral lacks the `isCollateral` flag
     error EulerV2SwapDeployFuseUnsupportedVault(address vault, bytes1 subAccount);
     /// @notice Thrown when the predicted pool address does not match the factory computation / deployment
     error EulerV2SwapDeployFusePoolAddressMismatch(address predicted, address computed);
@@ -77,18 +79,26 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
     IEVC public immutable EVC;
     /// @notice EulerSwap factory used to deploy pools
     IEulerV2SwapFactory public immutable FACTORY;
+    /// @notice Maximum allowed deviation of priceX/priceY from the oracle ratio (1e18 == 100%)
+    uint256 public immutable PRICE_DEVIATION_WAD;
 
     /// @param marketId_ The EULER_V2 market ID
     /// @param eulerV2EVC_ The Ethereum Vault Connector address (must not be address(0))
     /// @param eulerV2SwapFactory_ The EulerSwap factory address (must not be address(0))
-    constructor(uint256 marketId_, address eulerV2EVC_, address eulerV2SwapFactory_) {
+    /// @param priceDeviationWad_ Maximum allowed deviation of priceX/priceY from the oracle ratio of
+    ///        asset0/asset1 (1e18 == 100%; must be <= 1e18)
+    constructor(uint256 marketId_, address eulerV2EVC_, address eulerV2SwapFactory_, uint256 priceDeviationWad_) {
         if (eulerV2EVC_ == address(0) || eulerV2SwapFactory_ == address(0)) {
             revert Errors.WrongAddress();
+        }
+        if (priceDeviationWad_ > EulerV2SwapCurveLib.WAD) {
+            revert EulerV2SwapCurveLib.EulerV2SwapPriceDeviationTooHigh(priceDeviationWad_);
         }
         VERSION = address(this);
         MARKET_ID = marketId_;
         EVC = IEVC(eulerV2EVC_);
         FACTORY = IEulerV2SwapFactory(eulerV2SwapFactory_);
+        PRICE_DEVIATION_WAD = priceDeviationWad_;
     }
 
     /// @notice Installs the pool as the EVC account operator and deploys it via the factory
@@ -106,9 +116,10 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
             revert EulerV2SwapDeployFuseInvalidFeeRecipient(data_.staticParams.feeRecipient);
         }
 
-        // Dynamic parameter sanity bounds, mirrored in EulerV2SwapReconfigureFuse. A swap hook is rejected
-        // outright: it would let an external contract execute arbitrary state-changing code in the swap
-        // context of vault-owned funds, ceding control of the position (see feeRecipient == 0 rationale).
+        // Dynamic parameter sanity bounds, mirrored in EulerV2SwapReconfigureFuse (both bound-checks and the
+        // curve pricing guard below are shared via EulerV2SwapCurveLib). A swap hook is rejected outright: it
+        // would let an external contract execute arbitrary state-changing code in the swap context of
+        // vault-owned funds, ceding control of the position (see feeRecipient == 0 rationale).
         if (
             data_.dynamicParams.fee0 >= MAX_FEE ||
             data_.dynamicParams.fee1 >= MAX_FEE ||
@@ -132,6 +143,27 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
         if (data_.staticParams.borrowVault1 != address(0)) {
             _requireBorrow(data_.staticParams.borrowVault1, data_.subAccount);
         }
+        // EulerSwapManagement.activate enables collateral cross-wise: supplyVault0 iff borrowVault1 != 0 and
+        // supplyVault1 iff borrowVault0 != 0. Such a vault becomes EVC collateral of the sub-account through
+        // the pool, bypassing EulerV2CollateralFuse, so it must be a granted collateral substrate.
+        if (data_.staticParams.borrowVault1 != address(0)) {
+            _requireCollateral(data_.staticParams.supplyVault0, data_.subAccount);
+        }
+        if (data_.staticParams.borrowVault0 != address(0)) {
+            _requireCollateral(data_.staticParams.supplyVault1, data_.subAccount);
+        }
+
+        // Curve pricing guard (shared with EulerV2SwapReconfigureFuse): priceX/priceY must sit within
+        // PRICE_DEVIATION_WAD of the oracle ratio of asset0/asset1 and the initial reserves must be the
+        // equilibrium reserves, otherwise the pool would open as an off-market standing order over
+        // vault inventory. asset0/asset1 are derived exactly as EulerSwap.getAssets does (supply vaults).
+        EulerV2SwapCurveLib.requireCurveAtOraclePrice(
+            data_.staticParams.supplyVault0,
+            data_.staticParams.supplyVault1,
+            data_.dynamicParams,
+            data_.initialState,
+            PRICE_DEVIATION_WAD
+        );
 
         // Anti-substitution: the address authorized as operator must be exactly the address the
         // factory will CREATE2-deploy for these static params + salt.
@@ -184,10 +216,7 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
     /// @dev Inputs are the ABI-encoded EulerV2SwapDeployFuseEnterData split into bytes32 chunks; the
     ///      deployed pool address is written to outputs[0].
     function enterTransient() external {
-        EulerV2SwapDeployFuseEnterData memory data = abi.decode(
-            _readEncodedInputs(),
-            (EulerV2SwapDeployFuseEnterData)
-        );
+        EulerV2SwapDeployFuseEnterData memory data = abi.decode(_readEncodedInputs(), (EulerV2SwapDeployFuseEnterData));
         address pool = enter(data);
         bytes32[] memory outputs = new bytes32[](1);
         outputs[0] = TypeConversionLib.toBytes32(pool);
@@ -203,6 +232,13 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
     /// @notice Reverts unless `vault`/`subAccount` is a supply substrate on the EULER_V2 market
     function _requireSupply(address vault, bytes1 subAccount) private view {
         if (!EulerFuseLib.canSupply(MARKET_ID, vault, subAccount)) {
+            revert EulerV2SwapDeployFuseUnsupportedVault(vault, subAccount);
+        }
+    }
+
+    /// @notice Reverts unless `vault`/`subAccount` is a collateral substrate on the EULER_V2 market
+    function _requireCollateral(address vault, bytes1 subAccount) private view {
+        if (!EulerFuseLib.canCollateral(MARKET_ID, vault, subAccount)) {
             revert EulerV2SwapDeployFuseUnsupportedVault(vault, subAccount);
         }
     }

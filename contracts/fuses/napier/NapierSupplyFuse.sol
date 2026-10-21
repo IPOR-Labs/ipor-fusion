@@ -46,10 +46,17 @@ contract NapierSupplyFuse is NapierUniversalRouterFuse {
     }
 
     /// @notice Supplies assets into Napier PT, minting PT + YT into the vault
+    /// @dev Reverts with NapierFuseInvalidToken unless PT, YT and tokenIn are granted substrates of the market.
     function enter(NapierSupplyFuseEnterData calldata data_) external {
         IPrincipalToken pt = data_.principalToken;
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(pt))) {
+            revert NapierFuseInvalidToken();
+        }
+
+        // PT_SUPPLY mints YT to the vault; an ungranted YT would be missing from NAV and could not be closed.
+        address yt = pt.i_yt();
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, yt)) {
             revert NapierFuseInvalidToken();
         }
 

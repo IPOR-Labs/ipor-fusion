@@ -79,19 +79,55 @@ the remaining 248 bits are data.
 |------|-------|----------|----------|
 | `SERVICER` | `0x00` | servicer address in low 160 bits, bits 247..160 = 0 | `PlasmaVaultConfigLib.addressToBytes32(servicer)` (legacy-compatible) |
 | `COLLATERAL_TOKEN` | `0x01` | `keccak256(abi.encode(servicer, token))` truncated to 248 bits | `TermFinanceSubstrateLib.collateralPairKey(servicer, token)` |
+| `REPO_TOKEN_HOLDING` | `0x02` | servicer address in low 160 bits, bits 247..160 = 0 | `TermFinanceSubstrateLib.repoTokenHoldingKey(servicer)` |
 
 Why `SERVICER = 0x00`: legacy lender-side substrates were raw `addressToBytes32(servicer)`
 (upper byte already `0x00`), so they decode as `SERVICER` **without migration**. The
 `0x01` TYPE byte makes collateral-token substrates provably disjoint from any address
-encoding — no collision.
+encoding — no collision. `REPO_TOKEN_HOLDING` has the shape of `SERVICER` with another TYPE byte, so
+the balance fuse loop (which accepts SERVICER substrates by the strict predicate) never reads it as a
+servicer, and old fuses compare exact `addressToBytes32(servicer)` values and ignore it.
 
 Helpers: `isServicerSubstrate(raw)`, `isCollateralTokenSubstrate(raw)`,
-`decodeAddress(raw)`, `decodeSubstrateType(raw)` (defaults to `SERVICER` on out-of-range).
+`isRepoTokenHoldingSubstrate(raw)` (all strict; dirty bits give false), `repoTokenHoldingKey(servicer)`,
+`decodeAddress(raw)`, `decodeSubstrateType(raw)` (defaults to `SERVICER` for TYPE `>= 0x03`; use the
+strict predicates, not the decoder, to classify a substrate).
 
 **Granting (governance) — to use a servicer you must grant:**
 1. the **servicer substrate** (TYPE `0x00`) for that `TermRepoServicer`, and
 2. one **collateral-token substrate** (TYPE `0x01`) per accepted collateral token you intend
-   to lock (borrower side only).
+   to lock (borrower side only), and
+3. the **repo-token holding substrate** (TYPE `0x02`, `repoTokenHoldingKey(servicer)`) if the vault
+   holds, or is about to receive, TermRepoTokens of that servicer (lender side only).
+
+`REPO_TOKEN_HOLDING` is the vault's declaration that repo tokens of that servicer are part of its
+tracked position. Only with it does the balance fuse count the held repo-token leg and treat a
+repo-token balance as exposure; without it, repo tokens sitting in the vault (for example a
+donation, which Term cannot prevent) lie outside the tracked set and do not change NAV (ALPHA
+rule D-006). A servicer whose `termRepoToken()` cannot be read counts as exposure only inside
+`_servicerHasExposure` (the collateral-manager-probe and price-zero gates), with or without HOLDING:
+so a blanket proxy pause still freezes NAV. On its own (collateral manager and prices healthy) an
+unreadable `termRepoToken()` no longer freezes a servicer without HOLDING: its held leg degrades to 0.
+`TermFinanceOfferFuse.enter` (including an edit) requires it, because a won offer mints repo tokens.
+`OfferFuse.exit`, `OfferRevealFuse`, `RedeemFuse`, `CleanupFuse` and the whole borrower side do not.
+
+- **Lender:** grant SERVICER + `REPO_TOKEN_HOLDING` before the first offer; revoke HOLDING after the
+  last Redeem (while HOLDING is granted a donated token with a non-zero Adapter-B haircut still
+  freezes NAV).
+- **Borrower:** grant SERVICER (+ collateral pairs) only. A donated repo token then cannot freeze
+  NAV or change it.
+- Revoking HOLDING while the vault still holds repo tokens drops their value from NAV at once.
+  Open offers are not dropped at revoke time (they keep counting through the pending-offer leg);
+  their value moves when the auction settles, because the repo tokens then minted to the vault are
+  no longer counted. This is documented only: the fuses do not police grant/revoke consequences.
+- `grantMarketSubstrates` replaces the whole list: always pass the complete set (servicers,
+  collateral pairs, holdings). A vault holding repo tokens or open offers must receive HOLDING before
+  the balance fuse is swapped, or in the same batch, otherwise NAV drops by their PV (for offers,
+  at settlement).
+- Repo tokens bought with another fuse (for example a swapper) count only with HOLDING as well.
+- This partly reverses the IL-7974 policy "a granted servicer with a broken proxy blocks NAV":
+  the held repo-token leg (its `!rtOk` fail-closed and the repo-token balance signal) now applies only
+  to servicers with HOLDING; the `!rtOk` signal inside `_servicerHasExposure` is unchanged.
 
 > ⚠️ **Dependency graph:** because purchase tokens (USDC/WETH/…) flow back into the vault on
 > `RedeemFuse.enter`, `OfferFuse.exit`, `BidFuse.exit`, `CollateralFuse.exit`, and on bid
@@ -120,14 +156,14 @@ Helpers: `isServicerSubstrate(raw)`, `isCollateralTokenSubstrate(raw)`,
 
 | Step | Fuse · function | Key external calls | Storage |
 |------|-----------------|--------------------|---------|
-| Offer | `TermFinanceOfferFuse.enter` | `servicer.termRepoLocker()`, `servicer.purchaseToken()`, `offerLocker.lockOffers(...)` | `PendingOffersStorageLib.addPendingOffer` |
+| Offer | `TermFinanceOfferFuse.enter` (requires `REPO_TOKEN_HOLDING`) | `servicer.termRepoLocker()`, `servicer.purchaseToken()`, `offerLocker.lockOffers(...)` | `PendingOffersStorageLib.addPendingOffer` |
 | Cancel (pre-reveal) | `TermFinanceOfferFuse.exit` | `offerLocker.unlockOffers(ids)` | `removePendingOfferIfExists` |
 | Reveal | `TermFinanceOfferRevealFuse.enter` | `offerLocker.revealOffers(ids, prices, nonces)` | — (stateless) |
 | Redeem (post-maturity) | `TermFinanceRedeemFuse.enter` | `servicer.redemptionTimestamp()`, `servicer.purchaseToken()`, `servicer.redeemTermRepoTokens(vault, amount)` | — |
 | Cleanup | `TermFinanceCleanupFuse.enter` | `offerLocker.lockedOffer(id)` | prune offers with on-chain `amount == 0` |
 
 **Offer `enter` data** — `TermFinanceOfferFuseEnterData`:
-`servicer`, `offerLocker`, `amount`, `offerPriceHash` (bytes32), `existingOfferId` (bytes32, edit-in-place).
+`servicer`, `offerLocker`, `amount`, `offerPriceHash` (bytes32), `existingOfferId` (bytes32, edit-in-place: for a tracked id, edit only on the locker that holds the offer and the locker must return the same id, otherwise `enter` reverts; an untracked id creates a new offer unless it is a live vault offer on that locker, which Term edits in place (see *Known limitation (untracked live bid)*)).
 **Offer `exit` data**: `servicer`, `offerLocker`, `offerIds[]`.
 **Reveal `enter` data**: `servicer`, `offerLocker`, `offerIds[]`, `prices[]`, `nonces[]`.
 **Redeem `enter` data**: `servicer`, `amountToRedeem`.
@@ -162,7 +198,7 @@ Helpers: `isServicerSubstrate(raw)`, `isCollateralTokenSubstrate(raw)`,
 `servicer`, `collateralManager`, `collateralToken`, `amount`.
 **Bid `enter` data** — `TermFinanceBidFuseEnterData`:
 `servicer`, `bidLocker`, `collateralManager`, `amount`, `bidPriceHash` (bytes32),
-`existingBidId` (bytes32), `collateralTokens[]`, `collateralAmounts[]`.
+`existingBidId` (bytes32, edit-in-place: for a tracked id, edit only on the locker that holds the bid and the locker must return the same id, otherwise `enter` reverts; an edit must keep the same collateral token list (same tokens, same order; amounts may change) because Term compares collateral by index only, otherwise `enter` reverts (the check copies the servicer's pending bids, at most 150, acceptable gas on the edit path); an untracked id creates a new bid unless it is a live vault bid on that locker, which Term edits in place (see *Known limitation (untracked live bid)*); e.g. a second bid on the same locker needs a nonce id), `collateralTokens[]`, `collateralAmounts[]`.
 **Bid `exit` data**: `servicer`, `bidLocker`, `bidIds[]`.
 **Bid-reveal `enter` data**: `bidLocker`, `bidIds[]`, `bidPrices[]`, `bidNonces[]`.
 **Repurchase `enter` data**: `servicer`, `amount`.
@@ -188,7 +224,10 @@ is emitted — a transient pause must never silently erase a still-live offer/bi
 `pruneOnLockerRevert == true` only to force-prune entries an operator has confirmed are dead
 (a permanently-broken locker), which prunes and emits `...PrunedOnRevert` / `...PrunedBidOnRevert`.
 Entries with a zero bound locker are unrecoverable (no locker to un-pause) and are pruned
-regardless of the flag. Keeps the pending stores bounded across auction cycles (see
+regardless of the flag. While the entry is kept and its locker keeps reverting, `balanceOf`
+reverts with `TermFinanceBalanceFuseLockerReadFailedForTrackedEntry` (see the error table):
+ALPHA unblocks NAV by running this fuse with `pruneOnLockerRevert == true` once the locker is
+confirmed dead. Keeps the pending stores bounded across auction cycles (see
 anti-griefing caps below).
 
 ---
@@ -234,24 +273,122 @@ return) into a uniform `ok == false`, then a gate decides:
 
 - **Untracked** servicer + failed read → silently degrade that leg to `0`. A misconfigured
   oracle on an unused servicer cannot brick NAV.
-- **Tracked** servicer (held repo balance, pending offers/bids in storage, locked collateral
-  `> 0`, or positive debt obligation) + failed read → **revert intentionally**, freezing
-  share math until the proxy/oracle is fixed. Silently zeroing a tracked leg would under-/
-  over-report NAV and open a share-mint attack.
+- **Tracked** servicer (held or unreadable repo balance - only with `REPO_TOKEN_HOLDING` for the servicer - pending offers/bids in storage, locked
+  collateral `> 0`, or positive debt obligation) + failed read → **revert intentionally**,
+  freezing share math until the proxy/oracle is fixed. Silently zeroing a tracked leg would
+  under-/over-report NAV and open a share-mint attack.
+
+The tracked signal is `_servicerHasExposure` (storage entries, held or unreadable repo token
+balance (only with `REPO_TOKEN_HOLDING`; an unreadable `termRepoToken()` counts regardless), positive
+`getBorrowerRepurchaseObligation`) **or** locked collateral `> 0`. It also
+covers a collateral-manager read (`collateralTokens(i)` / `getCollateralBalance`) that fails
+mid-enumeration: the collateral leg then reads as unpriced, and a positive debt alone is enough
+to freeze NAV instead of subtracting the full debt against a zeroed collateral leg. An unused
+servicer (nothing held, nothing in storage, no debt) with the same broken CM still values to `0`.
+
+**Locker-revert handling (NAV side):** a reverting `lockedOffer` / `lockedBid` for an entry
+carried in vault storage is NOT read as "no position"; it freezes NAV (row below). Only a
+successful read of a cleared entry (offer `amount == 0`; bid `bidder == 0 || amount == 0`)
+contributes 0. Unblock via `TermFinanceCleanupFuse` with `pruneOnLockerRevert == true`.
+
+**Recovery with a pre-hook on `execute`:** `PlasmaVault.execute` reads only cached totals
+before the actions and refreshes the touched markets after them (Cleanup is market 52), so
+without a hook on `execute` ALPHA can run Cleanup directly. If `UpdateBalancesPreHook` (or
+`UpdateBalancesIgnoreDustPreHook`, direct or nested in `ExchangeRateValidatorPreHook`) is
+wired on `execute`, the `restricted` modifier runs it BEFORE the actions, it refreshes every
+active market including 52, `balanceOf` reverts and Cleanup never runs. `removeBalanceFuse`
+does not help (it calls `balanceOf` too), and revoking the substrate makes Cleanup revert.
+Path: ATOMIST unwires the `execute` pre-hook (`setPreHookImplementations`) -> ALPHA runs
+Cleanup with `pruneOnLockerRevert == true` -> ATOMIST re-wires the hook.
+
+**Known limitation (double failure):** if both a collateral-manager per-token read
+(`collateralTokens(i)` / `getCollateralBalance`) and `getBorrowerRepurchaseObligation` revert
+while `termRepoToken` / `balanceOf` still answer, the servicer leg reports 0 (the unreadable
+obligation is read as no debt, IL-7974 policy). The understatement is bounded by the
+borrower's equity (collateral minus debt).
+
+**Known limitation (untracked live bid):** a bid that is still live on Term but no longer tracked
+(possible only after Cleanup with `pruneOnLockerRevert = true` dropped its entry) is edited in place by
+Term when `enter` passes its id. Term applies the new collateral amounts by index to the bid's old token
+list (a dropped token stays in the TermRepoLocker without a record, a reordered list is mis-recorded, a
+longer list reverts), and the fuse skips the locker, id and token-list checks because the id is not
+tracked; it then tracks the bid again with the submitted data. Do not edit such a bid: unlock it with
+`TermFinanceBidFuse.exit` before `revealTime` and lock a fresh one. An untracked live offer is likewise
+edited in place and tracked again with the new amount.
+
+**Known limitation / follow-up (IL-8830):** a frozen NAV can also block a borrower's repurchase; see
+*Known threat* below (IL-8830: documented, no code change). VaultValidator follow-up (other repo):
+`TermFinanceMarketValidator` must accept tag 2 (`REPO_TOKEN_HOLDING`), warn when it has no SERVICER
+pair, and bump `MODULE_VERSION` 1 to 2.
 
 Reverts that intentionally propagate out of `balanceOf`:
 
 | Error | Raised when |
 |-------|-------------|
-| `TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked(servicer)` | any leg's oracle read fails/returns 0 on a tracked servicer; also an out-of-range `redemptionValue` read on a held position |
+| `TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked(servicer)` | any leg's oracle read fails/returns 0 on a tracked servicer, or a collateral-manager per-token read (`collateralTokens(i)` / `getCollateralBalance`) fails while the servicer is tracked (held balance, storage, or positive debt); also an out-of-range `redemptionValue` read on a held position |
 | `TermFinanceBalanceFuseDebtReadFailedForTrackedServicer(servicer)` | `getBorrowerRepurchaseObligation` fails on a tracked borrower |
 | `TermFinanceBalanceFuseDebtRateFailedForTrackedServicer(servicer)` | purchase/repo token, end-of-repurchase-window, or Adapter-B discount-rate read fails while `obligationFace > 0` |
 | `TermFinanceBalanceFuseCollateralManagerReadFailedForTrackedServicer(servicer)` | the collateral-manager probe (`termRepoCollateralManager` / `numOfAcceptedCollateralTokens` / accepted-count sanity) fails for a servicer with detectable exposure — held balance, pending storage, or positive debt. Untracked servicers degrade to 0 |
+| `TermFinanceBalanceFuseLockerReadFailedForTrackedEntry(locker, entryId)` | `lockedOffer` / `lockedBid` reverts for an offer/bid id carried in vault storage. A zero bound locker is still skipped. Recovery: `TermFinanceCleanupFuse` with `pruneOnLockerRevert == true` after the locker is confirmed dead |
 | `TermFinanceBalanceFuseNonZeroRepoRedemptionHaircut(servicer)` | Adapter-B reports a non-zero `repoRedemptionHaircut` on a held pre-maturity position — the rate-amplification convention over-reports NAV, so share math freezes until the convention is revisited. Zero on mainnet today |
 | `Errors.WrongAddress` | the vault's price oracle middleware address is unset |
 
+`TermFinanceOfferFuse.enter` additionally reverts with `TermFinanceOfferFuseRepoTokenHoldingNotGranted(servicer)`
+when `REPO_TOKEN_HOLDING` is not granted for the servicer.
+
 Constructor immutables: `MARKET_ID`, `TERM_CONTROLLER`, `DISCOUNT_RATE_ADAPTER` (all
 non-zero; `marketId > 0`).
+
+---
+
+## Known threat: a frozen market-52 valuation can block a borrower's repurchase
+
+**Mechanism.** `TermFinanceRepurchaseFuse` runs inside `PlasmaVault.execute`, which refreshes
+the Term market (52) after the actions. A pre-hook that refreshes balances (e.g.
+`UpdateBalancesPreHook`) refreshes it before the actions too. A fail-closed revert of
+`TermFinanceBalanceFuse.balanceOf` for a tracked position (see the error table) therefore reverts
+the whole `execute`, including the repayment itself.
+
+**What self-heals today.** Fully repaying the servicer being repaid sets its debt to 0, Term
+returns its collateral, and the servicer stops counting as tracked, so its own rate, price and
+collateral-manager failures degrade to 0. Conditions: no balance-refreshing pre-hook on `execute`;
+stale bid/offer entries of that servicer cleaned in the same batch (`TermFinanceCleanupFuse`);
+every other tracked servicer healthy; an oracle price for the returned collateral (market 7).
+
+**What still blocks a repayment.**
+- a failure on another tracked servicer (held leg with a non-zero redemption haircut, broken adapter, collateral-manager read, debt read);
+- a partial repayment of a servicer that cannot be valued;
+- a balance-refreshing pre-hook on `execute`;
+- a missing oracle price for the returned collateral;
+- a donated balance of a market-7 token without a price;
+- a negative total for market 52;
+- the same servicer also held as a lender with `REPO_TOKEN_HOLDING` while its redemption haircut is non-zero.
+
+A third party cannot freeze market 52 of a pure borrower: a donated repo token without a `REPO_TOKEN_HOLDING`
+grant is ignored, and only `msg.sender` can add collateral. It can still block the same `execute` through
+market 7 (`ERC20_VAULT_BALANCE`, refreshed together with 52 through the dependency graph): 1 wei of a token
+granted in market 7 without an oracle price makes `Erc20BalanceFuse.balanceOf` revert (IL-8834 residual).
+Keep a price for every token granted in market 7, or remove the substrate. The remaining triggers are Term-side
+failures (upgrade, proxy pause, adapter), vault configuration (oracle, pre-hook) and the negative total.
+
+**Consequence.** Term accepts repayment until the end of the repurchase window; on a live
+servicer the window after maturity is only 23 h. After it, anyone can run `batchDefault`:
+the liquidator repays the debt and takes collateral worth debt + liquidated damages (8% on the live
+servicer, of which 2 points go to Term; about 81k USD on a position of about 1.01M USD). The
+rest of the collateral stays credited to the vault in the collateral manager; Term closes collateral
+withdrawals between the end of the repurchase window and `redemptionTimestamp` (1 h later on the live
+servicer), so it can be withdrawn from `redemptionTimestamp` with `TermFinanceCollateralFuse.exit`, which is
+also a market-52 action and waits while the freeze lasts. A freeze before maturity also blocks topping up
+collateral on a margin call.
+
+**Mitigation (operational).**
+- Repay at least 48 h before maturity. Early repayment earns no rebate; the cost is the forgone carry (roughly 270 USD per 1M USD at a 5% rate) against an 8% default penalty.
+- Run a keeper alert on `updateMarketsBalances([52])` reverting while a Term obligation is open, and escalate when maturity is near.
+- Do not wire balance-refreshing pre-hooks on `execute` for Term borrower vaults.
+- Unblock runbook: the ATOMIST unwires any pre-hook on `execute`; ALPHA prunes stale bid/offer entries with `TermFinanceCleanupFuse` (`pruneOnLockerRevert == true` only for confirmed-dead lockers); the oracle owner restores a missing price; ALPHA then repays each servicer in full with `TermFinanceRepurchaseFuse` (full repayment lets the servicer drop out of the valuation); the ATOMIST re-wires the hook afterwards if needed.
+
+**Not addressed in code.** Decision of 2026-10-19: no emergency repurchase path and no change to
+the valuation or to `PlasmaVault`; the residual risk is documented here and tracked in IL-8830.
 
 ---
 

@@ -38,11 +38,14 @@ import {Roles} from "../../libraries/Roles.sol";
  * - setRedemptionDelay: Restricted to TECH_PLASMA_VAULT_ROLE (the OWNER_ROLE reaches it through
  *   PlasmaVaultGovernance.setRedemptionDelay; that path is timelocked only when the owner account holds
  *   OWNER_ROLE with a non-zero execution delay - the default initializer grants it with 0, i.e. immediate)
+ * - setRedemptionDelayExemption: Restricted to TECH_PLASMA_VAULT_ROLE (the OWNER_ROLE reaches it through
+ *   PlasmaVaultGovernance.setRedemptionDelayExemption)
  * - grantRole: Restricted to authorized roles (via onlyAuthorized)
  *
  * Security features:
  * - Role-based execution delays
  * - Redemption delay mechanism
+ * - Owner-managed list of accounts exempt from the redemption delay on exit, evaluated at exit time
  * - Guardian role for emergency actions
  * - Timelock controls for sensitive operations
  *
@@ -53,6 +56,8 @@ import {Roles} from "../../libraries/Roles.sol";
  *   ERC-7201 namespace io.ipor.managers.access.RedemptionDelay. NEVER put this implementation behind a proxy
  *   that already holds pre-IL-7910 storage - a non-zero legacy delay in slot 4 would read as
  *   `_customConsumingSchedule == true` permanently. The layout is pinned by RedemptionDelayUpdateTest.
+ * - The exempt accounts live in the ERC-7201 namespace io.ipor.managers.access.RedemptionDelayExemptions
+ *   (slot 0xc907ff1647cc23a1ed16a70292ca2dd8b68ec279b648a0a2e9599d2834e88f00), an EnumerableSet.AddressSet
  *
  */
 contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, AccessManager {
@@ -245,6 +250,29 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
     }
 
     /**
+     * @notice Adds or removes a batch of accounts to/from the redemption delay exemptions
+     * @param accounts_ The accounts to update
+     * @param exempt_ True to exempt the accounts from the redemption delay, false to remove the exemption
+     * @dev An exempt account behaves as if the vault-wide redemption delay were 0 when it withdraws, redeems,
+     * transfers or transferFroms. The exemption is evaluated at exit time, so granting and revoking take effect
+     * immediately. Governance calls it through PlasmaVaultGovernance.setRedemptionDelayExemption - AccessManager
+     * cannot schedule its own custom functions, so a setter restricted here to the OWNER_ROLE could never be
+     * timelocked; the vault path is timelocked only through the OWNER_ROLE execution delay.
+     * RedemptionDelayExemptionUpdated is emitted for every address, also when the state did not change.
+     * An empty batch is a no-op.
+     * @custom:access Restricted to TECH_PLASMA_VAULT_ROLE (the PlasmaVault)
+     * @custom:risk An exempt address can deposit and transfer fresh shares to a never-deposited address, which can
+     * then withdraw at once. The lock check sees only the address the vault passes (caller, share owner, from), so
+     * exempting a contract that acts for many users (a wrapper, router, zap or ContextManager-relayed path) exempts
+     * all of its users at once. An exemption also removes the same-block deposit -> withdraw guard that a 1-second
+     * delay provides. Only exempt trusted, specific addresses
+     * @custom:error Errors.WrongAddress if any of the accounts is the zero address (the whole batch reverts)
+     */
+    function setRedemptionDelayExemption(address[] calldata accounts_, bool exempt_) external override restricted {
+        RedemptionDelayLib.setRedemptionDelayExemption(accounts_, exempt_);
+    }
+
+    /**
      * @notice Grants a role to an account with a specified execution delay
      * @param roleId_ The role identifier to grant
      * @param account_ The account to receive the role
@@ -287,6 +315,7 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
      * past when the lock has already expired. Returns 0 when the account never deposited.
      * @dev Used to enforce redemption delay periods after certain operations. The returned value moves
      * immediately, in both directions, whenever the redemption delay is changed via setRedemptionDelay.
+     * Exemption-agnostic: it is also returned for exempt accounts - combine it with isRedemptionDelayExempt.
      * @custom:access No access restrictions - can be called by anyone
      * @custom:security
      * - Part of the redemption delay mechanism
@@ -295,6 +324,50 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
      */
     function getAccountLockTime(address account_) external view override returns (uint256) {
         return RedemptionDelayLib.getAccountLockTime(account_);
+    }
+
+    /**
+     * @notice Checks whether an account is exempt from the redemption delay
+     * @param account_ The account address to check
+     * @return True when the account is exempt
+     * @custom:access No access restrictions - can be called by anyone
+     */
+    function isRedemptionDelayExempt(address account_) external view override returns (bool) {
+        return RedemptionDelayLib.isRedemptionDelayExempt(account_);
+    }
+
+    /**
+     * @notice Retrieves all accounts exempt from the redemption delay
+     * @return The full list of exempt accounts
+     * @dev The order is not stable across removals
+     * @custom:access No access restrictions - can be called by anyone
+     */
+    function getRedemptionDelayExemptions() external view override returns (address[] memory) {
+        return RedemptionDelayLib.getRedemptionDelayExemptions();
+    }
+
+    /**
+     * @notice Retrieves the number of accounts exempt from the redemption delay
+     * @return The number of exempt accounts
+     * @custom:access No access restrictions - can be called by anyone
+     */
+    function getRedemptionDelayExemptionsCount() external view override returns (uint256) {
+        return RedemptionDelayLib.getRedemptionDelayExemptionsCount();
+    }
+
+    /**
+     * @notice Retrieves a page of accounts exempt from the redemption delay
+     * @param offset_ Index of the first account to return
+     * @param limit_ Maximum number of accounts to return
+     * @return The requested page: empty when offset_ >= count, otherwise min(limit_, count - offset_) accounts
+     * @dev The order is not stable across removals, so read all pages in one block
+     * @custom:access No access restrictions - can be called by anyone
+     */
+    function getRedemptionDelayExemptionsAt(
+        uint256 offset_,
+        uint256 limit_
+    ) external view override returns (address[] memory) {
+        return RedemptionDelayLib.getRedemptionDelayExemptionsAt(offset_, limit_);
     }
 
     /**

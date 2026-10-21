@@ -2432,11 +2432,10 @@ contract PlasmaVaultWithdrawTest is Test {
         assertLe(actualShares, previewShares, "ERC4626: withdraw should return <= previewWithdraw");
     }
 
-    /// @notice Test previewWithdraw uses correct additive fee formula: baseShares * (1 + feeRate)
-    /// @dev The fee is ADDED to the shares needed, not divided. The formula is:
-    ///      totalShares = sharesForAssets + feeShares = sharesForAssets * (1 + feeRate)
-    ///      This is because fee is calculated as: feeShares = sharesForAssets * feeRate
-    function testPreviewWithdrawUsesCorrectAdditiveFeeFormula() public {
+    /// @notice Test previewWithdraw uses the gross fee formula: baseShares / (1 - feeRate)
+    /// @dev IL-8751: the fee is a share of the gross shares burned (the same base as redeem), so
+    ///      grossShares = sharesForAssets / (1 - feeRate) and feeShares = grossShares * feeRate
+    function testPreviewWithdrawUsesGrossFeeFormula() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(0);
         uint256 depositAmount = 1000 * 1e18;
@@ -2457,47 +2456,46 @@ contract PlasmaVaultWithdrawTest is Test {
         WithdrawManager(withdrawManager).updateWithdrawFee(fee1Percent);
         uint256 sharesWithFee1Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
 
-        // Correct formula: baseShares * (1 + fee) = baseShares * 1.01
-        uint256 expectedShares1Percent = Math.mulDiv(baseShares, 1e18 + fee1Percent, 1e18, Math.Rounding.Ceil);
+        // Correct formula: baseShares / (1 - fee) = baseShares / 0.99
+        uint256 expectedShares1Percent = Math.mulDiv(baseShares, 1e18, 1e18 - fee1Percent, Math.Rounding.Ceil);
 
         // Allow 1 wei tolerance for rounding
         assertApproxEqAbs(
             sharesWithFee1Percent,
             expectedShares1Percent,
             1,
-            "1% fee: previewWithdraw should use additive formula baseShares * (1 + feeRate)"
+            "1% fee: previewWithdraw should use gross formula baseShares / (1 - feeRate)"
         );
 
-        // Verify the ratio is exactly 1.01
+        // Verify the ratio is 1 / 0.99 = 1.010101...
         uint256 actualRatio1Percent = (sharesWithFee1Percent * 1e18) / baseShares;
-        assertGe(actualRatio1Percent, 1010000000000000000, "1% fee ratio should be >= 1.01");
-        assertLe(actualRatio1Percent, 1010100000000000000, "1% fee ratio should be <= 1.0101 (rounding)");
+        assertGe(actualRatio1Percent, 1010101010101010101, "1% fee ratio should be >= 1/0.99");
+        assertLe(actualRatio1Percent, 1010101010101011000, "1% fee ratio should be <= 1/0.99 (rounding)");
 
         // Test with 10% fee
         uint256 fee10Percent = 1e17; // 10%
         WithdrawManager(withdrawManager).updateWithdrawFee(fee10Percent);
         uint256 sharesWithFee10Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
 
-        // Correct formula: baseShares * 1.1
-        uint256 expectedShares10Percent = Math.mulDiv(baseShares, 1e18 + fee10Percent, 1e18, Math.Rounding.Ceil);
+        // Correct formula: baseShares / 0.9
+        uint256 expectedShares10Percent = Math.mulDiv(baseShares, 1e18, 1e18 - fee10Percent, Math.Rounding.Ceil);
 
         assertApproxEqAbs(
             sharesWithFee10Percent,
             expectedShares10Percent,
             1,
-            "10% fee: previewWithdraw should use additive formula"
+            "10% fee: previewWithdraw should use gross formula"
         );
 
-        // Verify the ratio is exactly 1.1
+        // Verify the ratio is 1 / 0.9 = 1.111...
         uint256 actualRatio10Percent = (sharesWithFee10Percent * 1e18) / baseShares;
-        assertGe(actualRatio10Percent, 1100000000000000000, "10% fee ratio should be >= 1.1");
-        assertLe(actualRatio10Percent, 1100100000000000000, "10% fee ratio should be <= 1.1001 (rounding)");
+        assertGe(actualRatio10Percent, 1111111111111111111, "10% fee ratio should be >= 1/0.9");
+        assertLe(actualRatio10Percent, 1111111111111112000, "10% fee ratio should be <= 1/0.9 (rounding)");
     }
 
     /// @notice Test previewWithdraw and previewRedeem consistency with fee
-    /// @dev With fee: previewWithdraw gives total shares needed (including fee shares),
-    ///      previewRedeem gives assets received after fee deduction.
-    ///      They are NOT algebraic inverses when there's a fee - the fee is "lost" in the roundtrip.
+    /// @dev IL-8751: previewWithdraw and previewRedeem use the same fee base (gross shares), so
+    ///      previewRedeem(previewWithdraw(assets)) returns the requested assets (the fee is not charged twice).
     function testPreviewWithdrawAndPreviewRedeemConsistencyWithFee() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(0);
@@ -2523,35 +2521,20 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 assetsFromRedeem = plasmaVault.previewRedeem(sharesNeeded);
 
         //then
-        // With the additive formula:
-        // - sharesNeeded = baseShares * (1 + fee) = baseShares * 1.1
-        // - For previewRedeem: effectiveShares = sharesNeeded * (1 - fee) = baseShares * 1.1 * 0.9 = baseShares * 0.99
-        // - So assets from redeem ≈ targetAssets * 0.99
-        // This is expected behavior: the fee causes a loss in roundtrip
-        uint256 expectedAssets = Math.mulDiv(
-            targetAssets,
-            (1e18 + fee) * (1e18 - fee),
-            1e18 * 1e18,
-            Math.Rounding.Floor
-        );
-
-        assertApproxEqRel(
-            assetsFromRedeem,
-            expectedAssets,
-            1e15,
-            "previewRedeem(previewWithdraw(assets)) should follow fee math"
-        );
-
-        // Assets from redeem should be LESS than target due to fee applied twice
-        assertLt(
+        // - sharesNeeded = baseShares / (1 - fee)
+        // - previewRedeem: effectiveShares = sharesNeeded * (1 - fee) = baseShares
+        // - So assets from redeem == targetAssets (up to rounding, never above)
+        assertLe(assetsFromRedeem, targetAssets, "Roundtrip must not pay more than requested");
+        assertApproxEqAbs(
             assetsFromRedeem,
             targetAssets,
-            "With fee, roundtrip should result in less assets (fee applied to both directions)"
+            10,
+            "previewRedeem(previewWithdraw(assets)) should return the requested assets"
         );
     }
 
-    /// @notice Test previewWithdraw handles edge case fees correctly with additive formula
-    function testPreviewWithdrawEdgeCaseFeesAdditiveFormula() public {
+    /// @notice Test previewWithdraw handles edge case fees correctly with the gross formula
+    function testPreviewWithdrawEdgeCaseFeesGrossFormula() public {
         //given
         plasmaVault = _preparePlasmaVaultDai(0);
         uint256 depositAmount = 1000 * 1e18;
@@ -2570,20 +2553,20 @@ contract PlasmaVaultWithdrawTest is Test {
         WithdrawManager(withdrawManager).updateWithdrawFee(fee50Percent);
         uint256 sharesWithFee50Percent = plasmaVault.previewWithdraw(assetsToWithdraw);
 
-        // Correct formula: baseShares * (1 + 0.5) = baseShares * 1.5
-        uint256 expectedShares50Percent = Math.mulDiv(baseShares, 1e18 + fee50Percent, 1e18, Math.Rounding.Ceil);
+        // Correct formula: baseShares / (1 - 0.5) = baseShares * 2
+        uint256 expectedShares50Percent = Math.mulDiv(baseShares, 1e18, 1e18 - fee50Percent, Math.Rounding.Ceil);
 
         assertApproxEqAbs(
             sharesWithFee50Percent,
             expectedShares50Percent,
             1,
-            "50% fee: should require 1.5x shares with additive formula"
+            "50% fee: should require 2x shares with gross formula"
         );
 
-        // Verify the ratio is exactly 1.5x
+        // Verify the ratio is exactly 2x
         uint256 actualRatio = (sharesWithFee50Percent * 1e18) / baseShares;
-        assertGe(actualRatio, 1500000000000000000, "50% fee ratio should be >= 1.5");
-        assertLe(actualRatio, 1500100000000000000, "50% fee ratio should be <= 1.5001 (rounding)");
+        assertGe(actualRatio, 2000000000000000000, "50% fee ratio should be >= 2");
+        assertLe(actualRatio, 2000100000000000000, "50% fee ratio should be <= 2.0001 (rounding)");
 
         // Test very small fee (0.01%)
         uint256 feeSmall = 1e14; // 0.01%

@@ -3,14 +3,24 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
-import {PlasmaVault, PlasmaVaultInitData, MarketBalanceFuseConfig, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    PlasmaVaultInitData,
+    MarketBalanceFuseConfig,
+    FeeConfig
+} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig} from "../../contracts/vaults/PlasmaVault.sol";
-import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
+import {
+    IporFusionAccessManagerInitializerLibV1,
+    InitializationData,
+    DataForInitialization,
+    PlasmaVaultAddress
+} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FixedValuePriceFeed} from "../../contracts/price_oracle/price_feed/FixedValuePriceFeed.sol";
 import {MutableValuePriceFeed} from "./MutableValuePriceFeed.sol";
 
@@ -845,6 +855,9 @@ contract PriceOracleMiddlewareManagerTest is Test {
         PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
         vm.stopPrank();
 
+        // the baseline re-anchors at most once per block, so the second validation happens in a later block
+        vm.warp(block.timestamp + 1);
+
         int256 updatedPrice = 106e16; // 6% increase
         priceFeed.setPrice(updatedPrice);
 
@@ -859,6 +872,106 @@ contract PriceOracleMiddlewareManagerTest is Test {
             .getPriceValidationInfo(asset);
 
         assertEq(lastValidatedPrice, uint256(updatedPrice));
+    }
+
+    function testRaisedMaxPriceDeltaReanchorsOnlyBelowTwiceTheDeviation() public {
+        address asset = address(0x123);
+        MutableValuePriceFeed priceFeed = new MutableValuePriceFeed(1e18);
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+        address[] memory sources = new address[](1);
+        sources[0] = address(priceFeed);
+
+        vm.prank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setAssetsPriceSources(assets, sources);
+
+        uint256 originalDelta = 1e16; // 1%
+        uint256 deviation = 2e16; // d: a 2% move from the 1e18 baseline
+        uint256 movedPrice = 102e16;
+
+        _setMaxPriceDelta(assets, originalDelta);
+        vm.prank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+
+        vm.warp(block.timestamp + 1);
+        priceFeed.setPrice(int256(movedPrice));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PriceOracleMiddlewareManagerLib.PriceChangeExceeded.selector,
+                asset,
+                1e18,
+                movedPrice,
+                originalDelta
+            )
+        );
+        vm.prank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+
+        uint256 snapshot = vm.snapshotState();
+
+        // delta' = d - 1: still outside the band.
+        _setMaxPriceDelta(assets, deviation - 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PriceOracleMiddlewareManagerLib.PriceChangeExceeded.selector,
+                asset,
+                1e18,
+                movedPrice,
+                deviation - 1
+            )
+        );
+        vm.prank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+
+        // delta' = d and delta' = 2d - 1: the validation re-anchors, and the restored delta accepts the new baseline.
+        uint256[2] memory reanchoring = [deviation, 2 * deviation - 1];
+        for (uint256 i; i < reanchoring.length; ++i) {
+            vm.revertToState(snapshot);
+            snapshot = vm.snapshotState();
+            _setMaxPriceDelta(assets, reanchoring[i]);
+            vm.expectEmit(address(_priceOracleMiddlewareManager));
+            emit PriceOracleMiddlewareManagerLib.PriceValidationBaselineUpdated(asset, movedPrice);
+            vm.prank(_plasmaVault);
+            PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+
+            _setMaxPriceDelta(assets, originalDelta);
+            vm.warp(block.timestamp + 1);
+            vm.prank(_plasmaVault);
+            PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        }
+
+        // delta' = 2d: accepted without a re-anchor, so the breaker trips again after the restore.
+        vm.revertToState(snapshot);
+        _setMaxPriceDelta(assets, 2 * deviation);
+        vm.recordLogs();
+        vm.prank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+        assertEq(vm.getRecordedLogs().length, 0, "no re-anchor event");
+        (, uint256 lastValidatedPrice, ) = PriceOracleMiddlewareManager(_priceOracleMiddlewareManager)
+            .getPriceValidationInfo(asset);
+        assertEq(lastValidatedPrice, 1e18, "baseline not moved");
+
+        _setMaxPriceDelta(assets, originalDelta);
+        vm.warp(block.timestamp + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PriceOracleMiddlewareManagerLib.PriceChangeExceeded.selector,
+                asset,
+                1e18,
+                movedPrice,
+                originalDelta
+            )
+        );
+        vm.prank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+    }
+
+    function _setMaxPriceDelta(address[] memory assets_, uint256 delta_) internal {
+        uint256[] memory deltas = new uint256[](1);
+        deltas[0] = delta_;
+        vm.prank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets_, deltas);
     }
 
     function testValidateAllAssetsPricesKeepsBaselineWhenBelowHalfDelta() public {
@@ -897,5 +1010,120 @@ contract PriceOracleMiddlewareManagerTest is Test {
             .getPriceValidationInfo(asset);
 
         assertEq(lastValidatedPrice, 1e18);
+    }
+
+    function _setupValidatedFeed(
+        uint256 maxPriceDelta_
+    ) private returns (address asset, MutableValuePriceFeed priceFeed) {
+        asset = address(0x123);
+        priceFeed = new MutableValuePriceFeed(1e18);
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+        address[] memory sources = new address[](1);
+        sources[0] = address(priceFeed);
+
+        vm.prank(_PRICE_ORACLE_MIDDLEWARE_MANAGER_ADDRESS);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setAssetsPriceSources(assets, sources);
+
+        uint256[] memory maxPriceDeltas = new uint256[](1);
+        maxPriceDeltas[0] = maxPriceDelta_;
+        vm.prank(_ATOMIST);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).updatePriceValidation(assets, maxPriceDeltas);
+    }
+
+    function _validateAsVault() private {
+        vm.prank(_plasmaVault);
+        PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).validateAllAssetsPrices();
+    }
+
+    function testValidate_secondReanchorSameBlock_blocked() public {
+        (address asset, MutableValuePriceFeed priceFeed) = _setupValidatedFeed(1e16); // 1%
+        PriceOracleMiddlewareManager manager = PriceOracleMiddlewareManager(_priceOracleMiddlewareManager);
+
+        _validateAsVault(); // baseline 1e18 at t0
+        vm.warp(block.timestamp + 1);
+
+        priceFeed.setPrice(1.006e18); // +0.6% > maxPriceDelta / 2 -> re-anchors
+        _validateAsVault();
+        (, uint256 baseline, uint256 ts) = manager.getPriceValidationInfo(asset);
+        assertEq(baseline, 1.006e18, "first re-anchor in the block");
+        assertEq(ts, block.timestamp, "timestamp recorded");
+
+        // +1.2% from the original, 0.597% from the new baseline: accepted, but no second re-anchor in this block
+        priceFeed.setPrice(1.012e18);
+        _validateAsVault();
+        (, baseline, ts) = manager.getPriceValidationInfo(asset);
+        assertEq(baseline, 1.006e18, "baseline not re-anchored twice in one block");
+
+        // +1.7% from the original, 1.29% from the baseline: exceeds maxPriceDelta
+        priceFeed.setPrice(1.017e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PriceOracleMiddlewareManagerLib.PriceChangeExceeded.selector,
+                asset,
+                1.006e18,
+                1.017e18,
+                1e16
+            )
+        );
+        _validateAsVault();
+    }
+
+    function testValidate_reanchorsAgainNextBlock() public {
+        (address asset, MutableValuePriceFeed priceFeed) = _setupValidatedFeed(1e16);
+        PriceOracleMiddlewareManager manager = PriceOracleMiddlewareManager(_priceOracleMiddlewareManager);
+
+        _validateAsVault();
+        vm.warp(block.timestamp + 1);
+        priceFeed.setPrice(1.006e18);
+        _validateAsVault();
+
+        vm.warp(block.timestamp + 1);
+        priceFeed.setPrice(1.012e18); // 0.597% from baseline > maxPriceDelta / 2
+        vm.expectEmit(address(_priceOracleMiddlewareManager));
+        emit PriceOracleMiddlewareManagerLib.PriceValidationBaselineUpdated(asset, 1.012e18);
+        _validateAsVault();
+
+        (, uint256 baseline, uint256 ts) = manager.getPriceValidationInfo(asset);
+        assertEq(baseline, 1.012e18, "re-anchored in the next block");
+        assertEq(ts, block.timestamp, "timestamp updated");
+    }
+
+    function testValidate_firstBaselineRecordsTimestamp() public {
+        (address asset, ) = _setupValidatedFeed(1e16);
+        PriceOracleMiddlewareManager manager = PriceOracleMiddlewareManager(_priceOracleMiddlewareManager);
+
+        (, uint256 baseline, uint256 ts) = manager.getPriceValidationInfo(asset);
+        assertEq(baseline, 0, "no baseline yet");
+        assertEq(ts, 0, "no timestamp yet");
+
+        vm.warp(block.timestamp + 5);
+        _validateAsVault();
+
+        (, baseline, ts) = manager.getPriceValidationInfo(asset);
+        assertEq(baseline, 1e18, "first baseline");
+        assertEq(ts, block.timestamp, "first baseline timestamp");
+    }
+
+    function testRemovePriceValidation_clearsTimestamp() public {
+        (address asset, ) = _setupValidatedFeed(1e16);
+        PriceOracleMiddlewareManager manager = PriceOracleMiddlewareManager(_priceOracleMiddlewareManager);
+
+        _validateAsVault();
+        (, , uint256 ts) = manager.getPriceValidationInfo(asset);
+        assertEq(ts, block.timestamp, "timestamp recorded before removal");
+
+        address[] memory assets = new address[](1);
+        assets[0] = asset;
+        vm.prank(_ATOMIST);
+        manager.removePriceValidation(assets);
+
+        uint256 maxDelta;
+        uint256 baseline;
+        (maxDelta, baseline, ts) = manager.getPriceValidationInfo(asset);
+        assertEq(maxDelta, 0, "delta cleared");
+        assertEq(baseline, 0, "baseline cleared");
+        assertEq(ts, 0, "timestamp cleared");
     }
 }

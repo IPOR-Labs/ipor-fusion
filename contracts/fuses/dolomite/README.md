@@ -128,7 +128,7 @@ DolomiteSupplyFuseEnterData memory data = DolomiteSupplyFuseEnterData({
     amount: 1000e6,
     minBalanceIncrease: 990e6,  // Slippage protection
     subAccountId: 0,
-    isolationModeMarketId: 0    // 0 for non-isolation mode
+    isolationModeMarketId: 0    // must be 0; isolation mode is not supported, non-zero reverts
 });
 ```
 
@@ -141,7 +141,7 @@ DolomiteSupplyFuseExitData memory data = DolomiteSupplyFuseExitData({
     amount: 500e6,              // Use type(uint256).max for full withdrawal
     minAmountOut: 490e6,        // Slippage protection
     subAccountId: 0,
-    isolationModeMarketId: 0
+    isolationModeMarketId: 0    // must be 0; non-zero reverts
 });
 ```
 
@@ -265,7 +265,7 @@ if (!DolomiteFuseLib.canBorrow(MARKET_ID, asset, subAccountId)) {
 `DolomiteSupplyFuse` implements `IFuseInstantWithdraw` for emergency withdrawals:
 
 ```solidity
-// params_: [amount, asset, subAccountId (optional), isolationModeMarketId (optional), minAmountOut (optional)]
+// params_: [amount, asset, subAccountId (optional), isolationModeMarketId (optional, must be 0), minAmountOut (optional)]
 function instantWithdraw(bytes32[] calldata params_) external;
 ```
 

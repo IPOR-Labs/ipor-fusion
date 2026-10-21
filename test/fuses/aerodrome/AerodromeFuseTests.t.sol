@@ -18,15 +18,34 @@ import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactor
 import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {AerodromeBalanceFuse} from "../../../contracts/fuses/aerodrome/AerodromeBalanceFuse.sol";
-import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "../../../contracts/fuses/aerodrome/AreodromeLib.sol";
-import {AerodromeClaimFeesFuse, AerodromeClaimFeesFuseEnterData} from "../../../contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol";
-import {AerodromeLiquidityFuse, AerodromeLiquidityFuseEnterData, AerodromeLiquidityFuseExitData} from "../../../contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol";
-import {AerodromeGaugeFuse, AerodromeGaugeFuseEnterData, AerodromeGaugeFuseExitData} from "../../../contracts/fuses/aerodrome/AerodromeGaugeFuse.sol";
+import {
+    AerodromeSubstrateLib,
+    AerodromeSubstrate,
+    AerodromeSubstrateType
+} from "../../../contracts/fuses/aerodrome/AreodromeLib.sol";
+import {
+    AerodromeClaimFeesFuse,
+    AerodromeClaimFeesFuseEnterData
+} from "../../../contracts/fuses/aerodrome/AerodromeClaimFeesFuse.sol";
+import {
+    AerodromeLiquidityFuse,
+    AerodromeLiquidityFuseEnterData,
+    AerodromeLiquidityFuseExitData
+} from "../../../contracts/fuses/aerodrome/AerodromeLiquidityFuse.sol";
+import {
+    AerodromeGaugeFuse,
+    AerodromeGaugeFuseEnterData,
+    AerodromeGaugeFuseExitData
+} from "../../../contracts/fuses/aerodrome/AerodromeGaugeFuse.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IRouter} from "../../../contracts/fuses/aerodrome/ext/IRouter.sol";
 import {AerodromeGaugeClaimFuse} from "../../../contracts/rewards_fuses/aerodrome/AerodromeGaugeClaimFuse.sol";
 import {IGauge} from "../../../contracts/fuses/aerodrome/ext/IGauge.sol";
+import {IPool} from "../../../contracts/fuses/aerodrome/ext/IPool.sol";
+import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
+import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 
 import {IWETH9} from "../erc4626/IWETH9.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
@@ -55,6 +74,9 @@ contract AerodromeFuseTests is Test {
     /// @dev Aerodrome Gauge address for USDC/WETH stable pool, for 0x3548029694fbB241D45FB24Ba0cd9c9d4E745f16 pool
     address private constant _AERODROME_GAUGE = 0xaeBA79D1108788E5754Eb30aaC64EB868a3247FC;
     address private constant _AERODROME_REWARD_TOKEN = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
+    /// @dev Aerodrome VOLATILE USDC/WETH pool on Base (`poolFor(USDC, WETH, false)`), used by the
+    ///      IL-7957 regression tests to exercise the constant-product branch of the fair-reserve math.
+    address private constant _AERODROME_VOLATILE_POOL = 0xcDAC0d6c6C59727a65F871236188350531885C43;
 
     // Core contracts
     PlasmaVault private _plasmaVault;
@@ -2113,6 +2135,377 @@ contract AerodromeFuseTests is Test {
             initialBalance,
             0.1e18, // 10% tolerance for potential fee accumulation over 1 day
             "Pool balance should remain stable (fee calculation is correct)"
+        );
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // IL-7957 regression tests: LP positions must be valued from the pool's oracle-consistent
+    // ("fair") reserves, never from the live, single-block-manipulable `IPool.getReserves()`.
+    // ---------------------------------------------------------------------------------------------
+
+    /// @dev Reads `AerodromeBalanceFuse.balanceOf()` in the vault's storage context through
+    /// `UniversalReader`. This is the fuse's own, uncached output - exactly the number
+    /// `PlasmaVaultMarketsLib.updateMarketsBalances` delegatecalls and then persists into the
+    /// per-market NAV cache. The fuse is deployed locally with `new` in `setUp`, so this executes the
+    /// bytecode built from this working tree, not any deployed contract.
+    function _readAerodromeBalance() internal view returns (uint256) {
+        ReadResult memory readResult = UniversalReader(address(_plasmaVault)).read(
+            address(_aerodromeBalanceFuse),
+            abi.encodeWithSignature("balanceOf()")
+        );
+        return abi.decode(readResult.data, (uint256));
+    }
+
+    /// @dev The pre-fix valuation: the vault's pro-rata share of the pool's LIVE reserves, priced with
+    /// the oracle. Recomputed here in the test so the regression tests can quantify what the fuse used
+    /// to report.
+    function _spotValuation(address pool_, uint256 liquidity_) internal view returns (uint256) {
+        (uint256 reserve0, uint256 reserve1, ) = IPool(pool_).getReserves();
+        uint256 totalSupply = IERC20(pool_).totalSupply();
+
+        address token0 = IPool(pool_).token0();
+        address token1 = IPool(pool_).token1();
+
+        (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(address(_priceOracleMiddleware))
+            .getAssetPrice(token0);
+        (uint256 price1, uint256 priceDecimals1) = IPriceOracleMiddleware(address(_priceOracleMiddleware))
+            .getAssetPrice(token1);
+
+        return
+            IporMath.convertToWad(
+                ((liquidity_ * reserve0) / totalSupply) * price0,
+                IERC20Metadata(token0).decimals() + priceDecimals0
+            ) +
+            IporMath.convertToWad(
+                ((liquidity_ * reserve1) / totalSupply) * price1,
+                IERC20Metadata(token1).decimals() + priceDecimals1
+            );
+    }
+
+    /// @dev Adds liquidity to the granted stable USDC/WETH pool through the liquidity fuse.
+    function _addStableLiquidity() internal {
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: true,
+            amountADesired: 1000e6,
+            amountBDesired: 172503737333611236,
+            amountAMin: 990e6,
+            amountBMin: 0,
+            deadline: block.timestamp + 3600
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+    }
+
+    /// @dev Grants the volatile USDC/WETH pool as an extra Pool substrate and adds liquidity to it.
+    function _grantAndAddVolatileLiquidity() internal {
+        // grantMarketSubstrates replaces the whole granted set, so re-grant the two from setUp as well
+        bytes32[] memory aerodromeSubstrates = new bytes32[](3);
+        aerodromeSubstrates[0] = AerodromeSubstrateLib.substrateToBytes32(
+            AerodromeSubstrate({
+                substrateAddress: IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0)),
+                substrateType: AerodromeSubstrateType.Pool
+            })
+        );
+        aerodromeSubstrates[1] = AerodromeSubstrateLib.substrateToBytes32(
+            AerodromeSubstrate({substrateAddress: _AERODROME_GAUGE, substrateType: AerodromeSubstrateType.Gauge})
+        );
+        aerodromeSubstrates[2] = AerodromeSubstrateLib.substrateToBytes32(
+            AerodromeSubstrate({substrateAddress: _AERODROME_VOLATILE_POOL, substrateType: AerodromeSubstrateType.Pool})
+        );
+
+        vm.startPrank(_FUSE_MANAGER);
+        _plasmaVaultGovernance.grantMarketSubstrates(IporFusionMarkets.AERODROME, aerodromeSubstrates);
+        vm.stopPrank();
+
+        AerodromeLiquidityFuseEnterData memory enterData = AerodromeLiquidityFuseEnterData({
+            tokenA: _UNDERLYING_TOKEN,
+            tokenB: _WETH,
+            stable: false,
+            amountADesired: 100_000e6,
+            amountBDesired: 40e18,
+            amountAMin: 0,
+            amountBMin: 0,
+            deadline: block.timestamp + 3600
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeLiquidityFuse),
+            abi.encodeWithSignature("enter((address,address,bool,uint256,uint256,uint256,uint256,uint256))", enterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+    }
+
+    /// @dev Pushes a pool away from its oracle-consistent composition with a single, permissionless
+    /// swap against the live pool - the same mechanism a flash-loan attacker would use. No privileged
+    /// role is involved; only single-block capital.
+    function _manipulatePool(address tokenIn_, address tokenOut_, bool stable_, uint256 amountIn_) internal {
+        deal(tokenIn_, address(this), amountIn_);
+        IERC20(tokenIn_).approve(_AERODROME_ROUTER, amountIn_);
+
+        IRouter.Route[] memory routes = new IRouter.Route[](1);
+        routes[0] = IRouter.Route({from: tokenIn_, to: tokenOut_, stable: stable_, factory: address(0)});
+
+        IRouter(_AERODROME_ROUTER).swapExactTokensForTokens(
+            amountIn_,
+            0,
+            routes,
+            address(this),
+            block.timestamp + 3600
+        );
+    }
+
+    /// @dev Stakes the vault's whole LP balance of the stable pool into the gauge, so that valuation
+    /// moves from the Pool branch to the Gauge branch.
+    function _stakeAllStableLpIntoGauge() internal {
+        address pool = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+
+        AerodromeGaugeFuseEnterData memory gaugeEnterData = AerodromeGaugeFuseEnterData({
+            gaugeAddress: _AERODROME_GAUGE,
+            amount: IERC20(pool).balanceOf(address(_plasmaVault))
+        });
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction(
+            address(_aerodromeGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", gaugeEnterData)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+    }
+
+    /// @dev Refreshes the AERODROME market's cached NAV without changing the vault's position, by
+    /// running a fuse action on that market that provably no-ops. `totalAssetsInMarket`/`totalAssets`
+    /// read the cache, which only `_updateMarketsBalances` inside `execute()`/`withdraw()`/`redeem()`
+    /// refreshes - so this mirrors the real attack path (an ordinary user withdrawal does the same).
+    /// @param stakeDirection_ true: gauge enter (no-ops when the vault holds no pool LP), false: gauge
+    /// exit (no-ops when the vault holds no gauge balance).
+    function _refreshAerodromeMarket(bool stakeDirection_) internal {
+        FuseAction[] memory actions = new FuseAction[](1);
+
+        if (stakeDirection_) {
+            actions[0] = FuseAction(
+                address(_aerodromeGaugeFuse),
+                abi.encodeWithSignature(
+                    "enter((address,uint256))",
+                    AerodromeGaugeFuseEnterData({gaugeAddress: _AERODROME_GAUGE, amount: 1e30})
+                )
+            );
+        } else {
+            actions[0] = FuseAction(
+                address(_aerodromeGaugeFuse),
+                abi.encodeWithSignature(
+                    "exit((address,uint256))",
+                    AerodromeGaugeFuseExitData({gaugeAddress: _AERODROME_GAUGE, amount: 1e30})
+                )
+            );
+        }
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(actions);
+        vm.stopPrank();
+    }
+
+    /// @notice IL-7957 regression (Pool branch, STABLE pool): a single-transaction swap that pushes the
+    /// pool's reserves away from the oracle-consistent composition must not inflate the reported
+    /// market balance.
+    /// @dev Before the fix `_calculateBalanceFromLiquidity` split the vault's LP over the LIVE
+    /// `IPool.getReserves()` and priced the resulting legs with the oracle, so a 200k USDC push through
+    /// this ~73k USD stable pool inflated the reported position from 1333.42 USD to 4591.31 USD
+    /// (+244.3%) with the vault holding exactly the same LP.
+    ///
+    /// Tolerance: 0.5%. The measured post-fix drift is +0.135%, and it is NOT valuation error - the
+    /// Gauge-branch sibling test below, which does not count trading fees, shows the liquidity leg is
+    /// bit-for-bit unchanged by the same manipulation. The 0.135% is the swap fee the vault legitimately
+    /// earns as an LP through `_calculateBalanceFromFees`. 0.5% therefore sits above the fee-scale
+    /// residual and 489x below the +244.3% regression it must catch.
+    function test_shouldNotInflateBalanceWhenStablePoolReservesManipulatedByRoundTripSwap() public {
+        // given
+        address stablePool = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        _addStableLiquidity();
+
+        uint256 liquidity = IERC20(stablePool).balanceOf(address(_plasmaVault));
+        uint256 fuseBalanceBefore = _readAerodromeBalance();
+        uint256 marketBalanceBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        uint256 totalAssetsBefore = _plasmaVault.totalAssets();
+
+        // when - permissionless, single-transaction reserve manipulation
+        _manipulatePool(_UNDERLYING_TOKEN, _WETH, true, 200_000e6);
+        _refreshAerodromeMarket(false);
+
+        // then - the manipulation is real: the pre-fix (spot-reserve) valuation more than doubles
+        assertGt(
+            _spotValuation(stablePool, liquidity),
+            (fuseBalanceBefore * 200) / 100,
+            "the manipulation must actually move the spot valuation, otherwise this test proves nothing"
+        );
+
+        // ... and none of that inflation reaches the fuse, the market cache, or vault NAV
+        assertApproxEqRel(
+            _readAerodromeBalance(),
+            fuseBalanceBefore,
+            5e15,
+            "stable pool: fuse balance must not be inflated by a reserve manipulation"
+        );
+        assertApproxEqRel(
+            _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME),
+            marketBalanceBefore,
+            5e15,
+            "stable pool: cached market balance must not be inflated by a reserve manipulation"
+        );
+        assertApproxEqRel(
+            _plasmaVault.totalAssets(),
+            totalAssetsBefore,
+            5e15,
+            "stable pool: vault totalAssets must not be inflated by a reserve manipulation"
+        );
+    }
+
+    /// @notice IL-7957 regression (Gauge branch): the Gauge branch values the gauge-staked LP through
+    /// the same `_calculateBalanceFromLiquidity`, so it was equally manipulable. Staking the whole LP
+    /// position first moves valuation to that branch and drops the trading-fee leg (fees on staked LP
+    /// go to veAERO voters), which isolates the liquidity valuation exactly.
+    /// @dev Pre-fix inflation: 1333.42 USD -> 4591.31 USD, +244.3%. Post-fix the reported balance is
+    /// unchanged to the wei, so the 0.1% tolerance is 2443x tighter than the regression.
+    function test_shouldNotInflateBalanceWhenGaugePoolReservesManipulated() public {
+        // given
+        address stablePool = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+        _addStableLiquidity();
+        _stakeAllStableLpIntoGauge();
+
+        assertEq(IERC20(stablePool).balanceOf(address(_plasmaVault)), 0, "all LP must sit in the gauge");
+        uint256 liquidity = IGauge(_AERODROME_GAUGE).balanceOf(address(_plasmaVault));
+        assertGt(liquidity, 0, "the gauge branch must have something to value");
+
+        uint256 fuseBalanceBefore = _readAerodromeBalance();
+        uint256 marketBalanceBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        uint256 totalAssetsBefore = _plasmaVault.totalAssets();
+
+        // when
+        _manipulatePool(_UNDERLYING_TOKEN, _WETH, true, 200_000e6);
+        _refreshAerodromeMarket(true);
+
+        // then
+        assertGt(
+            _spotValuation(stablePool, liquidity),
+            (fuseBalanceBefore * 200) / 100,
+            "the manipulation must actually move the spot valuation, otherwise this test proves nothing"
+        );
+
+        assertApproxEqRel(
+            _readAerodromeBalance(),
+            fuseBalanceBefore,
+            1e15,
+            "gauge branch: fuse balance must not be inflated by a reserve manipulation"
+        );
+        assertApproxEqRel(
+            _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME),
+            marketBalanceBefore,
+            1e15,
+            "gauge branch: cached market balance must not be inflated by a reserve manipulation"
+        );
+        assertApproxEqRel(
+            _plasmaVault.totalAssets(),
+            totalAssetsBefore,
+            1e15,
+            "gauge branch: vault totalAssets must not be inflated by a reserve manipulation"
+        );
+    }
+
+    /// @notice IL-7957 regression (VOLATILE pool): proves the constant-product closed form of the
+    /// fair-reserve math, which the stable tests above never execute.
+    /// @dev Pre-fix inflation on a 40M USDC push through the 21.8M USD volatile USDC/WETH pool:
+    /// 200209.6 USD -> 483843.3 USD, +141.7%.
+    ///
+    /// Tolerance: 1%. The measured post-fix drift is +0.544%, which is the 30 bps swap fee the vault
+    /// legitimately earns on its ~0.9% share of a 40M USDC swap (`_calculateBalanceFromFees`), not
+    /// valuation error. 1% therefore sits above that fee-scale residual and 141x below the +141.7%
+    /// regression it must catch.
+    function test_shouldNotInflateBalanceForVolatilePoolManipulation() public {
+        // given
+        _grantAndAddVolatileLiquidity();
+
+        uint256 liquidity = IERC20(_AERODROME_VOLATILE_POOL).balanceOf(address(_plasmaVault));
+        assertGt(liquidity, 0, "the volatile pool branch must have something to value");
+
+        uint256 fuseBalanceBefore = _readAerodromeBalance();
+        uint256 marketBalanceBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME);
+        uint256 totalAssetsBefore = _plasmaVault.totalAssets();
+
+        // when
+        _manipulatePool(_UNDERLYING_TOKEN, _WETH, false, 40_000_000e6);
+        _refreshAerodromeMarket(false);
+
+        // then
+        assertGt(
+            _spotValuation(_AERODROME_VOLATILE_POOL, liquidity),
+            (fuseBalanceBefore * 200) / 100,
+            "the manipulation must actually move the spot valuation, otherwise this test proves nothing"
+        );
+
+        assertApproxEqRel(
+            _readAerodromeBalance(),
+            fuseBalanceBefore,
+            1e16,
+            "volatile pool: fuse balance must not be inflated by a reserve manipulation"
+        );
+        assertApproxEqRel(
+            _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AERODROME),
+            marketBalanceBefore,
+            1e16,
+            "volatile pool: cached market balance must not be inflated by a reserve manipulation"
+        );
+        assertApproxEqRel(
+            _plasmaVault.totalAssets(),
+            totalAssetsBefore,
+            1e16,
+            "volatile pool: vault totalAssets must not be inflated by a reserve manipulation"
+        );
+    }
+
+    /// @notice Healthy-price sanity pin: at the unmanipulated fork state - where arbitrage has already
+    /// aligned both pools with the oracle - the new fair valuation must reproduce the old spot
+    /// valuation, so normal accounting is not distorted by the fix. Both the stable and the volatile
+    /// branch are reached here through healthy inputs only.
+    /// @dev Measured relative deviation: 5.0e-11 (stable) and 6.8e-13 (volatile). The 1e-6 bound below
+    /// is ~20000x looser than the measured drift but still ~2.4 million times tighter than the +244.3%
+    /// regression the manipulation tests catch.
+    function test_fairValuationMatchesSpotValuationAtHealthyPrice() public {
+        address stablePool = IRouter(_AERODROME_ROUTER).poolFor(_UNDERLYING_TOKEN, _WETH, true, address(0));
+
+        // stable branch
+        _addStableLiquidity();
+        assertApproxEqRel(
+            _readAerodromeBalance(),
+            _spotValuation(stablePool, IERC20(stablePool).balanceOf(address(_plasmaVault))),
+            1e12,
+            "stable pool: fair valuation must match spot valuation at the healthy fork price"
+        );
+
+        // volatile branch - grant it as well and value both at once
+        uint256 stableBalance = _readAerodromeBalance();
+        _grantAndAddVolatileLiquidity();
+
+        assertApproxEqRel(
+            _readAerodromeBalance() - stableBalance,
+            _spotValuation(_AERODROME_VOLATILE_POOL, IERC20(_AERODROME_VOLATILE_POOL).balanceOf(address(_plasmaVault))),
+            1e12,
+            "volatile pool: fair valuation must match spot valuation at the healthy fork price"
         );
     }
 }

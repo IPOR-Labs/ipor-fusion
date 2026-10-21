@@ -13,6 +13,7 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPool} from "./ext/IPool.sol";
 import {IGauge} from "./ext/IGauge.sol";
 import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from "./AreodromeLib.sol";
+import {SolidlyFairReserveLib, SolidlyFairReserveInput} from "../lib/SolidlyFairReserveLib.sol";
 
 /// @title AerodromeBalanceFuse
 /// @notice Calculates the USD value of Plasma Vault positions in Aerodrome pools and gauges
@@ -20,6 +21,10 @@ import {AerodromeSubstrateLib, AerodromeSubstrate, AerodromeSubstrateType} from 
 ///      REWARDS (AERO emissions) are NOT included - they are handled separately by RewardsManager and reward fuses.
 ///      TRADING FEES for pool positions are included as they accrue directly to LP holders.
 ///      For gauge positions, trading fees go to veAERO voters (not stakers), so they are not counted.
+/// @dev Security: LP value is derived from the pool's oracle-consistent ("fair") reserves computed by
+///      `SolidlyFairReserveLib`, never from the live `IPool.getReserves()` composition, which is
+///      manipulable within a single transaction. Both the Pool and the Gauge branch route through
+///      `_calculateBalanceFromLiquidity` and therefore share that protection.
 /// @author IPOR Labs
 contract AerodromeBalanceFuse is IMarketBalanceFuse {
     using SafeCast for uint256;
@@ -87,18 +92,32 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
         return balance;
     }
 
-    /// @notice Calculates the USD value of LP tokens based on underlying pool reserves
+    /// @notice Calculates the USD value of LP tokens based on the pool's oracle-consistent reserves
     /// @dev This function implements the balance calculation methodology for liquidity positions:
     ///      1. Retrieves the two tokens (token0 and token1) that make up the pool
     ///      2. Gets the current reserves of both tokens in the pool
     ///      3. Gets the total supply of LP tokens for the pool
-    ///      4. Calculates the proportional share of reserves:
-    ///         amount0 = (liquidity_ * reserve0) / totalSupply
-    ///         amount1 = (liquidity_ * reserve1) / totalSupply
-    ///      5. Retrieves USD prices for both tokens from the price oracle middleware
-    ///      6. Converts each token amount to USD value and normalizes to WAD (18 decimals)
+    ///      4. Replaces the live reserves with the oracle-consistent ("fair") reserves - the point on
+    ///         the pool's live invariant whose marginal price equals the oracle price ratio
+    ///      5. Calculates the proportional share of those fair reserves:
+    ///         amount0 = (liquidity_ * fairReserve0) / totalSupply
+    ///         amount1 = (liquidity_ * fairReserve1) / totalSupply
+    ///      6. Retrieves USD prices for both tokens from the price oracle middleware
+    ///      7. Converts each token amount to USD value and normalizes to WAD (18 decimals)
     ///      The calculation assumes that LP tokens represent a proportional share of the pool's reserves.
     ///      If totalSupply is zero, the function returns 0 to prevent division by zero.
+    ///
+    ///      Security: the composition is deliberately NOT taken from `IPool.getReserves()`. Live
+    ///      reserves are single-block manipulable (a flash-loaned round-trip swap suffices) and,
+    ///      because a convex AMM's basket value at fixed external prices is minimised at the
+    ///      oracle-consistent composition, pricing the live composition with an independent oracle
+    ///      lets an attacker inflate the reported market NAV without touching the vault's holdings -
+    ///      a figure any balance refresh then persists into the per-market cache. Deriving the
+    ///      composition from the same oracle that prices the legs makes the two mutually consistent,
+    ///      so a same-transaction swap cannot move the reported value. Bounding the live reserves
+    ///      against the oracle and reverting outside a tolerance was rejected: a revert here
+    ///      propagates into `totalAssets()` and would brick vault deposits and withdrawals on any
+    ///      legitimate pool drift. See `SolidlyFairReserveLib`.
     /// @param pool_ The address of the Aerodrome pool
     /// @param priceOracleMiddleware_ The address of the price oracle middleware for USD price conversion
     /// @param liquidity_ The amount of LP tokens held by the vault
@@ -115,7 +134,6 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
             revert InvalidPool();
         }
 
-        (uint256 reserve0, uint256 reserve1, ) = IPool(pool_).getReserves();
         uint256 totalSupply = IERC20(pool_).totalSupply();
 
         // Prevent division by zero: if totalSupply is zero, return 0 balance
@@ -123,16 +141,60 @@ contract AerodromeBalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        uint256 amount0 = (liquidity_ * reserve0) / totalSupply;
-        uint256 amount1 = (liquidity_ * reserve1) / totalSupply;
+        // Replace the manipulable live composition with the oracle-consistent one before splitting
+        (uint256 fairReserve0, uint256 fairReserve1) = _fairReserves(pool_, token0, token1, priceOracleMiddleware_);
 
-        (uint256 price0, uint256 priceDecimals0) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(token0);
-        (uint256 price1, uint256 priceDecimals1) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(token1);
-
-        balanceInUsd += IporMath.convertToWad(amount0 * price0, IERC20Metadata(token0).decimals() + priceDecimals0);
-        balanceInUsd += IporMath.convertToWad(amount1 * price1, IERC20Metadata(token1).decimals() + priceDecimals1);
+        balanceInUsd =
+            _convertToUsd(token0, (liquidity_ * fairReserve0) / totalSupply, priceOracleMiddleware_) +
+            _convertToUsd(token1, (liquidity_ * fairReserve1) / totalSupply, priceOracleMiddleware_);
 
         return balanceInUsd;
+    }
+
+    /// @notice Returns the pool's oracle-consistent ("fair") reserves
+    /// @dev The pool's live reserves fix only the invariant constant; the composition is then moved
+    ///      to the point on that invariant whose marginal price matches the oracle price ratio. See
+    ///      `SolidlyFairReserveLib` for the derivation and for why this cannot revert on the balance
+    ///      path.
+    /// @param pool_ The address of the Aerodrome pool
+    /// @param token0_ The pool's token0 address
+    /// @param token1_ The pool's token1 address
+    /// @param priceOracleMiddleware_ The address of the price oracle middleware
+    /// @return The oracle-consistent raw reserves of token0 and token1
+    function _fairReserves(
+        address pool_,
+        address token0_,
+        address token1_,
+        address priceOracleMiddleware_
+    ) private view returns (uint256, uint256) {
+        SolidlyFairReserveInput memory input;
+
+        (input.reserve0, input.reserve1, ) = IPool(pool_).getReserves();
+        input.stable = IPool(pool_).stable();
+        input.decimals0 = IERC20Metadata(token0_).decimals();
+        input.decimals1 = IERC20Metadata(token1_).decimals();
+
+        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(token0_);
+        input.price0Wad = SolidlyFairReserveLib.priceToWad(price, priceDecimals);
+
+        (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(token1_);
+        input.price1Wad = SolidlyFairReserveLib.priceToWad(price, priceDecimals);
+
+        return SolidlyFairReserveLib.fairReserves(input);
+    }
+
+    /// @notice Converts a raw token amount into its USD value, normalized to WAD (18 decimals)
+    /// @param token_ The token address
+    /// @param amount_ The raw token amount
+    /// @param priceOracleMiddleware_ The address of the price oracle middleware
+    /// @return The USD value of the amount, in WAD
+    function _convertToUsd(
+        address token_,
+        uint256 amount_,
+        address priceOracleMiddleware_
+    ) private view returns (uint256) {
+        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(token_);
+        return IporMath.convertToWad(amount_ * price, IERC20Metadata(token_).decimals() + priceDecimals);
     }
 
     /// @notice Calculates the USD value of accumulated fees from the pool using index delta calculations

@@ -23,7 +23,10 @@ contract MockDelegateEnsoShortcuts {
     ) external payable {
         // Basic validation
         require(commands_.length > 0, "MockDelegateEnsoShortcuts: no commands");
-        require(commands_.length == state_.length, "MockDelegateEnsoShortcuts: length mismatch");
+        // The production VM has no pairing constraint between commands and state - state is a
+        // free-form slot array addressed by argument indices. This mock only needs a slot per
+        // command for its simplified non-FLAG_DATA path, so it requires no more than that.
+        require(state_.length >= commands_.length, "MockDelegateEnsoShortcuts: state too short");
 
         // Process commands - this is simplified for testing
         for (uint256 i = 0; i < commands_.length; i++) {
@@ -45,12 +48,29 @@ contract MockDelegateEnsoShortcuts {
             // Extract target address from bytes 12-31 (least significant 160 bits)
             address target = address(uint160(uint256(command)));
 
+            // FLAG_DATA (0x20): the VM ignores the selector encoded in the command word and
+            // passes the raw state slot addressed by the first argument-index byte as the WHOLE
+            // calldata (the SECOND byte for VALUECALL, whose first index carries the ETH value).
+            // Modelled here so the suite exercises the dispatch semantics the production VM has,
+            // not only the fuse's validator - this is what makes the IL-8047 follow-up PoC and its
+            // negative control meaningful.
+            bool rawData = flags & 0x20 != 0;
+            bytes memory callData;
+            if (rawData) {
+                uint256 indexShift = callType == 0x03 ? 48 : 40;
+                uint256 dataIndex = uint256(uint8(bytes1(command << indexShift))) & 0x7f;
+                require(dataIndex < state_.length, "MockDelegateEnsoShortcuts: state index out of range");
+                callData = state_[dataIndex];
+            } else {
+                callData = abi.encodePacked(selector, stateData);
+            }
+
             // Execute based on call type
             if (callType == 0x01) {
                 // FLAG_CT_CALL - regular call
                 // For any call, try to decode the first parameter as a token address and approve max
                 // This is a simplified approach for testing
-                if (stateData.length >= 32) {
+                if (!rawData && stateData.length >= 32) {
                     // Read first 32 bytes as bytes32
                     bytes32 firstParam;
                     assembly {
@@ -67,7 +87,7 @@ contract MockDelegateEnsoShortcuts {
                     }
                 }
 
-                (bool success, bytes memory returnData) = target.call(abi.encodePacked(selector, stateData));
+                (bool success, bytes memory returnData) = target.call(callData);
                 if (!success) {
                     // Decode revert reason if available
                     if (returnData.length > 0) {
@@ -80,7 +100,7 @@ contract MockDelegateEnsoShortcuts {
             } else if (callType == 0x03) {
                 // FLAG_CT_VALUECALL - call with ETH value
                 uint256 value = address(this).balance;
-                (bool success, ) = target.call{value: value}(abi.encodePacked(selector, stateData));
+                (bool success, ) = target.call{value: value}(callData);
                 require(success, "MockDelegateEnsoShortcuts: value call failed");
             }
             // Skip STATICCALL (0x02) in this mock

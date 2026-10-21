@@ -46,6 +46,7 @@ import {UniswapV4Balance} from "../../../contracts/fuses/uniswap/UniswapV4Balanc
 import {UniswapV4SubstrateLib} from "../../../contracts/fuses/uniswap/UniswapV4SubstrateLib.sol";
 import {IPositionManagerV4} from "../../../contracts/fuses/uniswap/ext/v4/IPositionManagerV4.sol";
 import {ActionsV4} from "../../../contracts/fuses/uniswap/ext/v4/ActionsV4.sol";
+import {PositionInfoLib} from "../../../contracts/fuses/uniswap/ext/v4/PositionInfoLib.sol";
 import {IPermit2} from "../../../contracts/fuses/balancer/ext/IPermit2.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -415,6 +416,16 @@ abstract contract UniswapV4TestBase is Test {
 
     function _positionLiquidity(uint256 tokenId_) internal view returns (uint128) {
         return IPositionManagerV4(POSITION_MANAGER).getPositionLiquidity(tokenId_);
+    }
+
+    /// @dev Returns (poolKey, tickLower, tickUpper) for a tracked V4 position tokenId.
+    function _positionTickRange(
+        uint256 tokenId_
+    ) internal view returns (PoolKey memory poolKey, int24 tickLower, int24 tickUpper) {
+        uint256 info;
+        (poolKey, info) = IPositionManagerV4(POSITION_MANAGER).getPoolAndPositionInfo(tokenId_);
+        tickLower = PositionInfoLib.tickLower(info);
+        tickUpper = PositionInfoLib.tickUpper(info);
     }
 
     function _v4MarketBalance() internal view returns (uint256) {

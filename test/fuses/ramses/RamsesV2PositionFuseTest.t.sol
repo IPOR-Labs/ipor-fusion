@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -15,12 +16,27 @@ import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracle
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {RamsesV2Balance} from "../../../contracts/fuses/ramses/RamsesV2Balance.sol";
-import {RamsesV2NewPositionFuse, RamsesV2NewPositionFuseEnterData, RamsesV2NewPositionFuseExitData} from "../../../contracts/fuses/ramses/RamsesV2NewPositionFuse.sol";
-import {RamsesV2ModifyPositionFuse, RamsesV2ModifyPositionFuseEnterData, RamsesV2ModifyPositionFuseExitData} from "../../../contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol";
+import {
+    RamsesV2NewPositionFuse,
+    RamsesV2NewPositionFuseEnterData,
+    RamsesV2NewPositionFuseExitData
+} from "../../../contracts/fuses/ramses/RamsesV2NewPositionFuse.sol";
+import {
+    RamsesV2ModifyPositionFuse,
+    RamsesV2ModifyPositionFuseEnterData,
+    RamsesV2ModifyPositionFuseExitData
+} from "../../../contracts/fuses/ramses/RamsesV2ModifyPositionFuse.sol";
+import {INonfungiblePositionManagerRamses} from "../../../contracts/fuses/ramses/ext/INonfungiblePositionManagerRamses.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {RamsesV2CollectFuse, RamsesV2CollectFuseEnterData} from "../../../contracts/fuses/ramses/RamsesV2CollectFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    RamsesV2CollectFuse,
+    RamsesV2CollectFuseEnterData
+} from "../../../contracts/fuses/ramses/RamsesV2CollectFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
@@ -603,6 +619,196 @@ contract RamsesV2PositionFuseTest is Test {
         (, uint256 closeTokenId) = _extractClosePositionFromEvent(entriesClosePosition);
 
         assertEq(tokenIdMintPosition, closeTokenId, "tokenIdMintPosition = closeTokenId");
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Tracked-tokenId rule (IL-8752): action fuses operate only on NFTs registered by NewPositionFuse.enter
+    // ---------------------------------------------------------------------------------------------
+
+    /// @dev ALPHA (this test contract) mints an NFT to itself with its own funds; the vault does not own or track it.
+    function _mintForeignNft(address recipient_) private returns (uint256 tokenId_, uint128 liquidity_) {
+        deal(USDC, address(this), 10_000e6);
+        deal(USDT, address(this), 10_000e6);
+        ERC20(USDC).forceApprove(_NONFUNGIBLE_POSITION_MANAGER, type(uint256).max);
+        ERC20(USDT).forceApprove(_NONFUNGIBLE_POSITION_MANAGER, type(uint256).max);
+
+        (tokenId_, liquidity_, , ) = INonfungiblePositionManagerRamses(_NONFUNGIBLE_POSITION_MANAGER).mint(
+            INonfungiblePositionManagerRamses.MintParams({
+                token0: USDC,
+                token1: USDT,
+                fee: 100,
+                tickLower: -100,
+                tickUpper: 101,
+                amount0Desired: 1_000e6,
+                amount1Desired: 1_000e6,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: recipient_,
+                deadline: block.timestamp + 100,
+                veRamTokenId: 0
+            })
+        );
+    }
+
+    /// @dev Mints a foreign NFT, removes all its liquidity and donates the empty NFT to the vault.
+    function _donateEmptyNftToVault() private returns (uint256 tokenId_) {
+        uint128 liquidity;
+        (tokenId_, liquidity) = _mintForeignNft(address(this));
+
+        INonfungiblePositionManagerRamses(_NONFUNGIBLE_POSITION_MANAGER).decreaseLiquidity(
+            INonfungiblePositionManagerRamses.DecreaseLiquidityParams({
+                tokenId: tokenId_,
+                liquidity: liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            })
+        );
+        INonfungiblePositionManagerRamses(_NONFUNGIBLE_POSITION_MANAGER).collect(
+            INonfungiblePositionManagerRamses.CollectParams({
+                tokenId: tokenId_,
+                recipient: address(this),
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            })
+        );
+        IERC721(_NONFUNGIBLE_POSITION_MANAGER).transferFrom(address(this), _plasmaVault, tokenId_);
+    }
+
+    function _openVaultPosition(int24 tickLower_, int24 tickUpper_) private returns (uint256 tokenId_) {
+        RamsesV2NewPositionFuseEnterData memory mintParams = RamsesV2NewPositionFuseEnterData({
+            token0: USDC,
+            token1: USDT,
+            fee: 100,
+            tickLower: tickLower_,
+            tickUpper: tickUpper_,
+            amount0Desired: 1_000e6,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100,
+            veRamTokenId: 0
+        });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_ramsesV2NewPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint256))",
+                mintParams
+            )
+        );
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(calls);
+        (, tokenId_, , , ) = _extractMarketIdsFromEvent(vm.getRecordedLogs());
+    }
+
+    function testShouldRevertWhenIncreasingLiquidityOfNonVaultNft() external {
+        // given - ALPHA owns an NFT the vault neither owns nor tracks
+        (uint256 foreignTokenId, ) = _mintForeignNft(address(this));
+
+        uint256 usdcBefore = ERC20(USDC).balanceOf(_plasmaVault);
+        uint256 usdtBefore = ERC20(USDT).balanceOf(_plasmaVault);
+
+        RamsesV2ModifyPositionFuseEnterData memory enterData = RamsesV2ModifyPositionFuseEnterData({
+            token0: USDC,
+            token1: USDT,
+            tokenId: foreignTokenId,
+            amount0Desired: 1_000e6,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100
+        });
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_ramsesV2ModifyPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                enterData
+            )
+        );
+
+        // when / then
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RamsesV2ModifyPositionFuse.RamsesV2ModifyPositionFuseTokenIdNotTracked.selector,
+                foreignTokenId
+            )
+        );
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), usdcBefore, "vault USDC unchanged");
+        assertEq(ERC20(USDT).balanceOf(_plasmaVault), usdtBefore, "vault USDT unchanged");
+    }
+
+    function testShouldRevertWhenDecreasingUntrackedNft() external {
+        // given - an NFT with liquidity donated to the vault (owned, but not tracked)
+        (uint256 foreignTokenId, uint128 liquidity) = _mintForeignNft(_plasmaVault);
+
+        RamsesV2ModifyPositionFuseExitData memory exitData = RamsesV2ModifyPositionFuseExitData({
+            tokenId: foreignTokenId,
+            liquidity: liquidity,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100
+        });
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_ramsesV2ModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", exitData)
+        );
+
+        // when / then
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RamsesV2ModifyPositionFuse.RamsesV2ModifyPositionFuseTokenIdNotTracked.selector,
+                foreignTokenId
+            )
+        );
+        PlasmaVault(_plasmaVault).execute(calls);
+    }
+
+    function testShouldRevertWhenBurningUntrackedNft() external {
+        // given - two tracked positions plus an empty NFT donated to the vault
+        uint256 firstTokenId = _openVaultPosition(-100, 101);
+        _openVaultPosition(100, 1000);
+        uint256 donatedTokenId = _donateEmptyNftToVault();
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.RAMSES_V2_POSITIONS
+        );
+        assertGt(marketBalanceBefore, 0, "positions are valued");
+
+        RamsesV2NewPositionFuseExitData memory closePositions;
+        closePositions.tokenIds = new uint256[](1);
+        closePositions.tokenIds[0] = donatedTokenId;
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_ramsesV2NewPositionFuse),
+            abi.encodeWithSignature("exit((uint256[]))", closePositions)
+        );
+
+        // when / then - burning the untracked NFT would swap-and-pop tokenIds[0] (the real first position)
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RamsesV2NewPositionFuse.RamsesV2NewPositionFuseTokenIdNotTracked.selector,
+                donatedTokenId
+            )
+        );
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        assertEq(
+            PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.RAMSES_V2_POSITIONS),
+            marketBalanceBefore,
+            "market balance unchanged"
+        );
+        assertEq(
+            IERC721(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(donatedTokenId),
+            _plasmaVault,
+            "donated NFT not burned"
+        );
+        assertEq(IERC721(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(firstTokenId), _plasmaVault, "first position intact");
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig) {
