@@ -314,6 +314,12 @@ library IporFusionMarkets {
     /// @dev Native-currency pools (currency0 == address(0)) are not supported; use WETH pools
     uint256 public constant UNISWAP_V4 = 53;
 
+    /// @dev f(x) Protocol v2 long pools (fxMINT): collateral + fxUSD debt position, one per pool
+    /// @dev Substrate: f(x) pool address
+    /// @dev Fuses: FxMintCollateralFuse, FxMintBorrowFuse, FxMintCollateralAndBorrowFuse; balance: FxMintBalanceFuse
+    /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with balance of ERC20_VAULT_BALANCE
+    uint256 public constant FX_MINT = 54;
+
     /// @dev Polygon sPOL unstake market (Ethereum mainnet) — values POL pending in the sPOLController
     ///      unstake cooldown queue (~80 checkpoints / ~3 days, driven by the Polygon StakeManager).
     /// @dev Market ID is intentionally out of sequence: both mainnet fuses were deployed with
