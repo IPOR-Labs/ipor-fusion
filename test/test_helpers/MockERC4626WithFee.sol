@@ -43,4 +43,11 @@ contract MockERC4626WithFee is ERC4626 {
         uint256 fee = assets.mulDiv(WITHDRAWAL_FEE_BPS, BPS_DENOMINATOR - WITHDRAWAL_FEE_BPS, Math.Rounding.Ceil);
         return _convertToShares(assets + fee, Math.Rounding.Ceil);
     }
+
+    /// @dev Override previewRedeem so redeem charges the same fee as withdraw.
+    /// Redeeming the whole balance then pays exactly maxWithdraw(owner).
+    function previewRedeem(uint256 shares) public view override returns (uint256) {
+        uint256 assetsFromShares = _convertToAssets(shares, Math.Rounding.Floor);
+        return assetsFromShares.mulDiv(BPS_DENOMINATOR - WITHDRAWAL_FEE_BPS, BPS_DENOMINATOR, Math.Rounding.Floor);
+    }
 }

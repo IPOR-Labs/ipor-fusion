@@ -2,10 +2,15 @@
 pragma solidity 0.8.30;
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate} from "./AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrateType,
+    AreodromeSlipstreamSubstrate
+} from "./AreodromeSlipstreamLib.sol";
 import {ICLGauge} from "./ext/ICLGauge.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
@@ -55,6 +60,10 @@ contract AreodromeSlipstreamCLGaugeFuse is IFuseCommon {
     /// @param gaugeAddress The address of the gauge that is not supported
     error AreodromeSlipstreamCLGaugeFuseUnsupportedGauge(address gaugeAddress);
 
+    /// @notice Thrown when attempting to stake a tokenId that is not in the vault's tracked position list
+    /// @param tokenId The NFT token ID that is not tracked
+    error AreodromeSlipstreamCLGaugeFuseTokenIdNotTracked(uint256 tokenId);
+
     /// @notice Constructor to initialize the fuse with a market ID
     /// @param marketId_ The unique identifier for the market configuration
     /// @dev Sets VERSION to the address of this contract instance.
@@ -71,6 +80,7 @@ contract AreodromeSlipstreamCLGaugeFuse is IFuseCommon {
     /// @return gaugeAddress The address of the gauge where the NFT was deposited
     /// @return tokenId The ID of the token deposited (returns 0 if tokenId was 0 in input)
     /// @custom:revert AreodromeSlipstreamCLGaugeFuseUnsupportedGauge When gauge is not granted as a substrate
+    /// @custom:revert AreodromeSlipstreamCLGaugeFuseTokenIdNotTracked When tokenId is not in the vault's tracked position list
     function enter(
         AreodromeSlipstreamCLGaugeFuseEnterData memory data_
     ) public returns (address gaugeAddress, uint256 tokenId) {
@@ -91,6 +101,8 @@ contract AreodromeSlipstreamCLGaugeFuse is IFuseCommon {
         if (data_.tokenId == 0) {
             return (data_.gaugeAddress, 0);
         }
+
+        _requireTracked(data_.tokenId);
 
         INonfungiblePositionManager(ICLGauge(data_.gaugeAddress).nft()).approve(data_.gaugeAddress, data_.tokenId);
 
@@ -128,6 +140,7 @@ contract AreodromeSlipstreamCLGaugeFuse is IFuseCommon {
     /// @notice Exits (withdraws) NFT position from gauge
     /// @dev Validates that the gauge is granted as a substrate. Withdraws the NFT from the gauge,
     ///      returning it to the caller and stopping reward accrual.
+    ///      Does not check the tracked list: an NFT staked by an older gauge fuse can always be unstaked.
     /// @param data_ Exit data containing gauge address and token ID
     /// @return gaugeAddress The address of the gauge from which the NFT was withdrawn
     /// @return tokenId The ID of the token withdrawn
@@ -178,5 +191,19 @@ contract AreodromeSlipstreamCLGaugeFuse is IFuseCommon {
         outputs[1] = TypeConversionLib.toBytes32(returnedTokenId);
 
         TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Reverts unless the tokenId is registered in the vault's tracked Aerodrome Slipstream position list
+    /// @dev The balance fuse's Pool branch values only tracked positions, but its Gauge branch values every NFT
+    ///      staked by the vault. Staking an untracked (e.g. donated) NFT would therefore change NAV, so only tokenIds
+    ///      registered by the NewPosition fuse can be staked.
+    function _requireTracked(uint256 tokenId_) private view {
+        FuseStorageLib.AerodromeSlipstreamTokenIds storage tokensIds = FuseStorageLib.getAerodromeSlipstreamTokenIds();
+
+        uint256 index = tokensIds.indexes[tokenId_];
+
+        if (index >= tokensIds.tokenIds.length || tokensIds.tokenIds[index] != tokenId_) {
+            revert AreodromeSlipstreamCLGaugeFuseTokenIdNotTracked(tokenId_);
+        }
     }
 }

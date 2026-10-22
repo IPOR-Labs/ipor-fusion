@@ -12,10 +12,10 @@ library ExternalStateTestConstants {
 
     /// @dev Offsets from the ERC-7201 base slot into `ExternalStateStorage` fields.
     ///      Matches the struct layout in `ExternalStateExecutorStorageLib.ExternalStateStorage`:
-    ///      [0] executor, [1] lastTotalBalance, [2] lastCheckedCustodianTimestamp, [3] paused.
+    ///      [0] executor, [1] lastTotalBalance, [2] lastCheckedCustodianConfirmCount, [3] paused.
     uint256 internal constant EXECUTOR_SLOT_OFFSET = 0;
     uint256 internal constant LAST_TOTAL_BALANCE_SLOT_OFFSET = 1;
-    uint256 internal constant LAST_CHECKED_CUSTODIAN_TS_SLOT_OFFSET = 2;
+    uint256 internal constant LAST_CHECKED_CUSTODIAN_CONFIRM_COUNT_SLOT_OFFSET = 2;
     uint256 internal constant PAUSED_SLOT_OFFSET = 3;
 }
 
@@ -60,12 +60,12 @@ library ExternalStateSlotHelpers {
         _VM.store(vault_, slot, bytes32(value_));
     }
 
-    /// @notice Writes `lastCheckedCustodianTimestamp` into the given vault's ExternalState storage.
+    /// @notice Writes `lastCheckedCustodianConfirmCount` into the given vault's ExternalState storage.
     /// @param vault_ The vault address whose ERC-7201 slot to update.
-    /// @param value_ The new cached custodian timestamp.
-    function setLastCheckedCustodianTimestamp(address vault_, uint256 value_) internal {
+    /// @param value_ The new cached custodian confirm count.
+    function setLastCheckedCustodianConfirmCount(address vault_, uint256 value_) internal {
         bytes32 slot =
-            bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.LAST_CHECKED_CUSTODIAN_TS_SLOT_OFFSET);
+            bytes32(uint256(ExternalStateTestConstants.EXTERNAL_STATE_SLOT) + ExternalStateTestConstants.LAST_CHECKED_CUSTODIAN_CONFIRM_COUNT_SLOT_OFFSET);
         _VM.store(vault_, slot, bytes32(value_));
     }
 }

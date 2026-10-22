@@ -15,7 +15,8 @@ import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol"
 /// @author IPOR Labs
 library ExternalStateExecutorStorageLib {
     /// @dev Pre-computed ERC-7201 storage slot for the namespaced `ExternalStateStorage` struct.
-    bytes32 private constant _EXTERNAL_STATE_STORAGE_SLOT = 0x1781023874512ec457c16827ad102f41a5c5ce1cd7ba8aa8fcd2da52541d8a00;
+    bytes32 private constant _EXTERNAL_STATE_STORAGE_SLOT =
+        0x1781023874512ec457c16827ad102f41a5c5ce1cd7ba8aa8fcd2da52541d8a00;
 
     /// @notice Emitted when the executor address is bound to this vault's ExternalState storage.
     /// @param executor Address of the deployed `ExternalStateExecutor`.
@@ -27,10 +28,13 @@ library ExternalStateExecutorStorageLib {
     struct ExternalStateStorage {
         /// @dev Deployed `ExternalStateExecutor` address (zero until first deploy).
         address executor;
-        /// @dev Last total balance (underlying units) observed by the balance fuse; used for big-change detection.
+        /// @dev Last total balance (underlying units) observed by `ExternalStateBigChangeLib.processCustodianUpdate`
+        ///      (balance fuse `balanceOf`, OperationFuse `enter`/`exit`); used for big-change detection.
         uint256 lastTotalBalance;
-        /// @dev Last `lastCustodianUpdateTimestamp` observed by the balance fuse.
-        uint256 lastCheckedCustodianTimestamp;
+        /// @dev Last `custodianConfirmCount` observed by `ExternalStateBigChangeLib.processCustodianUpdate` (balance fuse
+        ///      `balanceOf`, OperationFuse `enter`/`exit`; circuit-breaker watermark;
+        ///      see `ExternalStateExecutor.confirmCount`).
+        uint256 lastCheckedCustodianConfirmCount;
         /// @dev Pause flag; when true the ExternalState pre-hook blocks gated user operations.
         bool paused;
         /// @dev Set of unpause nonces already consumed by atomist signatures.
@@ -106,15 +110,15 @@ library ExternalStateExecutorStorageLib {
         getExternalStateStorage().lastTotalBalance = value_;
     }
 
-    /// @notice Last `lastCustodianUpdateTimestamp` observed by the balance fuse.
-    function getLastCheckedCustodianTimestamp() internal view returns (uint256 value) {
-        value = getExternalStateStorage().lastCheckedCustodianTimestamp;
+    /// @notice Last `custodianConfirmCount` observed by `ExternalStateBigChangeLib.processCustodianUpdate`.
+    function getLastCheckedCustodianConfirmCount() internal view returns (uint256 value) {
+        value = getExternalStateStorage().lastCheckedCustodianConfirmCount;
     }
 
-    /// @notice Persist the last observed custodian timestamp.
+    /// @notice Persist the last observed custodian confirm count.
     /// @param value_ The new value.
-    function setLastCheckedCustodianTimestamp(uint256 value_) internal {
-        getExternalStateStorage().lastCheckedCustodianTimestamp = value_;
+    function setLastCheckedCustodianConfirmCount(uint256 value_) internal {
+        getExternalStateStorage().lastCheckedCustodianConfirmCount = value_;
     }
 
     // ============================================================

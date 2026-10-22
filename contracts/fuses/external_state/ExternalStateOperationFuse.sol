@@ -14,6 +14,7 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 import {IExternalStateExecutor, ExternalStateExecutorAction} from "./IExternalStateExecutor.sol";
 import {ExternalStateErrors} from "./errors/ExternalStateErrors.sol";
 import {ExternalStateExecutorStorageLib} from "./lib/ExternalStateExecutorStorageLib.sol";
+import {ExternalStateBigChangeLib} from "./lib/ExternalStateBigChangeLib.sol";
 import {ExternalStateSubstrateLib} from "./lib/ExternalStateSubstrateLib.sol";
 
 /// @notice Enter data for the ExternalState operation fuse.
@@ -77,6 +78,9 @@ contract ExternalStateOperationFuse is IFuseCommon {
         uint256 actionsCount
     );
 
+    /// @notice Emitted after a successful `sweepSurplus` call.
+    event ExternalStateOperationFuseSweepSurplus(address version, address asset, uint256 amount);
+
     /// @param marketId_ Market identifier this fuse will serve (must be non-zero).
     constructor(uint256 marketId_) {
         if (marketId_ == 0) revert ExternalStateErrors.ExternalStateZeroMarketId();
@@ -94,16 +98,32 @@ contract ExternalStateOperationFuse is IFuseCommon {
 
     /// @notice Enter the ExternalState market: optionally transfer `amount` of `asset` to the executor, convert it to
     ///         underlying via the price oracle and credit the balance account; then (optionally) run actions.
+    /// @dev Before any transfer or accounting, a pending custodian confirm is settled (big-change check against the
+    ///      pre-flow baseline), so ALPHA's own flow can neither trip the pause nor mask a custodian change (IL-8775).
+    ///      A pause set here does not block this call.
     /// @param data_ Enter parameters.
     function enter(ExternalStateOperationFuseEnterData calldata data_) external {
-        (address executor, uint256 actionsCount) =
-            _resolveExecutorAndValidate(data_.amount, data_.asset, data_.balanceAccount, data_.actions, true);
+        (address executor, uint256 actionsCount) = _resolveExecutorAndValidate(
+            data_.amount,
+            data_.asset,
+            data_.balanceAccount,
+            data_.actions,
+            true
+        );
+
+        // Settle a pending custodian confirm BEFORE ALPHA's flow moves `balances[]` (IL-8775).
+        ExternalStateBigChangeLib.processCustodianUpdate(executor);
 
         uint256 valueInUnderlying;
         if (data_.amount > 0) {
             IERC20(data_.asset).safeTransfer(executor, data_.amount);
             valueInUnderlying = _convertAmountToUnderlying(data_.asset, data_.amount);
-            IExternalStateExecutor(executor).addBalance(data_.balanceAccount, valueInUnderlying);
+            IExternalStateExecutor(executor).addBalance(
+                data_.balanceAccount,
+                valueInUnderlying,
+                data_.asset,
+                data_.amount
+            );
         }
 
         if (actionsCount > 0) {
@@ -111,16 +131,30 @@ contract ExternalStateOperationFuse is IFuseCommon {
         }
 
         emit ExternalStateOperationFuseEnter(
-            VERSION, data_.asset, data_.amount, data_.balanceAccount, valueInUnderlying, actionsCount
+            VERSION,
+            data_.asset,
+            data_.amount,
+            data_.balanceAccount,
+            valueInUnderlying,
+            actionsCount
         );
     }
 
     /// @notice Exit the ExternalState market: optionally run actions first (to free funds on the executor), then
     ///         decrement the balance account and pull `amount` of `asset` back to the vault.
+    /// @dev Like `enter`, settles a pending custodian confirm before actions and `removeBalance` run (IL-8775).
     /// @param data_ Exit parameters.
     function exit(ExternalStateOperationFuseExitData calldata data_) external {
-        (address executor, uint256 actionsCount) =
-            _resolveExecutorAndValidate(data_.amount, data_.asset, data_.balanceAccount, data_.actions, false);
+        (address executor, uint256 actionsCount) = _resolveExecutorAndValidate(
+            data_.amount,
+            data_.asset,
+            data_.balanceAccount,
+            data_.actions,
+            false
+        );
+
+        // Settle a pending custodian confirm BEFORE ALPHA's flow moves `balances[]` (IL-8775).
+        ExternalStateBigChangeLib.processCustodianUpdate(executor);
 
         if (actionsCount > 0) {
             IExternalStateExecutor(executor).execute(data_.actions);
@@ -129,12 +163,59 @@ contract ExternalStateOperationFuse is IFuseCommon {
         uint256 valueInUnderlying;
         if (data_.amount > 0) {
             valueInUnderlying = _convertAmountToUnderlying(data_.asset, data_.amount);
-            IExternalStateExecutor(executor).removeBalance(data_.balanceAccount, valueInUnderlying, data_.asset, data_.amount);
+            IExternalStateExecutor(executor).removeBalance(
+                data_.balanceAccount,
+                valueInUnderlying,
+                data_.asset,
+                data_.amount
+            );
         }
 
         emit ExternalStateOperationFuseExit(
-            VERSION, data_.asset, data_.amount, data_.balanceAccount, valueInUnderlying, actionsCount
+            VERSION,
+            data_.asset,
+            data_.amount,
+            data_.balanceAccount,
+            valueInUnderlying,
+            actionsCount
         );
+    }
+
+    /// @notice Move tokens that were donated to the executor (sent by third parties, not through `enter`) to the vault.
+    /// @dev The executor transfers `balanceOf(executor) - min(unforwardedCredit[asset], balanceOf(executor))`,
+    ///      i.e. the tokens not covered by the credit counter (donations and anything that arrived outside a vault call). `balances[]` and the credit
+    ///      counter stay unchanged, so credited tokens that still sit on the executor are never touched. The
+    ///      swept tokens become vault assets and enter NAV immediately only when `asset_` is the
+    ///      vault underlying (any other asset is valued through its own balance fuse/market as usual).
+    ///      `asset_` must be a granted ASSET substrate (same rule as `enter`/`exit`); the executor must already exist (no lazy deployment).
+    ///      Zero surplus is a no-op.
+    ///      Trust model: surplus is "everything not covered by `unforwardedCredit`", so tokens that return to the
+    ///      executor outside a vault call (custody or protocol payouts sent straight to it) look like donations.
+    ///      Such tokens are in NAV only while the last confirmed custodian report counts them.
+    ///      Still counted (a custody or protocol payout sent straight to the executor before the next report): book them
+    ///      with `exit`, while `unforwardedCredit(asset) == 0` (forward or exit credited tokens first: `removeBalance`
+    ///      debits the credit by the exited amount, whatever its origin).
+    ///      No longer counted (a donation, or a confirmed report that already excludes them): `sweepSurplus`, never `exit`
+    ///      (an exit would remove the value a second time).
+    ///      Custodians do not propose while `balanceOf(executor) > unforwardedCredit(asset)` for a cached asset unless they
+    ///      know whether their report counts those tokens (the dust check does not block them). Monitoring: alert when
+    ///      `balanceOf(executor) > unforwardedCredit(asset)`.
+    ///      A counterparty that pulls tokens outside `execute` leaves the credit stale (above the token balance):
+    ///      up to that amount, tokens that later reach the executor count in the dust check (a donation can block
+    ///      custodians again) and `sweepSurplus` does not move them. Each `exit` or `execute` outflow consumes only
+    ///      its own amount of the credit, so the block can return until outflows totalling the stale credit have run.
+    ///      Does not settle a pending custodian confirm: it leaves `balances[]` unchanged, so it cannot move the
+    ///      total that the big-change check compares (IL-8775).
+    /// @param asset_ ASSET substrate to sweep.
+    function sweepSurplus(address asset_) external {
+        address executor = ExternalStateExecutorStorageLib.getExecutor();
+        if (executor == address(0)) revert ExternalStateErrors.ExternalStateOperationExecutorNotDeployed();
+
+        ExternalStateSubstrateLib.validateAssetGranted(MARKET_ID, asset_);
+
+        uint256 amount = IExternalStateExecutor(executor).sweepSurplus(asset_);
+
+        emit ExternalStateOperationFuseSweepSurplus(VERSION, asset_, amount);
     }
 
     // ============================================================
@@ -222,11 +303,10 @@ contract ExternalStateOperationFuse is IFuseCommon {
     ///      as the `PriceOracleMiddleware` source for this market. Governance MUST verify the
     ///      oracle binding before enabling user deposits — this is enforced **off-chain only**.
     ///      See `contracts/fuses/external_state/README.md` ("Oracle requirements").
-    function _convertAmountToUnderlying(address asset_, uint256 amount_)
-        internal
-        view
-        returns (uint256 underlyingAmount)
-    {
+    function _convertAmountToUnderlying(
+        address asset_,
+        uint256 amount_
+    ) internal view returns (uint256 underlyingAmount) {
         address priceOracle = PlasmaVaultLib.getPriceOracleMiddleware();
         if (priceOracle == address(0)) revert ExternalStateErrors.ExternalStatePriceOracleNotSet();
 
@@ -234,8 +314,9 @@ contract ExternalStateOperationFuse is IFuseCommon {
         if (assetPrice == 0) revert ExternalStateErrors.ExternalStateInvalidPrice(asset_);
 
         address underlying = IERC4626(address(this)).asset();
-        (uint256 underlyingPrice, uint256 underlyingPriceDecimals) =
-            IPriceOracleMiddleware(priceOracle).getAssetPrice(underlying);
+        (uint256 underlyingPrice, uint256 underlyingPriceDecimals) = IPriceOracleMiddleware(priceOracle).getAssetPrice(
+            underlying
+        );
         if (underlyingPrice == 0) revert ExternalStateErrors.ExternalStateInvalidPrice(underlying);
 
         uint256 assetDecimals = IERC20Metadata(asset_).decimals();

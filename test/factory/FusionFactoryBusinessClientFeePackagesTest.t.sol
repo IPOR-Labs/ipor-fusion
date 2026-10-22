@@ -213,14 +213,14 @@ contract FusionFactoryBusinessClientFeePackagesTest is Test {
         address businessClient = makeAddr("businessClient");
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
-            managementFee: 10001,
+            managementFee: 501, // > PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE (500)
             performanceFee: 500,
             feeRecipient: makeAddr("recipient")
         });
 
         // when / then
         vm.prank(daoFeeManager);
-        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 10001, 10000));
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 501, 500));
         fusionFactory.setBusinessClientFeePackages(businessClient, packages);
     }
 
@@ -230,14 +230,69 @@ contract FusionFactoryBusinessClientFeePackagesTest is Test {
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
             managementFee: 100,
-            performanceFee: 10001,
+            performanceFee: 5001, // > PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE (5000)
             feeRecipient: makeAddr("recipient")
         });
 
         // when / then
         vm.prank(daoFeeManager);
-        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 10001, 10000));
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 5001, 5000));
         fusionFactory.setBusinessClientFeePackages(businessClient, packages);
+    }
+
+    function test_setBusinessClientFeePackages_shouldRevertWhenManagementFeeAboveVaultCap() public {
+        // given - PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE is 500 (5%)
+        address businessClient = makeAddr("businessClient");
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 501, // > PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE (500)
+            performanceFee: 0,
+            feeRecipient: makeAddr("recipient")
+        });
+
+        // when / then
+        vm.prank(daoFeeManager);
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 501, 500));
+        fusionFactory.setBusinessClientFeePackages(businessClient, packages);
+    }
+
+    function test_setBusinessClientFeePackages_shouldRevertWhenPerformanceFeeAboveVaultCap() public {
+        // given - PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE is 5000 (50%)
+        address businessClient = makeAddr("businessClient");
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 0,
+            performanceFee: 5001, // > PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE (5000)
+            feeRecipient: makeAddr("recipient")
+        });
+
+        // when / then
+        vm.prank(daoFeeManager);
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 5001, 5000));
+        fusionFactory.setBusinessClientFeePackages(businessClient, packages);
+    }
+
+    function test_setBusinessClientFeePackages_shouldAcceptVaultCapBoundary() public {
+        // given - exactly at the vault caps (kept accepted by strict `>`); keep-alive, not fail-without-fix proof
+        address businessClient = makeAddr("businessClient");
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 500,
+            performanceFee: 5000,
+            feeRecipient: makeAddr("recipient")
+        });
+
+        // when
+        vm.prank(daoFeeManager);
+        fusionFactory.setBusinessClientFeePackages(businessClient, packages);
+
+        // then
+        (FusionFactoryStorageLib.FeePackage[] memory stored, bool isCustom) = fusionFactory.getBusinessClientFeePackages(
+            businessClient
+        );
+        assertTrue(isCustom, "Client should have custom packages");
+        assertEq(stored[0].managementFee, 500);
+        assertEq(stored[0].performanceFee, 5000);
     }
 
     function test_setBusinessClientFeePackages_shouldRevertWhenFeeRecipientZero() public {

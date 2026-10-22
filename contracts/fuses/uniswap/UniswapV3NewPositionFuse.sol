@@ -71,6 +71,8 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
     event UniswapV3NewPositionFuseExit(address version, uint256 tokenIds);
 
     error UniswapV3NewPositionFuseUnsupportedToken(address token0, address token1);
+    /// @notice Thrown when exit is asked to burn a tokenId that is not registered in the vault
+    error UniswapV3NewPositionFuseTokenIdNotTracked(uint256 tokenId);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -167,6 +169,7 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
     /// @notice Exits one or more Uniswap V3 positions.
     /// @param closePositions The data required to exit the positions.
     /// @return tokenIds The array of token IDs that were closed
+    /// @custom:revert UniswapV3NewPositionFuseTokenIdNotTracked when a position that would be closed is not tracked by the vault
     function exit(UniswapV3NewPositionFuseExitData memory closePositions) public returns (uint256[] memory tokenIds) {
         FuseStorageLib.UniswapV3TokenIds storage tokensIds = FuseStorageLib.getUniswapV3TokenIds();
 
@@ -194,9 +197,16 @@ contract UniswapV3NewPositionFuse is IFuseCommon {
             }
 
             tokenId = closePositions.tokenIds[i];
-            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
 
             tokenIndex = tokensIds.indexes[tokenId];
+
+            // An NFT donated to the vault is not in the list: indexes[] would read 0 and the swap-and-pop below
+            // would remove a real position (tokenIds[0]) from the list.
+            if (tokenIndex >= len || tokensIds.tokenIds[tokenIndex] != tokenId) {
+                revert UniswapV3NewPositionFuseTokenIdNotTracked(tokenId);
+            }
+
+            INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER).burn(tokenId);
 
             if (tokenIndex != len - 1) {
                 lastTokenId = tokensIds.tokenIds[len - 1];

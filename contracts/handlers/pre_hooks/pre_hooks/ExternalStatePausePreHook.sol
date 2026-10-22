@@ -11,9 +11,9 @@ import {ExternalStateExecutorStorageLib} from "../../../fuses/external_state/lib
 ///         when an unprocessed big-change event is detected on the executor, or when at least one
 ///         balance account has grown too stale.
 /// @dev Runs via delegatecall from PlasmaVault. Read-only with respect to storage (no state writes).
-///      The inline big-change check closes the window between a custodian confirm and the next
-///      `balanceOf()` call — without it, a user could deposit/withdraw at inflated NAV before the
-///      balance fuse has a chance to set the pause flag.
+///      The inline big-change check closes the window between a custodian confirm and its settlement (the next
+///      `ExternalStateBalanceFuse.balanceOf()` call or an ALPHA `ExternalStateOperationFuse.enter`/`exit`) — without
+///      it, a user could deposit/withdraw at inflated NAV before the pause flag is set.
 ///      Register this hook against the selectors for deposit / mint / depositWithPermit / withdraw / redeem
 ///      via `PlasmaVaultGovernance.setPreHookImplementations` (see contracts/fuses/external_state/README.md).
 /// @author IPOR Labs
@@ -30,16 +30,22 @@ contract ExternalStatePausePreHook is IPreHook {
     /// @dev `selector_` is intentionally ignored — the same checks apply to every gated selector.
     ///
     ///      **Revert-code transition after an unprocessed custodian update.** The inline big-change
-    ///      branch is stateless: it compares `executor.lastCustodianUpdateTimestamp` against
-    ///      `ExternalStateExecutorStorageLib.getLastCheckedCustodianTimestamp()` but does **not** advance the
-    ///      latter. Only `ExternalStateBalanceFuse.balanceOf` writes `lastCheckedCustodianTimestamp` (and sets
-    ///      the pause flag). Sequence during a big-change event:
-    ///        1. Custodian confirm lands at T0 → executor.lastCustodianUpdateTimestamp = T0.
+    ///      branch is stateless: it compares `executor.confirmCount` (via `getBalanceFuseSnapshot()`)
+    ///      against `ExternalStateExecutorStorageLib.getLastCheckedCustodianConfirmCount()` but does
+    ///      **not** advance the latter. Only `ExternalStateBigChangeLib.processCustodianUpdate`
+    ///      writes `lastCheckedCustodianConfirmCount` (and sets the pause flag); it runs in
+    ///      `ExternalStateBalanceFuse.balanceOf` and at the start of every `ExternalStateOperationFuse.enter`/`exit`
+    ///      (IL-8775). `confirmCount` is a strictly
+    ///      monotonic per-confirmation counter (not a timestamp), so two confirms landing in the same
+    ///      block remain distinguishable (IL-7969 fix — a `block.timestamp` watermark could not tell
+    ///      them apart). Sequence during a big-change event:
+    ///        1. Custodian confirm lands at T0 → executor.confirmCount increments to N.
     ///        2. User op hits this pre-hook before any `balanceOf` read → reverts
     ///           `ExternalStatePreHookBigChangeDetected(prevTotal, currentTotal, bigChangeBps)`.
     ///        3. Repeat user ops keep reverting with the same error (stateless re-evaluation).
-    ///        4. Keeper / alpha triggers `_updateMarketsBalances` → `ExternalStateBalanceFuse.balanceOf` sets
-    ///           `paused = true` and writes `lastCheckedCustodianTimestamp = T0`.
+    ///        4. Keeper / alpha triggers `_updateMarketsBalances` (`ExternalStateBalanceFuse.balanceOf`) or ALPHA runs
+    ///           an `enter`/`exit` on the market → `processCustodianUpdate` sets `paused = true` and writes
+    ///           `lastCheckedCustodianConfirmCount = N`.
     ///        5. Subsequent user ops revert with `ExternalStatePreHookPaused` instead.
     ///      Both revert codes represent the same fail-closed outcome (user blocked); the code switch
     ///      is expected and not a bug. Operators triaging alerts should treat either error as "ExternalState
@@ -54,19 +60,23 @@ contract ExternalStatePausePreHook is IPreHook {
 
         if (ExternalStateExecutorStorageLib.getPaused()) revert ExternalStateErrors.ExternalStatePreHookPaused();
 
-        // Inline big-change detection: if the executor has received a new custodian update that
-        // the balance fuse has not yet processed, check the delta here so user ops are blocked
-        // immediately (without waiting for the next balanceOf() call).
-        (uint256 totalBalance, uint256 bigChangeBps, uint256 lastCustodianTs) =
-            IExternalStateExecutor(executor).getBalanceFuseSnapshot();
-        uint256 lastChecked = ExternalStateExecutorStorageLib.getLastCheckedCustodianTimestamp();
+        // Inline big-change detection: if the executor has received a new custodian update that has not been
+        // settled yet (balance fuse `balanceOf` or OperationFuse `enter`/`exit`), check the delta here so user ops
+        // are blocked immediately (without waiting for that settlement).
+        (uint256 totalBalance, uint256 bigChangeBps, uint256 custodianConfirmCount) = IExternalStateExecutor(executor)
+            .getBalanceFuseSnapshot();
+        uint256 lastChecked = ExternalStateExecutorStorageLib.getLastCheckedCustodianConfirmCount();
 
-        if (lastCustodianTs != lastChecked) {
+        if (custodianConfirmCount != lastChecked) {
             uint256 prevTotal = ExternalStateExecutorStorageLib.getLastTotalBalance();
             if (prevTotal != 0 && bigChangeBps != 0) {
                 uint256 delta = totalBalance > prevTotal ? totalBalance - prevTotal : prevTotal - totalBalance;
                 if ((delta * 10_000) / prevTotal > bigChangeBps) {
-                    revert ExternalStateErrors.ExternalStatePreHookBigChangeDetected(prevTotal, totalBalance, bigChangeBps);
+                    revert ExternalStateErrors.ExternalStatePreHookBigChangeDetected(
+                        prevTotal,
+                        totalBalance,
+                        bigChangeBps
+                    );
                 }
             }
         }

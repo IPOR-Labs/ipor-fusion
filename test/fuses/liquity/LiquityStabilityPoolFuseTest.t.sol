@@ -258,7 +258,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         data[0] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), amountToSwap);
         data[1] = abi.encodeWithSignature("swap(uint256,uint256)", amountToSwap, 1e10);
         data[2] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), 0);
-        UniversalTokenSwapperData memory swapData = UniversalTokenSwapperData({targets: targets, data: data});
+        UniversalTokenSwapperData memory swapData = UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)});
 
         UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
             tokenIn: WETH,
@@ -271,7 +271,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         FuseAction[] memory swapCalls = new FuseAction[](1);
         swapCalls[0] = FuseAction(
             address(swapFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         uint256 initialBoldBalance = ERC20(BOLD).balanceOf(address(plasmaVault));

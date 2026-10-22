@@ -26,17 +26,31 @@ interface IExternalStateExecutor {
     ///      before this call. The orphaned-balance invariant is enforced at the `syncSubstrates()`
     ///      boundary — see `syncSubstrates` invariant docs and the
     ///      `ExternalStateExecutorBalanceAccountStillFunded` error in `errors/ExternalStateErrors.sol`.
+    ///      The tokens that the vault just transferred to the executor are recorded in
+    ///      `unforwardedCredit[asset_]` (mirror of `removeBalance`) so that the dust check counts only
+    ///      tokens credited through the vault path and not tokens donated by third parties.
     /// @param balanceAccount_ The balance account receiving the deposit.
     /// @param valueInUnderlying_ The amount in vault underlying units.
-    function addBalance(address balanceAccount_, uint256 valueInUnderlying_) external;
+    /// @param asset_ The asset token that was transferred to the executor.
+    /// @param tokenAmount_ Amount of `asset_` (in asset decimals) that was transferred to the executor.
+    function addBalance(
+        address balanceAccount_,
+        uint256 valueInUnderlying_,
+        address asset_,
+        uint256 tokenAmount_
+    ) external;
 
     /// @notice Decrement the tracked balance of a balance account and transfer `tokenAmount_` of `asset_` to the vault.
     /// @param balanceAccount_ The balance account being decremented.
     /// @param valueInUnderlying_ The amount in vault underlying units to remove from the tracked balance.
     /// @param asset_ The asset token to transfer back to the vault.
     /// @param tokenAmount_ Amount of `asset_` (in asset decimals) to transfer back.
-    function removeBalance(address balanceAccount_, uint256 valueInUnderlying_, address asset_, uint256 tokenAmount_)
-        external;
+    function removeBalance(
+        address balanceAccount_,
+        uint256 valueInUnderlying_,
+        address asset_,
+        uint256 tokenAmount_
+    ) external;
 
     /// @notice Execute a batch of external calls from the executor context.
     /// @param actions_ Ordered list of (target, data) tuples forwarded via `Address.functionCall`.
@@ -45,6 +59,35 @@ interface IExternalStateExecutor {
     /// @notice Withdraw the entire executor balance of `asset_` to the vault without touching tracked balances.
     /// @param asset_ Asset token whose executor balance should be swept to the vault.
     function withdrawAssetBalance(address asset_) external;
+
+    /// @notice Transfer to the vault the part of the executor balance of `asset_` that did not arrive through the
+    ///         vault path (donations), leaving the tokens covered by `unforwardedCredit` in place.
+    /// @dev Does not change `balances[]` nor `unforwardedCredit`. The swept tokens become vault assets; they enter
+    ///      NAV immediately only when `asset_` is the vault underlying (any other asset needs its own balance fuse).
+    ///      Trust model: surplus is "everything not covered by `unforwardedCredit`", so tokens that return to the
+    ///      executor outside a vault call (custody or protocol payouts sent straight to it) look like donations.
+    ///      Such tokens are in NAV only while the last confirmed custodian report counts them.
+    ///      Still counted (a custody or protocol payout sent straight to the executor before the next report): book them
+    ///      with `exit`, while `unforwardedCredit(asset) == 0` (forward or exit credited tokens first: `removeBalance`
+    ///      debits the credit by the exited amount, whatever its origin).
+    ///      No longer counted (a donation, or a confirmed report that already excludes them): `sweepSurplus`, never `exit`
+    ///      (an exit would remove the value a second time).
+    ///      Custodians do not propose while `balanceOf(executor) > unforwardedCredit(asset)` for a cached asset unless they
+    ///      know whether their report counts those tokens (the dust check does not block them). Monitoring: alert when
+    ///      `balanceOf(executor) > unforwardedCredit(asset)`.
+    ///      A counterparty that pulls tokens outside `execute` leaves the credit stale (above the token balance):
+    ///      up to that amount, tokens that later reach the executor count in the dust check (a donation can block
+    ///      custodians again) and `sweepSurplus` does not move them. Each `exit` or `execute` outflow consumes only
+    ///      its own amount of the credit, so the block can return until outflows totalling the stale credit have run.
+    ///      A zero surplus is a no-op that still emits `SurplusSwept(asset_, 0)`.
+    /// @param asset_ Asset token to sweep.
+    /// @return amount Amount transferred to the vault.
+    function sweepSurplus(address asset_) external returns (uint256 amount);
+
+    /// @notice Tokens of `asset_` that were credited through the vault path and have not left the executor yet.
+    /// @param asset_ Asset token.
+    /// @return Amount in asset decimals.
+    function unforwardedCredit(address asset_) external view returns (uint256);
 
     // ============================================================
     // Custodian dual-approval balance updates
@@ -65,6 +108,10 @@ interface IExternalStateExecutor {
     ///      not currently granted in the vault substrate set. The check is applied as the very
     ///      first step (authorization-first) before any pending-proposal, hash, TTL, dust, or
     ///      min-update-interval validation.
+    ///      Reverts with `ExternalStateExecutorBalanceChangedSinceProposal` when `balances[balanceAccount_]`
+    ///      differs from its value at propose time (an ALPHA `enter` / `exit` ran on the account in between):
+    ///      the proposal is an absolute snapshot and would erase that flow, so custodians must propose again.
+    ///      A net-zero sequence of flows passes. Flows on other balance accounts do not matter.
     /// @param balanceAccount_ The balance account whose pending proposal is being confirmed.
     /// @param proposalHash_ Hash of `(value, proposer, proposedAt, nonce)` as returned by `proposeBalance`.
     function confirmBalance(address balanceAccount_, bytes32 proposalHash_) external;
@@ -133,11 +180,14 @@ interface IExternalStateExecutor {
     /// @notice Aggregate balance data for the balance fuse.
     /// @return totalBalance Sum of tracked balances across all balance accounts (underlying units).
     /// @return bigChangeBps Cached BIG_CHANGE_BPS threshold from substrates.
-    /// @return lastCustodianUpdateTimestamp Timestamp of the last confirmed custodian update.
+    /// @return custodianConfirmCount Monotonic count of confirmed custodian balance updates across
+    ///         all balance accounts. Strictly increases on every `confirmBalance`, so it uniquely
+    ///         identifies each confirmation even when two confirms land in the same block (unlike a
+    ///         `block.timestamp` watermark, which two same-block confirms would share).
     function getBalanceFuseSnapshot()
         external
         view
-        returns (uint256 totalBalance, uint256 bigChangeBps, uint256 lastCustodianUpdateTimestamp);
+        returns (uint256 totalBalance, uint256 bigChangeBps, uint256 custodianConfirmCount);
 
     /// @notice Minimum non-zero `lastUpdated` timestamp across all balance accounts.
     /// @return oldest The oldest non-zero `lastUpdated`, or 0 if every account has `lastUpdated == 0`.

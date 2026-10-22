@@ -36,11 +36,6 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
     event CurveChildLiquidityGaugeSupplyFuseExitFailed(address version, address childLiquidityGauge, uint256 amount);
 
     error CurveChildLiquidityGaugeSupplyFuseUnsupportedGauge(address childLiquidityGauge);
-    error CurveChildLiquidityGaugeSupplyFuseInsufficientStakedBalance(
-        address gauge,
-        uint256 requiredShares,
-        uint256 availableShares
-    );
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -117,12 +112,8 @@ contract CurveChildLiquidityGaugeSupplyFuse is IFuseCommon {
         // while convertToShares rounds DOWN which is only appropriate for deposits.
         uint256 lpTokenToWithdraw = ERC4626Upgradeable(lpToken).previewWithdraw(amount);
 
-        // Check if we have sufficient staked balance before proceeding
-        uint256 stakedBalance = IERC20(gauge).balanceOf(address(this));
-        if (lpTokenToWithdraw > stakedBalance) {
-            revert CurveChildLiquidityGaugeSupplyFuseInsufficientStakedBalance(gauge, lpTokenToWithdraw, stakedBalance);
-        }
-
+        /// @dev _exit clamps to the staked balance and returns on zero, so a gauge holding less than the
+        ///      requested amount withdraws what it has and the vault moves on to the next instant withdrawal fuse
         _exit(CurveChildLiquidityGaugeSupplyFuseExitData(gauge, lpTokenToWithdraw), true);
     }
 

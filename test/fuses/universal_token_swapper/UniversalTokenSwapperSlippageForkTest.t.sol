@@ -371,13 +371,13 @@ contract UniversalTokenSwapperSlippageForkTest is Test {
             tokenOut: tokenOut,
             amountIn: amountIn,
             minAmountOut: minAmountOut,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         return enterCalls;

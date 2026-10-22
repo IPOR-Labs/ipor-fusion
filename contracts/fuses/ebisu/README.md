@@ -18,7 +18,7 @@ The annual interest rate of an open Trove can be modified by the Trove owner dur
 
 The integration uses a single market for all operations:
 
--   **Market ID 38** (`EBISU`) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove/adjustTroveInterestRate operations
+-   **Market ID 39** (`EBISU`) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove/adjustTroveInterestRate operations
 
 ## Architecture
 
@@ -37,6 +37,7 @@ The integration uses a single market for all operations:
 -   **`EbisuZapperLeverModifyFuse`**: Handles levering up and down of open Troves.
 -   **`EbisuAdjustInterestRateFuse`**: Adjusts the annual interest rate of an open Trove.
 -   **`EbisuAdjustTroveFuse`**: Adjusts the debt and collateral of an open Trove using the Vault's funds.
+-   **`EbisuClaimCollateralFuse`**: Claims the collateral surplus that a liquidation credited to the Vault.
 
 ## Balance Calculation
 
@@ -48,15 +49,31 @@ collateral * collTokenPrice - debt * ebUSDPrice
 
 This ensures that the `totalAssets()` quantity is an invariant (approximate, modulo slippage due to swaps following flash loans and fees) for all the Fuse's operations. This balance is floored with zero in case the debt exceeds the collateral; however, this situation is unlikely, since Liquity liquidates such Troves much before this happens.
 
+### Liquidation
+
+When a Trove is liquidated, Liquity burns the Trove NFT and marks the Trove `closedByLiquidation`, so the zapper can no longer close it. `EbisuZapperCreateFuse` checks the Trove status in the Liquity `TroveManager` before relying on its stored Trove id: `enter` and `exit` drop a stored id whose Trove is no longer `active` or `zombie` and emit `EbisuZapperCreateFuseStaleTroveCleared`. The branch is therefore unblocked automatically (a new `enter` can open a fresh Trove; `exit` on a liquidated Trove only clears the id and moves no ebUSD).
+
+### Collateral surplus after liquidation
+
+A liquidation can leave a collateral surplus to the Trove owner, i.e. the Plasma Vault. Liquity v2 credits it to the vault in the branch's `CollSurplusPool`, from where only the owner can take it with `BorrowerOperations.claimCollateral()`.
+
+-   **Valuation:** `EbisuZapperBalanceFuse.balanceOf()` adds, for every `REGISTRY` substrate, `CollSurplusPool.getCollateral(vault)` valued with the collateral token price (same oracle path as the Trove collateral). NAV is therefore not understated between the liquidation and the claim. The collateral price is only requested when there is a surplus.
+-   **Claim:** `EbisuClaimCollateralFuse.enter({registry})` resolves `BorrowerOperations` from the granted `REGISTRY` substrate and calls `claimCollateral()` in the vault context (the vault is `msg.sender`). It emits `EbisuClaimCollateralFuseEnter(registry, collToken, amount)` with the balance delta. Liquity reverts (`CollSurplusPool: No collateral available to claim`) when there is nothing to claim; the fuse does not swallow that. There is no `exit`.
+-   **After the claim** the pool balance is 0 and the collateral token sits in the vault. To keep it in NAV the collateral token must be a granted substrate of the ERC20 balance market (`ERC20_VAULT_BALANCE`), and the Ebisu market must list that market in its dependency balance graph so that both are refreshed together.
+-   **Price requirement (every `REGISTRY` branch):** the collateral token of every granted `REGISTRY` branch needs an oracle price. Anyone can open a Trove naming the vault as owner (`openTrove(_owner, ...)`) and get it liquidated, which gifts a surplus to the vault on any granted branch (it costs them more than the gift). If that collateral has no price, every refresh of market 39 reverts until the surplus is claimed: `updateMarketsBalances`, every `execute` with an Ebisu fuse and, through `UpdateBalancesPreHook` (it refreshes all markets), every hooked deposit/mint/withdraw/redeem/execute. Recovery: ALPHA runs `EbisuClaimCollateralFuse` once. This does not work when `UpdateBalancesPreHook` guards `execute` or when the collateral is an unpriced `ERC20_VAULT_BALANCE` substrate; then add a price source for the collateral first (or the PRE_HOOKS_MANAGER removes the hook from `execute`).
+-   **No new substrate type:** the existing `REGISTRY` substrate is enough; the claim fuse needs no `ZAPPER` substrate.
+
 ### Important Notes
 
 The debt of the Trove is automatically updated by Liquity smart contract during its life, in order to account for the interest fees paid. Therefore, the `balanceOf()` of the Fuse is automatically updated as well.
 
 ## Substrate Configuration
 
-### 1. EBISU Market (Market ID: 38) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove/adjustTrove operations
+### 1. EBISU Market (Market ID: 39) - openLeveragedTroveWithRawETH/closeTroveFromCollateral/closeTroveToRawETH/leverUpTrove/leverDownTrove/adjustTrove operations
 
-Substrates are configured as a pair `(type, address)` where "type" can be `UNDEFINED, ZAPPER, REGISTRY`. This is necessary because we need data from the stability pool during the validation of `enter`, and the pool's address is not exposed by the Zapper.
+Substrates are configured as a pair `(type, address)` where "type" can be `UNDEFINED, ZAPPER, REGISTRY`. This is necessary because we need data from the stability pool during the validation of `enter`, and the pool's address is not exposed by the Zapper. `REGISTRY` substrates are also read by `EbisuZapperBalanceFuse.balanceOf()` (collateral surplus valuation) and by `EbisuClaimCollateralFuse`.
+
+Grant every `ZAPPER` together with the `REGISTRY` of the same branch (see the table). `EbisuZapperCreateFuse` checks the two grants independently, so a Trove can be opened on a branch whose `REGISTRY` is not granted. After a liquidation its collateral surplus is then neither valued nor claimable until that `REGISTRY` is granted (NAV understated by the surplus). Do not revoke a branch's `REGISTRY` while a Trove or a surplus exists on it.
 
 #### Zappers and Registries examples on Ethereum Mainnet:
 
@@ -73,3 +90,11 @@ Substrates are configured as a pair `(type, address)` where "type" can be `UNDEF
 ### Required Price Feeds
 
 The integration requires price feeds for all collateral tokens and the ebUSD token. Price feed configuration via `Price Oracle Middleware Manager` or `Price Oracle Middleware`
+
+## Deployment Notes
+
+Before swapping the new `EbisuZapperBalanceFuse` into live vaults, check the Ebisu market substrate lists: `balanceOf()` now calls every `REGISTRY` substrate, so a wrong registry address breaks NAV, and a duplicated registry counts its surplus twice (a duplicated `ZAPPER` substrate has the same duplicate problem).
+
+Mandatory check before the swap: every `REGISTRY` collateral token of the Ebisu market has a price in the vault's price oracle, and if it is also a substrate of the `ERC20_VAULT_BALANCE` market (m7) it is priced there too. Otherwise a gifted collateral surplus can block the refresh of market 39 (see "Price requirement" above).
+
+Grant every `ZAPPER` together with the `REGISTRY` of the same branch (see the table). `EbisuZapperCreateFuse` checks the two grants independently, so a Trove can be opened on a branch whose `REGISTRY` is not granted. After a liquidation its collateral surplus is then neither valued nor claimable until that `REGISTRY` is granted (NAV understated by the surplus). Do not revoke a branch's `REGISTRY` while a Trove or a surplus exists on it.

@@ -147,6 +147,13 @@ contract CurveStableSwapNGPriceFeedFactoryTest is Test {
         vm.mockCall(mockCurvePool, abi.encodeWithSignature("decimals()"), abi.encode(18));
         vm.mockCall(mockCurvePool, abi.encodeWithSignature("coins(uint256)"), abi.encode(USDC));
         vm.mockCall(mockCurvePool, abi.encodeWithSignature("balances(uint256)"), abi.encode(500000));
+        // The price feed now reads `stored_rates()` to express coin prices in the pool's base-asset
+        // units, so this synthetic pool has to answer it. USDC has 6 decimals and carries no
+        // external rate, hence the plain `10**(36 - 6)` multiplier for both coins.
+        uint256[] memory storedRates = new uint256[](2);
+        storedRates[0] = 1e30;
+        storedRates[1] = 1e30;
+        vm.mockCall(mockCurvePool, abi.encodeWithSignature("stored_rates()"), abi.encode(storedRates));
 
         // Mock the price oracle middleware to return zero price
         vm.mockCall(PRICE_ORACLE_MIDDLEWARE, abi.encodeWithSignature("getAssetPrice(address)"), abi.encode(0, 18));

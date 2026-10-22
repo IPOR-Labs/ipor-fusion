@@ -6,10 +6,20 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {PlasmaVault, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "./../../../contracts/vaults/PlasmaVault.sol";
+import {
+    PlasmaVault,
+    FuseAction,
+    MarketBalanceFuseConfig,
+    MarketSubstratesConfig,
+    PlasmaVaultInitData
+} from "./../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultConfigLib} from "./../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ICurveStableswapNG} from "./../../../contracts/fuses/curve_stableswap_ng/ext/ICurveStableswapNG.sol";
-import {CurveStableswapNGSingleSideSupplyFuse, CurveStableswapNGSingleSideSupplyFuseEnterData, CurveStableswapNGSingleSideSupplyFuseExitData} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
+import {
+    CurveStableswapNGSingleSideSupplyFuse,
+    CurveStableswapNGSingleSideSupplyFuseEnterData,
+    CurveStableswapNGSingleSideSupplyFuseExitData
+} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideSupplyFuse.sol";
 import {CurveStableswapNGSingleSideBalanceFuse} from "./../../../contracts/fuses/curve_stableswap_ng/CurveStableswapNGSingleSideBalanceFuse.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {IporFusionAccessManager} from "./../../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -22,6 +32,13 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+
+/// @notice Minimal Curve StableswapNG swap interface, used only by the IL-7950 round-trip
+/// regression tests below to drive a swap against the pool. Not part of the fuses' production
+/// interface (ICurveStableswapNG) and intentionally kept local to this test file.
+interface ICurveStableswapNGExchange {
+    function exchange(int128 i, int128 j, uint256 dx, uint256 min_dy) external returns (uint256);
+}
 
 contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -209,10 +226,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         );
         (uint256 usdmPrice, uint256 usdmPriceDecimals) = priceOracleMiddlewareProxy.getAssetPrice(USDM);
         uint256 expectedInUnderlying = IporMath.convertWadToAssetDecimals(
-            IporMath.division(
-                expectedProRataBalanceUsd * IporMath.BASIS_OF_POWER ** usdmPriceDecimals,
-                usdmPrice
-            ),
+            IporMath.division(expectedProRataBalanceUsd * IporMath.BASIS_OF_POWER ** usdmPriceDecimals, usdmPrice),
             ERC20(USDM).decimals()
         );
         assertApproxEqAbs(
@@ -333,6 +347,203 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         );
     }
 
+    /// IL-7950 cycle-2 REGRESSION TESTS (sibling of CurveChildLiquidityGaugeBalanceFuse)
+    /// CurveStableswapNGSingleSideBalanceFuse values the same StableSwap-NG LP token as
+    /// CurveChildLiquidityGaugeBalanceFuse (oracle-priced pro-rata of the pool's coin balances, pre
+    /// cycle-2). cycle-1-verification.md's finding — that pro-rata is manipulable by a
+    /// same-transaction round-trip swap because swaps conserve `D` and refund the outbound leg's
+    /// slippage — applies identically here, so this sibling is fixed with the same
+    /// `get_virtual_price()`-based formula in the same change. These mirror the gauge fuse's
+    /// regression tests.
+
+    function testShouldNotInflateBalanceWhenPoolPushedLongVaultAssetByRoundTripSwap() external {
+        // given
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
+
+        MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
+        address[] memory fuses = createFuses(fuse);
+        MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+        uint256 amount = 1_000 * 10 ** ERC20(USDM).decimals();
+
+        PlasmaVault plasmaVault_ = new PlasmaVault();
+        PlasmaVault(plasmaVault_).proxyInitialize(
+            PlasmaVaultInitData(
+                "Plasma Vault",
+                "PLASMA",
+                USDM,
+                address(priceOracleMiddlewareProxy),
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                address(withdrawManager),
+                address(0)
+            )
+        );
+
+        setupRoles(plasmaVault_, accessManager, withdrawManager);
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(plasmaVault_),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(fuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
+                })
+            )
+        );
+
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
+        vm.startPrank(depositor);
+        ERC20(USDM).approve(address(plasmaVault_), 1_000 * 10 ** ERC20(USDM).decimals());
+        plasmaVault_.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
+
+        vm.startPrank(alpha);
+        plasmaVault_.execute(calls);
+        vm.stopPrank();
+
+        uint256 snapshotBalance = plasmaVault_.totalAssetsInMarket(fuse.MARKET_ID());
+
+        // when - attacker pushes the pool long USDM via a large swap, same as the gauge fuse's
+        // inflate regression test.
+        _swapUSDMIntoPoolPushingLong(19_000 * 10 ** ERC20(USDM).decimals());
+
+        // market balance is cached; force a refresh so the swap's effect is actually read, same as
+        // the gauge fuse's regression tests do via plasmaVault.updateMarketsBalances().
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = fuse.MARKET_ID();
+        vm.prank(atomist);
+        plasmaVault_.updateMarketsBalances(marketIds);
+
+        // then - the fixed (get_virtual_price()-based) valuation stays within 5% of the pre-swap
+        // snapshot; swaps conserve `D`, so the residual move is bounded by the fee, symmetric to
+        // the gauge fuse's own regression test (see that test for the tolerance-vs-regression math).
+        assertApproxEqRel(
+            plasmaVault_.totalAssetsInMarket(fuse.MARKET_ID()),
+            snapshotBalance,
+            0.05e18, // 5%
+            "fixed (cycle-2) single-side balance should stay within 5% of the pre-swap snapshot despite the push"
+        );
+    }
+
+    function testShouldNotDeflateBalanceWhenVaultAssetDrainedFromPool() external {
+        // given
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
+
+        MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
+        address[] memory fuses = createFuses(fuse);
+        MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+        uint256 amount = 1_000 * 10 ** ERC20(USDM).decimals();
+
+        PlasmaVault plasmaVault_ = new PlasmaVault();
+        PlasmaVault(plasmaVault_).proxyInitialize(
+            PlasmaVaultInitData(
+                "Plasma Vault",
+                "PLASMA",
+                USDM,
+                address(priceOracleMiddlewareProxy),
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                address(withdrawManager),
+                address(0)
+            )
+        );
+
+        setupRoles(plasmaVault_, accessManager, withdrawManager);
+        PlasmaVaultConfigurator.setupPlasmaVault(
+            vm,
+            address(this),
+            address(plasmaVault_),
+            fuses,
+            balanceFuses,
+            marketConfigs
+        );
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(fuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
+                })
+            )
+        );
+
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
+        vm.startPrank(depositor);
+        ERC20(USDM).approve(address(plasmaVault_), 1_000 * 10 ** ERC20(USDM).decimals());
+        plasmaVault_.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
+
+        vm.startPrank(alpha);
+        plasmaVault_.execute(calls);
+        vm.stopPrank();
+
+        uint256 snapshotBalance = plasmaVault_.totalAssetsInMarket(fuse.MARKET_ID());
+
+        // when - attacker drains USDM out of the pool via a large USDC swap, same as the gauge
+        // fuse's deflate regression test.
+        _swapUSDCIntoPoolDrainingUSDM(10_000 * 10 ** ERC20(USDC).decimals());
+
+        // market balance is cached; force a refresh so the swap's effect is actually read.
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = fuse.MARKET_ID();
+        vm.prank(atomist);
+        plasmaVault_.updateMarketsBalances(marketIds);
+
+        // then
+        assertApproxEqRel(
+            plasmaVault_.totalAssetsInMarket(fuse.MARKET_ID()),
+            snapshotBalance,
+            0.05e18, // 5%
+            "fixed (cycle-2) single-side balance should stay within 5% of the pre-swap snapshot despite the drain"
+        );
+    }
+
+    /// @dev Swaps USDM into the pool, pushing the pool long the vault asset (USDM).
+    function _swapUSDMIntoPoolPushingLong(uint256 usdmAmount_) private {
+        address attacker = address(0x9998);
+        vm.prank(0x426c4966fC76Bf782A663203c023578B744e4C5E); // holder
+        ERC20(USDM).transfer(attacker, usdmAmount_);
+        vm.startPrank(attacker);
+        ERC20(USDM).approve(CURVE_STABLESWAP_NG_POOL, usdmAmount_);
+        ICurveStableswapNGExchange(CURVE_STABLESWAP_NG_POOL).exchange(1, 0, usdmAmount_, 0);
+        vm.stopPrank();
+    }
+
+    /// @dev Swaps USDC into the pool, draining the vault asset (USDM) out of it.
+    function _swapUSDCIntoPoolDrainingUSDM(uint256 usdcAmount_) private {
+        address attacker = address(0x9999);
+        deal(USDC, attacker, usdcAmount_);
+        vm.startPrank(attacker);
+        ERC20(USDC).approve(CURVE_STABLESWAP_NG_POOL, usdcAmount_);
+        ICurveStableswapNGExchange(CURVE_STABLESWAP_NG_POOL).exchange(0, 1, usdcAmount_, 0);
+        vm.stopPrank();
+    }
+
     // HELPERS
 
     function _supplyTokens(address asset, address to, uint256 amount) private {
@@ -410,27 +621,25 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         RoleLib.setupPlasmaVaultRoles(usersToRoles, vm, address(plasmaVault), accessManager, withdrawManager);
     }
 
+    /// @dev Independent re-implementation of the fixed (cycle-2) formula: the canonical,
+    /// swap-invariant StableSwap LP price `lpTokenBalance * get_virtual_price() / 1e18 * min_j(price)`.
+    /// Deliberately NOT calling into the fuse's own code, so this is a real cross-check.
     function _calculateExpectedProRataBalance(
         uint256 lpTokenBalance,
         address priceOracleMiddleware
     ) private view returns (uint256) {
-        uint256 totalSupply = CURVE_STABLESWAP_NG.totalSupply();
         uint256 nCoins = CURVE_STABLESWAP_NG.N_COINS();
-        uint256 balance;
+        uint256 minCoinPriceWad = type(uint256).max;
         for (uint256 i; i < nCoins; ++i) {
             address coin = CURVE_STABLESWAP_NG.coins(i);
-            uint256 coinAmount = Math.mulDiv(
-                CURVE_STABLESWAP_NG.balances(i),
-                lpTokenBalance,
-                totalSupply
-            );
             (uint256 coinPrice, uint256 coinPriceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware)
                 .getAssetPrice(coin);
-            balance += IporMath.convertToWad(
-                coinAmount * coinPrice,
-                ERC20(coin).decimals() + coinPriceDecimals
-            );
+            uint256 coinPriceWad = IporMath.convertToWad(coinPrice, coinPriceDecimals);
+            if (coinPriceWad < minCoinPriceWad) {
+                minCoinPriceWad = coinPriceWad;
+            }
         }
-        return balance;
+        uint256 lpValueInPegUnitsWad = Math.mulDiv(lpTokenBalance, CURVE_STABLESWAP_NG.get_virtual_price(), 1e18);
+        return Math.mulDiv(lpValueInPegUnitsWad, minCoinPriceWad, 1e18);
     }
 }

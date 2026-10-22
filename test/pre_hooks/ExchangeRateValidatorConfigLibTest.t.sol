@@ -2,7 +2,13 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {ExchangeRateValidatorConfigLib, ExchangeRateValidatorConfig, HookType, Hook, ValidatorData} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
+import {
+    ExchangeRateValidatorConfigLib,
+    ExchangeRateValidatorConfig,
+    HookType,
+    Hook,
+    ValidatorData
+} from "../../contracts/handlers/pre_hooks/pre_hooks/ExchangeRateValidatorConfigLib.sol";
 
 /// @title ExchangeRateValidatorConfigLibTest
 /// @notice Comprehensive tests for ExchangeRateValidatorConfigLib encoding and decoding functions
@@ -188,70 +194,106 @@ contract ExchangeRateValidatorConfigLibTest is Test {
     /// @notice Test basic encoding and decoding of ValidatorData
     function testValidatorDataEncodeDecode() public {
         uint128 exchangeRate = 123456789012345678901234567890;
-        uint120 threshold = 987654321098765432109876543210;
+        // IL-8832: threshold narrowed from 120 to 80 bits (it is capped at 1e18 by the pre-hook anyway)
+        uint80 threshold = 987654321098765432109876;
+        uint40 lastUpdateTimestamp = 1_760_000_000;
 
-        ValidatorData memory validatorData = ValidatorData({exchangeRate: exchangeRate, threshold: threshold});
+        ValidatorData memory validatorData = ValidatorData({
+            exchangeRate: exchangeRate,
+            threshold: threshold,
+            lastUpdateTimestamp: lastUpdateTimestamp
+        });
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
         ValidatorData memory decoded = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(encoded);
 
         assertEq(decoded.exchangeRate, exchangeRate, "Decoded exchangeRate should match");
         assertEq(decoded.threshold, threshold, "Decoded threshold should match");
+        assertEq(decoded.lastUpdateTimestamp, lastUpdateTimestamp, "Decoded lastUpdateTimestamp should match");
     }
 
     /// @notice Test ValidatorData with zero values
     function testValidatorDataZeroValues() public {
-        ValidatorData memory validatorData = ValidatorData({exchangeRate: 0, threshold: 0});
+        ValidatorData memory validatorData = ValidatorData({exchangeRate: 0, threshold: 0, lastUpdateTimestamp: 0});
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
         ValidatorData memory decoded = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(encoded);
 
         assertEq(decoded.exchangeRate, 0, "ExchangeRate should be zero");
         assertEq(decoded.threshold, 0, "Threshold should be zero");
+        assertEq(decoded.lastUpdateTimestamp, 0, "Timestamp should be zero");
     }
 
     /// @notice Test ValidatorData with maximum values
+    /// @dev Maximum threshold is now type(uint80).max (was type(uint120).max before IL-8832): the field shrank so that
+    ///      bits 80-119 can hold the re-anchor timestamp. Live thresholds are <= 1e18 < 2^60, so nothing is lost.
     function testValidatorDataMaxValues() public {
         uint128 maxExchangeRate = type(uint128).max;
-        uint120 maxThreshold = type(uint120).max;
+        uint80 maxThreshold = type(uint80).max;
+        uint40 maxTimestamp = type(uint40).max;
 
-        ValidatorData memory validatorData = ValidatorData({exchangeRate: maxExchangeRate, threshold: maxThreshold});
+        ValidatorData memory validatorData = ValidatorData({
+            exchangeRate: maxExchangeRate,
+            threshold: maxThreshold,
+            lastUpdateTimestamp: maxTimestamp
+        });
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
         ValidatorData memory decoded = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(encoded);
 
         assertEq(decoded.exchangeRate, maxExchangeRate, "ExchangeRate should be max");
         assertEq(decoded.threshold, maxThreshold, "Threshold should be max");
+        assertEq(decoded.lastUpdateTimestamp, maxTimestamp, "Timestamp should be max");
+        assertEq(uint256(uint248(encoded)), type(uint248).max, "All 248 bits should be used without overlap");
     }
 
     /// @notice Test ValidatorData encoding layout verification
     function testValidatorDataEncodingLayout() public {
         uint128 exchangeRate = 0x12345678901234567890123456789012;
-        uint120 threshold = 0xabcdef1234567890abcdef123456;
+        uint80 threshold = 0xabcdef1234567890abcd;
+        uint40 lastUpdateTimestamp = 0x1122334455;
 
-        ValidatorData memory validatorData = ValidatorData({exchangeRate: exchangeRate, threshold: threshold});
+        ValidatorData memory validatorData = ValidatorData({
+            exchangeRate: exchangeRate,
+            threshold: threshold,
+            lastUpdateTimestamp: lastUpdateTimestamp
+        });
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
-
-        // Verify threshold is in first 120 bits
         uint256 packed = uint256(uint248(encoded));
-        uint120 extractedThreshold = uint120(packed & type(uint120).max);
-        assertEq(extractedThreshold, threshold, "Threshold should be in first 120 bits");
 
-        // Verify exchangeRate is in bits 120-247
-        uint128 extractedExchangeRate = uint128(packed >> 120);
-        assertEq(extractedExchangeRate, exchangeRate, "ExchangeRate should be in bits 120-247");
+        assertEq(uint80(packed), threshold, "Threshold should be in bits 0-79");
+        assertEq(uint40(packed >> 80), lastUpdateTimestamp, "Timestamp should be in bits 80-119");
+        assertEq(uint128(packed >> 120), exchangeRate, "ExchangeRate should be in bits 120-247");
+    }
+
+    /// @notice A config written before IL-8832 (threshold in 120 bits, value < 2^60) decodes with timestamp 0
+    function testValidatorDataLegacyLayoutDecodesWithZeroTimestamp() public {
+        uint128 exchangeRate = 1_234_567;
+        uint120 legacyThreshold = 1.55e16;
+        bytes31 legacy = bytes31(uint248(uint256(legacyThreshold) | (uint256(exchangeRate) << 120)));
+
+        ValidatorData memory decoded = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(legacy);
+
+        assertEq(decoded.threshold, legacyThreshold, "Legacy threshold should decode unchanged");
+        assertEq(decoded.lastUpdateTimestamp, 0, "Legacy config should decode with timestamp 0");
+        assertEq(decoded.exchangeRate, exchangeRate, "Legacy exchangeRate should decode unchanged");
     }
 
     /// @notice Fuzz test for ValidatorData encoding/decoding
-    function testFuzzValidatorData(uint128 exchangeRate_, uint120 threshold_) public {
-        ValidatorData memory validatorData = ValidatorData({exchangeRate: exchangeRate_, threshold: threshold_});
+    function testFuzzValidatorData(uint128 exchangeRate_, uint80 threshold_, uint40 timestamp_) public {
+        ValidatorData memory validatorData = ValidatorData({
+            exchangeRate: exchangeRate_,
+            threshold: threshold_,
+            lastUpdateTimestamp: timestamp_
+        });
 
         bytes31 encoded = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
         ValidatorData memory decoded = ExchangeRateValidatorConfigLib.bytes31ToValidatorData(encoded);
 
         assertEq(decoded.exchangeRate, exchangeRate_, "Fuzz: ExchangeRate should match");
         assertEq(decoded.threshold, threshold_, "Fuzz: Threshold should match");
+        assertEq(decoded.lastUpdateTimestamp, timestamp_, "Fuzz: Timestamp should match");
     }
 
     // ============ parseConfigs Tests ============
@@ -342,9 +384,13 @@ contract ExchangeRateValidatorConfigLibTest is Test {
     /// @notice Test parseConfigs with validator
     function testParseConfigsValidator() public {
         uint128 exchangeRate = 1000000000000000000;
-        uint120 threshold = 500000000000000000;
+        uint80 threshold = 500000000000000000;
 
-        ValidatorData memory validatorData = ValidatorData({exchangeRate: exchangeRate, threshold: threshold});
+        ValidatorData memory validatorData = ValidatorData({
+            exchangeRate: exchangeRate,
+            threshold: threshold,
+            lastUpdateTimestamp: 0
+        });
 
         bytes31 validatorDataBytes = ExchangeRateValidatorConfigLib.validatorDataToBytes31(validatorData);
 
@@ -406,7 +452,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         );
 
         // Validator
-        ValidatorData memory validatorData = ValidatorData({exchangeRate: 123, threshold: 456});
+        ValidatorData memory validatorData = ValidatorData({exchangeRate: 123, threshold: 456, lastUpdateTimestamp: 0});
         configs[4] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
             ExchangeRateValidatorConfig({
                 typ: HookType.VALIDATOR,
@@ -485,7 +531,7 @@ contract ExchangeRateValidatorConfigLibTest is Test {
 
     /// @notice Test parseConfigs with validator at different positions
     function testParseConfigsValidatorPosition() public {
-        ValidatorData memory validatorData = ValidatorData({exchangeRate: 999, threshold: 888});
+        ValidatorData memory validatorData = ValidatorData({exchangeRate: 999, threshold: 888, lastUpdateTimestamp: 0});
 
         // Validator at position 0
         bytes32[] memory configs1 = new bytes32[](1);
@@ -523,8 +569,16 @@ contract ExchangeRateValidatorConfigLibTest is Test {
 
     /// @notice Test parseConfigs with multiple validators (only first one is used)
     function testParseConfigsMultipleValidators() public {
-        ValidatorData memory validatorData1 = ValidatorData({exchangeRate: 111, threshold: 222});
-        ValidatorData memory validatorData2 = ValidatorData({exchangeRate: 333, threshold: 444});
+        ValidatorData memory validatorData1 = ValidatorData({
+            exchangeRate: 111,
+            threshold: 222,
+            lastUpdateTimestamp: 0
+        });
+        ValidatorData memory validatorData2 = ValidatorData({
+            exchangeRate: 333,
+            threshold: 444,
+            lastUpdateTimestamp: 0
+        });
 
         bytes32[] memory configs = new bytes32[](2);
         configs[0] = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(
@@ -589,7 +643,8 @@ contract ExchangeRateValidatorConfigLibTest is Test {
     function testRoundTripValidatorData() public {
         ValidatorData memory original = ValidatorData({
             exchangeRate: 123456789012345678901234567890,
-            threshold: 987654321098765432109876543210
+            threshold: 987654321098765432109876,
+            lastUpdateTimestamp: 1_760_000_000
         });
 
         bytes31 encoded1 = ExchangeRateValidatorConfigLib.validatorDataToBytes31(original);
@@ -599,5 +654,6 @@ contract ExchangeRateValidatorConfigLibTest is Test {
         assertEq(uint256(uint248(encoded1)), uint256(uint248(encoded2)), "Round-trip encoding should be consistent");
         assertEq(decoded.exchangeRate, original.exchangeRate, "Round-trip: ExchangeRate should match");
         assertEq(decoded.threshold, original.threshold, "Round-trip: Threshold should match");
+        assertEq(decoded.lastUpdateTimestamp, original.lastUpdateTimestamp, "Round-trip: Timestamp should match");
     }
 }

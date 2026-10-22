@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -19,12 +20,27 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {UniswapV3Balance} from "../../../contracts/fuses/uniswap/UniswapV3Balance.sol";
-import {UniswapV3NewPositionFuse, UniswapV3NewPositionFuseEnterData, UniswapV3NewPositionFuseExitData} from "../../../contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol";
-import {UniswapV3ModifyPositionFuse, UniswapV3ModifyPositionFuseEnterData, UniswapV3ModifyPositionFuseExitData} from "../../../contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol";
+import {
+    UniswapV3NewPositionFuse,
+    UniswapV3NewPositionFuseEnterData,
+    UniswapV3NewPositionFuseExitData
+} from "../../../contracts/fuses/uniswap/UniswapV3NewPositionFuse.sol";
+import {
+    UniswapV3ModifyPositionFuse,
+    UniswapV3ModifyPositionFuseEnterData,
+    UniswapV3ModifyPositionFuseExitData
+} from "../../../contracts/fuses/uniswap/UniswapV3ModifyPositionFuse.sol";
+import {INonfungiblePositionManager} from "../../../contracts/fuses/uniswap/ext/INonfungiblePositionManager.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
-import {UniswapV3CollectFuse, UniswapV3CollectFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3CollectFuse.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    UniswapV3CollectFuse,
+    UniswapV3CollectFuseEnterData
+} from "../../../contracts/fuses/uniswap/UniswapV3CollectFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
@@ -620,6 +636,194 @@ contract UniswapV3PositionFuseTest is Test {
         (, uint256 closeTokenId) = _extractClosePositionFromEvent(entriesClosePosition);
 
         assertEq(tokenIdMintPosition, closeTokenId, "tokenIdMintPosition = closeTokenId");
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Tracked-tokenId rule (IL-8752): action fuses operate only on NFTs registered by NewPositionFuse.enter
+    // ---------------------------------------------------------------------------------------------
+
+    /// @dev ALPHA (this test contract) mints an NFT to itself with its own funds; the vault does not own or track it.
+    function _mintForeignNft(address recipient_) private returns (uint256 tokenId_, uint128 liquidity_) {
+        deal(USDC, address(this), 10_000e6);
+        deal(USDT, address(this), 10_000e6);
+        ERC20(USDC).forceApprove(_NONFUNGIBLE_POSITION_MANAGER, type(uint256).max);
+        ERC20(USDT).forceApprove(_NONFUNGIBLE_POSITION_MANAGER, type(uint256).max);
+
+        (tokenId_, liquidity_, , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).mint(
+            INonfungiblePositionManager.MintParams({
+                token0: USDC,
+                token1: USDT,
+                fee: 100,
+                tickLower: -100,
+                tickUpper: 101,
+                amount0Desired: 1_000e6,
+                amount1Desired: 1_000e6,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: recipient_,
+                deadline: block.timestamp + 100
+            })
+        );
+    }
+
+    /// @dev Mints a foreign NFT, removes all its liquidity and donates the empty NFT to the vault.
+    function _donateEmptyNftToVault() private returns (uint256 tokenId_) {
+        uint128 liquidity;
+        (tokenId_, liquidity) = _mintForeignNft(address(this));
+
+        INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).decreaseLiquidity(
+            INonfungiblePositionManager.DecreaseLiquidityParams({
+                tokenId: tokenId_,
+                liquidity: liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            })
+        );
+        INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).collect(
+            INonfungiblePositionManager.CollectParams({
+                tokenId: tokenId_,
+                recipient: address(this),
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            })
+        );
+        IERC721(_NONFUNGIBLE_POSITION_MANAGER).transferFrom(address(this), _plasmaVault, tokenId_);
+    }
+
+    function _openVaultPosition(int24 tickLower_, int24 tickUpper_) private returns (uint256 tokenId_) {
+        UniswapV3NewPositionFuseEnterData memory mintParams = UniswapV3NewPositionFuseEnterData({
+            token0: USDC,
+            token1: USDT,
+            fee: 100,
+            tickLower: tickLower_,
+            tickUpper: tickUpper_,
+            amount0Desired: 1_000e6,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100
+        });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_uniswapV3NewPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,uint256))",
+                mintParams
+            )
+        );
+        vm.recordLogs();
+        PlasmaVault(_plasmaVault).execute(calls);
+        (, tokenId_, , , ) = _extractMarketIdsFromEvent(vm.getRecordedLogs());
+    }
+
+    function testShouldRevertWhenIncreasingLiquidityOfNonVaultNft() external {
+        // given - ALPHA owns an NFT the vault neither owns nor tracks
+        (uint256 foreignTokenId, ) = _mintForeignNft(address(this));
+
+        uint256 usdcBefore = ERC20(USDC).balanceOf(_plasmaVault);
+        uint256 usdtBefore = ERC20(USDT).balanceOf(_plasmaVault);
+
+        UniswapV3ModifyPositionFuseEnterData memory enterData = UniswapV3ModifyPositionFuseEnterData({
+            token0: USDC,
+            token1: USDT,
+            tokenId: foreignTokenId,
+            amount0Desired: 1_000e6,
+            amount1Desired: 1_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100
+        });
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_uniswapV3ModifyPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                enterData
+            )
+        );
+
+        // when / then
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                UniswapV3ModifyPositionFuse.UniswapV3ModifyPositionFuseTokenIdNotTracked.selector,
+                foreignTokenId
+            )
+        );
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), usdcBefore, "vault USDC unchanged");
+        assertEq(ERC20(USDT).balanceOf(_plasmaVault), usdtBefore, "vault USDT unchanged");
+    }
+
+    function testShouldRevertWhenDecreasingUntrackedNft() external {
+        // given - an NFT with liquidity donated to the vault (owned, but not tracked)
+        (uint256 foreignTokenId, uint128 liquidity) = _mintForeignNft(_plasmaVault);
+
+        UniswapV3ModifyPositionFuseExitData memory exitData = UniswapV3ModifyPositionFuseExitData({
+            tokenId: foreignTokenId,
+            liquidity: liquidity,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100
+        });
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_uniswapV3ModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", exitData)
+        );
+
+        // when / then
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                UniswapV3ModifyPositionFuse.UniswapV3ModifyPositionFuseTokenIdNotTracked.selector,
+                foreignTokenId
+            )
+        );
+        PlasmaVault(_plasmaVault).execute(calls);
+    }
+
+    function testShouldRevertWhenBurningUntrackedNft() external {
+        // given - two tracked positions plus an empty NFT donated to the vault
+        uint256 firstTokenId = _openVaultPosition(-100, 101);
+        _openVaultPosition(100, 1000);
+        uint256 donatedTokenId = _donateEmptyNftToVault();
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.UNISWAP_SWAP_V3_POSITIONS
+        );
+        assertGt(marketBalanceBefore, 0, "positions are valued");
+
+        UniswapV3NewPositionFuseExitData memory closePositions;
+        closePositions.tokenIds = new uint256[](1);
+        closePositions.tokenIds[0] = donatedTokenId;
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_uniswapV3NewPositionFuse),
+            abi.encodeWithSignature("exit((uint256[]))", closePositions)
+        );
+
+        // when / then - burning the untracked NFT would swap-and-pop tokenIds[0] (the real first position)
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                UniswapV3NewPositionFuse.UniswapV3NewPositionFuseTokenIdNotTracked.selector,
+                donatedTokenId
+            )
+        );
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        assertEq(
+            PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.UNISWAP_SWAP_V3_POSITIONS),
+            marketBalanceBefore,
+            "market balance unchanged"
+        );
+        assertEq(
+            IERC721(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(donatedTokenId),
+            _plasmaVault,
+            "donated NFT not burned"
+        );
+        assertEq(IERC721(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(firstTokenId), _plasmaVault, "first position intact");
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {

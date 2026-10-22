@@ -19,16 +19,25 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         vm.prank(custodianA);
         IExternalStateExecutor(_executorAddress()).proposeBalance(balanceAccountA, 1_000e6);
 
-        (,, uint64 proposedAt, uint256 nonce) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
+        (, , uint64 proposedAt, uint256 nonce) = ExternalStateExecutor(_executorAddress()).pendingProposals(
+            balanceAccountA
+        );
         bytes32 h = _proposalHash(_executorAddress(), balanceAccountA, 1_000e6, custodianA, proposedAt, nonce);
 
         vm.prank(custodianB);
         IExternalStateExecutor(_executorAddress()).confirmBalance(balanceAccountA, h);
 
-        // Confirmed balance is reflected on the executor and bumped lastCustodianUpdateTimestamp.
-        (uint256 total,, uint256 lastTs) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
+        // Confirmed balance is reflected on the executor and bumped the monotonic confirm counter
+        // (the circuit-breaker watermark since IL-7969; `lastCustodianUpdateTimestamp` is kept only
+        // as an informational, non-breaker timestamp).
+        (uint256 total, , uint256 confirmCount) = IExternalStateExecutor(_executorAddress()).getBalanceFuseSnapshot();
         assertEq(total, 1_000e6, "balance confirmed");
-        assertEq(lastTs, block.timestamp, "last custodian ts bumped");
+        assertEq(confirmCount, 1, "confirm counter bumped");
+        assertEq(
+            ExternalStateExecutor(_executorAddress()).lastCustodianUpdateTimestamp(),
+            block.timestamp,
+            "informational ts still set"
+        );
     }
 
     function test_fork_custodianDualApproval_sameCustodianReverts() public {
@@ -36,11 +45,16 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         vm.prank(custodianA);
         IExternalStateExecutor(_executorAddress()).proposeBalance(balanceAccountA, 100e6);
 
-        (,, uint64 pa, uint256 n) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
+        (, , uint64 pa, uint256 n) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
         bytes32 h = _proposalHash(_executorAddress(), balanceAccountA, 100e6, custodianA, pa, n);
 
         vm.prank(custodianA);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorSameProposerAndConfirmer.selector, custodianA));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorSameProposerAndConfirmer.selector,
+                custodianA
+            )
+        );
         IExternalStateExecutor(_executorAddress()).confirmBalance(balanceAccountA, h);
     }
 
@@ -49,7 +63,7 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         vm.prank(custodianA);
         IExternalStateExecutor(_executorAddress()).proposeBalance(balanceAccountA, 100e6);
 
-        (,, uint64 pa, uint256 n) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
+        (, , uint64 pa, uint256 n) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
         bytes32 h = _proposalHash(_executorAddress(), balanceAccountA, 100e6, custodianA, pa, n);
 
         // Move past the TTL (stalenessMax = 1 day).
@@ -58,7 +72,10 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         vm.prank(custodianB);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateExecutorProposalExpired.selector, uint256(pa), block.timestamp, STALENESS_MAX_S
+                ExternalStateErrors.ExternalStateExecutorProposalExpired.selector,
+                uint256(pa),
+                block.timestamp,
+                STALENESS_MAX_S
             )
         );
         IExternalStateExecutor(_executorAddress()).confirmBalance(balanceAccountA, h);
@@ -70,7 +87,7 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         // First approval cycle.
         vm.prank(custodianA);
         IExternalStateExecutor(_executorAddress()).proposeBalance(balanceAccountA, 500e6);
-        (,, uint64 pa1, uint256 n1) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
+        (, , uint64 pa1, uint256 n1) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
         bytes32 h1 = _proposalHash(_executorAddress(), balanceAccountA, 500e6, custodianA, pa1, n1);
 
         vm.prank(custodianB);
@@ -81,12 +98,14 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         vm.prank(custodianA);
         IExternalStateExecutor(_executorAddress()).proposeBalance(balanceAccountA, 600e6);
 
-        (,, uint64 pa2, uint256 n2) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
+        (, , uint64 pa2, uint256 n2) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
         bytes32 h2 = _proposalHash(_executorAddress(), balanceAccountA, 600e6, custodianA, pa2, n2);
         assertTrue(h1 != h2, "hashes differ across nonces/timestamps");
 
         vm.prank(custodianB);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorProposalHashMismatch.selector, h2, h1));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorProposalHashMismatch.selector, h2, h1)
+        );
         IExternalStateExecutor(_executorAddress()).confirmBalance(balanceAccountA, h1);
     }
 
@@ -99,7 +118,7 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         // Attempt a second update inside the MIN_UPDATE_INTERVAL window
         vm.prank(custodianA);
         IExternalStateExecutor(_executorAddress()).proposeBalance(balanceAccountA, 200e6);
-        (,, uint64 pa, uint256 n) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
+        (, , uint64 pa, uint256 n) = ExternalStateExecutor(_executorAddress()).pendingProposals(balanceAccountA);
         bytes32 h = _proposalHash(_executorAddress(), balanceAccountA, 200e6, custodianA, pa, n);
 
         uint256 lastUpdate = block.timestamp;
@@ -122,17 +141,37 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         // Reconfigure dust threshold to 0 so any non-zero executor balance triggers the guard.
         _grantDustZero();
 
-        // Deploy executor and seed it with USDC directly — simulates a stuck balance.
+        // Deploy executor and leave 1 USDC credited-but-unforwarded on it — simulates a stuck balance
+        // (an enter that was not forwarded). A plain donation would NOT block (IL-8739), so the vault
+        // credits the tokens through `addBalance` like the operation fuse does on enter.
         _createExecutor();
         deal(USDC, _executorAddress(), 1e6); // 1 USDC
+        vm.prank(address(vault));
+        IExternalStateExecutor(_executorAddress()).addBalance(balanceAccountA, 0, USDC, 1e6);
 
         uint256 decimals = 6; // USDC decimals
-        uint256 allowed = (10 ** decimals) * 0 / 100; // dust threshold = 0
+        uint256 allowed = ((10 ** decimals) * 0) / 100; // dust threshold = 0
         vm.prank(custodianA);
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector, USDC, uint256(1e6), allowed)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector,
+                USDC,
+                uint256(1e6),
+                allowed
+            )
         );
         IExternalStateExecutor(_executorAddress()).proposeBalance(balanceAccountA, 50e6);
+    }
+
+    /// @notice A donated token (plain transfer, not credited by the vault) must not block custodians (IL-8739).
+    function test_fork_custodianDualApproval_donationDoesNotBlockUpdate() public {
+        _grantDustZero();
+        _createExecutor();
+        deal(USDC, _executorAddress(), 1e6); // 1 USDC donated, not credited
+
+        vm.prank(custodianA);
+        IExternalStateExecutor(_executorAddress()).proposeBalance(balanceAccountA, 50e6);
+        assertEq(IExternalStateExecutor(_executorAddress()).unforwardedCredit(USDC), 0);
     }
 
     // ============================================================
@@ -149,7 +188,10 @@ contract ExternalStateCustodianDualApprovalForkTest is ExternalStateForkTestBase
         subs[3] = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccountB);
         subs[4] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianA);
         subs[5] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianB);
-        subs[6] = ExternalStateSubstrateLib.encodeTargetSubstrate(address(externalStateProtocol), MockExternalStateProtocolForFork.deposit.selector);
+        subs[6] = ExternalStateSubstrateLib.encodeTargetSubstrate(
+            address(externalStateProtocol),
+            MockExternalStateProtocolForFork.deposit.selector
+        );
         subs[7] = ExternalStateSubstrateLib.encodeStalenessMaxSubstrate(STALENESS_MAX_S);
         subs[8] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(BIG_CHANGE_BPS);
         subs[9] = ExternalStateSubstrateLib.encodeDustThresholdSubstrate(0);

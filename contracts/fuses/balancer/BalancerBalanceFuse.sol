@@ -6,9 +6,11 @@ import {BalancerSubstrateLib, BalancerSubstrateType, BalancerSubstrate} from "./
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IPool} from "./ext/IPool.sol";
 import {ILiquidityGauge} from "./ext/ILiquidityGauge.sol";
+import {IporMath} from "../../libraries/math/IporMath.sol";
 
 /**
  * @title BalancerBalanceFuse
@@ -64,13 +66,23 @@ contract BalancerBalanceFuse is IMarketBalanceFuse {
     ///         - If substrate is a Pool: uses the pool address directly
     ///         - If substrate is a Gauge: retrieves the LP token (pool) from the gauge
     ///      2. Gets the LP token balance held by the vault for that pool/gauge
-    ///      3. Calculates proportional token amounts based on LP token holdings relative to total supply
-    ///      4. Converts all token amounts to USD using the price oracle middleware
+    ///      3. Calculates proportional token amounts based on LP token holdings relative to total supply,
+    ///         using the pool's raw (native-decimals) balances rather than the live rate-scaled balances.
+    ///         `getTokenInfo()`'s `lastBalancesLiveScaled18` is, for `WITH_RATE` tokens (e.g. wstETH,
+    ///         ERC-4626 wrappers in a boosted pool), already `raw * scalingFactor * tokenRate` — i.e. it
+    ///         embeds the same rate that the token's own price feed (e.g. `ERC4626PriceFeed`,
+    ///         `WstETHPriceFeedEthereum`) also embeds. Using the live balances together with such a feed
+    ///         would apply the rate twice. Using `balancesRaw` and letting the oracle price apply the rate
+    ///         exactly once avoids the double count.
+    ///      4. Converts all token amounts to USD using the price oracle middleware, normalizing by each
+    ///         token's own decimals (raw amounts are in native token decimals, not 18)
     ///      5. Sums all balances and returns the total USD value
     ///      The calculation methodology ensures that:
     ///      - Both direct pool positions and gauge-staked positions are included
-    ///      - Proportional token amounts are calculated accurately based on LP token share
-    ///      - All token amounts are converted to USD using oracle prices
+    ///      - Proportional token amounts are calculated accurately based on LP token share, in the pool's
+    ///        native (raw) token decimals
+    ///      - All token amounts are converted to USD using oracle prices, with the rate (if any) applied
+    ///        exactly once by the price feed
     ///      - Final result is normalized to WAD precision (18 decimals) for consistency
     /// @return The total balance of the Plasma Vault in Balancer protocol, normalized to WAD (18 decimals)
     function balanceOf() external override returns (uint256) {
@@ -107,11 +119,11 @@ contract BalancerBalanceFuse is IMarketBalanceFuse {
                 continue;
             }
 
-            (IERC20[] memory tokens, , , uint256[] memory lastBalancesLiveScaled18) = IPool(pool).getTokenInfo();
+            (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = IPool(pool).getTokenInfo();
 
             uint256 totalSupply = IERC20(pool).totalSupply();
             uint256[] memory amountsOut = BalancerSubstrateLib.computeProportionalAmountsOut(
-                lastBalancesLiveScaled18,
+                balancesRaw,
                 totalSupply,
                 lpBalance
             );
@@ -128,11 +140,11 @@ contract BalancerBalanceFuse is IMarketBalanceFuse {
     /**
      * @notice Converts a token amount to its USD value using the price oracle
      * @dev Uses the price oracle middleware to get the token price and converts the amount
-     * accounting for decimals
-     * @param amount_ The amount of tokens to convert, in 18 decimals
+     * accounting for the token's native decimals and the price feed's decimals
+     * @param amount_ The amount of tokens to convert, in the token's native decimals
      * @param token_ The address of the token to get the price for
      * @param priceOracleMiddleware_ The address of the price oracle middleware to use
-     * @return The USD value of the tokens in 18 decimals
+     * @return The USD value of the tokens in 18 decimals (WAD)
      */
 
     function _convertToUsd(
@@ -140,7 +152,9 @@ contract BalancerBalanceFuse is IMarketBalanceFuse {
         address token_,
         address priceOracleMiddleware_
     ) internal view returns (uint256) {
-        (uint256 price, uint256 decimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(token_);
-        return (amount_ * price) / 10 ** decimals;
+        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware_).getAssetPrice(
+            token_
+        );
+        return IporMath.convertToWad(amount_ * price, IERC20Metadata(token_).decimals() + priceDecimals);
     }
 }

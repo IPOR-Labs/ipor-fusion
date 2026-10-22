@@ -2,10 +2,15 @@
 pragma solidity 0.8.30;
 
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
+import {
+    VelodromeSuperchainSlipstreamSubstrateLib,
+    VelodromeSuperchainSlipstreamSubstrateType,
+    VelodromeSuperchainSlipstreamSubstrate
+} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 import {ILeafCLGauge} from "./ext/ILeafCLGauge.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
 
@@ -73,6 +78,10 @@ contract VelodromeSuperchainSlipstreamLeafCLGaugeFuse is IFuseCommon {
     /// @param gaugeAddress The address of the gauge that is not supported
     error VelodromeSuperchainSlipstreamLeafCLGaugeUnsupportedGauge(address gaugeAddress);
 
+    /// @notice Thrown when attempting to stake a tokenId that is not in the vault's tracked position list
+    /// @param tokenId The NFT token ID that is not tracked
+    error VelodromeSuperchainSlipstreamLeafCLGaugeFuseTokenIdNotTracked(uint256 tokenId);
+
     /// @notice Constructor to initialize the fuse with a market ID
     /// @param marketId_ The unique identifier for the market configuration
     /// @dev Sets VERSION to the address of this contract instance.
@@ -88,6 +97,7 @@ contract VelodromeSuperchainSlipstreamLeafCLGaugeFuse is IFuseCommon {
     /// @param data_ Enter data containing gauge address and token ID
     /// @return result Result structure containing gauge address and token ID
     /// @custom:revert VelodromeSuperchainSlipstreamLeafCLGaugeUnsupportedGauge When gauge is not granted as a substrate
+    /// @custom:revert VelodromeSuperchainSlipstreamLeafCLGaugeFuseTokenIdNotTracked When tokenId is not in the vault's tracked position list
     function enter(
         VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterData memory data_
     ) public returns (VelodromeSuperchainSlipstreamLeafCLGaugeFuseEnterResult memory result) {
@@ -113,6 +123,8 @@ contract VelodromeSuperchainSlipstreamLeafCLGaugeFuse is IFuseCommon {
             return result;
         }
 
+        _requireTracked(data_.tokenId);
+
         INonfungiblePositionManager(ILeafCLGauge(data_.gaugeAddress).nft()).approve(data_.gaugeAddress, data_.tokenId);
 
         ILeafCLGauge(data_.gaugeAddress).deposit(data_.tokenId);
@@ -123,6 +135,7 @@ contract VelodromeSuperchainSlipstreamLeafCLGaugeFuse is IFuseCommon {
     /// @notice Exits (withdraws) NFT position from gauge
     /// @dev Validates that the gauge is granted as a substrate. Withdraws the NFT from the gauge,
     ///      returning it to the caller and stopping reward accrual.
+    ///      Does not check the tracked list: an NFT staked by an older gauge fuse can always be unstaked.
     /// @param data_ Exit data containing gauge address and token ID
     /// @return result Result structure containing gauge address and token ID
     /// @custom:revert VelodromeSuperchainSlipstreamLeafCLGaugeUnsupportedGauge When gauge is not granted as a substrate
@@ -192,5 +205,20 @@ contract VelodromeSuperchainSlipstreamLeafCLGaugeFuse is IFuseCommon {
         outputs[0] = TypeConversionLib.toBytes32(result.gaugeAddress);
         outputs[1] = TypeConversionLib.toBytes32(result.tokenId);
         TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Reverts unless the tokenId is registered in the vault's tracked Velodrome Superchain Slipstream position list
+    /// @dev The balance fuse's Pool branch values only tracked positions, but its Gauge branch values every NFT
+    ///      staked by the vault. Staking an untracked (e.g. donated) NFT would therefore change NAV, so only tokenIds
+    ///      registered by the NewPosition fuse can be staked.
+    function _requireTracked(uint256 tokenId_) private view {
+        FuseStorageLib.VelodromeSuperchainSlipstreamTokenIds storage tokensIds = FuseStorageLib
+            .getVelodromeSuperchainSlipstreamTokenIds();
+
+        uint256 index = tokensIds.indexes[tokenId_];
+
+        if (index >= tokensIds.tokenIds.length || tokensIds.tokenIds[index] != tokenId_) {
+            revert VelodromeSuperchainSlipstreamLeafCLGaugeFuseTokenIdNotTracked(tokenId_);
+        }
     }
 }

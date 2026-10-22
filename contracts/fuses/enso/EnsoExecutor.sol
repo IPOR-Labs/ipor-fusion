@@ -13,10 +13,22 @@ import {IWETH9} from "../../interfaces/ext/IWETH9.sol";
 /// @param requestId The bytes32 value representing an API request
 /// @param commands An array of bytes32 values that encode calls
 /// @param state An array of bytes that are used to generate call data for each command
-/// @param tokensToReturn Array of token addresses to return to sender after execution
+/// @param tokensToReturn Array of token addresses to return to sender after execution. A
+///        non-empty array declares that the route's outputs are delivered to PLASMA_VAULT in
+///        this transaction: every listed token's full executor balance is swept and no pending
+///        balance is recorded (`_balance.assetBalance = 0`). Leave empty for cross-chain or
+///        delayed legs, where the pending-balance placeholder must be kept.
 /// @param wEthAmount Amount of WETH to handle
 /// @param tokenOut Token address to transfer out
 /// @param amountOut Amount to transfer out
+/// @param tokensToRevoke Array of token addresses whose allowance to the paired spender in
+///        `spendersToRevoke` must be revoked (set to 0) after the shortcut executes. Pair i is
+///        (tokensToRevoke[i], spendersToRevoke[i]). Declared by the caller (the alpha), who
+///        builds the shortcut and therefore knows every approval it makes; revocation is
+///        unconditional and not substrate-validated, since revoking to zero is strictly
+///        risk-reducing. Any approval whose (token, spender) pair is not declared here persists
+///        on the executor indefinitely - see contracts/fuses/enso/README.md.
+/// @param spendersToRevoke Array of spender addresses paired with `tokensToRevoke` (see above)
 struct EnsoExecutorData {
     bytes32 accountId;
     bytes32 requestId;
@@ -26,6 +38,8 @@ struct EnsoExecutorData {
     uint256 wEthAmount;
     address tokenOut;
     uint256 amountOut;
+    address[] tokensToRevoke;
+    address[] spendersToRevoke;
 }
 
 /// @title EnsoExecutorBalance
@@ -57,6 +71,9 @@ contract EnsoExecutor {
     error EnsoExecutorBalanceNotEmpty();
     error EnsoExecutorInvalidTargetAddress();
     error EnsoExecutorInvalidData();
+
+    /// @notice Error thrown when tokensToRevoke and spendersToRevoke arrays have different lengths
+    error EnsoExecutorRevokeArrayLengthMismatch();
 
     /// @notice Event emitted when an Enso shortcut execution is completed
     /// @param sender Address that initiated the execution
@@ -114,11 +131,20 @@ contract EnsoExecutor {
     /// @param data_ EnsoExecutorData containing all necessary information for the shortcut execution
     /// @dev This function:
     ///      - Delegatecalls into DelegateEnsoShortcuts.executeShortcut()
-    ///      - Transfers all specified tokens back to the sender
+    ///      - Transfers all specified tokens back to the sender, in order: re-wrapped ETH,
+    ///        the residual `tokenOut`, then every entry of `tokensToReturn`
+    ///      - If `tokensToReturn` is non-empty, records no pending balance
+    ///        (`_balance.assetBalance = 0`) - the caller declared the outputs are delivered in
+    ///        this transaction. If `tokensToReturn` is empty, the residual `tokenOut` pending
+    ///        balance is tracked as before, for cross-chain / delayed legs.
     /// @dev Only callable by the PlasmaVault contract
     function execute(EnsoExecutorData memory data_) external payable onlyPlasmaVault {
         if (_balance.assetAddress != address(0)) {
             revert EnsoExecutorBalanceAlreadySet();
+        }
+
+        if (data_.tokensToRevoke.length != data_.spendersToRevoke.length) {
+            revert EnsoExecutorRevokeArrayLengthMismatch();
         }
 
         // Delegatecall to DelegateEnsoShortcuts.executeShortcut
@@ -136,6 +162,16 @@ contract EnsoExecutor {
 
         Address.functionDelegateCall(DELEGATE_ENSO_SHORTCUTS, delegateCallData);
 
+        // @dev Revoke every caller-declared (token, spender) allowance pair created by the
+        // shortcut. The alpha builds the shortcut and knows every approval it contains; this is
+        // an unconditional, best-effort cleanup and is not substrate-validated because revoking
+        // to zero is strictly risk-reducing. Undeclared pairs are not detected and persist - see
+        // contracts/fuses/enso/README.md.
+        uint256 revokeLength = data_.tokensToRevoke.length;
+        for (uint256 i; i < revokeLength; ++i) {
+            IERC20(data_.tokensToRevoke[i]).forceApprove(data_.spendersToRevoke[i], 0);
+        }
+
         uint256 ethBalance = address(this).balance;
         if (ethBalance > 0) {
             IWETH9(WETH_ADDRESS).deposit{value: ethBalance}();
@@ -147,6 +183,27 @@ contract EnsoExecutor {
 
         if (tokenOutBalance > 0) {
             IERC20(data_.tokenOut).safeTransfer(PLASMA_VAULT, tokenOutBalance);
+        }
+
+        // @dev Sweep every declared route output back to PLASMA_VAULT. Zero balances (already
+        // swept as tokenOut/WETH above, duplicates, or tokens the route did not produce) are
+        // skipped - harmless, no dedup needed.
+        uint256 tokensToReturnLength = data_.tokensToReturn.length;
+        address tokenToReturn;
+        uint256 tokenToReturnBalance;
+        for (uint256 i; i < tokensToReturnLength; ++i) {
+            tokenToReturn = data_.tokensToReturn[i];
+            tokenToReturnBalance = IERC20(tokenToReturn).balanceOf(address(this));
+            if (tokenToReturnBalance > 0) {
+                IERC20(tokenToReturn).safeTransfer(PLASMA_VAULT, tokenToReturnBalance);
+            }
+        }
+
+        if (tokensToReturnLength > 0) {
+            // @dev The caller declared that the route's outputs are delivered to PLASMA_VAULT in
+            // this transaction (swept above); nothing is pending.
+            _balance.assetBalance = 0;
+        } else if (tokenOutBalance > 0) {
             if (data_.amountOut > tokenOutBalance) {
                 // @dev In cross-chain or other scenarios, the executor might not have all tokens yet,
                 // @devbut we still track the remaining expected balance for future reconciliation

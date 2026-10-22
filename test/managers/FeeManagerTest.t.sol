@@ -1197,4 +1197,237 @@ contract FeeManagerTest is Test {
             "Total management fee should equal DAO fee"
         );
     }
+
+    // --- IL-8110: duplicate recipient regression tests ---
+
+    function testShouldNotUpdateManagementFeeWhenRecipientDuplicated() external {
+        // given
+        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(managementAccount).FEE_MANAGER());
+
+        RecipientFee[] memory managementFees = new RecipientFee[](2);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 150});
+        managementFees[1] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 50});
+
+        // when/then
+        vm.startPrank(_ATOMIST);
+        vm.expectRevert(
+            abi.encodeWithSelector(FeeManager.DuplicateFeeRecipientAddress.selector, _FEE_RECIPIENT_1)
+        );
+        feeManager.updateManagementFee(managementFees);
+        vm.stopPrank();
+    }
+
+    function testShouldNotUpdateManagementFeeWhenRecipientDuplicatedWithEqualFee() external {
+        // given
+        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(managementAccount).FEE_MANAGER());
+
+        RecipientFee[] memory managementFees = new RecipientFee[](2);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 100});
+        managementFees[1] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 100});
+
+        // when/then
+        vm.startPrank(_ATOMIST);
+        vm.expectRevert(
+            abi.encodeWithSelector(FeeManager.DuplicateFeeRecipientAddress.selector, _FEE_RECIPIENT_1)
+        );
+        feeManager.updateManagementFee(managementFees);
+        vm.stopPrank();
+    }
+
+    function testShouldNotUpdatePerformanceFeeWhenRecipientDuplicated() external {
+        // given
+        address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
+
+        RecipientFee[] memory performanceFees = new RecipientFee[](3);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 600});
+        performanceFees[1] = RecipientFee({recipient: _FEE_RECIPIENT_2, feeValue: 300});
+        performanceFees[2] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 300});
+
+        // when/then
+        vm.startPrank(_ATOMIST);
+        vm.expectRevert(
+            abi.encodeWithSelector(FeeManager.DuplicateFeeRecipientAddress.selector, _FEE_RECIPIENT_1)
+        );
+        feeManager.updatePerformanceFee(performanceFees);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenManagementFeeRecipientDuplicatedInConstructor() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](1);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: PERFORMANCE_FEE_IN_PERCENTAGE});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](2);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 100});
+        managementFees[1] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 100});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when/then
+        vm.expectRevert(
+            abi.encodeWithSelector(FeeManager.DuplicateFeeRecipientAddress.selector, _FEE_RECIPIENT_1)
+        );
+        new FeeManager(initData);
+    }
+
+    function testShouldRevertWhenPerformanceFeeRecipientDuplicatedInConstructor() external {
+        // given
+        RecipientFee[] memory performanceFees = new RecipientFee[](2);
+        performanceFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 100});
+        performanceFees[1] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 100});
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: MANAGEMENT_FEE_IN_PERCENTAGE});
+
+        FeeManagerInitData memory initData = FeeManagerInitData({
+            initialAuthority: _ATOMIST,
+            plasmaVault: _plasmaVault,
+            iporDaoManagementFee: DAO_MANAGEMENT_FEE_IN_PERCENTAGE,
+            iporDaoPerformanceFee: DAO_PERFORMANCE_FEE_IN_PERCENTAGE,
+            iporDaoFeeRecipientAddress: _DAO_FEE_RECIPIENT,
+            recipientManagementFees: managementFees,
+            recipientPerformanceFees: performanceFees
+        });
+
+        // when/then
+        vm.expectRevert(
+            abi.encodeWithSelector(FeeManager.DuplicateFeeRecipientAddress.selector, _FEE_RECIPIENT_1)
+        );
+        new FeeManager(initData);
+    }
+
+    function testShouldUpdateManagementFeeWhenDaoRecipientIsAlsoListedRecipient() external {
+        // given
+        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(managementAccount).FEE_MANAGER());
+
+        RecipientFee[] memory managementFees = new RecipientFee[](1);
+        managementFees[0] = RecipientFee({recipient: _DAO_FEE_RECIPIENT, feeValue: 200});
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateManagementFee(managementFees);
+        vm.stopPrank();
+
+        // then
+        RecipientFee[] memory storedFees = feeManager.getManagementFeeRecipients();
+        assertEq(storedFees.length, 1, "Should have exactly one recipient row");
+        assertEq(storedFees[0].recipient, _DAO_FEE_RECIPIENT, "Recipient should be _DAO_FEE_RECIPIENT");
+        assertEq(storedFees[0].feeValue, 200, "Recipient fee value should be 200");
+    }
+
+    function testShouldDistributeFullBalanceWithTwoDistinctManagementRecipients() external {
+        // given
+        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(managementAccount).FEE_MANAGER());
+
+        RecipientFee[] memory managementFees = new RecipientFee[](2);
+        managementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 150});
+        managementFees[1] = RecipientFee({recipient: _FEE_RECIPIENT_2, feeValue: 50});
+
+        vm.startPrank(_ATOMIST);
+        feeManager.updateManagementFee(managementFees);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 356 days);
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(_plasmaVault, 1_000e6);
+        PlasmaVault(_plasmaVault).deposit(1_000e6, _USER);
+        vm.stopPrank();
+
+        uint256 balanceDaoBefore = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+        uint256 balanceRecipient1Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+
+        // when
+        feeManager.harvestManagementFee();
+
+        // then
+        uint256 balanceManagementAccountAfter = PlasmaVault(_plasmaVault).balanceOf(managementAccount);
+        uint256 balanceDaoAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+        uint256 balanceRecipient1After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+
+        assertEq(balanceManagementAccountAfter, 0, "Fee account should be fully drained");
+        assertEq(balanceDaoAfter - balanceDaoBefore, 29260273920, "DAO should receive 29260273920");
+        assertEq(
+            balanceRecipient1After - balanceRecipient1Before,
+            14630136960,
+            "_FEE_RECIPIENT_1 should receive 14630136960"
+        );
+        assertEq(
+            balanceRecipient2After - balanceRecipient2Before,
+            4876712320,
+            "_FEE_RECIPIENT_2 should receive 4876712320"
+        );
+    }
+
+    function testShouldClearDroppedRecipientFeeWhenRecipientListReplaced() external {
+        // given
+        address managementAccount = PlasmaVaultGovernance(_plasmaVault).getManagementFeeData().feeAccount;
+        FeeManager feeManager = FeeManager(FeeAccount(managementAccount).FEE_MANAGER());
+
+        RecipientFee[] memory firstManagementFees = new RecipientFee[](2);
+        firstManagementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_1, feeValue: 100});
+        firstManagementFees[1] = RecipientFee({recipient: _FEE_RECIPIENT_2, feeValue: 100});
+
+        RecipientFee[] memory secondManagementFees = new RecipientFee[](1);
+        secondManagementFees[0] = RecipientFee({recipient: _FEE_RECIPIENT_2, feeValue: 200});
+
+        // when
+        vm.startPrank(_ATOMIST);
+        feeManager.updateManagementFee(firstManagementFees);
+        feeManager.updateManagementFee(secondManagementFees);
+        vm.stopPrank();
+
+        // then - the replaced array drops _FEE_RECIPIENT_1's row entirely
+        RecipientFee[] memory storedFees = feeManager.getManagementFeeRecipients();
+        assertEq(storedFees.length, 1, "Should have exactly one recipient row");
+        assertEq(storedFees[0].recipient, _FEE_RECIPIENT_2, "Remaining recipient should be _FEE_RECIPIENT_2");
+        assertEq(storedFees[0].feeValue, 200, "Remaining recipient fee value should be 200");
+
+        vm.warp(block.timestamp + 356 days);
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(_plasmaVault, 1_000e6);
+        PlasmaVault(_plasmaVault).deposit(1_000e6, _USER);
+        vm.stopPrank();
+
+        uint256 balanceRecipient1Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2Before = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+        uint256 balanceDaoBefore = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+
+        // when
+        feeManager.harvestManagementFee();
+
+        // then
+        uint256 balanceManagementAccountAfter = PlasmaVault(_plasmaVault).balanceOf(managementAccount);
+        uint256 balanceRecipient1After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
+        uint256 balanceRecipient2After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
+        uint256 balanceDaoAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
+
+        assertEq(balanceManagementAccountAfter, 0, "Fee account should be fully drained");
+        assertEq(
+            balanceRecipient1After,
+            balanceRecipient1Before,
+            "Dropped recipient _FEE_RECIPIENT_1 should receive nothing"
+        );
+        assertEq(balanceRecipient1After, 0, "Dropped recipient _FEE_RECIPIENT_1 balance should stay 0");
+        assertEq(
+            balanceRecipient2After - balanceRecipient2Before,
+            19506849280,
+            "_FEE_RECIPIENT_2 should receive 19506849280"
+        );
+        assertEq(balanceDaoAfter - balanceDaoBefore, 29260273920, "DAO should receive 29260273920");
+    }
 }

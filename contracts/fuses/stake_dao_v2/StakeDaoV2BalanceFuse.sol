@@ -52,17 +52,43 @@ contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
         uint256 lpTokenUnderlyingPriceDecimals;
 
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
-        address plasmaVault = address(this);
+        /// @dev If a granted reward vault's LP token is the PlasmaVault's own underlying asset,
+        /// @dev any loose (unstaked) balance of it is already counted as idle by
+        /// @dev `PlasmaVault._getGrossTotalAssets()` (`IERC20(asset()).balanceOf(address(this))`).
+        /// @dev Adding it again here would double-count it. This is vault identity (the immutable
+        /// @dev `asset()`), not a substrate grant, so reading it here does not police grants.
+        address plasmaVaultAsset = IERC4626(address(this)).asset();
+
+        /// @dev Tracks LP tokens already priced in this call so loose LP-vault shares are counted
+        /// @dev exactly once, even when multiple granted reward vaults share the same LP token.
+        address[] memory seenLpTokens = new address[](len);
+        uint256 seenLpTokensCount;
 
         for (uint256 i; i < len; ++i) {
             rewardVaultAddress = IERC4626(PlasmaVaultConfigLib.bytes32ToAddress(rewardVaults[i]));
 
             /// @dev Notice! In StakeDaoV2 deposited assets are 1:1 shares of the reward vault, so amount of underlying assets is equal to amount of shares
-            /// @dev there is no need to convert to assets [ rewardVaultAddress.convertToAssets(rewardVaultAddress.balanceOf(plasmaVault)); ]
-            rewardVaultAssets = rewardVaultAddress.balanceOf(plasmaVault);
+            /// @dev there is no need to convert to assets [ rewardVaultAddress.convertToAssets(rewardVaultAddress.balanceOf(address(this))); ]
+            rewardVaultAssets = rewardVaultAddress.balanceOf(address(this));
 
             /// @dev Underlying asset of the reward vault is the lp token vault which compatible with ERC4626
             lpTokenAddress = rewardVaultAddress.asset();
+
+            /// @dev The supply fuse's instant withdraw can strand LP-vault shares in the PlasmaVault
+            /// @dev when the outer reward-vault redeem succeeds but the inner LP-vault redeem fails
+            /// @dev and is swallowed. Value any such loose LP-vault shares here too, so the position
+            /// @dev is never invisible to totalAssets(). Reward-vault shares are 1:1 LP-vault shares
+            /// @dev (see note above), so the loose LP-vault balance can be summed directly with the
+            /// @dev staked amount before the single convertToAssets() call below. Dedup per LP token
+            /// @dev so two granted reward vaults sharing one LP token never double-count it. Skip
+            /// @dev entirely when the LP token is the PlasmaVault's own underlying asset -- that
+            /// @dev balance is already counted as idle by `PlasmaVault._getGrossTotalAssets()`.
+            if (
+                lpTokenAddress != plasmaVaultAsset && _markLpTokenSeen(seenLpTokens, seenLpTokensCount, lpTokenAddress)
+            ) {
+                ++seenLpTokensCount;
+                rewardVaultAssets += IERC4626(lpTokenAddress).balanceOf(address(this));
+            }
 
             /// @dev Reward Vault shares are 1:1 Reward Vault assets
             /// @dev Reward Vault assets are LP Token shares
@@ -84,5 +110,25 @@ contract StakeDaoV2BalanceFuse is IMarketBalanceFuse {
         }
 
         return balance;
+    }
+
+    /// @dev Records `lpTokenAddress_` as seen if it is not already present in the first
+    /// @dev `seenLpTokensCount_` entries of `seenLpTokens_`. Mutates `seenLpTokens_` in place
+    /// @dev (memory arrays are passed by reference). Returns true if the token is new (and was
+    /// @dev just recorded), false if it was already present.
+    /// @dev Extracted out of `balanceOf()` to keep that function's stack shallow enough to compile
+    /// @dev without `via-ir` (forbidden in this repo).
+    function _markLpTokenSeen(
+        address[] memory seenLpTokens_,
+        uint256 seenLpTokensCount_,
+        address lpTokenAddress_
+    ) private pure returns (bool isNew) {
+        for (uint256 j; j < seenLpTokensCount_; ++j) {
+            if (seenLpTokens_[j] == lpTokenAddress_) {
+                return false;
+            }
+        }
+        seenLpTokens_[seenLpTokensCount_] = lpTokenAddress_;
+        return true;
     }
 }

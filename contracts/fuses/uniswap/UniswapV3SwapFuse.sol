@@ -55,7 +55,7 @@ contract UniswapV3SwapFuse is IFuseCommon {
     /**
      * @dev Emitted when a swap is successfully executed through the contract.
      * @param version The version of the contract executing the swap.
-     * @param tokenInAmount The amount of input tokens used for the swap.
+     * @param tokenInAmount The amount of input tokens actually swapped (the request clamped to the vault's balance of the first path token).
      * @param path The encoded path used for the swap.
      * @param minOutAmount The minimum amount of output tokens expected from the swap.
      */
@@ -82,14 +82,16 @@ contract UniswapV3SwapFuse is IFuseCommon {
      *      and then proceeds to perform the token swap through the Uniswap V3 Universal Router.
      *
      * Requirements:
-     * - The `tokenInAmount` must be greater than zero.
      * - The `path` must contain valid token addresses and fee information.
      * - Each token in the `path` must be a supported asset according to `PlasmaVaultConfigLib`.
-     * - The contract must have enough balance of the input token to perform the swap.
+     * - The requested `tokenInAmount` is clamped to the contract's balance of the first token in
+     *   `path`; when the clamped amount is `0` (zero request or empty balance), the function
+     *   performs no transfer, emits no event, and returns `0` as `tokenInAmount` with
+     *   `path`/`minOutAmount` echoed as passed.
      *
      * Emits an `UniswapV3SwapFuseEnter` event indicating the details of the swap.
      * @param data_ The swap data containing tokenInAmount, minOutAmount, and path
-     * @return tokenInAmount The amount of input tokens used for the swap
+     * @return tokenInAmount The amount of input tokens actually swapped (`0` when no swap was performed)
      * @return path The encoded path used for the swap
      * @return minOutAmount The minimum amount of output tokens expected from the swap
      */
@@ -131,7 +133,7 @@ contract UniswapV3SwapFuse is IFuseCommon {
         uint256 inputAmount = data_.tokenInAmount <= vaultBalance ? data_.tokenInAmount : vaultBalance;
 
         if (inputAmount == 0) {
-            return (data_.tokenInAmount, memoryPath, data_.minOutAmount);
+            return (0, memoryPath, data_.minOutAmount);
         }
 
         IERC20(tokens[0]).safeTransfer(UNIVERSAL_ROUTER, inputAmount);
@@ -149,7 +151,7 @@ contract UniswapV3SwapFuse is IFuseCommon {
 
         IUniversalRouter(UNIVERSAL_ROUTER).execute(commands, inputs);
 
-        tokenInAmount = data_.tokenInAmount;
+        tokenInAmount = inputAmount;
         path = memoryPath;
         minOutAmount = data_.minOutAmount;
 
@@ -195,8 +197,9 @@ contract UniswapV3SwapFuse is IFuseCommon {
 
     /// @notice Enters the Fuse using transient storage for parameters
     /// @dev Reads inputs from transient storage: tokenInAmount (inputs[0]), minOutAmount (inputs[1]),
-    ///      pathLength (inputs[2]), path chunks (inputs[3]...). Writes returned tokenInAmount, path length,
-    ///      path chunks, and minOutAmount to transient storage outputs.
+    ///      pathLength (inputs[2]), path chunks (inputs[3]...). Writes returned tokenInAmount (the
+    ///      effective (clamped) amount, `0` when no swap was performed), path length, path chunks,
+    ///      and minOutAmount to transient storage outputs.
     function enterTransient() external {
         bytes32[] memory inputs = TransientStorageLib.getInputs(VERSION);
 
@@ -252,7 +255,7 @@ contract UniswapV3SwapFuse is IFuseCommon {
     }
 
     /// @notice Helper function to store outputs including bytes path to transient storage
-    /// @param tokenInAmount_ The amount of input tokens used for the swap
+    /// @param tokenInAmount_ The effective (clamped) amount of input tokens swapped, `0` when no swap was performed
     /// @param path_ The encoded path used for the swap
     /// @param minOutAmount_ The minimum amount of output tokens expected from the swap
     function _storeOutputs(uint256 tokenInAmount_, bytes memory path_, uint256 minOutAmount_) private {

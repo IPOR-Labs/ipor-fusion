@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {FusesLibMock} from "./FusesLibMock.sol";
 import {ZeroBalanceFuse} from "../../contracts/fuses/ZeroBalanceFuse.sol";
 import {DustBalanceFuseMock} from "./DustBalanceFuseMock.sol";
@@ -456,5 +457,106 @@ contract FusesLibTest is Test {
 
         assertFalse(fusesLibMock.isBalanceFuseSupported(marketIdTwo, fuse2New), "New fuse should be removed");
         assertTrue(fusesLibMock.isBalanceFuseSupported(marketIdOne, fuse1), "Fuse1 should still be supported");
+    }
+
+    /// @dev IL-7976 regression: removing a balance fuse must zero the market's cached valuation
+    /// and decrement the all-markets accumulator by the same amount.
+    function testShouldZeroMarketTotalAssetsCacheWhenRemovingBalanceFuse() public {
+        //given
+        uint256 marketIdOne = 1;
+        uint256 marketIdTwo = 2;
+        address fuse = address(new ZeroBalanceFuse(marketIdOne));
+
+        fusesLibMock.addBalanceFuse(marketIdOne, fuse);
+
+        fusesLibMock.setMarketTotalAssets(marketIdOne, 1_000e6);
+        fusesLibMock.setTotalAssetsInAllMarkets(1_500e6);
+        // market two's 500e6 is not touched by the removal of market one
+        fusesLibMock.setMarketTotalAssets(marketIdTwo, 500e6);
+
+        //when
+        fusesLibMock.removeBalanceFuse(marketIdOne, fuse);
+
+        //then
+        assertEq(fusesLibMock.getMarketTotalAssets(marketIdOne), 0, "Removed market cache should be zeroed");
+        assertEq(
+            fusesLibMock.getTotalAssetsInAllMarkets(),
+            500e6,
+            "Accumulator should be decremented by the cleared cache"
+        );
+        assertEq(fusesLibMock.getMarketTotalAssets(marketIdTwo), 500e6, "Other market cache is untouched");
+    }
+
+    /// @dev IL-7976 regression: removing a fuse for a market whose cache is already zero must not
+    /// disturb the accumulator or emit a cache-cleared event.
+    function testShouldNotChangeTotalAssetsAccumulatorWhenRemovedMarketCacheIsZero() public {
+        //given
+        uint256 marketId = 1;
+        address fuse = address(new ZeroBalanceFuse(marketId));
+
+        fusesLibMock.addBalanceFuse(marketId, fuse);
+        fusesLibMock.setTotalAssetsInAllMarkets(500e6);
+
+        //when
+        vm.recordLogs();
+        fusesLibMock.removeBalanceFuse(marketId, fuse);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        //then
+        assertEq(fusesLibMock.getTotalAssetsInAllMarkets(), 500e6, "Accumulator must stay unchanged");
+        assertEq(fusesLibMock.getMarketTotalAssets(marketId), 0, "Cache stays zero");
+
+        bytes32 clearedTopic = keccak256("MarketTotalAssetsCacheCleared(uint256,uint256)");
+        for (uint256 i; i < entries.length; ++i) {
+            assertTrue(entries[i].topics[0] != clearedTopic, "MarketTotalAssetsCacheCleared must not be emitted");
+        }
+    }
+
+    /// @dev IL-7976 regression: a corrupted invariant (accumulator smaller than the market's own
+    /// cache) must clamp to zero instead of reverting the removal.
+    function testShouldClampInsteadOfRevertWhenAccumulatorSmallerThanMarketCache() public {
+        //given
+        uint256 marketId = 1;
+        address fuse = address(new ZeroBalanceFuse(marketId));
+
+        fusesLibMock.addBalanceFuse(marketId, fuse);
+        fusesLibMock.setMarketTotalAssets(marketId, 1_000e6);
+        fusesLibMock.setTotalAssetsInAllMarkets(400e6);
+
+        //when
+        fusesLibMock.removeBalanceFuse(marketId, fuse);
+
+        //then
+        assertEq(fusesLibMock.getTotalAssetsInAllMarkets(), 0, "Accumulator should clamp to zero, not underflow");
+        assertEq(fusesLibMock.getMarketTotalAssets(marketId), 0, "Market cache should be zeroed");
+    }
+
+    /// @dev IL-7976 regression: the fix must not weaken the existing dust guard - a fuse reporting
+    /// a live balance above the dust threshold still blocks removal, and both cache slots stay untouched.
+    function testShouldStillRevertRemovalWhenLiveBalanceAboveDust() public {
+        //given
+        uint256 marketId = 1;
+        uint256 underlyingDecimals = 18;
+        address fuse = address(new DustBalanceFuseMock(marketId, underlyingDecimals));
+
+        fusesLibMock.setUnderlyingDecimals(uint8(underlyingDecimals));
+        fusesLibMock.addBalanceFuse(marketId, fuse);
+        fusesLibMock.setMarketTotalAssets(marketId, 1_000e6);
+        fusesLibMock.setTotalAssetsInAllMarkets(1_000e6);
+
+        bytes memory error = abi.encodeWithSignature(
+            "BalanceFuseNotReadyToRemove(uint256,address,uint256)",
+            marketId,
+            fuse,
+            10 ** (underlyingDecimals / 2) + 1
+        );
+
+        //when
+        vm.expectRevert(error);
+        fusesLibMock.removeBalanceFuse(marketId, fuse);
+
+        //then
+        assertEq(fusesLibMock.getMarketTotalAssets(marketId), 1_000e6, "Cache must be untouched on revert");
+        assertEq(fusesLibMock.getTotalAssetsInAllMarkets(), 1_000e6, "Accumulator must be untouched on revert");
     }
 }

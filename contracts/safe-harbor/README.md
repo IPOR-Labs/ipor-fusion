@@ -36,17 +36,20 @@ the Agreement itself**:
 
 | Actor | Powers |
 |-------|--------|
-| Registrar owner (IPOR multisig, `Ownable2Step`) | `setManualAllowlist`, `setManualAllowlistBatch`, `forceRemove`, `setAgreement`, `transferAgreementOwnership`, `setAssetRecoveryAddress`, two-step ownership handover. `renounceOwnership` is disabled. |
+| Registrar owner (IPOR multisig, `Ownable2Step`) | `setManualAllowlist`, `setManualAllowlistBatch`, `setDenylist`, `setDenylistBatch`, `forceRemove` (also denylists), `setAgreement`, `transferAgreementOwnership`, `setAssetRecoveryAddress`, two-step ownership handover. `renounceOwnership` is disabled. |
 | Vault owner (`OWNER_ROLE` on the vault's access manager) | `setParticipation(vault, true/false)` for that vault only. Execution delay of the role is ignored; membership alone decides. |
 | FusionFactory | Trusted oracle of genuineness once IL-8227 is deployed. Its "true" is final; any failure counts as "false". |
 | Agreement | Trusted SEAL contract owned by the Registrar. |
+
+`FusionFactory.clone` is permissionless and every clone reports `isFusionVault == true`, so the factory path is
+bounded by `MAX_ACCOUNTS_VIA_FACTORY` (IL-8746) and filtered by the denylist (IL-8779), see Operational Notes.
 
 ## Deployment Flow
 
 1. Create the Agreement through the SEAL `AgreementFactory.create(details, chainValidator, owner = multisig, salt)`.
    `details.chains` may already contain other chains; the Registrar only ever touches `eip155:<this chain>`.
-2. Deploy `SafeHarborRegistrar(multisig, agreement, fusionFactory, assetRecoveryAddress)`.
-   - `multisig` zero → `OwnableInvalidOwner`, `agreement` zero → `Errors.WrongAddress()`, empty
+2. Deploy `SafeHarborRegistrar(multisig, agreement, fusionFactory, assetRecoveryAddress, maxAccountsViaFactory)`; the cap must be non-zero (0 reverts with `Errors.WrongValue()`); D-050: deploy value **200 on every chain** (see Operational Notes).
+   - `maxAccountsViaFactory` zero → `Errors.WrongValue()`, `multisig` zero → `OwnableInvalidOwner`, `agreement` zero → `Errors.WrongAddress()`, empty
      `assetRecoveryAddress` → `EmptyAssetRecoveryAddress()`.
    - `fusionFactory` is **immutable** (no setter). It may be `address(0)` while IL-8227 is not deployed; that Registrar
      is then permanently allowlist-only. Automatic recognition only ever comes from the configured address once it
@@ -81,10 +84,12 @@ is written.
 | # | Check | Revert |
 |---|-------|--------|
 | 1 | `manualAllowlist[vault]` **or** guarded `FusionFactory.isFusionVault(vault)` | `NotFusionVault(vault)` |
+| 1b | opt-in only: `!denylist[vault]` (opt-out skips this check, so a denylisted participant can still leave) | `VaultDenylisted(vault)` |
 | 2 | `IAccessManaged(vault).authority() != address(0)` | `NoAccessManager(vault)` (a vault without the `authority()` selector reverts with the raw error) |
 | 3 | `IAccessManager(authority).hasRole(OWNER_ROLE, msg.sender)` returns `isMember == true` | `isMember == false` → `NotVaultOwner(vault, caller)` (an authority that is not an AccessManager, or a failing `hasRole` read, reverts with the raw error) |
 | 4 | `Agreement.owner() == registrar` | `AgreementNotOwnedByRegistrar(agreement, currentOwner)` |
 | 5 | vault not yet listed on this chain (case-insensitive scan of the Agreement) | `AlreadyParticipating(vault)` |
+| 6 | opt-in only: the vault is not on the manual allowlist and the chain entry already holds `MAX_ACCOUNTS_VIA_FACTORY` accounts (allowlisted vaults bypass the cap but count toward it) | `AccountLimitReached(accountsCount, MAX)` |
 
 Then the vault is added as `Account({accountAddress: <lowercase hex>, childContractScope: None})`:
 
@@ -112,6 +117,7 @@ sequenceDiagram
     else factory is zero or has no code
         Note over R: no call, not eligible = NotFusionVault
     end
+    Note over R: denylisted = VaultDenylisted (1b)
     R->>V: authority()
     V-->>R: accessManager (zero = NoAccessManager)
     R->>AM: hasRole(OWNER_ROLE, caller)
@@ -121,6 +127,7 @@ sequenceDiagram
     R->>A: getDetails()  (raw staticcall)
     A-->>R: chains / accounts
     Note over R: any match = AlreadyParticipating
+    Note over R: not allowlisted and chain entry at MAX = AccountLimitReached
     alt chain entry missing
         R->>A: addChains([...])
     else
@@ -131,7 +138,7 @@ sequenceDiagram
 
 ## Vault Opt-Out Flow
 
-`setParticipation(vault, false)` runs checks 1–4 from the opt-in table, then:
+`setParticipation(vault, false)` runs checks 1, 2, 3 and 4 from the opt-in table (1b, the denylist, is skipped for opt-out), then:
 
 | # | Check | Revert |
 |---|-------|--------|
@@ -171,9 +178,11 @@ sequenceDiagram
 
 | Function | Behaviour |
 |----------|-----------|
-| `forceRemove(vault)` | Removes the vault like an opt-out, but skips eligibility, `authority()` and role checks. Requires Agreement ownership (`AgreementNotOwnedByRegistrar`), reverts `NotParticipating` when the vault is not listed. Emits `ParticipationChanged(vault, false, owner)`. Only entries whose stored string is a hex address can be targeted. |
+| `forceRemove(vault)` | Denylists the vault and removes it like an opt-out if it participates, but skips eligibility, `authority()` and role checks. Requires Agreement ownership (`AgreementNotOwnedByRegistrar`) and never reverts `NotParticipating` (D-051). Always emits `DenylistUpdated(vault, true)` (`forceRemove(address(0))` merely denylists the zero address, which is harmless because zero is never eligible); emits `ParticipationChanged(vault, false, owner)` only when an entry was actually removed. The removal is durable (IL-8779) even if the vault owner opted out first: the vault is denylisted and its owner cannot opt back in; re-admit with `setDenylist(vault, false)`. Never capped. Only entries whose stored string is a hex address can be targeted. |
 | `setManualAllowlist(vault, allowed)` | Zero address → `Errors.WrongAddress()`. Always emits `ManualAllowlistUpdated(vault, allowed)`. Removing a vault from the allowlist does **not** remove it from the Agreement; use `forceRemove`. |
 | `setManualAllowlistBatch(vaults[], allowed)` | Atomic: empty array → `Errors.WrongValue()`, any zero address → `Errors.WrongAddress()` and nothing is written. One `ManualAllowlistUpdated` per input address, in input order; duplicates are allowed and idempotent. |
+| `setDenylist(vault, denied)` | Zero address → `Errors.WrongAddress()`. Always emits `DenylistUpdated(vault, denied)`. A denied vault cannot opt in (`VaultDenylisted`) even when allowlisted or reported by the factory: **deny wins**, and `setManualAllowlist` does not clear it. Opt-out stays possible. Does not remove an existing Agreement entry. Use it to pre-empt hostile clones and to re-admit a force-removed vault. |
+| `setDenylistBatch(vaults[], denied)` | Atomic, same checks as `setManualAllowlistBatch`; one `DenylistUpdated` per input address, in input order. |
 | `setAgreement(newAgreement)` | Zero address → `Errors.WrongAddress()`. Pointer switch only. Participants are **not** migrated and the new Agreement's ownership is not verified (point first, transfer ownership later). Emits `AgreementUpdated(old, new)`. When retiring an Agreement, call `transferAgreementOwnership` on it **before** switching, otherwise its ownership stays with the Registrar. |
 | `transferAgreementOwnership(newOwner)` | Zero address → `Errors.WrongAddress()`. Calls `Agreement.transferOwnership(newOwner)` (single-step, immediate). Emits `AgreementOwnershipTransferred(agreement, newOwner)`. After transfer away from the Registrar, `setParticipation` calls passing checks 1–3 fail at check 4 with `AgreementNotOwnedByRegistrar`; owner-authorized `forceRemove` fails its Agreement-ownership check directly. Earlier errors retain precedence; views and Registrar-only configuration remain available. Resume with `Agreement.transferOwnership(registrar)`. |
 | `setAssetRecoveryAddress(string)` | Empty string → `EmptyAssetRecoveryAddress()`. Used only when the Registrar has to (re)create the chain entry. Precedence: the value cached at the last-account opt-out overrides an earlier setter call; to change the recovery address for the re-created entry, call the setter while no vault participates. |
@@ -185,7 +194,9 @@ sequenceDiagram
 | Function | Returns |
 |----------|---------|
 | `isParticipating(vault)` | True when at least one account on the current chain matches the vault (case-insensitive), read live from the Agreement. |
-| `isEligibleVault(vault)` | `manualAllowlist[vault] || isFusionVault(vault)` with the guarded factory call. |
+| `isEligibleVault(vault)` | `!denylist[vault] && (manualAllowlist[vault] || isFusionVault(vault))` with the guarded factory call. |
+| `isDenylisted(vault)` | Denylist entry. |
+| `getMaxAccountsViaFactory()` / `MAX_ACCOUNTS_VIA_FACTORY()` | Account cap for opt-ins of non-allowlisted vaults. |
 | `isManualAllowlisted(vault)` | Manual allowlist entry. |
 | `getAgreement()` | Managed Agreement. |
 | `getFusionFactory()` / `FUSION_FACTORY()` | Configured FusionFactory (zero when not configured). |
@@ -202,9 +213,36 @@ sequenceDiagram
   the reader skips (contacts, bounty terms, other chains' accounts) are not validated. A reverting `getDetails()`
   bubbles its own error. Configuration getters and the allowlist setters do not touch the Agreement.
 - **Gas grows linearly** with the size of the Agreement payload and the number of accounts on the current chain for
-  every participation lookup, opt-in, opt-out and `forceRemove`. There is no hard cap: Registrar additions require
-  eligibility, but entries imported while another owner held the Agreement (including duplicates) count too, and
-  the factory's admission policy decides how many genuine vaults can exist.
+  every participation lookup, opt-in, opt-out and `forceRemove`. The factory path is capped (IL-8746): because
+  `FusionFactory.clone` is permissionless, an opt-in of a vault that is not on the manual allowlist reverts with
+  `AccountLimitReached(count, MAX)` once the current chain entry holds `MAX_ACCOUNTS_VIA_FACTORY` accounts (stateless,
+  the count is read from the Agreement). Allowlisted vaults bypass the cap but count toward it, so the list is bounded by MAX plus the
+  curated allowlist plus entries imported while another owner held the Agreement. Opt-out and `forceRemove` are never
+  capped.
+- **Account cap deploy value (D-050): `MAX_ACCOUNTS_VIA_FACTORY = 200` on every chain.** Measured on the Ethereum fork,
+  cold storage, one tx per call: about 25.0k gas per listed entry (cold) plus about 133k fixed. The figures assume the Agreement's chain entry holds only this chain's accounts; other chains' entries mirrored into the same Agreement are read by every `getDetails()` and add their own scan cost. The allowlist bypasses the cap
+  (the multisig curates it), and vaults cloned before `isFusionVault` existed (`isFusionVault == false`) can only enter
+  through it. Worst case: an attacker fills the factory quota first, then every allowlisted legacy vault opts in:
+
+  | Chain | MAX + allowlist | Entries | Worst operation (measured) | Share of the 16,777,216 EIP-7825 cap |
+  |-------|-----------------|---------|----------------------------|--------------------------------------|
+  | Ethereum | 200 + 180 | 380 | 9.53M (`forceRemove`) | 57% |
+  | Base | 200 + 261 | 461 | 11.55M (`forceRemove`) | 69% |
+
+  The gas budget is 12,000,000 (about 72% of the tx cap), which leaves headroom for cost drift (opcode repricing, longer
+  strings from imports). The fork test asserts opt-in, opt-out and `forceRemove` at both sizes stay below it.
+  **Per-chain allowlist ceiling:** with MAX = 200 and the 12M budget (about 475 entries), the allowlist of legacy
+  vaults fits about 275 entries per chain. Base has 261 (about 14 slots of headroom), Ethereum 180 (about 95).
+  Re-check against the 12M budget before allowlisting vaults beyond that.
+- **Operational response when the factory quota fills.** The quota also fills without an attacker: it counts every account on the chain entry, allowlisted participants included, and on Base the allowlisted legacy vaults alone exceed MAX = 200. Monitor the chain entry's account count against MAX. Genuine vaults that cannot enter through the factory path are
+  added with `setManualAllowlist(Batch)` (they bypass the cap, mind the budget above). Hostile clones are blocked with
+  `setDenylistBatch` and, if they already enrolled, removed with `forceRemove`; if the list itself became too large for
+  a single call, use the escape hatch below.
+- **Front-running `forceRemove` (D-051).** `forceRemove` always sets the denylist and removes the vault only if it
+  participates, so a vault owner who opts out first cannot undo the denylisting: a single `forceRemove` is durable (also
+  inside an atomic MultiSend).
+- **Durable removal (IL-8779).** `forceRemove` denylists the vault; the owner can pre-empt hostile clones with
+  `setDenylist(Batch)`. The denylist only blocks opt-in and is reactive for fresh addresses.
 - **Escape hatch:** `transferAgreementOwnership(multisig)` does not use the reader. The multisig can then clean the
   Agreement directly in bounded calls (`removeAccounts`, `removeChains`, `setChains`) and hand ownership back with
   `Agreement.transferOwnership(registrar)`.

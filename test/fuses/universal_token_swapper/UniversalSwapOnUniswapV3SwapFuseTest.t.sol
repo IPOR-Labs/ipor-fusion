@@ -120,13 +120,13 @@ contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -180,13 +180,13 @@ contract UniversalSwapOnUniswapV3SwapFuseTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
         uint256 plasmaVaultUsdtBalanceBefore = ERC20(USDT).balanceOf(_plasmaVault);

@@ -26,6 +26,18 @@ import {FusesLib} from "../../../libraries/FusesLib.sol";
 /// - Updates all markets regardless of balance size
 /// - Lower implementation complexity
 /// - Higher gas usage for many small balance markets
+///
+/// ContextManager (runWithContext / runWithContextAndSignature):
+/// - The hook calls PlasmaVault(address(this)).updateMarketsBalances. PlasmaVault authorizes its own
+///   self-calls against the vault, so relayed calls on hooked selectors work like direct calls (IL-8310).
+/// - Vaults created from a PlasmaVault implementation that predates IL-8310 authorize this self-call
+///   against the context sender instead. There, a relayed call on a hooked selector reverts with
+///   AccessManagedUnauthorized unless the context sender itself holds UPDATE_MARKETS_BALANCES_ROLE;
+///   direct calls are not affected. The same applies when the hook is nested under
+///   ExchangeRateValidatorPreHook. Such vaults must treat relayed user operations on hooked selectors
+///   as unsupported, or move users to a vault created from a fixed implementation. Do not remove the
+///   vault from ContextManager's approved targets (admin batches rely on it) and do not make
+///   updateMarketsBalances public as a workaround.
 contract UpdateBalancesPreHook is IPreHook {
     /// @notice Executes the pre-hook logic to update all active market balances
     /// @dev This function:

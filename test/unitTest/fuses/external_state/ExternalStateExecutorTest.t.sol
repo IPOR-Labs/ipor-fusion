@@ -7,9 +7,15 @@ import {Vm} from "forge-std/Vm.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {ExternalStateExecutor} from "../../../../contracts/fuses/external_state/ExternalStateExecutor.sol";
-import {IExternalStateExecutor, ExternalStateExecutorAction} from "../../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
+import {
+    IExternalStateExecutor,
+    ExternalStateExecutorAction
+} from "../../../../contracts/fuses/external_state/IExternalStateExecutor.sol";
 import {ExternalStateErrors} from "../../../../contracts/fuses/external_state/errors/ExternalStateErrors.sol";
-import {ExternalStateSubstrateLib, ExternalStateSubstrateType} from "../../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
+import {
+    ExternalStateSubstrateLib,
+    ExternalStateSubstrateType
+} from "../../../../contracts/fuses/external_state/lib/ExternalStateSubstrateLib.sol";
 import {IporFusionMarkets} from "../../../../contracts/libraries/IporFusionMarkets.sol";
 
 import {MockPlasmaVaultForExternalState} from "./mocks/MockPlasmaVaultForExternalState.sol";
@@ -67,7 +73,9 @@ contract ExternalStateExecutorTest is Test {
     }
 
     function test_constructor_revertsOnZeroVault() public {
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorZeroAddressConstructor.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorZeroAddressConstructor.selector)
+        );
         new ExternalStateExecutor(MARKET_ID, address(0));
     }
 
@@ -114,7 +122,10 @@ contract ExternalStateExecutorTest is Test {
         subs[0] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(200);
         vm.prank(address(vault));
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateMandatorySingletonMissing.selector, uint8(ExternalStateSubstrateType.STALENESS_MAX))
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateMandatorySingletonMissing.selector,
+                uint8(ExternalStateSubstrateType.STALENESS_MAX)
+            )
         );
         executor.setSubstrates(subs);
     }
@@ -168,7 +179,8 @@ contract ExternalStateExecutorTest is Test {
         vault.grantMarketSubstrates(MARKET_ID, subs);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate.selector, uint8(ExternalStateSubstrateType.STALENESS_MAX)
+                ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate.selector,
+                uint8(ExternalStateSubstrateType.STALENESS_MAX)
             )
         );
         executor.syncSubstrates();
@@ -181,7 +193,8 @@ contract ExternalStateExecutorTest is Test {
         vault.grantMarketSubstrates(MARKET_ID, subs);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate.selector, uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS)
+                ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate.selector,
+                uint8(ExternalStateSubstrateType.BIG_CHANGE_BPS)
             )
         );
         executor.syncSubstrates();
@@ -194,7 +207,8 @@ contract ExternalStateExecutorTest is Test {
         vault.grantMarketSubstrates(MARKET_ID, subs);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate.selector, uint8(ExternalStateSubstrateType.DUST_THRESHOLD)
+                ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate.selector,
+                uint8(ExternalStateSubstrateType.DUST_THRESHOLD)
             )
         );
         executor.syncSubstrates();
@@ -207,7 +221,8 @@ contract ExternalStateExecutorTest is Test {
         vault.grantMarketSubstrates(MARKET_ID, subs);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate.selector, uint8(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL)
+                ExternalStateErrors.ExternalStateDuplicateSingletonSubstrate.selector,
+                uint8(ExternalStateSubstrateType.MIN_UPDATE_INTERVAL)
             )
         );
         executor.syncSubstrates();
@@ -236,7 +251,13 @@ contract ExternalStateExecutorTest is Test {
     function test_syncSubstrates_emitsSubstratesSynced() public {
         vm.expectEmit(false, false, false, true, address(executor));
         emit ExternalStateExecutor.SubstratesSynced(
-            2, 2, 2, STALENESS_MAX_S, BIG_CHANGE_BPS_DEFAULT, DUST_THRESHOLD_DEFAULT, MIN_UPDATE_INTERVAL_S
+            2,
+            2,
+            2,
+            STALENESS_MAX_S,
+            BIG_CHANGE_BPS_DEFAULT,
+            DUST_THRESHOLD_DEFAULT,
+            MIN_UPDATE_INTERVAL_S
         );
         executor.syncSubstrates();
     }
@@ -247,13 +268,15 @@ contract ExternalStateExecutorTest is Test {
 
     function test_syncSubstrates_revertsWhenRemovedBalanceAccountStillFunded() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1000);
+        executor.addBalance(balanceAccount1, 1000, address(0), 0);
 
         _grantSubstratesWithBAs(_singletonBA(balanceAccount2));
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateExecutorBalanceAccountStillFunded.selector, balanceAccount1, 1000
+                ExternalStateErrors.ExternalStateExecutorBalanceAccountStillFunded.selector,
+                balanceAccount1,
+                1000
             )
         );
         executor.syncSubstrates();
@@ -261,7 +284,7 @@ contract ExternalStateExecutorTest is Test {
 
     function test_syncSubstrates_succeedsWhenRemovedBalanceAccountIsZero() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1000);
+        executor.addBalance(balanceAccount1, 1000, address(0), 0);
         vm.prank(address(vault));
         executor.removeBalance(balanceAccount1, 1000, address(asset6), 0);
         assertEq(executor.balances(balanceAccount1), 0);
@@ -275,9 +298,9 @@ contract ExternalStateExecutorTest is Test {
 
     function test_syncSubstrates_keepsExistingBalanceAccountsUnchanged() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 500);
+        executor.addBalance(balanceAccount1, 500, address(0), 0);
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount2, 700);
+        executor.addBalance(balanceAccount2, 700, address(0), 0);
 
         // Re-grant the SAME substrate set — no purge expected.
         executor.syncSubstrates();
@@ -308,7 +331,7 @@ contract ExternalStateExecutorTest is Test {
         // Custodian-A proposes (without confirming) so a pending proposal exists.
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 1000);
-        (, address proposerBefore,,) = executor.pendingProposals(balanceAccount1);
+        (, address proposerBefore, , ) = executor.pendingProposals(balanceAccount1);
         assertEq(proposerBefore, custodianA);
         // balances[balanceAccount1] is still zero (no confirm happened).
         assertEq(executor.balances(balanceAccount1), 0);
@@ -316,8 +339,9 @@ contract ExternalStateExecutorTest is Test {
         _grantSubstratesWithBAs(_singletonBA(balanceAccount2));
         executor.syncSubstrates();
 
-        (uint256 valueAfter, address proposerAfter, uint64 atAfter, uint256 nonceAfter) =
-            executor.pendingProposals(balanceAccount1);
+        (uint256 valueAfter, address proposerAfter, uint64 atAfter, uint256 nonceAfter) = executor.pendingProposals(
+            balanceAccount1
+        );
         assertEq(valueAfter, 0);
         assertEq(proposerAfter, address(0));
         assertEq(atAfter, 0);
@@ -365,9 +389,9 @@ contract ExternalStateExecutorTest is Test {
 
     function test_syncSubstrates_revertsOnFirstFundedBA() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 100);
+        executor.addBalance(balanceAccount1, 100, address(0), 0);
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount2, 200);
+        executor.addBalance(balanceAccount2, 200, address(0), 0);
 
         _grantSubstratesWithBAs(new address[](0));
 
@@ -375,7 +399,9 @@ contract ExternalStateExecutorTest is Test {
         // (balanceAccount1, balanceAccount2), so balanceAccount1 trips the guard first.
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateExecutorBalanceAccountStillFunded.selector, balanceAccount1, 100
+                ExternalStateErrors.ExternalStateExecutorBalanceAccountStillFunded.selector,
+                balanceAccount1,
+                100
             )
         );
         executor.syncSubstrates();
@@ -432,7 +458,10 @@ contract ExternalStateExecutorTest is Test {
         vault.grantMarketSubstrates(MARKET_ID, subs);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateDuplicateBalanceAccountSubstrate.selector, balanceAccount1)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateDuplicateBalanceAccountSubstrate.selector,
+                balanceAccount1
+            )
         );
         executor.syncSubstrates();
     }
@@ -460,21 +489,23 @@ contract ExternalStateExecutorTest is Test {
 
         assertEq(executor.balances(balanceAccount1), 0);
         assertEq(executor.lastUpdated(balanceAccount1), 0);
-        (, address proposer,,) = executor.pendingProposals(balanceAccount1);
+        (, address proposer, , ) = executor.pendingProposals(balanceAccount1);
         assertEq(proposer, address(0));
     }
 
     function test_syncSubstrates_DoSAndRecoveryWhenWrongOrderRevoke() public {
         // Atomist mistake: revoke before exit.
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 100);
+        executor.addBalance(balanceAccount1, 100, address(0), 0);
 
         _grantSubstratesWithBAs(_singletonBA(balanceAccount2));
 
         // Sync reverts — balanceAccount1 still funded.
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateExecutorBalanceAccountStillFunded.selector, balanceAccount1, 100
+                ExternalStateErrors.ExternalStateExecutorBalanceAccountStillFunded.selector,
+                balanceAccount1,
+                100
             )
         );
         executor.syncSubstrates();
@@ -555,7 +586,7 @@ contract ExternalStateExecutorTest is Test {
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
 
-        (uint256 value, address proposer,,) = executor.pendingProposals(balanceAccount1);
+        (uint256 value, address proposer, , ) = executor.pendingProposals(balanceAccount1);
         assertEq(value, 100);
         assertEq(proposer, custodianA);
     }
@@ -566,7 +597,7 @@ contract ExternalStateExecutorTest is Test {
     function test_proposeBalance_authorizationFirst_revokedBABeforeDustCheck() public {
         // Enable dust threshold and load the executor with enough balance to fail dust check.
         _enableDust(50); // 50% — 0.5 token per asset allowed
-        asset6.mint(address(executor), 10 ** 6); // 1 token — would fail dust
+        _creditUnforwarded(asset6, 10 ** 6); // 1 token — would fail dust
 
         // Revoke balanceAccount1 from the vault substrate set (cache still contains it).
         _grantSubstratesWithBAs(_singletonBA(balanceAccount2));
@@ -672,7 +703,7 @@ contract ExternalStateExecutorTest is Test {
         // Scenario: balanceAccount1 was funded then drained to zero. Atomist revokes BA from
         // vault, but compromised custodians try to inject phantom NAV before syncSubstrates.
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1_000_000);
+        executor.addBalance(balanceAccount1, 1_000_000, address(0), 0);
         vm.prank(address(vault));
         executor.removeBalance(balanceAccount1, 1_000_000, address(asset6), 0);
         assertEq(executor.balances(balanceAccount1), 0);
@@ -696,7 +727,7 @@ contract ExternalStateExecutorTest is Test {
         // Sync proceeds cleanly — balance is zero, no phantom value resurrected.
         executor.syncSubstrates();
         assertEq(executor.balanceAccountsLength(), 1);
-        (, address proposer,,) = executor.pendingProposals(balanceAccount1);
+        (, address proposer, , ) = executor.pendingProposals(balanceAccount1);
         assertEq(proposer, address(0), "no pending proposal injected");
     }
 
@@ -706,26 +737,26 @@ contract ExternalStateExecutorTest is Test {
 
     function test_addBalance_incrementsBalance() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 100);
+        executor.addBalance(balanceAccount1, 100, address(0), 0);
         assertEq(executor.balances(balanceAccount1), 100);
     }
 
     function test_addBalance_revertsWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorUnauthorizedVault.selector));
-        executor.addBalance(balanceAccount1, 100);
+        executor.addBalance(balanceAccount1, 100, address(0), 0);
     }
 
     function test_addBalance_doesNotUpdateLastUpdated() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 100);
+        executor.addBalance(balanceAccount1, 100, address(0), 0);
         assertEq(executor.lastUpdated(balanceAccount1), 0);
         assertEq(executor.lastCustodianUpdateTimestamp(), 0);
     }
 
     function test_addBalance_accumulates() public {
         vm.startPrank(address(vault));
-        executor.addBalance(balanceAccount1, 100);
-        executor.addBalance(balanceAccount1, 250);
+        executor.addBalance(balanceAccount1, 100, address(0), 0);
+        executor.addBalance(balanceAccount1, 250, address(0), 0);
         vm.stopPrank();
         assertEq(executor.balances(balanceAccount1), 350);
     }
@@ -734,7 +765,7 @@ contract ExternalStateExecutorTest is Test {
         vm.prank(address(vault));
         vm.expectEmit(true, false, false, true, address(executor));
         emit ExternalStateExecutor.BalanceChangedByFuse(balanceAccount1, int256(500), 500);
-        executor.addBalance(balanceAccount1, 500);
+        executor.addBalance(balanceAccount1, 500, address(0), 0);
     }
 
     // ============================================================
@@ -743,7 +774,7 @@ contract ExternalStateExecutorTest is Test {
 
     function test_removeBalance_decrementsAndTransfersAsset() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1000);
+        executor.addBalance(balanceAccount1, 1000, address(0), 0);
 
         asset6.mint(address(executor), 500e6);
 
@@ -757,7 +788,7 @@ contract ExternalStateExecutorTest is Test {
 
     function test_removeBalance_revertsWhenNotVault() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1000);
+        executor.addBalance(balanceAccount1, 1000, address(0), 0);
 
         vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorUnauthorizedVault.selector));
         executor.removeBalance(balanceAccount1, 100, address(asset6), 0);
@@ -765,11 +796,16 @@ contract ExternalStateExecutorTest is Test {
 
     function test_removeBalance_revertsWhenExceedsTracked() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 100);
+        executor.addBalance(balanceAccount1, 100, address(0), 0);
 
         vm.prank(address(vault));
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExitExceedsTrackedBalance.selector, balanceAccount1, 101, 100)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExitExceedsTrackedBalance.selector,
+                balanceAccount1,
+                101,
+                100
+            )
         );
         executor.removeBalance(balanceAccount1, 101, address(asset6), 0);
     }
@@ -783,7 +819,7 @@ contract ExternalStateExecutorTest is Test {
 
     function test_removeBalance_emitsBalanceChangedByFuse() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1000);
+        executor.addBalance(balanceAccount1, 1000, address(0), 0);
 
         vm.prank(address(vault));
         vm.expectEmit(true, false, false, true, address(executor));
@@ -797,10 +833,8 @@ contract ExternalStateExecutorTest is Test {
     function test_addBalance_revertsOnInt256Overflow() public {
         uint256 overflow = uint256(type(int256).max) + 1;
         vm.prank(address(vault));
-        vm.expectRevert(
-            abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintToInt.selector, overflow)
-        );
-        executor.addBalance(balanceAccount1, overflow);
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintToInt.selector, overflow));
+        executor.addBalance(balanceAccount1, overflow, address(0), 0);
     }
 
     /// @notice M-5 boundary: `valueInUnderlying_ == type(int256).max` is still the largest legal
@@ -810,7 +844,7 @@ contract ExternalStateExecutorTest is Test {
         vm.prank(address(vault));
         vm.expectEmit(true, false, false, true, address(executor));
         emit ExternalStateExecutor.BalanceChangedByFuse(balanceAccount1, type(int256).max, maxAllowed);
-        executor.addBalance(balanceAccount1, maxAllowed);
+        executor.addBalance(balanceAccount1, maxAllowed, address(0), 0);
         assertEq(executor.balances(balanceAccount1), maxAllowed);
     }
 
@@ -822,29 +856,32 @@ contract ExternalStateExecutorTest is Test {
         // for the unsafe value and we actually exercise the SafeCast guard.
         uint256 maxAllowed = uint256(type(int256).max);
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, maxAllowed);
+        executor.addBalance(balanceAccount1, maxAllowed, address(0), 0);
 
         uint256 overflow = maxAllowed + 1;
         // Re-seed so removeBalance won't trip ExternalStateExitExceedsTrackedBalance first. We push one
         // extra wei past type(int256).max, which is still legal in `balances` (uint256 storage).
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1);
+        executor.addBalance(balanceAccount1, 1, address(0), 0);
         assertEq(executor.balances(balanceAccount1), overflow);
 
         vm.prank(address(vault));
-        vm.expectRevert(
-            abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintToInt.selector, overflow)
-        );
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintToInt.selector, overflow));
         executor.removeBalance(balanceAccount1, overflow, address(asset6), 0);
     }
 
     function test_removeBalance_reentrancyProtection() public {
         // Mint and set up a reentrant action: target tries to call removeBalance back on executor.
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1000);
+        executor.addBalance(balanceAccount1, 1000, address(0), 0);
 
-        bytes memory reenterData =
-            abi.encodeWithSelector(IExternalStateExecutor.removeBalance.selector, balanceAccount1, 1, address(asset6), 0);
+        bytes memory reenterData = abi.encodeWithSelector(
+            IExternalStateExecutor.removeBalance.selector,
+            balanceAccount1,
+            1,
+            address(asset6),
+            0
+        );
         bytes memory outerCall = abi.encodeCall(MockExternalStateTarget.reenter, (address(executor), reenterData));
 
         ExternalStateExecutorAction[] memory actions = new ExternalStateExecutorAction[](1);
@@ -863,7 +900,10 @@ contract ExternalStateExecutorTest is Test {
     function test_execute_callsAllTargetsSequentially() public {
         ExternalStateExecutorAction[] memory actions = new ExternalStateExecutorAction[](3);
         for (uint256 i; i < 3; i++) {
-            actions[i] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.noop, ())});
+            actions[i] = ExternalStateExecutorAction({
+                target: address(target),
+                data: abi.encodeCall(MockExternalStateTarget.noop, ())
+            });
         }
         vm.prank(address(vault));
         executor.execute(actions);
@@ -872,7 +912,10 @@ contract ExternalStateExecutorTest is Test {
 
     function test_execute_forwardsRevertFromTarget() public {
         ExternalStateExecutorAction[] memory actions = new ExternalStateExecutorAction[](1);
-        actions[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.revertingCall, ())});
+        actions[0] = ExternalStateExecutorAction({
+            target: address(target),
+            data: abi.encodeCall(MockExternalStateTarget.revertingCall, ())
+        });
         vm.prank(address(vault));
         vm.expectRevert(abi.encodeWithSelector(MockExternalStateTarget.TargetReverted.selector));
         executor.execute(actions);
@@ -893,8 +936,14 @@ contract ExternalStateExecutorTest is Test {
 
     function test_execute_emitsActionsExecuted() public {
         ExternalStateExecutorAction[] memory actions = new ExternalStateExecutorAction[](2);
-        actions[0] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.noop, ())});
-        actions[1] = ExternalStateExecutorAction({target: address(target), data: abi.encodeCall(MockExternalStateTarget.noop, ())});
+        actions[0] = ExternalStateExecutorAction({
+            target: address(target),
+            data: abi.encodeCall(MockExternalStateTarget.noop, ())
+        });
+        actions[1] = ExternalStateExecutorAction({
+            target: address(target),
+            data: abi.encodeCall(MockExternalStateTarget.noop, ())
+        });
         vm.prank(address(vault));
         vm.expectEmit(false, false, false, true, address(executor));
         emit ExternalStateExecutor.ActionsExecuted(2);
@@ -914,6 +963,140 @@ contract ExternalStateExecutorTest is Test {
         vm.prank(address(vault));
         vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorUnauthorizedVault.selector));
         executor.execute(actions);
+    }
+
+    // ============================================================
+    // IL-8739 unforwardedCredit / sweepSurplus
+    // ============================================================
+
+    function test_unforwardedCredit_addBalanceCredits() public {
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount1, 10, address(asset6), 300e6);
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount2, 10, address(asset6), 200e6);
+        assertEq(executor.unforwardedCredit(address(asset6)), 500e6);
+        assertEq(executor.unforwardedCredit(address(asset18)), 0);
+    }
+
+    function test_unforwardedCredit_removeBalanceDebits() public {
+        asset6.mint(address(executor), 500e6);
+        vm.startPrank(address(vault));
+        executor.addBalance(balanceAccount1, 500, address(asset6), 500e6);
+        executor.removeBalance(balanceAccount1, 200, address(asset6), 200e6);
+        vm.stopPrank();
+        assertEq(executor.unforwardedCredit(address(asset6)), 300e6);
+    }
+
+    function test_unforwardedCredit_debitClampsAtZero() public {
+        // 100 credited, 300 removed (e.g. a protocol returned more than was credited): no underflow.
+        asset6.mint(address(executor), 300e6);
+        vm.startPrank(address(vault));
+        executor.addBalance(balanceAccount1, 500, address(asset6), 100e6);
+        executor.removeBalance(balanceAccount1, 300, address(asset6), 300e6);
+        vm.stopPrank();
+        assertEq(executor.unforwardedCredit(address(asset6)), 0);
+    }
+
+    function test_unforwardedCredit_executeSettlesForwardedAndReturnedTokens() public {
+        _enableDust(100);
+        asset6.mint(address(executor), 500e6);
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount1, 500, address(asset6), 500e6);
+
+        // Actions move 200 out of the executor: credit 500 -> 300.
+        ExternalStateExecutorAction[] memory out = new ExternalStateExecutorAction[](1);
+        out[0] = ExternalStateExecutorAction({
+            target: address(asset6),
+            data: abi.encodeWithSignature("transfer(address,uint256)", address(0xBEEF), 200e6)
+        });
+        vm.prank(address(vault));
+        executor.execute(out);
+        assertEq(executor.unforwardedCredit(address(asset6)), 300e6);
+
+        // A mint during the actions models tokens coming back from a protocol: credit 300 -> 350.
+        ExternalStateExecutorAction[] memory back = new ExternalStateExecutorAction[](1);
+        back[0] = ExternalStateExecutorAction({
+            target: address(asset6),
+            data: abi.encodeWithSignature("mint(address,uint256)", address(executor), 50e6)
+        });
+        vm.prank(address(vault));
+        executor.execute(back);
+        assertEq(executor.unforwardedCredit(address(asset6)), 350e6);
+    }
+
+    function test_unforwardedCredit_resetByWithdrawAssetBalance() public {
+        asset6.mint(address(executor), 500e6);
+        vm.startPrank(address(vault));
+        executor.addBalance(balanceAccount1, 500, address(asset6), 500e6);
+        executor.withdrawAssetBalance(address(asset6));
+        vm.stopPrank();
+        assertEq(executor.unforwardedCredit(address(asset6)), 0);
+    }
+
+    /// @notice The dust check reads min(credit, balance): a credit larger than the real balance (stale cache,
+    ///         fee-on-transfer token) must not report more than what is actually on the executor.
+    function test_dustCheck_clampsCreditToActualBalance() public {
+        _enableDust(50);
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount1, 0, address(asset6), 5 * 10 ** 6); // credit 5 tokens
+        asset6.mint(address(executor), 10 ** 6); // but only 1 token is there
+        uint256 allowed = ((10 ** 6) * 50) / 100;
+        vm.prank(custodianA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector,
+                address(asset6),
+                10 ** 6,
+                allowed
+            )
+        );
+        executor.proposeBalance(balanceAccount1, 1);
+    }
+
+    /// @notice A plain transfer to the executor never changes the credit and never trips the dust check.
+    function testFuzz_donationNeverChangesCredit(uint96 credited_, uint96 donated_) public {
+        _enableDust(0);
+        // nothing credited -> any donation is invisible to the dust check
+        asset6.mint(address(executor), donated_);
+        assertEq(executor.unforwardedCredit(address(asset6)), 0);
+        vm.prank(custodianA);
+        executor.proposeBalance(balanceAccount1, 1);
+
+        // credited tokens: a donation on top leaves the credit unchanged
+        uint256 credited = uint256(credited_);
+        asset18.mint(address(executor), credited);
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount1, 0, address(asset18), credited);
+        asset18.mint(address(executor), donated_);
+        assertEq(executor.unforwardedCredit(address(asset18)), credited);
+    }
+
+    function test_sweepSurplus_revertsWhenNotVault() public {
+        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorUnauthorizedVault.selector));
+        executor.sweepSurplus(address(asset6));
+    }
+
+    function test_sweepSurplus_clampsWhenCreditExceedsBalance() public {
+        vm.startPrank(address(vault));
+        executor.addBalance(balanceAccount1, 0, address(asset6), 500e6); // credit above the real balance
+        vm.stopPrank();
+        asset6.mint(address(executor), 300e6);
+        vm.prank(address(vault));
+        uint256 swept = executor.sweepSurplus(address(asset6));
+        assertEq(swept, 0);
+        assertEq(asset6.balanceOf(address(executor)), 300e6);
+    }
+
+    function testFuzz_sweepSurplus_movesExactlyUncreditedPart(uint96 credited_, uint96 donated_) public {
+        asset6.mint(address(executor), uint256(credited_) + uint256(donated_));
+        vm.startPrank(address(vault));
+        executor.addBalance(balanceAccount1, 0, address(asset6), credited_);
+        uint256 swept = executor.sweepSurplus(address(asset6));
+        vm.stopPrank();
+        assertEq(swept, donated_);
+        assertEq(asset6.balanceOf(address(vault)), donated_);
+        assertEq(asset6.balanceOf(address(executor)), credited_);
+        assertEq(executor.unforwardedCredit(address(asset6)), credited_);
     }
 
     // ============================================================
@@ -942,7 +1125,7 @@ contract ExternalStateExecutorTest is Test {
 
     function test_withdrawAssetBalance_doesNotTouchTrackedBalance() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 12345);
+        executor.addBalance(balanceAccount1, 12345, address(0), 0);
         asset6.mint(address(executor), 1e6);
         vm.prank(address(vault));
         executor.withdrawAssetBalance(address(asset6));
@@ -984,15 +1167,20 @@ contract ExternalStateExecutorTest is Test {
 
     function test_proposeBalance_revertsForNonCustodian() public {
         vm.prank(notCustodian);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorUnauthorizedCustodian.selector, notCustodian));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorUnauthorizedCustodian.selector,
+                notCustodian
+            )
+        );
         executor.proposeBalance(balanceAccount1, 100);
     }
 
     function test_proposeBalance_dustCheck_passesWhenBelowDustAllAssets() public {
         _enableDust(50); // 50% of 10**decimals
         // Place half a token on the executor for each asset
-        asset6.mint(address(executor), (10 ** 6) / 4); // below 50% of 1e6 (0.5e6)
-        asset18.mint(address(executor), 1e18 / 4);
+        _creditUnforwarded(asset6, (10 ** 6) / 4); // below 50% of 1e6 (0.5e6)
+        _creditUnforwarded(asset18, 1e18 / 4);
 
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 500);
@@ -1000,39 +1188,44 @@ contract ExternalStateExecutorTest is Test {
 
     function test_proposeBalance_dustCheck_revertsWhenAssetAboveDust() public {
         _enableDust(50);
-        asset6.mint(address(executor), 10 ** 6); // full 1 token > 50% of 1 token allowed
-        uint256 allowed = (10 ** 6) * 50 / 100;
+        _creditUnforwarded(asset6, 10 ** 6); // full 1 token > 50% of 1 token allowed
+        uint256 allowed = ((10 ** 6) * 50) / 100;
         vm.prank(custodianA);
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector, address(asset6), 10 ** 6, allowed)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector,
+                address(asset6),
+                10 ** 6,
+                allowed
+            )
         );
         executor.proposeBalance(balanceAccount1, 500);
     }
 
     function test_proposeBalance_dustCheck_variesWithTokenDecimals_6() public {
         _enableDust(100); // 1 full token of each asset allowed
-        asset6.mint(address(executor), 10 ** 6); // exactly 1 token — allowed
+        _creditUnforwarded(asset6, 10 ** 6); // exactly 1 token — allowed
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 1);
     }
 
     function test_proposeBalance_dustCheck_variesWithTokenDecimals_18() public {
         _enableDust(100);
-        asset18.mint(address(executor), 10 ** 18);
+        _creditUnforwarded(asset18, 10 ** 18);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 1);
     }
 
     function test_proposeBalance_dustCheck_dustThreshold50_halfToken() public {
         _enableDust(50);
-        asset6.mint(address(executor), (10 ** 6) / 2); // exactly 0.5 — allowed (10**6 * 50 / 100 == 500000)
+        _creditUnforwarded(asset6, (10 ** 6) / 2); // exactly 0.5 — allowed (10**6 * 50 / 100 == 500000)
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 1);
     }
 
     function test_proposeBalance_dustCheck_dustThreshold200_twoTokens() public {
         _enableDust(200); // 2 tokens allowed
-        asset6.mint(address(executor), 2 * 10 ** 6);
+        _creditUnforwarded(asset6, 2 * 10 ** 6);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 1);
     }
@@ -1042,12 +1235,15 @@ contract ExternalStateExecutorTest is Test {
         _enableDust(100); // 1 token allowed per asset
         // asset6 (6 decimals): zero balance — passes
         // asset18 (18 decimals): 2 tokens — exceeds 1-token dust threshold
-        asset18.mint(address(executor), 2 * 10 ** 18);
-        uint256 allowed18 = (10 ** 18) * 100 / 100; // 1e18
+        _creditUnforwarded(asset18, 2 * 10 ** 18);
+        uint256 allowed18 = ((10 ** 18) * 100) / 100; // 1e18
         vm.prank(custodianA);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector, address(asset18), 2 * 10 ** 18, allowed18
+                ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector,
+                address(asset18),
+                2 * 10 ** 18,
+                allowed18
             )
         );
         executor.proposeBalance(balanceAccount1, 1);
@@ -1074,7 +1270,7 @@ contract ExternalStateExecutorTest is Test {
         // Intentionally skip executor.syncSubstrates() — stale cache
 
         // Fund the executor with newAsset (above dust threshold)
-        newAsset.mint(address(executor), 100e8);
+        _creditUnforwarded(newAsset, 100e8);
 
         // proposeBalance passes because the executor's cached assets[] doesn't include newAsset
         vm.prank(custodianA);
@@ -1087,7 +1283,7 @@ contract ExternalStateExecutorTest is Test {
         executor.proposeBalance(balanceAccount1, 100);
         vm.prank(custodianB);
         executor.proposeBalance(balanceAccount1, 200);
-        (uint256 value, address proposer,,) = executor.pendingProposals(balanceAccount1);
+        (uint256 value, address proposer, , ) = executor.pendingProposals(balanceAccount1);
         assertEq(value, 200);
         assertEq(proposer, custodianB);
     }
@@ -1098,8 +1294,8 @@ contract ExternalStateExecutorTest is Test {
         executor.proposeBalance(balanceAccount1, 1);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount2, 2);
-        (,,, uint256 n1) = executor.pendingProposals(balanceAccount1);
-        (,,, uint256 n2) = executor.pendingProposals(balanceAccount2);
+        (, , , uint256 n1) = executor.pendingProposals(balanceAccount1);
+        (, , , uint256 n2) = executor.pendingProposals(balanceAccount2);
         assertEq(n1, 1);
         assertEq(n2, 2);
         assertEq(executor.nonce(), 2);
@@ -1110,7 +1306,14 @@ contract ExternalStateExecutorTest is Test {
         bytes32 expectedHash = _hash(balanceAccount1, 1000, custodianA, uint64(block.timestamp), 1);
         vm.prank(custodianA);
         vm.expectEmit(true, true, false, true, address(executor));
-        emit ExternalStateExecutor.BalanceProposed(balanceAccount1, custodianA, 1000, 1, uint64(block.timestamp), expectedHash);
+        emit ExternalStateExecutor.BalanceProposed(
+            balanceAccount1,
+            custodianA,
+            1000,
+            1,
+            uint64(block.timestamp),
+            expectedHash
+        );
         executor.proposeBalance(balanceAccount1, 1000);
     }
 
@@ -1123,7 +1326,7 @@ contract ExternalStateExecutorTest is Test {
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 777);
 
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 777, custodianA, proposedAt, n);
 
         vm.prank(custodianB);
@@ -1133,14 +1336,57 @@ contract ExternalStateExecutorTest is Test {
         assertEq(executor.lastUpdated(balanceAccount1), block.timestamp);
         assertEq(executor.lastCustodianUpdateTimestamp(), block.timestamp);
         // Pending slot cleared
-        (uint256 v, address proposer,,) = executor.pendingProposals(balanceAccount1);
+        (uint256 v, address proposer, , ) = executor.pendingProposals(balanceAccount1);
         assertEq(v, 0);
         assertEq(proposer, address(0));
     }
 
+    function test_proposeBalance_storesProposalBaseBalance() public {
+        _enableDust(100);
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount1, 300, address(0), 0);
+        vm.prank(custodianA);
+        executor.proposeBalance(balanceAccount1, 777);
+        assertEq(executor.proposalBaseBalance(balanceAccount1), 300);
+
+        // an overwrite re-bases the snapshot
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount1, 50, address(0), 0);
+        vm.prank(custodianB);
+        executor.proposeBalance(balanceAccount1, 800);
+        assertEq(executor.proposalBaseBalance(balanceAccount1), 350);
+    }
+
+    function test_confirmBalance_revertsWhenBalanceChangedSinceProposal() public {
+        _enableDust(100);
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount1, 300, address(0), 0);
+        vm.prank(custodianA);
+        executor.proposeBalance(balanceAccount1, 300);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        bytes32 h = _hash(balanceAccount1, 300, custodianA, proposedAt, n);
+
+        vm.prank(address(vault));
+        executor.removeBalance(balanceAccount1, 40, address(0), 0);
+
+        vm.prank(custodianB);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorBalanceChangedSinceProposal.selector,
+                balanceAccount1,
+                300,
+                260
+            )
+        );
+        executor.confirmBalance(balanceAccount1, h);
+        assertEq(executor.balances(balanceAccount1), 260);
+    }
+
     function test_confirmBalance_revertsWhenNoProposal() public {
         vm.prank(custodianB);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorNoPendingProposal.selector, balanceAccount1));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorNoPendingProposal.selector, balanceAccount1)
+        );
         executor.confirmBalance(balanceAccount1, bytes32(0));
     }
 
@@ -1148,11 +1394,16 @@ contract ExternalStateExecutorTest is Test {
         _enableDust(100);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
 
         vm.prank(custodianA);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorSameProposerAndConfirmer.selector, custodianA));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorSameProposerAndConfirmer.selector,
+                custodianA
+            )
+        );
         executor.confirmBalance(balanceAccount1, h);
     }
 
@@ -1160,14 +1411,17 @@ contract ExternalStateExecutorTest is Test {
         _enableDust(100);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
 
         vm.warp(block.timestamp + STALENESS_MAX_S + 1);
         vm.prank(custodianB);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateExecutorProposalExpired.selector, uint256(proposedAt), block.timestamp, STALENESS_MAX_S
+                ExternalStateErrors.ExternalStateExecutorProposalExpired.selector,
+                uint256(proposedAt),
+                block.timestamp,
+                STALENESS_MAX_S
             )
         );
         executor.confirmBalance(balanceAccount1, h);
@@ -1177,12 +1431,18 @@ contract ExternalStateExecutorTest is Test {
         _enableDust(100);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 expected = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
         bytes32 wrong = keccak256("wrong");
 
         vm.prank(custodianB);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorProposalHashMismatch.selector, expected, wrong));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorProposalHashMismatch.selector,
+                expected,
+                wrong
+            )
+        );
         executor.confirmBalance(balanceAccount1, wrong);
     }
 
@@ -1192,7 +1452,12 @@ contract ExternalStateExecutorTest is Test {
         executor.proposeBalance(balanceAccount1, 100);
 
         vm.prank(notCustodian);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorUnauthorizedCustodian.selector, notCustodian));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorUnauthorizedCustodian.selector,
+                notCustodian
+            )
+        );
         executor.confirmBalance(balanceAccount1, bytes32(0));
     }
 
@@ -1201,15 +1466,20 @@ contract ExternalStateExecutorTest is Test {
         // Propose at zero balance — dust passes.
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
 
         // Move an above-threshold balance onto the executor before confirm.
-        asset6.mint(address(executor), 2 * 10 ** 6);
-        uint256 allowed = (10 ** 6) * 100 / 100;
+        _creditUnforwarded(asset6, 2 * 10 ** 6);
+        uint256 allowed = ((10 ** 6) * 100) / 100;
         vm.prank(custodianB);
         vm.expectRevert(
-            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector, address(asset6), 2 * 10 ** 6, allowed)
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateExecutorDustCheckFailed.selector,
+                address(asset6),
+                2 * 10 ** 6,
+                allowed
+            )
         );
         executor.confirmBalance(balanceAccount1, h);
     }
@@ -1219,7 +1489,7 @@ contract ExternalStateExecutorTest is Test {
         // First update
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt1, uint256 n1) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt1, uint256 n1) = executor.pendingProposals(balanceAccount1);
         bytes32 h1 = _hash(balanceAccount1, 100, custodianA, proposedAt1, n1);
         vm.prank(custodianB);
         executor.confirmBalance(balanceAccount1, h1);
@@ -1228,14 +1498,17 @@ contract ExternalStateExecutorTest is Test {
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL_S - 1);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 200);
-        (,, uint64 proposedAt2, uint256 n2) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt2, uint256 n2) = executor.pendingProposals(balanceAccount1);
         bytes32 h2 = _hash(balanceAccount1, 200, custodianA, proposedAt2, n2);
 
         uint256 last = executor.lastUpdated(balanceAccount1);
         vm.prank(custodianB);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExternalStateErrors.ExternalStateExecutorMinUpdateIntervalNotMet.selector, last, block.timestamp, MIN_UPDATE_INTERVAL_S
+                ExternalStateErrors.ExternalStateExecutorMinUpdateIntervalNotMet.selector,
+                last,
+                block.timestamp,
+                MIN_UPDATE_INTERVAL_S
             )
         );
         executor.confirmBalance(balanceAccount1, h2);
@@ -1246,7 +1519,7 @@ contract ExternalStateExecutorTest is Test {
         // First-ever confirm on this account must succeed regardless of MIN_UPDATE_INTERVAL.
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
 
         vm.prank(custodianB);
@@ -1258,7 +1531,7 @@ contract ExternalStateExecutorTest is Test {
         _enableDust(100);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
         vm.prank(custodianB);
         executor.confirmBalance(balanceAccount1, h);
@@ -1274,7 +1547,7 @@ contract ExternalStateExecutorTest is Test {
         _enableDust(100);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
 
         uint256 newTime = block.timestamp + 5;
@@ -1288,7 +1561,7 @@ contract ExternalStateExecutorTest is Test {
         _enableDust(100);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
 
         vm.prank(custodianB);
@@ -1296,7 +1569,9 @@ contract ExternalStateExecutorTest is Test {
 
         // Replay confirm — no pending anymore
         vm.prank(custodianB);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorNoPendingProposal.selector, balanceAccount1));
+        vm.expectRevert(
+            abi.encodeWithSelector(ExternalStateErrors.ExternalStateExecutorNoPendingProposal.selector, balanceAccount1)
+        );
         executor.confirmBalance(balanceAccount1, h);
     }
 
@@ -1304,7 +1579,7 @@ contract ExternalStateExecutorTest is Test {
         _enableDust(100);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
 
         vm.prank(custodianB);
@@ -1319,10 +1594,10 @@ contract ExternalStateExecutorTest is Test {
 
     function test_getBalanceFuseSnapshot_sumsAllBalanceAccounts() public {
         vm.startPrank(address(vault));
-        executor.addBalance(balanceAccount1, 100);
-        executor.addBalance(balanceAccount2, 250);
+        executor.addBalance(balanceAccount1, 100, address(0), 0);
+        executor.addBalance(balanceAccount2, 250, address(0), 0);
         vm.stopPrank();
-        (uint256 total,,) = executor.getBalanceFuseSnapshot();
+        (uint256 total, , ) = executor.getBalanceFuseSnapshot();
         assertEq(total, 350);
     }
 
@@ -1334,26 +1609,32 @@ contract ExternalStateExecutorTest is Test {
         vault.grantMarketSubstrates(MARKET_ID, subs);
         executor.syncSubstrates();
 
-        (uint256 total,,) = executor.getBalanceFuseSnapshot();
+        (uint256 total, , ) = executor.getBalanceFuseSnapshot();
         assertEq(total, 0);
     }
 
     function test_getBalanceFuseSnapshot_returnsBigChangeBpsFromCache() public view {
-        (, uint256 b,) = executor.getBalanceFuseSnapshot();
+        (, uint256 b, ) = executor.getBalanceFuseSnapshot();
         assertEq(b, BIG_CHANGE_BPS_DEFAULT);
     }
 
-    function test_getBalanceFuseSnapshot_returnsLastCustodianUpdateTimestamp() public {
+    function test_getBalanceFuseSnapshot_returnsConfirmCount() public {
+        // Warp away from the default `block.timestamp == 1`: otherwise the counter (1) and the
+        // timestamp (1) coincide and this test would pass even with the IL-7969 defect present.
+        vm.warp(1_700_000_000);
         _enableDust(100);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, proposedAt, n);
         vm.prank(custodianB);
         executor.confirmBalance(balanceAccount1, h);
 
-        (,, uint256 ts) = executor.getBalanceFuseSnapshot();
-        assertEq(ts, block.timestamp);
+        // The third snapshot value is the monotonic confirm counter (IL-7969 fix), NOT a timestamp:
+        // it must equal `confirmCount` and be exactly 1 after a single confirmation.
+        (, , uint256 count) = executor.getBalanceFuseSnapshot();
+        assertEq(count, executor.confirmCount());
+        assertEq(count, 1);
     }
 
     function test_getOldestUpdateTimestamp_returnsMinNonZero() public {
@@ -1363,7 +1644,7 @@ contract ExternalStateExecutorTest is Test {
         vm.warp(t1);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 paAt1, uint256 n1) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 paAt1, uint256 n1) = executor.pendingProposals(balanceAccount1);
         bytes32 h1 = _hash(balanceAccount1, 100, custodianA, paAt1, n1);
         vm.prank(custodianB);
         executor.confirmBalance(balanceAccount1, h1);
@@ -1373,7 +1654,7 @@ contract ExternalStateExecutorTest is Test {
         vm.warp(t2);
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount2, 200);
-        (,, uint64 paAt2, uint256 n2) = executor.pendingProposals(balanceAccount2);
+        (, , uint64 paAt2, uint256 n2) = executor.pendingProposals(balanceAccount2);
         bytes32 h2 = _hash(balanceAccount2, 200, custodianA, paAt2, n2);
         vm.prank(custodianB);
         executor.confirmBalance(balanceAccount2, h2);
@@ -1387,7 +1668,7 @@ contract ExternalStateExecutorTest is Test {
         // Only update account 1
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 paAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 paAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 100, custodianA, paAt, n);
         vm.prank(custodianB);
         executor.confirmBalance(balanceAccount1, h);
@@ -1425,7 +1706,7 @@ contract ExternalStateExecutorTest is Test {
     ///      `SafeERC20FailedOperation`.
     function test_removeBalance_zeroTokenAmount_skipsTransfer() public {
         vm.prank(address(vault));
-        executor.addBalance(balanceAccount1, 1000);
+        executor.addBalance(balanceAccount1, 1000, address(0), 0);
 
         vm.prank(address(vault));
         executor.removeBalance(balanceAccount1, 100, address(0), 0);
@@ -1454,7 +1735,7 @@ contract ExternalStateExecutorTest is Test {
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 333);
 
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 333, custodianA, proposedAt, n);
 
         // Warp to exactly the boundary: nowTs - proposedAt == stalenessMax.
@@ -1476,7 +1757,7 @@ contract ExternalStateExecutorTest is Test {
         // First confirm.
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 100);
-        (,, uint64 proposedAt1, uint256 n1) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt1, uint256 n1) = executor.pendingProposals(balanceAccount1);
         bytes32 h1 = _hash(balanceAccount1, 100, custodianA, proposedAt1, n1);
         vm.prank(custodianB);
         executor.confirmBalance(balanceAccount1, h1);
@@ -1488,7 +1769,7 @@ contract ExternalStateExecutorTest is Test {
 
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 200);
-        (,, uint64 proposedAt2, uint256 n2) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt2, uint256 n2) = executor.pendingProposals(balanceAccount1);
         bytes32 h2 = _hash(balanceAccount1, 200, custodianA, proposedAt2, n2);
 
         vm.prank(custodianB);
@@ -1536,7 +1817,7 @@ contract ExternalStateExecutorTest is Test {
         executor.proposeBalance(balanceAccount1, 500);
 
         // Sanity: re-entry attempt never landed, so no proposal was stored.
-        (uint256 v, address p,,) = executor.pendingProposals(balanceAccount1);
+        (uint256 v, address p, , ) = executor.pendingProposals(balanceAccount1);
         assertEq(v, 0, "reentrant call must not create a pending proposal");
         assertEq(p, address(0), "reentrant call must not store a proposer");
         assertFalse(reentrant.tripped(), "re-entry aborted before mock could flip tripped flag");
@@ -1564,11 +1845,14 @@ contract ExternalStateExecutorTest is Test {
         // Propose (inside, _checkDust triggers reentrant.balanceOf — but target is not set yet, so no-op).
         vm.prank(custodianA);
         executor.proposeBalance(balanceAccount1, 500);
-        (,, uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
+        (, , uint64 proposedAt, uint256 n) = executor.pendingProposals(balanceAccount1);
         bytes32 h = _hash(balanceAccount1, 500, custodianA, proposedAt, n);
 
         // Arm the reentrant token to re-enter confirmBalance inside _checkDust.balanceOf.
-        reentrant.setTarget(address(executor), abi.encodeWithSelector(IExternalStateExecutor.confirmBalance.selector, balanceAccount1, h));
+        reentrant.setTarget(
+            address(executor),
+            abi.encodeWithSelector(IExternalStateExecutor.confirmBalance.selector, balanceAccount1, h)
+        );
 
         // Call confirm as the reentrant custodian (!= proposer == custodianA).
         // Note: _checkDust is `view`, so IERC20.balanceOf runs via STATICCALL. The reentrant
@@ -1582,7 +1866,7 @@ contract ExternalStateExecutorTest is Test {
         executor.confirmBalance(balanceAccount1, h);
 
         // Sanity: pending proposal must still be present and balance untouched after the revert.
-        (uint256 v, address p,, uint256 nn) = executor.pendingProposals(balanceAccount1);
+        (uint256 v, address p, , uint256 nn) = executor.pendingProposals(balanceAccount1);
         assertEq(v, 500, "pending proposal must still be present after revert");
         assertEq(p, custodianA, "proposer must still be custodianA after revert");
         assertEq(nn, n, "nonce must be unchanged after revert");
@@ -1646,12 +1930,27 @@ contract ExternalStateExecutorTest is Test {
         executor.syncSubstrates();
     }
 
+    /// @dev Puts `amount_` of `token_` on the executor the way an enter without forwarding does: the tokens
+    ///      are transferred to the executor and credited by the vault via `addBalance` (IL-8739). A plain
+    ///      `mint` to the executor would be a donation, which the dust check intentionally ignores.
+    function _creditUnforwarded(MockERC20ForExternalState token_, uint256 amount_) internal {
+        token_.mint(address(executor), amount_);
+        vm.prank(address(vault));
+        executor.addBalance(balanceAccount1, 0, address(token_), amount_);
+    }
+
     function _enableDustForAllAssets() internal {
         _enableDust(100);
     }
 
     /// @dev Mirror of ExternalStateExecutor._proposalHash (H-1 binding: executor + chainid + balanceAccount).
-    function _hash(address ba_, uint256 val_, address proposer_, uint64 at_, uint256 n_) internal view returns (bytes32) {
+    function _hash(
+        address ba_,
+        uint256 val_,
+        address proposer_,
+        uint64 at_,
+        uint256 n_
+    ) internal view returns (bytes32) {
         return keccak256(abi.encode(address(executor), block.chainid, ba_, val_, proposer_, at_, n_));
     }
 

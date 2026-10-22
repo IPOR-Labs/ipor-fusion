@@ -66,7 +66,14 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 ltAssetAmountReceived
     );
 
+    event YieldBasisLtSupplyFuseExitFailed(address version, address ltAddress, uint256 ltSharesAmount);
+
     error YieldBasisLtSupplyFuseUnsupportedVault(string action, address asset);
+
+    /// @notice Slippage tolerance (WAD) applied to instant withdrawals when params[2] is not configured (1%)
+    uint256 public constant DEFAULT_INSTANT_WITHDRAW_SLIPPAGE = 1e16;
+    /// @notice Upper bound (WAD) for the instant withdrawal slippage tolerance configured in params[2] (5%)
+    uint256 public constant MAX_INSTANT_WITHDRAW_SLIPPAGE = 5e16;
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -131,18 +138,24 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     function exit(
         YieldBasisLtSupplyFuseExitData memory data_
     ) public returns (address ltAddress, uint256 ltSharesAmount, uint256 ltAssetAmountReceived) {
-        return _exit(data_);
+        return _exit(data_, false);
     }
 
     /**
      * @notice Performs instant withdrawal from Yield Basis vault based on underlying asset amount
      * @dev This function calculates the required LT shares based on the underlying asset amount and withdraws them.
      *      It implements the IFuseInstantWithdraw interface for instant withdrawal functionality.
+     *      LT.withdraw unwinds single-sided through the Curve pool at its spot state, so the minimum output is
+     *      derived from the oracle-based LT.pricePerShare() minus the slippage tolerance. A withdrawal below that
+     *      floor reverts inside the LT, is caught, and the instant withdrawal moves on to the next fuse.
      *      params[0] - amount in underlying assets (bytes32 encoded uint256)
      *      params[1] - LT address (bytes32 encoded address)
+     *      params[2] - optional slippage tolerance in WAD (bytes32 encoded uint256), defaults to
+     *                  DEFAULT_INSTANT_WITHDRAW_SLIPPAGE and is capped at MAX_INSTANT_WITHDRAW_SLIPPAGE
      * @param params_ Array of bytes32 parameters:
      *                - params[0]: Amount in underlying assets (bytes32 encoded uint256)
      *                - params[1]: Leveraged Liquidity Token address (bytes32 encoded address)
+     *                - params[2]: Optional slippage tolerance in WAD (bytes32 encoded uint256)
      */
     function instantWithdraw(bytes32[] calldata params_) external override {
         address plasmaVaultAddress = address(this);
@@ -163,7 +176,9 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             plasmaVaultUnderlyingAssetsAmountDecimals
         );
 
-        uint256 ltSharesAmount = FullMath.mulDiv(underlyingAmountInWad, 1e18, lt.pricePerShare());
+        uint256 ltPricePerShare = lt.pricePerShare();
+
+        uint256 ltSharesAmount = FullMath.mulDiv(underlyingAmountInWad, 1e18, ltPricePerShare);
 
         uint256 ltSharesToWithdraw = IporMath.min(ltSharesAmount, lt.balanceOf(plasmaVaultAddress));
 
@@ -171,16 +186,30 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             return;
         }
 
-        _exit(YieldBasisLtSupplyFuseExitData(ltAddress, ltSharesToWithdraw, 0));
+        uint256 slippage = params_.length > 2 ? uint256(params_[2]) : DEFAULT_INSTANT_WITHDRAW_SLIPPAGE;
+
+        if (slippage > MAX_INSTANT_WITHDRAW_SLIPPAGE) {
+            slippage = MAX_INSTANT_WITHDRAW_SLIPPAGE;
+        }
+
+        uint256 minLtAssetAmountToReceive = IporMath.convertWadToAssetDecimals(
+            FullMath.mulDiv(FullMath.mulDiv(ltSharesToWithdraw, ltPricePerShare, 1e18), 1e18 - slippage, 1e18),
+            plasmaVaultUnderlyingAssetsAmountDecimals
+        );
+
+        _exit(YieldBasisLtSupplyFuseExitData(ltAddress, ltSharesToWithdraw, minLtAssetAmountToReceive), true);
     }
 
     /// @notice Internal function to withdraw assets from Yield Basis vault
     /// @param data_ Struct containing ltAddress, ltSharesAmount, and minLtAssetAmountToReceive
+    /// @param catchExceptions_ When true (instant withdrawal path), a failing LT withdraw emits
+    ///        YieldBasisLtSupplyFuseExitFailed and returns zero instead of reverting
     /// @return ltAddress Leveraged Liquidity Token address
     /// @return ltSharesAmount Amount of shares withdrawn
     /// @return ltAssetAmountReceived Amount of underlying asset received
     function _exit(
-        YieldBasisLtSupplyFuseExitData memory data_
+        YieldBasisLtSupplyFuseExitData memory data_,
+        bool catchExceptions_
     ) internal returns (address ltAddress, uint256 ltSharesAmount, uint256 ltAssetAmountReceived) {
         if (data_.ltSharesAmount == 0) {
             return (address(0), 0, 0);
@@ -190,11 +219,27 @@ contract YieldBasisLtSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             revert YieldBasisLtSupplyFuseUnsupportedVault("exit", data_.ltAddress);
         }
 
-        ltAssetAmountReceived = IYieldBasisLT(data_.ltAddress).withdraw(
-            data_.ltSharesAmount,
-            data_.minLtAssetAmountToReceive,
-            address(this)
-        );
+        if (catchExceptions_) {
+            try
+                IYieldBasisLT(data_.ltAddress).withdraw(
+                    data_.ltSharesAmount,
+                    data_.minLtAssetAmountToReceive,
+                    address(this)
+                )
+            returns (uint256 received) {
+                ltAssetAmountReceived = received;
+            } catch {
+                /// @dev if withdraw failed, continue with the next instant withdrawal fuse
+                emit YieldBasisLtSupplyFuseExitFailed(VERSION, data_.ltAddress, data_.ltSharesAmount);
+                return (data_.ltAddress, 0, 0);
+            }
+        } else {
+            ltAssetAmountReceived = IYieldBasisLT(data_.ltAddress).withdraw(
+                data_.ltSharesAmount,
+                data_.minLtAssetAmountToReceive,
+                address(this)
+            );
+        }
 
         ltAddress = data_.ltAddress;
         ltSharesAmount = data_.ltSharesAmount;

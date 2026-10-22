@@ -47,6 +47,7 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 lpTokenAmount,
         uint256 finalLpTokenUnderlyingAmount
     );
+    /// @dev Gross amounts that left the reward vault; on the instant-withdraw cap/restake path subtract StakeDaoV2SupplyFuseRestaked of the same call (see README "Reading the events").
     event StakeDaoV2SupplyFuseExit(
         address version,
         address rewardVault,
@@ -61,6 +62,15 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 lpTokenAmount,
         uint256 lpTokenUnderlyingAmount
     );
+
+    event StakeDaoV2SupplyFuseRestaked(
+        address version,
+        address rewardVault,
+        uint256 lpTokenAmount,
+        uint256 rewardVaultShares
+    );
+
+    event StakeDaoV2SupplyFuseRestakeFailed(address version, address rewardVault, uint256 lpTokenAmount);
 
     error StakeDaoV2SupplyFuseInsufficientLpTokenUnderlyingAmount(
         uint256 finalLpTokenUnderlyingAmount,
@@ -209,20 +219,11 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 uint256 lpTokenAmountTemp
             ) {
                 lpTokenAmount = lpTokenAmountTemp;
-                try IERC4626(rewardVaultContract.asset()).redeem(lpTokenAmountTemp, plasmaVault, plasmaVault) returns (
-                    uint256 lpTokenUnderlyingAmountTemp
-                ) {
-                    lpTokenUnderlyingAmount = lpTokenUnderlyingAmountTemp;
-                } catch {
-                    /// @dev if redeem failed, continue with the next step
-                    emit StakeDaoV2SupplyFuseExitFailed(
-                        VERSION,
-                        rewardVault,
-                        finalRewardVaultShares,
-                        lpTokenAmount,
-                        lpTokenUnderlyingAmount
-                    );
-                }
+                lpTokenUnderlyingAmount = _redeemLpVaultSharesAndRestakeRest(
+                    rewardVaultContract,
+                    lpTokenAmountTemp,
+                    finalRewardVaultShares
+                );
             } catch {
                 /// @dev if redeem failed, continue with the next step
                 emit StakeDaoV2SupplyFuseExitFailed(
@@ -250,6 +251,67 @@ contract StakeDaoV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             lpTokenAmount,
             lpTokenUnderlyingAmount
         );
+    }
+
+    /// @notice Instant-withdraw only: redeems the LP-vault shares received from the reward vault, capped by
+    /// the LP vault's `maxRedeem`, and stakes the part that could not be redeemed back into the reward vault.
+    /// @dev `maxRedeem` has to be read AFTER the outer reward-vault redeem, because only then the PlasmaVault
+    /// holds the LP-vault shares (before it the owner balance, hence `maxRedeem`, is 0). `maxRedeem == 0` (or a
+    /// reverting `maxRedeem`) falls back to the full amount, as in `Erc4626SupplyFuse` (IL-8505), for LP vaults
+    /// that do not implement the view. Every external call that can fail is caught, so a failed restake leaves
+    /// the shares loose (valued by `StakeDaoV2BalanceFuse`) instead of reverting the user withdrawal.
+    /// @param rewardVault_ Reward vault the shares were just redeemed from
+    /// @param lpTokenAmount_ Amount of LP-vault shares received from the reward vault
+    /// @param finalRewardVaultShares_ Reward vault shares that were redeemed (for events)
+    /// @return lpTokenUnderlyingAmount Amount of LP token underlying asset received
+    function _redeemLpVaultSharesAndRestakeRest(
+        IERC4626 rewardVault_,
+        uint256 lpTokenAmount_,
+        uint256 finalRewardVaultShares_
+    ) private returns (uint256 lpTokenUnderlyingAmount) {
+        address plasmaVault = address(this);
+        IERC4626 lpVault = IERC4626(rewardVault_.asset());
+
+        uint256 lpMax;
+        try lpVault.maxRedeem(plasmaVault) returns (uint256 maxRedeemTemp) {
+            lpMax = maxRedeemTemp;
+        } catch {
+            lpMax = 0;
+        }
+
+        uint256 lpToRedeem = lpMax == 0 ? lpTokenAmount_ : IporMath.min(lpTokenAmount_, lpMax);
+        uint256 lpRedeemed;
+
+        try lpVault.redeem(lpToRedeem, plasmaVault, plasmaVault) returns (uint256 lpTokenUnderlyingAmountTemp) {
+            lpTokenUnderlyingAmount = lpTokenUnderlyingAmountTemp;
+            lpRedeemed = lpToRedeem;
+        } catch {
+            /// @dev if redeem failed, continue with the next step
+            emit StakeDaoV2SupplyFuseExitFailed(
+                VERSION,
+                address(rewardVault_),
+                finalRewardVaultShares_,
+                lpTokenAmount_,
+                lpTokenUnderlyingAmount
+            );
+        }
+
+        if (lpTokenAmount_ > lpRedeemed) {
+            _restake(rewardVault_, address(lpVault), lpTokenAmount_ - lpRedeemed);
+        }
+    }
+
+    function _restake(IERC4626 rewardVault_, address lpToken_, uint256 lpTokenAmount_) private {
+        ERC20(lpToken_).forceApprove(address(rewardVault_), lpTokenAmount_);
+
+        try rewardVault_.deposit(lpTokenAmount_, address(this)) returns (uint256 rewardVaultShares) {
+            emit StakeDaoV2SupplyFuseRestaked(VERSION, address(rewardVault_), lpTokenAmount_, rewardVaultShares);
+        } catch {
+            /// @dev restake failed (e.g. reward vault in shutdown): the shares stay loose and are still valued
+            emit StakeDaoV2SupplyFuseRestakeFailed(VERSION, address(rewardVault_), lpTokenAmount_);
+        }
+
+        ERC20(lpToken_).forceApprove(address(rewardVault_), 0);
     }
 
     function instantWithdraw(bytes32[] calldata params_) external override {

@@ -99,13 +99,13 @@ contract PlasmaVaultRequestSharesTest is Test {
             tokenOut: R_USD,
             amountIn: usdcAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             _universalTokenSwapper,
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         uint256 usdcVaultBalanceBefore = ERC20(USDC).balanceOf(TAU_VAULT);
@@ -469,13 +469,13 @@ contract PlasmaVaultRequestSharesTest is Test {
             tokenOut: USDC,
             amountIn: rUsdcVaultBalanceBefore,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             _universalTokenSwapper,
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         //when

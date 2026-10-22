@@ -100,7 +100,7 @@ contract ExternalStateRescueFuseTest is Test {
     function test_rescue_doesNotAffectTrackedBalance() public {
         _storeExecutor();
         vm.prank(address(vault));
-        IExternalStateExecutor(address(executor)).addBalance(balanceAccount, 12345);
+        IExternalStateExecutor(address(executor)).addBalance(balanceAccount, 12345, address(0), 0);
         airdrop.mint(address(executor), 1 ether);
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.rescue, (address(airdrop))));
         assertEq(executor.balances(balanceAccount), 12345);
@@ -121,7 +121,12 @@ contract ExternalStateRescueFuseTest is Test {
     function test_rescue_revertsForTrackedAsset() public {
         _storeExecutor();
         asset.mint(address(executor), 100e6);
-        vm.expectRevert(abi.encodeWithSelector(ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden.selector, address(asset)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden.selector,
+                address(asset)
+            )
+        );
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.rescue, (address(asset))));
         // Funds remain on the executor — rescue did NOT execute.
         assertEq(asset.balanceOf(address(executor)), 100e6);
@@ -144,6 +149,71 @@ contract ExternalStateRescueFuseTest is Test {
         vault.delegateExecute(address(fuse), abi.encodeCall(fuse.rescue, (address(asset))));
         assertEq(asset.balanceOf(address(vault)), 250e6);
         assertEq(asset.balanceOf(address(executor)), 0);
+    }
+
+    // ---------- IL-8115 regression ----------
+    /// @notice Rescue MUST revert when `asset_` is currently granted as an ASSET substrate on the
+    ///         vault, even when the executor's cached `assets[]` has not been synced yet and
+    ///         therefore does not (yet) contain it. Before the fix the cache-only guard let this
+    ///         sweep through while the token was already credited into `balances[]` via `enter`,
+    ///         double-counting it in `totalAssets()`.
+    function test_rescue_revertsForAssetGrantedOnVaultButNotSynced() public {
+        _storeExecutor();
+
+        MockERC20ForExternalState lateAsset = new MockERC20ForExternalState("Late", "LATE", 18);
+
+        bytes32[] memory subs = new bytes32[](5);
+        subs[0] = ExternalStateSubstrateLib.encodeAssetSubstrate(address(asset));
+        subs[1] = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccount);
+        subs[2] = ExternalStateSubstrateLib.encodeStalenessMaxSubstrate(1 days);
+        subs[3] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(1000);
+        subs[4] = ExternalStateSubstrateLib.encodeAssetSubstrate(address(lateAsset));
+        vault.grantMarketSubstrates(MARKET_ID, subs);
+        // Deliberately NOT calling executor.syncSubstrates() — the cache is now stale.
+        assertEq(executor.assetsLength(), 1, "cache must still be stale before sync");
+
+        lateAsset.mint(address(executor), 400e18);
+        vm.prank(address(vault));
+        IExternalStateExecutor(address(executor)).addBalance(balanceAccount, 400e18, address(0), 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden.selector,
+                address(lateAsset)
+            )
+        );
+        vault.delegateExecute(address(fuse), abi.encodeCall(fuse.rescue, (address(lateAsset))));
+
+        // Funds and tracked balance are untouched — rescue did NOT execute.
+        assertEq(lateAsset.balanceOf(address(executor)), 400e18);
+        assertEq(lateAsset.balanceOf(address(vault)), 0);
+        assertEq(executor.balances(balanceAccount), 400e18);
+    }
+
+    /// @notice Control for the AND semantics: an asset revoked on the vault but still present in the
+    ///         (unsynced) executor cache stays blocked, exactly as before the fix.
+    function test_rescue_stillBlockedWhenRevokedOnVaultButStillCached() public {
+        _storeExecutor();
+
+        bytes32[] memory subs = new bytes32[](3);
+        subs[0] = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccount);
+        subs[1] = ExternalStateSubstrateLib.encodeStalenessMaxSubstrate(1 days);
+        subs[2] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(1000);
+        vault.grantMarketSubstrates(MARKET_ID, subs);
+        // Deliberately NOT calling executor.syncSubstrates() — the cache still lists `asset`.
+        assertEq(executor.assetsLength(), 1, "cache must still contain the revoked asset");
+
+        asset.mint(address(executor), 250e6);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExternalStateErrors.ExternalStateRescueOfTrackedAssetForbidden.selector,
+                address(asset)
+            )
+        );
+        vault.delegateExecute(address(fuse), abi.encodeCall(fuse.rescue, (address(asset))));
+
+        assertEq(asset.balanceOf(address(executor)), 250e6);
+        assertEq(asset.balanceOf(address(vault)), 0);
     }
 
     // ============================================================

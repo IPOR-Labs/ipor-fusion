@@ -227,11 +227,13 @@ contract PlasmaVaultDepositFeeTest is Test {
         uint256 userBalanceAfter = _plasmaVault.balanceOf(_USER);
         uint256 totalSupplyAfter = _plasmaVault.totalSupply();
 
-        assertEq(withdrawManagerBalanceAfter, 1000000000, "withdrawManagerBalanceAfter should be 1000000000");
+        // IL-8743: the fee is 10% of the GROSS shares (as in deposit): gross = 10_000e6 / 0.9, fee = gross - net,
+        // rounded up = 1_111_111_112 (was 10% of the net shares = 1_000_000_000)
+        assertEq(withdrawManagerBalanceAfter, 1111111112, "withdrawManagerBalanceAfter should be 1111111112");
         assertEq(withdrawManagerBalanceBefore, 0, "withdrawManagerBalanceBefore should be 0");
         assertEq(userBalanceAfter, 10000000000, "userBalanceAfter should be 10000000000");
         assertEq(userBalanceBefore, 0, "userBalanceBefore should be 0");
-        assertEq(totalSupplyAfter, 11000000000, "totalSupplyAfter should be 11000000000");
+        assertEq(totalSupplyAfter, 11111111112, "totalSupplyAfter should be 11111111112");
         assertEq(totalSupplyBefore, 0, "totalSupplyBefore should be 0");
     }
 
@@ -259,15 +261,23 @@ contract PlasmaVaultDepositFeeTest is Test {
         uint256 usdcSpent = userUsdcBefore - userUsdcAfter;
         uint256 userShares = _plasmaVault.balanceOf(_USER);
         uint256 feeShares = _plasmaVault.balanceOf(address(_withdrawManager)) - feeRecipientSharesBefore;
-        uint256 expectedFeeShares = sharesToMint * depositFee / 1e18;
+        // IL-8743: fee = 10% of the gross shares: gross = ceil(10_000e6 / 0.9), fee = gross - net
+        uint256 expectedFeeShares = 1111111112;
 
         // User pays exactly what previewMint() declared
         assertEq(actualAssets, expectedAssets, "actualAssets should match previewMint");
         assertEq(usdcSpent, expectedAssets, "USDC spent should match previewMint");
         // User gets exactly the shares they requested
         assertEq(userShares, sharesToMint, "user should receive exactly requested shares");
-        // Fee recipient gets exactly 10% of requested shares
-        assertEq(feeShares, expectedFeeShares, "fee recipient should get exactly 10% fee shares");
+        // Fee recipient gets 10% of the gross shares (net + fee), rounded up in the vault's favour
+        assertEq(feeShares, expectedFeeShares, "fee recipient should get the fee on the gross shares");
+        assertGe(feeShares * 1e18, (sharesToMint + feeShares) * depositFee, "fee rounds up, never below 10% of gross");
+        assertApproxEqAbs(
+            feeShares * 1e18,
+            (sharesToMint + feeShares) * depositFee,
+            1e18,
+            "fee is 10% of the gross shares"
+        );
         // Total minted = user shares + fee shares
         assertEq(_plasmaVault.totalSupply(), sharesToMint + expectedFeeShares, "totalSupply should be shares + fee");
     }
@@ -312,8 +322,10 @@ contract PlasmaVaultDepositFeeTest is Test {
 
         // User gets exactly the shares they requested
         assertEq(user2SharesAfterMint, sharesToMint, "user should get exactly requested shares");
-        // Fee is 10% of requested shares: 90e12 * 10% = 9e12
-        assertEq(feeSharesFromMint, sharesToMint * depositFee / 1e18, "fee shares should be 10% of requested shares");
+        // IL-8743: mint charges the same fee shares as the deposit that yields the same net shares (+-1 wei, rounded
+        // up in the vault's favour); it was 10% of the net shares = 1/9 less than the deposit fee
+        assertGe(feeSharesFromMint, feeSharesAfterDeposit, "mint fee is not below the deposit fee");
+        assertApproxEqAbs(feeSharesFromMint, feeSharesAfterDeposit, 1, "mint fee equals the deposit fee");
         // Assets spent matches previewMint
         assertEq(assetsFromMint, user2UsdcSpent, "actual cost should match returned assets");
         assertEq(assetsFromMint, _plasmaVault.previewMint(sharesToMint), "actual cost should match previewMint");
@@ -342,5 +354,118 @@ contract PlasmaVaultDepositFeeTest is Test {
         assertEq(userBalanceBefore, 0, "userBalanceBefore should be 0");
         assertEq(totalSupplyAfter, 10000000000, "totalSupplyAfter should be 10000000000");
         assertEq(totalSupplyBefore, 0, "totalSupplyBefore should be 0");
+    }
+
+    function test_shouldNotUpdateDepositFeeWhenAboveMaxFee() public {
+        //given
+        uint256 depositFee = _feeManager.DEPOSIT_MAX_FEE_IN_PERCENTAGE() + 1;
+
+        //when
+        vm.expectRevert(abi.encodeWithSelector(FeeManager.InvalidDepositFee.selector, depositFee));
+        vm.startPrank(_ATOMIST);
+        _feeManager.setDepositFee(depositFee);
+        vm.stopPrank();
+
+        //then
+        assertEq(_feeManager.getDepositFee(), 0, "getDepositFee should still be 0 after reverted call");
+    }
+
+    function test_shouldNotUpdateDepositFeeWhenBelowOneHundredPercentButAboveMaxFee() public {
+        //given
+        uint256 depositFee = 99e16;
+
+        //when
+        vm.expectRevert(abi.encodeWithSelector(FeeManager.InvalidDepositFee.selector, depositFee));
+        vm.startPrank(_ATOMIST);
+        _feeManager.setDepositFee(depositFee);
+        vm.stopPrank();
+
+        //then
+        assertEq(_feeManager.getDepositFee(), 0, "getDepositFee should still be 0 after reverted call");
+    }
+
+    function test_shouldNotUpdateDepositFeeWhenOneHundredPercent() public {
+        //given
+        uint256 depositFee = 1e18;
+
+        //when
+        vm.expectRevert(abi.encodeWithSelector(FeeManager.InvalidDepositFee.selector, depositFee));
+        vm.startPrank(_ATOMIST);
+        _feeManager.setDepositFee(depositFee);
+        vm.stopPrank();
+
+        //then
+        assertEq(_feeManager.getDepositFee(), 0, "getDepositFee should still be 0 after reverted call");
+    }
+
+    function test_shouldNotUpdateDepositFeeWhenAboveOneHundredPercent() public {
+        //given
+        uint256 depositFee = 2e18;
+
+        //when
+        vm.expectRevert(abi.encodeWithSelector(FeeManager.InvalidDepositFee.selector, depositFee));
+        vm.startPrank(_ATOMIST);
+        _feeManager.setDepositFee(depositFee);
+        vm.stopPrank();
+
+        //then
+        assertEq(_feeManager.getDepositFee(), 0, "getDepositFee should still be 0 after reverted call");
+    }
+
+    function test_shouldUpdateDepositFeeAtMaxFee() public {
+        //given
+        uint256 depositFee = _feeManager.DEPOSIT_MAX_FEE_IN_PERCENTAGE();
+
+        //when
+        vm.startPrank(_ATOMIST);
+        _feeManager.setDepositFee(depositFee);
+        vm.stopPrank();
+
+        //then
+        assertEq(_feeManager.getDepositFee(), depositFee, "getDepositFee should equal the cap");
+        assertEq(_feeManager.DEPOSIT_MAX_FEE_IN_PERCENTAGE(), 1e17, "DEPOSIT_MAX_FEE_IN_PERCENTAGE should be 1e17");
+    }
+
+    function test_shouldKeepAllUserPathsFunctionalAtMaxDepositFee() public {
+        //given
+        uint256 depositFee = _feeManager.DEPOSIT_MAX_FEE_IN_PERCENTAGE();
+        address user2 = address(0x2222222222);
+        deal(_USDC, user2, 1_000_000e6);
+
+        vm.startPrank(_ATOMIST);
+        _feeManager.setDepositFee(depositFee);
+        vm.stopPrank();
+
+        //when
+        uint256 previewDepositAssets = _plasmaVault.previewDeposit(1_000_000e6);
+        uint256 maxDepositUser = _plasmaVault.maxDeposit(_USER);
+        uint256 maxMintUser2 = _plasmaVault.maxMint(user2);
+        uint256 previewMintAssets = _plasmaVault.previewMint(10_000e6);
+
+        //then
+        assertTrue(previewDepositAssets > 0, "previewDeposit should be > 0 at the cap");
+        assertTrue(maxDepositUser > 0, "maxDeposit should be > 0 at the cap");
+        assertTrue(maxMintUser2 > 0, "maxMint should be > 0 at the cap");
+        assertTrue(previewMintAssets > 0, "previewMint should be > 0 at the cap");
+
+        //when
+        vm.startPrank(_USER);
+        ERC20(_USDC).approve(address(_plasmaVault), type(uint256).max);
+        uint256 sharesFromDeposit = _plasmaVault.deposit(1_000_000e6, _USER);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        ERC20(_USDC).approve(address(_plasmaVault), type(uint256).max);
+        uint256 assetsFromMint = _plasmaVault.mint(10_000e6, user2);
+        vm.stopPrank();
+
+        //then
+        assertEq(sharesFromDeposit, previewDepositAssets, "shares from deposit should equal previewDeposit value");
+        assertEq(
+            _plasmaVault.balanceOf(_USER),
+            previewDepositAssets,
+            "user share balance after deposit should equal previewDeposit value"
+        );
+        assertEq(assetsFromMint, previewMintAssets, "assets paid on mint should equal previewMint value");
     }
 }

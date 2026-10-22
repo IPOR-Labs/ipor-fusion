@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -13,6 +13,8 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {UniswapV3SwapFuse, UniswapV3SwapFuseEnterData} from "../../../contracts/fuses/uniswap/UniswapV3SwapFuse.sol";
 import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
+import {TransientStorageLib} from "../../../contracts/transient_storage/TransientStorageLib.sol";
+import {ReadResult, UniversalReader} from "../../../contracts/universal_reader/UniversalReader.sol";
 
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
@@ -26,10 +28,19 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 
+/// @dev Test-only reader used to inspect a fuse's transient storage outputs after `PlasmaVault.execute`
+/// via `UniversalReader.read`, which delegatecalls this contract in the vault's context.
+contract TransientOutputsReader {
+    function readOutputs(address fuse_) external view returns (bytes32[] memory) {
+        return TransientStorageLib.getOutputs(fuse_);
+    }
+}
+
 contract UniswapV3SwapFuseTest is Test {
     using SafeERC20 for ERC20;
 
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
+    event UniswapV3SwapFuseEnter(address version, uint256 tokenInAmount, bytes path, uint256 minOutAmount);
 
     address private constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
@@ -338,6 +349,191 @@ contract UniswapV3SwapFuseTest is Test {
         assertEq(plasmaVaultUsdcBalanceAfter, 0, "plasmaVaultUsdcBalanceAfter");
         assertEq(plasmaVaultUsdtBalanceBefore, 0, "plasmaVaultUsdtBalanceBefore");
         assertGt(plasmaVaultUsdtBalanceAfter, 0, "plasmaVaultUsdtBalanceAfter");
+    }
+
+    /// @notice Regression for IL-7990: the event and return value must report the amount actually
+    ///         swapped (clamped to the vault balance), not the raw request.
+    function testShouldReportClampedAmountWhenRequestExceedsVaultBalance() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+        // Requested amount is 2.5x the vault's balance, so the gap between "requested" and
+        // "effective" cannot be mistaken for rounding noise.
+        uint256 requestedAmount = 2_500e6;
+
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        UniswapV3SwapFuseEnterData memory enterData = UniswapV3SwapFuseEnterData({
+            tokenInAmount: requestedAmount,
+            path: path,
+            minOutAmount: 0
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_uniswapV3SwapFuse),
+            abi.encodeWithSignature("enter((uint256,uint256,bytes))", enterData)
+        );
+
+        vm.recordLogs();
+
+        //when
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        // then
+        bytes32 enterTopic = keccak256("UniswapV3SwapFuseEnter(address,uint256,bytes,uint256)");
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bool found;
+        for (uint256 i; i < logs.length; ++i) {
+            // The fuse runs via delegatecall from PlasmaVault, so the log's on-chain emitter is
+            // the vault's address, not the fuse's.
+            if (logs[i].emitter == _plasmaVault && logs[i].topics[0] == enterTopic) {
+                found = true;
+                (address version, uint256 emittedTokenInAmount, bytes memory emittedPath, uint256 emittedMinOutAmount) = abi
+                    .decode(logs[i].data, (address, uint256, bytes, uint256));
+                assertEq(version, address(_uniswapV3SwapFuse), "event.version");
+                // Effective amount == depositAmount (1_000e6), NOT requestedAmount (2_500e6).
+                assertEq(emittedTokenInAmount, depositAmount, "event.tokenInAmount == effective amount");
+                assertTrue(emittedTokenInAmount != requestedAmount, "event.tokenInAmount != requested amount");
+                assertEq(emittedPath, path, "event.path");
+                assertEq(emittedMinOutAmount, 0, "event.minOutAmount");
+            }
+        }
+        assertTrue(found, "UniswapV3SwapFuseEnter must be emitted");
+
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), 0, "plasmaVaultUsdcBalanceAfter");
+        assertGt(ERC20(USDT).balanceOf(_plasmaVault), 0, "plasmaVaultUsdtBalanceAfter");
+    }
+
+    /// @notice Regression for IL-7990: `enterTransient` must publish the effective (clamped)
+    ///         amount to `outputs[0]`, not the raw request, since downstream fuses chain on it.
+    function testShouldPublishClampedAmountToTransientOutputsWhenRequestExceedsVaultBalance() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+        // Requested amount is 2.5x the vault's balance.
+        uint256 requestedAmount = 2_500e6;
+
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        FuseAction[] memory calls = _buildTransientEnterCalls(requestedAmount, 0, path);
+
+        //when
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        // then
+        bytes32[] memory outputs = _readOutputs(address(_uniswapV3SwapFuse));
+        uint256 pathLength = path.length;
+        uint256 chunksCount = (pathLength + 31) / 32;
+        assertEq(outputs.length, 2 + chunksCount + 1, "outputs.length");
+        assertEq(outputs[0], TypeConversionLib.toBytes32(depositAmount), "outputs[0] == effective amount");
+        assertTrue(outputs[0] != TypeConversionLib.toBytes32(requestedAmount), "outputs[0] != requested amount");
+        assertEq(outputs[1], TypeConversionLib.toBytes32(pathLength), "outputs[1] == pathLength");
+        assertEq(
+            outputs[2 + chunksCount],
+            TypeConversionLib.toBytes32(uint256(0)),
+            "last output == minOutAmount"
+        );
+    }
+
+    /// @notice Regression for IL-7990: when the vault holds none of the input token, `enter` must
+    ///         perform no transfer, emit no event, and report `0` (not the raw request).
+    function testShouldReportZeroAndNotSwapWhenVaultHasNoInputToken() external {
+        // given — no deposit, vault holds 0 USDC
+        uint256 requestedAmount = 1_000e6;
+
+        bytes memory path = abi.encodePacked(USDC, uint24(3000), USDT);
+
+        FuseAction[] memory calls = _buildTransientEnterCalls(requestedAmount, 0, path);
+
+        vm.recordLogs();
+
+        //when
+        PlasmaVault(_plasmaVault).execute(calls);
+
+        // then
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 enterTopic = keccak256("UniswapV3SwapFuseEnter(address,uint256,bytes,uint256)");
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(
+                logs[i].emitter != _plasmaVault || logs[i].topics[0] != enterTopic,
+                "UniswapV3SwapFuseEnter must not be emitted on a no-op"
+            );
+        }
+
+        bytes32[] memory outputs = _readOutputs(address(_uniswapV3SwapFuse));
+        assertEq(outputs[0], TypeConversionLib.toBytes32(uint256(0)), "outputs[0] == 0, not requestedAmount");
+        assertTrue(
+            outputs[0] != TypeConversionLib.toBytes32(requestedAmount),
+            "outputs[0] != requested amount"
+        );
+        assertEq(outputs[1], TypeConversionLib.toBytes32(path.length), "outputs[1] == pathLength (echoed)");
+        assertEq(ERC20(USDC).balanceOf(_plasmaVault), 0, "no USDC balance moved");
+        assertEq(ERC20(USDT).balanceOf(_plasmaVault), 0, "no USDT received");
+    }
+
+    function _buildTransientEnterCalls(
+        uint256 tokenInAmount_,
+        uint256 minOutAmount_,
+        bytes memory path_
+    ) private view returns (FuseAction[] memory calls_) {
+        uint256 pathLength = path_.length;
+        uint256 chunksCount = (pathLength + 31) / 32;
+
+        address[] memory fusesToSet = new address[](1);
+        fusesToSet[0] = address(_uniswapV3SwapFuse);
+
+        bytes32[][] memory inputsByFuse = new bytes32[][](1);
+        inputsByFuse[0] = new bytes32[](3 + chunksCount);
+        inputsByFuse[0][0] = TypeConversionLib.toBytes32(tokenInAmount_);
+        inputsByFuse[0][1] = TypeConversionLib.toBytes32(minOutAmount_);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(pathLength);
+
+        for (uint256 i; i < chunksCount; ++i) {
+            uint256 chunkStart = i * 32;
+            bytes32 chunk;
+            assembly {
+                chunk := mload(add(add(path_, 0x20), chunkStart))
+            }
+            inputsByFuse[0][3 + i] = chunk;
+        }
+
+        TransientStorageSetInputsFuseEnterData memory setInputsData = TransientStorageSetInputsFuseEnterData({
+            fuse: fusesToSet,
+            inputsByFuse: inputsByFuse
+        });
+
+        calls_ = new FuseAction[](2);
+        calls_[0] = FuseAction(
+            _transientStorageSetInputsFuse,
+            abi.encodeWithSignature("enter((address[],bytes32[][]))", setInputsData)
+        );
+        calls_[1] = FuseAction(address(_uniswapV3SwapFuse), abi.encodeWithSignature("enterTransient()"));
+    }
+
+    function _readOutputs(address fuse_) private returns (bytes32[] memory outputs_) {
+        TransientOutputsReader reader = new TransientOutputsReader();
+        ReadResult memory readResult = UniversalReader(_plasmaVault).read(
+            address(reader),
+            abi.encodeWithSignature("readOutputs(address)", fuse_)
+        );
+        outputs_ = abi.decode(readResult.data, (bytes32[]));
     }
 
     function _setupFeeConfig() private returns (FeeConfig memory feeConfig_) {

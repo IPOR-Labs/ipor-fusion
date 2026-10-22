@@ -21,6 +21,7 @@ import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawMana
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {TransientStorageSetterFuse} from "../../test_helpers/TransientStorageSetterFuse.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
     struct PlasmaVaultState {
@@ -749,7 +750,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
         );
     }
 
-    function testShouldRevertWhenBurnAmountExitExceedsLPBalance() external {
+    function testShouldClampExitToVaultLpBalanceWhenBurnAmountExceedsLPBalance() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
@@ -808,11 +809,16 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         PlasmaVaultState memory afterEnterState = getPlasmaVaultState(plasmaVault, fuse, USDM);
 
+        uint256 expectedCoinAmountReceived = CURVE_STABLESWAP_NG.calc_withdraw_one_coin(
+            afterEnterState.vaultLpTokensBalance,
+            1
+        );
+
         FuseAction[] memory callsExit = new FuseAction[](1);
         callsExit[0] = FuseAction(
             address(fuse),
             abi.encodeWithSignature(
-                "exit((address,address,uint256,uint256))",
+                "exit((address,uint256,address,uint256))",
                 CurveStableswapNGSingleSideSupplyFuseExitData({
                     curveStableswapNG: CURVE_STABLESWAP_NG,
                     asset: USDM,
@@ -822,23 +828,31 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             )
         );
 
+        vm.expectEmit(true, true, true, true);
+        emit CurveSupplyStableswapNGSingleSideSupplyFuseExit(
+            address(fuse),
+            address(CURVE_STABLESWAP_NG),
+            afterEnterState.vaultLpTokensBalance,
+            USDM,
+            expectedCoinAmountReceived
+        );
+
         // when
         vm.startPrank(alpha);
-        vm.expectRevert();
         plasmaVault.execute(callsExit);
         vm.stopPrank();
 
         // then
         PlasmaVaultState memory afterExitState = getPlasmaVaultState(plasmaVault, fuse, USDM);
-        assertEq(afterEnterState.vaultBalance, afterExitState.vaultBalance, "vault balance should not be decreased");
-        assertEq(
-            afterEnterState.vaultLpTokensBalance,
-            afterExitState.vaultLpTokensBalance,
-            "LP token balance should not be decreased"
+        assertEq(afterExitState.vaultLpTokensBalance, 0, "LP token balance should be clamped and burnt to zero");
+        assertGt(
+            afterExitState.vaultBalance,
+            afterEnterState.vaultBalance,
+            "vault balance should be increased by the clamped exit"
         );
     }
 
-    function testShouldNOTRevertWhenMinReceivedIsNotMetAndDoExit() external {
+    function testShouldRevertWhenMinReceivedIsNotMetOnExit() external {
         // given
         CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
         CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
@@ -917,6 +931,7 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
 
         // when
         vm.startPrank(alpha);
+        vm.expectRevert("Not enough coins removed"); // revert message from CurveStableswapNG
         plasmaVault.execute(callsExit);
         vm.stopPrank();
 
@@ -1124,6 +1139,164 @@ contract CurveStableswapNGSingleSideSupplyFuseTest is Test {
             "Vault balance should be restored"
         );
         assertEq(afterExitState.vaultLpTokensBalance, 0, "LP token balance should be burnt to zero");
+    }
+
+    function testShouldRevertWhenPoolRevertsWithoutReasonOnExit() external {
+        // given
+        CurveStableswapNGSingleSideSupplyFuse fuse = new CurveStableswapNGSingleSideSupplyFuse(1);
+        CurveStableswapNGSingleSideBalanceFuse balanceFuse = new CurveStableswapNGSingleSideBalanceFuse(1);
+
+        MarketSubstratesConfig[] memory marketConfigs = createMarketConfigs(fuse);
+        address[] memory fuses = createFuses(fuse);
+        MarketBalanceFuseConfig[] memory balanceFuses = createBalanceFuses(fuse, balanceFuse);
+        IporFusionAccessManager accessManager = createAccessManager(usersToRoles);
+
+        uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
+
+        address withdrawManager = address(new WithdrawManager(address(accessManager)));
+
+        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault(plasmaVault).proxyInitialize(
+            PlasmaVaultInitData(
+                "Plasma Vault",
+                "PLASMA",
+                USDM,
+                address(priceOracleMiddlewareProxy),
+                FeeConfigHelper.createZeroFeeConfig(),
+                address(accessManager),
+                address(new PlasmaVaultBase()),
+                withdrawManager,
+                address(0)
+            )
+        );
+
+        setupRoles(plasmaVault, accessManager, withdrawManager);
+
+        PlasmaVaultConfigurator.setupPlasmaVault(vm, atomist, address(plasmaVault), fuses, balanceFuses, marketConfigs);
+
+        _supplyTokens(USDM, address(depositor), 1_000 * 10 ** ERC20(USDM).decimals());
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(fuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseEnterData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    assetAmount: amount,
+                    minLpTokenAmountReceived: 0
+                })
+            )
+        );
+
+        vm.startPrank(depositor);
+        ERC20(USDM).approve(address(plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
+        plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
+
+        vm.startPrank(alpha);
+        plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        PlasmaVaultState memory afterEnterState = getPlasmaVaultState(plasmaVault, fuse, USDM);
+
+        // Mock only the value-moving call to revert with empty returndata; N_COINS()/coins(i)/balanceOf
+        // still hit the real pool, so the fuse still reaches remove_liquidity_one_coin.
+        vm.mockCallRevert(
+            CURVE_STABLESWAP_NG_POOL,
+            abi.encodeWithSelector(ICurveStableswapNG.remove_liquidity_one_coin.selector),
+            ""
+        );
+
+        FuseAction[] memory callsExit = new FuseAction[](1);
+        callsExit[0] = FuseAction(
+            address(fuse),
+            abi.encodeWithSignature(
+                "exit((address,uint256,address,uint256))",
+                CurveStableswapNGSingleSideSupplyFuseExitData({
+                    curveStableswapNG: CURVE_STABLESWAP_NG,
+                    asset: USDM,
+                    lpTokenAmount: afterEnterState.vaultLpTokensBalance,
+                    minCoinAmountReceived: 0
+                })
+            )
+        );
+
+        // when
+        vm.startPrank(alpha);
+        vm.expectRevert(abi.encodeWithSelector(Address.FailedInnerCall.selector));
+        plasmaVault.execute(callsExit);
+        vm.stopPrank();
+
+        // then
+        PlasmaVaultState memory afterExitState = getPlasmaVaultState(plasmaVault, fuse, USDM);
+        assertEq(afterEnterState.vaultBalance, afterExitState.vaultBalance, "vault balance should not be decreased");
+        assertEq(
+            afterEnterState.vaultLpTokensBalance,
+            afterExitState.vaultLpTokensBalance,
+            "LP token balance should not be decreased"
+        );
+    }
+
+    function testShouldRevertWhenMinReceivedIsNotMetOnExitTransient() external {
+        TestContext memory ctx = _setupTransientTest();
+
+        // Prepare inputs for enterTransient
+        bytes32[] memory inputs = new bytes32[](4);
+        inputs[0] = TypeConversionLib.toBytes32(address(CURVE_STABLESWAP_NG));
+        inputs[1] = TypeConversionLib.toBytes32(USDM);
+        inputs[2] = TypeConversionLib.toBytes32(ctx.amounts[1]);
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
+
+        FuseAction[] memory callsEnter = new FuseAction[](2);
+        callsEnter[0] = FuseAction(
+            address(ctx.transientStorageSetterFuse),
+            abi.encodeWithSignature("setInputs(address,bytes32[])", address(ctx.fuse), inputs)
+        );
+        callsEnter[1] = FuseAction(address(ctx.fuse), abi.encodeWithSignature("enterTransient()"));
+
+        vm.startPrank(depositor);
+        ERC20(USDM).approve(address(ctx.plasmaVault), 1_000 * 10 ** ERC20(USDM).decimals());
+        ctx.plasmaVault.deposit(1_000 * 10 ** ERC20(USDM).decimals(), address(depositor));
+        vm.stopPrank();
+
+        vm.startPrank(alpha);
+        ctx.plasmaVault.execute(callsEnter);
+        vm.stopPrank();
+
+        PlasmaVaultState memory afterEnterState = getPlasmaVaultState(ctx.plasmaVault, ctx.fuse, USDM);
+
+        // Prepare inputs for exitTransient with a slippage floor the real pool cannot meet
+        bytes32[] memory exitInputs = new bytes32[](4);
+        exitInputs[0] = TypeConversionLib.toBytes32(address(CURVE_STABLESWAP_NG));
+        exitInputs[1] = TypeConversionLib.toBytes32(USDM);
+        exitInputs[2] = TypeConversionLib.toBytes32(afterEnterState.vaultLpTokensBalance);
+        exitInputs[3] = TypeConversionLib.toBytes32(
+            CURVE_STABLESWAP_NG.calc_withdraw_one_coin(afterEnterState.vaultLpTokensBalance, 1) + 1
+        );
+
+        FuseAction[] memory exitCalls = new FuseAction[](2);
+        exitCalls[0] = FuseAction(
+            address(ctx.transientStorageSetterFuse),
+            abi.encodeWithSignature("setInputs(address,bytes32[])", address(ctx.fuse), exitInputs)
+        );
+        exitCalls[1] = FuseAction(address(ctx.fuse), abi.encodeWithSignature("exitTransient()"));
+
+        // when
+        vm.startPrank(alpha);
+        vm.expectRevert("Not enough coins removed"); // revert message from CurveStableswapNG
+        ctx.plasmaVault.execute(exitCalls);
+        vm.stopPrank();
+
+        // then
+        PlasmaVaultState memory afterExitState = getPlasmaVaultState(ctx.plasmaVault, ctx.fuse, USDM);
+        assertEq(afterEnterState.vaultBalance, afterExitState.vaultBalance, "vault balance should not be decreased");
+        assertEq(
+            afterEnterState.vaultLpTokensBalance,
+            afterExitState.vaultLpTokensBalance,
+            "LP token balance should not be decreased"
+        );
     }
     // HELPERS
 

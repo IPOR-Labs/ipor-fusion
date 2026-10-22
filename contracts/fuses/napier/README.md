@@ -59,7 +59,7 @@ PlasmaVault
 └── PrincipalToken + YieldToken pair (curator-owned market)
 ```
 
-1. **Explicit substrates:** Every fuse checks `PlasmaVaultConfigLib.isSubstrateAsAssetGranted` for PT, YT, tokens, and pools before execution.
+1. **Explicit substrates:** Every fuse checks `PlasmaVaultConfigLib.isSubstrateAsAssetGranted` for each PT, YT, token and pool it handles before execution. `NapierCollectFuse` requires the PT and the PT underlying (the token interest is paid in) before `collect`, and every returned reward token after it.
 2. **Lifecycle restrictions:** actions like PT issuance, liquidity deposit, and swaps could be paused by the market curator. Fuses expect callers to gate actions accordingly.
 
 ### Key Components
@@ -111,7 +111,7 @@ Vault automation should track `principalToken.maturity()` and settlement status 
 
 ### NapierSupplyFuse – Issue PT/YT
 
-1. Validate PT and tokenIn substrates.
+1. Validate PT, YT and tokenIn substrates.
 2. Encode `PT_SUPPLY` plus optional `VAULT_CONNECTOR_DEPOSIT`.
 3. Transfer `amountIn` to the router, run `execute`, measure PT delta.
 4. Revert if minted principals are below `minPrincipalsAmount`.
@@ -128,15 +128,16 @@ Vault automation should track `principalToken.maturity()` and settlement status 
 ### NapierCombineFuse – Burn PT+YT
 
 1. Ensure PT, YT, and tokenOut are granted.
-2. Transfer equal PT/YT to router, run `PT_COMBINE`, optionally unwrap to asset.
+2. Grant the router a Permit2 allowance for PT and YT, run `PT_COMBINE` with the explicit `principals` amount so the router pulls exactly that much of each from the vault (PT/YT already sitting on the shared router are ignored), optionally unwrap to asset, then reset the Permit2 allowance.
 3. Revert if `amountOut` is below `minTokenOutAmount`.
 4. Emit `NapierCombineFuseEnter` with returned amount.
 
 ### NapierCollectFuse – Harvest yield + rewards
 
-1. Validate PT.
+1. Validate PT and its underlying token (interest is paid in it) as granted substrates.
 2. Call `principalToken.collect(address(this), address(this))`.
-3. Emit `NapierCollectFuseEnter` with collected yield and reward list.
+3. Validate every returned reward token as a granted substrate.
+4. Emit `NapierCollectFuseEnter` with collected yield and reward list.
 
 ### NapierDepositFuse – Proportional liquidity deposit/withdrawal
 
@@ -165,7 +166,7 @@ Vault automation should track `principalToken.maturity()` and settlement status 
     - `TP_SPLIT_UNDERLYING_TOKEN_LIQUIDITY_KEEP_YT`: Split currency0 into PT, keep YT in vault.
     - `TP_ADD_LIQUIDITY`: Add minted PT + remaining currency0 as liquidity.
 3. Transfer currency0 to router, execute, measure liquidity and YT deltas (YT stay with the vault).
-4. Revert with `NapierFuseInsufficientAmount` when `liquidity < minLiquidity`.
+4. Revert with `NapierFuseInsufficientAmount` when `liquidity < minLiquidity` or when the retained YTs are below `minPrincipalsAmount` (the split ratio is read by the router from the pool's live reserves, so the YT leg is bounded in the fuse).
 5. Emit `NapierZapDepositFuseEnter` with liquidity and YT minted.
 
 **Exit (Zap Out):**

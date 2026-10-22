@@ -32,6 +32,18 @@ contract SafeHarborRegistrarForkTest is Test {
     // Existing FusionFactoryBusinessClientFeePackagesForkTest fixture, also verified in the IPOR address registry.
     address private constant FUSION_FACTORY = 0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852;
     uint256 private constant FORK_BLOCK = 25_952_115;
+    // Account cap used by the fork registrar; D-050: the deploy value is 200 on every chain
+    uint256 private constant FORK_MAX_ACCOUNTS = 200;
+    // Allowlisted pre-upgrade vaults on Ethereum (they bypass the cap)
+    uint256 private constant ALLOWLIST_ENTRIES = 180;
+    // Allowlisted pre-upgrade vaults on Base (the larger worst case)
+    uint256 private constant BASE_ALLOWLIST_ENTRIES = 261;
+    // Entries added per filler transaction (a single huge fill would exceed the block gas limit)
+    uint256 private constant FILL_CHUNK = 100;
+    // EIP-7825 per-transaction gas limit
+    uint256 private constant TX_GAS_LIMIT = 16_777_216;
+    // D-050 budget: about 72% of the EIP-7825 tx cap, which leaves headroom for cost drift (cold cost ~25.3k per entry)
+    uint256 private constant GAS_BUDGET = 12_000_000;
     string private constant OTHER_ACCOUNT = "0x0000000000000000000000000000000000006789";
 
     address private _multisig;
@@ -42,6 +54,7 @@ contract SafeHarborRegistrarForkTest is Test {
     string private _recovery;
     IAgreement private _agreement;
     SafeHarborRegistrar private _registrar;
+    uint256 private _fillerCount;
 
     /// @notice Verifies existing vault ownership, then deploys only the Agreement and Registrar on a fixed fork.
     function setUp() public {
@@ -59,8 +72,9 @@ contract SafeHarborRegistrarForkTest is Test {
         _assertLiveVault(_vault, _vaultOwner, 0xCc9A3e8205AB60e613A044eFcEa5d3479187aceE, 0);
         _assertLiveVault(_secondVault, _secondVaultOwner, 0x3dF9d7BE4017e3d72eA39b96eD4C7070c19eAbaE, 0);
         assertGt(FUSION_FACTORY.code.length, 0, "Live FusionFactory missing");
-        (bool supportsVaultCheck,) =
-            FUSION_FACTORY.staticcall(abi.encodeCall(IFusionFactoryVaultCheck.isFusionVault, (_vault)));
+        (bool supportsVaultCheck, ) = FUSION_FACTORY.staticcall(
+            abi.encodeCall(IFusionFactoryVaultCheck.isFusionVault, (_vault))
+        );
         assertFalse(supportsVaultCheck, "Legacy selector must fail");
         assertGt(_multisig.code.length, 0, "Real DAO Safe must be deployed");
         assertNotEq(_vault, _secondVault);
@@ -68,14 +82,24 @@ contract SafeHarborRegistrarForkTest is Test {
         _recovery = Strings.toHexString(_multisig);
         AgreementDetails memory initialTerms = _terms(_recovery);
         _agreement = IAgreement(
-            ISafeHarborAgreementFactory(AGREEMENT_FACTORY)
-                .create(initialTerms, CHAIN_VALIDATOR, _multisig, keccak256("IPOR registrar integration"))
+            ISafeHarborAgreementFactory(AGREEMENT_FACTORY).create(
+                initialTerms,
+                CHAIN_VALIDATOR,
+                _multisig,
+                keccak256("IPOR registrar integration")
+            )
         );
         assertGt(address(_agreement).code.length, 0);
         assertEq(_agreement.owner(), _multisig);
         _assertAgreementDetails(_agreement, initialTerms);
 
-        _registrar = new SafeHarborRegistrar(_multisig, address(_agreement), FUSION_FACTORY, _recovery);
+        _registrar = new SafeHarborRegistrar(
+            _multisig,
+            address(_agreement),
+            FUSION_FACTORY,
+            _recovery,
+            FORK_MAX_ACCOUNTS
+        );
         assertEq(_registrar.getCaip2ChainId(), "eip155:1");
         assertEq(_registrar.getFusionFactory(), FUSION_FACTORY);
         assertFalse(_registrar.isEligibleVault(_vault));
@@ -170,7 +194,7 @@ contract SafeHarborRegistrarForkTest is Test {
     /// @notice A caller without live OWNER_ROLE cannot opt the vault in or out.
     function testForkNonOwnerCannotChangeParticipation() public {
         address nonOwner = makeAddr("fork non-owner");
-        (bool isOwner,) = IAccessManager(IAccessManaged(_vault).authority()).hasRole(Roles.OWNER_ROLE, nonOwner);
+        (bool isOwner, ) = IAccessManager(IAccessManaged(_vault).authority()).hasRole(Roles.OWNER_ROLE, nonOwner);
         assertFalse(isOwner, "Non-owner fixture has OWNER_ROLE");
         vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.NotVaultOwner.selector, _vault, nonOwner));
         vm.prank(nonOwner);
@@ -189,8 +213,10 @@ contract SafeHarborRegistrarForkTest is Test {
 
     /// @notice An existing owner of the first live vault has no participation rights over the second vault.
     function testForkDifferentVaultOwnerCannotChangeParticipation() public {
-        (bool isOwner,) =
-            IAccessManager(IAccessManaged(_secondVault).authority()).hasRole(Roles.OWNER_ROLE, _vaultOwner);
+        (bool isOwner, ) = IAccessManager(IAccessManaged(_secondVault).authority()).hasRole(
+            Roles.OWNER_ROLE,
+            _vaultOwner
+        );
         assertFalse(isOwner, "Unexpected cross-vault owner");
         vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.NotVaultOwner.selector, _secondVault, _vaultOwner));
         vm.prank(_vaultOwner);
@@ -241,7 +267,9 @@ contract SafeHarborRegistrarForkTest is Test {
         assertEq(_agreement.owner(), _multisig);
         assertTrue(_registrar.isParticipating(_vault));
         bytes memory failure = abi.encodeWithSelector(
-            ISafeHarborRegistrar.AgreementNotOwnedByRegistrar.selector, address(_agreement), _multisig
+            ISafeHarborRegistrar.AgreementNotOwnedByRegistrar.selector,
+            address(_agreement),
+            _multisig
         );
         vm.expectRevert(failure);
         vm.prank(_vaultOwner);
@@ -295,6 +323,138 @@ contract SafeHarborRegistrarForkTest is Test {
         vm.prank(_multisig);
         _registrar.forceRemove(_secondVault);
         _assertAgreementDetails(_agreement, _terms(_recovery));
+    }
+
+    /// @notice IL-8746 / D-050: with the real Agreement filled to MAX + every allowlisted legacy vault, every
+    /// Registrar mutation stays within GAS_BUDGET. Every measured call is its own transaction (isolate), so all
+    /// storage is COLD like in production. Vaults deployed before `isFusionVault` existed enter through the
+    /// allowlist, which bypasses the cap, so an attacker who fills the quota first is the worst case:
+    /// Ethereum 200 + 180 = 380 and Base 200 + 261 = 461 entries (the scan cost per entry is chain independent).
+    /// forge-config: default.isolate = true
+    function testForkGasWithAgreementFilledToCapStaysWithinBudget() public {
+        uint256 entries = FORK_MAX_ACCOUNTS + ALLOWLIST_ENTRIES;
+        _fillAgreement(entries);
+        _assertWithinBudget(entries);
+        entries = FORK_MAX_ACCOUNTS + BASE_ALLOWLIST_ENTRIES;
+        _fillAgreement(entries - _fillerCount);
+        _assertWithinBudget(entries);
+    }
+
+    function _assertWithinBudget(uint256 entries_) private {
+        (uint256 optInGas, uint256 optOutGas, uint256 forceRemoveGas) = _measure();
+        emit log_named_uint("entries", entries_);
+        emit log_named_uint("setParticipation(true) gas", optInGas);
+        emit log_named_uint("setParticipation(false) gas", optOutGas);
+        emit log_named_uint("forceRemove gas", forceRemoveGas);
+        assertLt(optInGas, GAS_BUDGET, "opt-in over budget");
+        assertLt(optOutGas, GAS_BUDGET, "opt-out over budget");
+        assertLt(forceRemoveGas, GAS_BUDGET, "forceRemove over budget");
+        assertLt(GAS_BUDGET, TX_GAS_LIMIT, "budget must leave headroom under the tx limit");
+    }
+
+    /// @notice IL-8746 calibration (cold, one tx per call): gas per Agreement size and the largest measured size that
+    /// still fits GAS_BUDGET (12M) and the 16,777,216 EIP-7825 limit. Sizes 380 and 461 are
+    /// MAX 200 + the allowlist of Ethereum (180) and Base (261) (D-050).
+    /// forge-config: default.isolate = true
+    function testForkGasCalibrationTable() public {
+        uint256[10] memory sizes = [uint256(100), 200, 300, 380, 400, 461, 500, 600, 700, 800];
+        uint256 filled;
+        uint256 largestUnderBudget;
+        uint256 largestUnderLimit;
+        for (uint256 i; i < sizes.length; ++i) {
+            _fillAgreement(sizes[i] - filled);
+            filled = sizes[i];
+            (uint256 optInGas, uint256 optOutGas, uint256 forceRemoveGas) = _measure();
+            uint256 worst = optInGas > optOutGas ? optInGas : optOutGas;
+            worst = worst > forceRemoveGas ? worst : forceRemoveGas;
+            if (worst < GAS_BUDGET) largestUnderBudget = sizes[i];
+            if (worst < TX_GAS_LIMIT) largestUnderLimit = sizes[i];
+            emit log_named_uint("entries", sizes[i]);
+            emit log_named_uint("  opt-in gas", optInGas);
+            emit log_named_uint("  opt-out gas", optOutGas);
+            emit log_named_uint("  forceRemove gas", forceRemoveGas);
+        }
+        emit log_named_uint("largest measured size, worst op < 12M", largestUnderBudget);
+        emit log_named_uint("largest measured size, worst op < 16.7M", largestUnderLimit);
+        assertGt(largestUnderLimit, 0);
+    }
+
+    /// @dev Measures opt-in, opt-out (allowlisted vault, cap bypass) and forceRemove, each as its own transaction;
+    /// state is restored after the first two so the three calls see the same Agreement.
+    function _measure() private returns (uint256 optInGas, uint256 optOutGas, uint256 forceRemoveGas) {
+        uint256 snap = vm.snapshotState();
+        vm.prank(_vaultOwner);
+        uint256 gasBefore = gasleft();
+        _registrar.setParticipation(_vault, true);
+        optInGas = gasBefore - gasleft();
+        assertTrue(_registrar.isParticipating(_vault));
+        vm.prank(_vaultOwner);
+        gasBefore = gasleft();
+        _registrar.setParticipation(_vault, false);
+        optOutGas = gasBefore - gasleft();
+        assertFalse(_registrar.isParticipating(_vault));
+        vm.revertToState(snap);
+
+        snap = vm.snapshotState();
+        vm.prank(_vaultOwner);
+        _registrar.setParticipation(_vault, true);
+        vm.prank(_multisig);
+        gasBefore = gasleft();
+        _registrar.forceRemove(_vault);
+        forceRemoveGas = gasBefore - gasleft();
+        assertTrue(_registrar.isDenylisted(_vault));
+        vm.revertToState(snap);
+    }
+
+    /// @dev Appends `count_` filler accounts to the current chain entry of the real Agreement through the owner's
+    /// authorized ownership round trip (the Registrar itself would refuse past its cap).
+    function _fillAgreement(uint256 count_) private {
+        uint256 remaining = count_;
+        while (remaining > 0) {
+            uint256 chunk = remaining > FILL_CHUNK ? FILL_CHUNK : remaining;
+            _fillChunk(chunk);
+            remaining -= chunk;
+        }
+    }
+
+    function _fillChunk(uint256 count_) private {
+        uint256 offset = _fillerCount;
+        HarborAccount[] memory accounts = new HarborAccount[](count_);
+        for (uint256 i; i < count_; ++i) {
+            accounts[i] = HarborAccount(
+                Strings.toHexString(address(uint160(0xF000_0000 + offset + i))),
+                ChildContractScope.None
+            );
+        }
+        vm.startPrank(_multisig);
+        _registrar.transferAgreementOwnership(_multisig);
+        if (offset == 0) {
+            HarborChain[] memory chains = new HarborChain[](1);
+            chains[0] = HarborChain(_recovery, accounts, "eip155:1");
+            _agreement.addChains(chains);
+        } else {
+            _agreement.addAccounts("eip155:1", accounts);
+        }
+        _agreement.transferOwnership(address(_registrar));
+        vm.stopPrank();
+        _fillerCount += count_;
+    }
+
+    /// @notice IL-8779 on the real Agreement: forceRemove is durable for an allowlisted vault.
+    function testForkForceRemoveIsDurable() public {
+        vm.prank(_vaultOwner);
+        _registrar.setParticipation(_vault, true);
+        vm.prank(_multisig);
+        _registrar.forceRemove(_vault);
+        assertFalse(_registrar.isEligibleVault(_vault));
+        vm.expectRevert(abi.encodeWithSelector(ISafeHarborRegistrar.VaultDenylisted.selector, _vault));
+        vm.prank(_vaultOwner);
+        _registrar.setParticipation(_vault, true);
+        vm.prank(_multisig);
+        _registrar.setDenylist(_vault, false);
+        vm.prank(_vaultOwner);
+        _registrar.setParticipation(_vault, true);
+        assertTrue(_registrar.isParticipating(_vault));
     }
 
     function _assertLiveVault(address vault_, address owner_, address manager_, uint32 executionDelay_) private view {

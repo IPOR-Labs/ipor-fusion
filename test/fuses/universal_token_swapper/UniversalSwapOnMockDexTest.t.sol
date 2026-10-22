@@ -121,13 +121,13 @@ contract UniversalSwapOnMockDexTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -169,13 +169,13 @@ contract UniversalSwapOnMockDexTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         uint256 plasmaVaultUsdcBalanceBefore = ERC20(USDC).balanceOf(_plasmaVault);
@@ -224,18 +224,124 @@ contract UniversalSwapOnMockDexTest is Test {
             tokenOut: USDT,
             amountIn: depositAmount,
             minAmountOut: 0,
-            data: UniversalTokenSwapperData({targets: targets, data: data})
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: new address[](0)})
         });
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             address(_universalTokenSwapperFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         bytes memory error = abi.encodeWithSignature("UniversalTokenSwapperFuseSlippageFail()");
 
         //when
+        vm.expectRevert(error);
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+    }
+
+    // ============ tokensToReturn Tests (IL-7944) ============
+
+    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+    /// @notice Test 11: USDT left in the executor by a target call that only touches the third token is swept to
+    /// the vault when listed in tokensToReturn. The mock never pulls tokenIn (USDC), so the fuse takes the
+    /// early-return path (tokenInBalanceAfter >= tokenInBalanceBefore) - the executor-side sweep still runs
+    /// because it happens before the fuse reads any balance.
+    /// Pre-fix (tokensToReturn loop removed from SwapExecutor.execute): fails on the first assertion (executor
+    /// keeps 1000e6 USDT).
+    function testShouldReturnUsdtLeftInExecutorWhenListed() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        address[] memory targets = new address[](1);
+        targets[0] = _mockDexActionEthereum;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("returnExtra1000Usdt(address)", _swapExecutor);
+
+        address[] memory tokensToReturn = new address[](1);
+        tokensToReturn[0] = USDT;
+
+        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: DAI,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: tokensToReturn})
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,(address[],bytes[],address[])))",
+                enterData
+            )
+        );
+
+        //when
+        PlasmaVault(_plasmaVault).execute(enterCalls);
+
+        // then
+        assertEq(ERC20(USDT).balanceOf(_swapExecutor), 0, "Executor should have no USDT left");
+        assertEq(ERC20(USDT).balanceOf(_plasmaVault), 1_000e6, "Vault should have received the USDT");
+    }
+
+    /// @notice Test 12: a tokensToReturn entry that is not a granted token substrate reverts the whole enter.
+    /// This is a validation-guard test, not evidence for the executor-side fix; covered separately by the
+    /// fuse-side re-injection (removing the validation check).
+    function testShouldRevertWhenTokenToReturnNotGranted() external {
+        // given
+        address userOne = address(0x1222);
+        uint256 depositAmount = 1_000e6;
+
+        vm.prank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
+        ERC20(USDC).transfer(userOne, 10_000e6);
+
+        vm.prank(userOne);
+        ERC20(USDC).approve(_plasmaVault, depositAmount);
+        vm.prank(userOne);
+        PlasmaVault(_plasmaVault).deposit(depositAmount, userOne);
+
+        address[] memory targets = new address[](1);
+        targets[0] = _mockDexActionEthereum;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("returnExtra1000Usdt(address)", _swapExecutor);
+
+        address[] memory tokensToReturn = new address[](1);
+        tokensToReturn[0] = WETH; // not granted per _setupMarketConfigs()
+
+        UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
+            tokenIn: USDC,
+            tokenOut: DAI,
+            amountIn: depositAmount,
+            minAmountOut: 0,
+            data: UniversalTokenSwapperData({targets: targets, data: data, tokensToReturn: tokensToReturn})
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_universalTokenSwapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,(address[],bytes[],address[])))",
+                enterData
+            )
+        );
+
+        bytes memory error = abi.encodeWithSignature("UniversalTokenSwapperFuseUnsupportedAsset(address)", WETH);
+
+        //when/then
         vm.expectRevert(error);
         PlasmaVault(_plasmaVault).execute(enterCalls);
     }

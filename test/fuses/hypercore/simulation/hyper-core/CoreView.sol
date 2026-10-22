@@ -1,0 +1,303 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {PrecompileLib} from "../src/PrecompileLib.sol";
+import {HLConstants} from "../src/CoreWriterLib.sol";
+import {RealL1Read} from "../utils/RealL1Read.sol";
+import {CoreState} from "./CoreState.sol";
+
+/// Modified from https://github.com/ambitlabsxyz/hypercore
+contract CoreView is CoreState {
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
+    using EnumerableSet for EnumerableSet.UintSet;
+
+    using SafeCast for uint256;
+
+    function tokenExists(uint32 token) public view returns (bool) {
+        return bytes(_tokens[token].name).length > 0;
+    }
+
+    function readTokenInfo(uint32 token) public returns (PrecompileLib.TokenInfo memory) {
+        bool notStoredToken = _tokens[token].szDecimals == 0 && _tokens[token].deployer == address(0);
+
+        if (notStoredToken && useRealL1Read) {
+            return RealL1Read.tokenInfo(token);
+        }
+        return _tokens[token];
+    }
+
+    function readSpotInfo(uint32 spotMarketId) public returns (PrecompileLib.SpotInfo memory) {
+        if (bytes(_spotInfo[spotMarketId].name).length == 0 && useRealL1Read) {
+            return RealL1Read.spotInfo(spotMarketId);
+        }
+        return _spotInfo[spotMarketId];
+    }
+
+    function readPerpAssetInfo(uint32 perp) public returns (PrecompileLib.PerpAssetInfo memory) {
+        if (bytes(_perpAssetInfo[perp].coin).length == 0 && useRealL1Read) {
+            return RealL1Read.perpAssetInfo(perp);
+        }
+        return _perpAssetInfo[perp];
+    }
+
+    function readMarkPx(uint32 perp) public returns (uint64) {
+        if (_perpMarkPrice[perp] == 0 && useRealL1Read) {
+            return RealL1Read.markPx(perp);
+        }
+
+        return _perpMarkPrice[perp];
+    }
+
+    function readOraclePx(uint32 perp) public returns (uint64) {
+        if (_perpOraclePrice[perp] == 0 && useRealL1Read) {
+            return RealL1Read.oraclePx(perp);
+        }
+
+        // Local modification (IL-8534): offline, an oracle price that was never pinned with `setOraclePx` tracks
+        // the mark price, so tests that only move the mark keep a zero mark/oracle deviation.
+        if (_perpOraclePrice[perp] == 0 && !useRealL1Read) {
+            return _perpMarkPrice[perp];
+        }
+
+        return _perpOraclePrice[perp];
+    }
+
+    function readSpotPx(uint32 spotMarketId) public returns (uint64) {
+        if (_spotPrice[spotMarketId] == 0 && useRealL1Read) {
+            return RealL1Read.spotPx(spotMarketId);
+        }
+
+        return _spotPrice[spotMarketId];
+    }
+
+    function readSpotBalance(address account, uint64 token) public returns (PrecompileLib.SpotBalance memory) {
+        if (_initializedSpotBalance[account][token] == false && useRealL1Read) {
+            return RealL1Read.spotBalance(account, token);
+        }
+
+        return PrecompileLib.SpotBalance({total: _accounts[account].spot[token], entryNtl: 0, hold: 0});
+    }
+
+    // withdrawable only applies to the default perp dex (dex 0), not HIP-3 dexes
+    function readWithdrawable(address account) public returns (PrecompileLib.Withdrawable memory) {
+        if (_accounts[account].activated == false && useRealL1Read) {
+            return PrecompileLib.Withdrawable({withdrawable: RealL1Read.withdrawable(account)});
+        }
+
+        return _previewWithdrawable(account, HLConstants.DEFAULT_PERP_DEX);
+    }
+
+    function readPerpBalance(address account) public returns (uint64) {
+        return readPerpBalance(account, HLConstants.DEFAULT_PERP_DEX);
+    }
+
+    function readPerpBalance(address account, uint32 dex) public returns (uint64) {
+        // Fall through to chain for any (user, dex) pair the sim hasn't taken over.
+        // If the account was already checked and found not to exist on chain, skip the RPC.
+        if (useRealL1Read && !_initializedDexBalance[account][dex]) {
+            if (_chainAccountExistedChecked[account] && !_chainAccountExisted[account]) return 0;
+
+            if (dex == HLConstants.DEFAULT_PERP_DEX) {
+                return RealL1Read.withdrawable(account);
+            }
+            PrecompileLib.AccountMarginSummary memory ms = RealL1Read.accountMarginSummary(dex, account);
+            uint64 transferReq = ms.marginUsed;
+            uint64 floor = ms.ntlPos / 10;
+            if (floor > transferReq) transferReq = floor;
+            if (ms.accountValue > int64(transferReq)) {
+                return uint64(ms.accountValue - int64(transferReq));
+            }
+            return 0;
+        }
+
+        return _accounts[account].perpBalance[dex];
+    }
+
+    function readUserVaultEquity(address user, address vault)
+        public
+        view
+        returns (PrecompileLib.UserVaultEquity memory)
+    {
+        PrecompileLib.UserVaultEquity memory equity = _accounts[user].vaultEquity[vault];
+
+        uint256 multiplier = _vaultMultiplier[vault] == 0 ? 1e18 : _vaultMultiplier[vault];
+        uint256 lastMultiplier = _userVaultMultiplier[user][vault] == 0 ? 1e18 : _userVaultMultiplier[user][vault];
+        if (multiplier != 0) equity.equity = uint64((uint256(equity.equity) * multiplier) / lastMultiplier);
+        return equity;
+    }
+
+    function _getDelegationAmount(address user, address validator) internal view returns (uint64) {
+        uint256 multiplier = _stakingYieldIndex;
+        uint256 userLastMultiplier =
+            _userStakingYieldIndex[user][validator] == 0 ? 1e18 : _userStakingYieldIndex[user][validator];
+
+        return
+            SafeCast.toUint64(uint256(_accounts[user].delegations[validator].amount) * multiplier / userLastMultiplier);
+    }
+
+    function readDelegations(address user) public returns (PrecompileLib.Delegation[] memory userDelegations) {
+        if (_accounts[user].activated == false && useRealL1Read) {
+            return RealL1Read.delegations(user);
+        }
+
+        address[] memory validators = _accounts[user].delegatedValidators.values();
+
+        userDelegations = new PrecompileLib.Delegation[](validators.length);
+        for (uint256 i; i < userDelegations.length; i++) {
+            userDelegations[i].validator = validators[i];
+            userDelegations[i].amount = _getDelegationAmount(user, validators[i]);
+            userDelegations[i].lockedUntilTimestamp = _accounts[user].delegations[validators[i]].lockedUntilTimestamp;
+        }
+    }
+
+    function readDelegatorSummary(address user) public returns (PrecompileLib.DelegatorSummary memory summary) {
+        if (_accounts[user].activated == false && useRealL1Read) {
+            return RealL1Read.delegatorSummary(user);
+        }
+
+        address[] memory validators = _accounts[user].delegatedValidators.values();
+
+        for (uint256 i; i < validators.length; i++) {
+            summary.delegated += _getDelegationAmount(user, validators[i]);
+        }
+        summary.undelegated = _accounts[user].staking;
+
+        for (uint256 i; i < _withdrawQueue.length(); i++) {
+            WithdrawRequest memory request = deserializeWithdrawRequest(_withdrawQueue.at(i));
+            if (request.account == user) {
+                summary.nPendingWithdrawals++;
+                summary.totalPendingWithdrawal += request.amount;
+            }
+        }
+    }
+
+    function readPosition(address user, uint32 perp) public returns (PrecompileLib.Position memory) {
+        if (_accounts[user].activated == false && useRealL1Read) {
+            return RealL1Read.position(user, perp);
+        }
+
+        return _accounts[user].positions[perp];
+    }
+
+
+    function coreUserExists(address account) public returns (bool) {
+        if (_accounts[account].activated == false && useRealL1Read) {
+            return RealL1Read.coreUserExists(account);
+        }
+
+        return _accounts[account].activated;
+    }
+
+    function readAccountMarginSummary(uint32 perp_dex_index, address user)
+        public
+        returns (PrecompileLib.AccountMarginSummary memory)
+    {
+        // Fall through to chain for any (user, dex) pair the sim hasn't taken over.
+        // This way tests that only read (without forcing) see real chain values,
+        // while tests that do write see the sim's computed values after the write.
+        if (useRealL1Read && !_initializedDexBalance[user][perp_dex_index]) {
+            // Skip the RPC for accounts we've already confirmed don't exist on chain.
+            if (_chainAccountExistedChecked[user] && !_chainAccountExisted[user]) {
+                return PrecompileLib.AccountMarginSummary({
+                    accountValue: 0, marginUsed: 0, ntlPos: 0, rawUsd: 0
+                });
+            }
+            return RealL1Read.accountMarginSummary(perp_dex_index, user);
+        }
+
+        return _previewAccountMarginSummary(user, perp_dex_index);
+    }
+
+    function _previewAccountMarginSummary(address sender, uint32 dex) internal returns (PrecompileLib.AccountMarginSummary memory) {
+        uint64 totalNtlPos = 0;
+        uint64 totalMarginUsed = 0;
+
+        uint64 entryNtlByLeverage = 0;
+
+        uint64 totalLongNtlPos = 0;
+        uint64 totalShortNtlPos = 0;
+
+        for (uint256 i = 0; i < _userPerpPositions[dex][sender].length(); i++) {
+            uint32 perpIndex = uint32(_userPerpPositions[dex][sender].at(i));
+
+            PrecompileLib.Position memory position = _accounts[sender].positions[perpIndex];
+
+            uint32 leverage = position.leverage;
+            uint64 markPx = readMarkPx(perpIndex);
+
+            entryNtlByLeverage += position.entryNtl / leverage;
+
+            int64 szi = position.szi;
+
+            if (szi > 0) {
+                uint64 ntlPos = uint64(szi) * markPx;
+                totalNtlPos += ntlPos;
+                totalMarginUsed += ntlPos / leverage;
+
+                totalLongNtlPos += ntlPos;
+            } else if (szi < 0) {
+                uint64 ntlPos = uint64(-szi) * markPx;
+                totalNtlPos += ntlPos;
+                totalMarginUsed += ntlPos / leverage;
+
+                totalShortNtlPos += ntlPos;
+            }
+        }
+
+        int64 totalAccountValue = int64(_accounts[sender].perpBalance[dex] - entryNtlByLeverage + totalMarginUsed);
+        int64 totalRawUsd = totalAccountValue - int64(totalLongNtlPos) + int64(totalShortNtlPos);
+
+        return PrecompileLib.AccountMarginSummary({
+            accountValue: totalAccountValue, marginUsed: totalMarginUsed, ntlPos: totalNtlPos, rawUsd: totalRawUsd
+        });
+    }
+
+    function _previewWithdrawable(address account, uint32 dex) internal returns (PrecompileLib.Withdrawable memory) {
+        PrecompileLib.AccountMarginSummary memory summary = _previewAccountMarginSummary(account, dex);
+
+        uint64 transferMarginRequirement = 0;
+
+        for (uint256 i = 0; i < _userPerpPositions[dex][account].length(); i++) {
+            uint32 perpIndex = uint32(_userPerpPositions[dex][account].at(i));
+            PrecompileLib.Position memory position = _accounts[account].positions[perpIndex];
+            uint64 markPx = readMarkPx(perpIndex);
+
+            uint64 ntlPos = 0;
+
+            if (position.szi > 0) {
+                ntlPos = uint64(position.szi) * markPx;
+            } else if (position.szi < 0) {
+                ntlPos = uint64(-position.szi) * markPx;
+            }
+
+            uint64 initialMargin = position.entryNtl / position.leverage;
+
+            transferMarginRequirement += max(ntlPos / 10, initialMargin);
+        }
+
+        int64 withdrawable = summary.accountValue - int64(transferMarginRequirement);
+
+        uint64 withdrawableAmount = withdrawable > 0 ? uint64(withdrawable) : 0;
+
+        return PrecompileLib.Withdrawable({withdrawable: withdrawableAmount});
+    }
+
+    function max(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a > b ? a : b;
+    }
+
+    function getTokenIndexFromSystemAddress(address systemAddr) internal pure returns (uint64) {
+        if (systemAddr == address(0x2222222222222222222222222222222222222222)) {
+            return 150; // HYPE token index
+        }
+
+        if (uint160(systemAddr) < uint160(0x2000000000000000000000000000000000000000)) return type(uint64).max;
+
+        return uint64(uint160(systemAddr) - uint160(0x2000000000000000000000000000000000000000));
+    }
+}

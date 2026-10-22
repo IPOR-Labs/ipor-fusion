@@ -3,18 +3,37 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
-import {MarketSubstratesConfig, MarketBalanceFuseConfig, FeeConfig, FuseAction, PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {
+    MarketSubstratesConfig,
+    MarketBalanceFuseConfig,
+    FeeConfig,
+    FuseAction,
+    PlasmaVault,
+    PlasmaVaultInitData
+} from "../../../contracts/vaults/PlasmaVault.sol";
 
-import {EbisuZapperCreateFuse, EbisuZapperCreateFuseEnterData, EbisuZapperCreateFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
+import {
+    EbisuZapperCreateFuse,
+    EbisuZapperCreateFuseEnterData,
+    EbisuZapperCreateFuseExitData
+} from "../../../contracts/fuses/ebisu/EbisuZapperCreateFuse.sol";
 
 import {EbisuAdjustInterestRateFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustInterestRateFuse.sol";
 import {EbisuAdjustTroveFuse} from "../../../contracts/fuses/ebisu/EbisuAdjustTroveFuse.sol";
+import {
+    EbisuClaimCollateralFuse,
+    EbisuClaimCollateralFuseEnterData
+} from "../../../contracts/fuses/ebisu/EbisuClaimCollateralFuse.sol";
+import {ICollSurplusPool} from "../../../contracts/fuses/ebisu/ext/ICollSurplusPool.sol";
 
 import {EbisuZapperBalanceFuse} from "../../../contracts/fuses/ebisu/EbisuZapperBalanceFuse.sol";
 import {ITroveManager} from "../../../contracts/fuses/ebisu/ext/ITroveManager.sol";
+import {IAddressesRegistry} from "../../../contracts/fuses/ebisu/ext/IAddressesRegistry.sol";
+import {IPriceFeed} from "../../../contracts/fuses/ebisu/ext/IPriceFeed.sol";
 import {ILeverageZapper} from "../../../contracts/fuses/ebisu/ext/ILeverageZapper.sol";
 import {EbisuMathLib} from "../../../contracts/fuses/ebisu/lib/EbisuMathLib.sol";
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
+import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
@@ -28,13 +47,25 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {EbisuWethEthAdapterAddressReader} from "../../../contracts/readers/EbisuWethEthAdapterAddressReader.sol";
 import {UniversalReader, ReadResult} from "../../../contracts/universal_reader/UniversalReader.sol";
-import {UniversalTokenSwapperFuse, UniversalTokenSwapperData, UniversalTokenSwapperEnterData} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
+import {
+    UniversalTokenSwapperFuse,
+    UniversalTokenSwapperData,
+    UniversalTokenSwapperEnterData
+} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {SwapExecutor} from "../../../contracts/fuses/universal_token_swapper/SwapExecutor.sol";
 
-import {EbisuZapperLeverModifyFuse, EbisuZapperLeverModifyFuseEnterData, EbisuZapperLeverModifyFuseExitData} from "../../../contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol";
+import {
+    EbisuZapperLeverModifyFuse,
+    EbisuZapperLeverModifyFuseEnterData,
+    EbisuZapperLeverModifyFuseExitData
+} from "../../../contracts/fuses/ebisu/EbisuZapperLeverModifyFuse.sol";
 import {WethEthAdapterStorageLib} from "../../../contracts/fuses/ebisu/lib/WethEthAdapterStorageLib.sol";
-import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "../../../contracts/fuses/ebisu/lib/EbisuZapperSubstrateLib.sol";
+import {
+    EbisuZapperSubstrateLib,
+    EbisuZapperSubstrate,
+    EbisuZapperSubstrateType
+} from "../../../contracts/fuses/ebisu/lib/EbisuZapperSubstrateLib.sol";
 import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 import {TransientStorageSetterFuse} from "../../test_helpers/TransientStorageSetterFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
@@ -59,6 +90,18 @@ interface IEbisuBorrowerOperationsHelperMinimal {
     function getInterestIndividualDelegateOf(
         uint256 troveId
     ) external view returns (address account, uint128 minRate, uint128 maxRate, uint256 minInterestRateChangePeriod);
+}
+
+interface IEbisuRegistryBm {
+    function branchManager() external view returns (address);
+}
+
+interface IEbisuTroveManagerZombie {
+    function setTroveStatusToZombie(uint256 troveId) external;
+}
+
+interface ITroveManagerLiquidation {
+    function batchLiquidateTroves(uint256[] calldata troveArray) external;
 }
 
 contract EbisuZapperTest is Test {
@@ -93,6 +136,7 @@ contract EbisuZapperTest is Test {
     TransientStorageSetterFuse private transientStorageSetterFuse;
     EbisuAdjustInterestRateFuse private adjustRateFuse;
     EbisuAdjustTroveFuse private adjustTroveFuse;
+    EbisuClaimCollateralFuse private claimCollateralFuse;
 
     address private accessManager;
     PriceOracleMiddleware private priceOracle;
@@ -102,6 +146,9 @@ contract EbisuZapperTest is Test {
     uint256 private constant ETH_GAS_COMPENSATION = 0.0375 ether;
 
     MockDex private mockDex;
+
+    /// @dev collateral price (bps of the last good price) at which the vault Trove is liquidatable and leaves a surplus
+    uint256 private constant SURPLUS_PRICE_BPS = 9_500;
 
     receive() external payable {}
 
@@ -989,6 +1036,464 @@ contract EbisuZapperTest is Test {
 
     // --- internal swapper function ---
 
+    // --- liquidation (stale Trove id) ---
+
+    event EbisuZapperCreateFuseStaleTroveCleared(address zapper, uint256 troveId, uint8 status);
+
+    function _susdeEnterData() private pure returns (EbisuZapperCreateFuseEnterData memory) {
+        return
+            EbisuZapperCreateFuseEnterData({
+                zapper: SUSDE_ZAPPER,
+                registry: SUSDE_REGISTRY,
+                collAmount: 4_000 * 1e18,
+                ebusdAmount: 5_000 * 1e18,
+                upperHint: 0,
+                lowerHint: 0,
+                flashLoanAmount: 1_000 * 1e18,
+                annualInterestRate: 20 * 1e16,
+                maxUpfrontFee: 5 * 1e18
+            });
+    }
+
+    function _enterCalls(EbisuZapperCreateFuseEnterData memory enterData_) private view returns (FuseAction[] memory) {
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(zapperFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256))",
+                enterData_
+            )
+        );
+        return calls;
+    }
+
+    /// @dev Funds the vault with sUSDe collateral and WETH gas compensation, then opens a Trove with the fuse
+    function _fundAndOpenSusdeTrove(bool deposit_) private {
+        if (deposit_) {
+            deal(USDC, address(this), 100_000 * 1e6);
+            ERC20(USDC).approve(address(plasmaVault), 100_000 * 1e6);
+            plasmaVault.deposit(100_000 * 1e6, address(this));
+        }
+        deal(WETH, address(this), ETH_GAS_COMPENSATION);
+        ERC20(WETH).transfer(address(plasmaVault), ETH_GAS_COMPENSATION);
+        _swapUSDCtoToken(4_000 * 1e6, SUSDE);
+        plasmaVault.execute(_enterCalls(_susdeEnterData()));
+    }
+
+    /// @dev Opens a well collateralised Trove from a separate account (liquidation needs more than one Trove)
+    function _openForeignSusdeTrove() private {
+        address alice = address(0xA11CE);
+        vm.deal(alice, 1 ether);
+        deal(SUSDE, alice, 10_000 * 1e18);
+        vm.startPrank(alice);
+        ERC20(SUSDE).approve(SUSDE_ZAPPER, type(uint256).max);
+        ILeverageZapper(SUSDE_ZAPPER).openLeveragedTroveWithRawETH{value: ETH_GAS_COMPENSATION}(
+            ILeverageZapper.OpenLeveragedTroveParams({
+                owner: alice,
+                ownerIndex: 0,
+                collAmount: 10_000 * 1e18,
+                flashLoanAmount: 0,
+                boldAmount: 3_000 * 1e18,
+                upperHint: 0,
+                lowerHint: 0,
+                annualInterestRate: 50 * 1e16,
+                batchManager: address(0),
+                maxUpfrontFee: 100 * 1e18,
+                addManager: address(0),
+                removeManager: alice,
+                receiver: alice
+            })
+        );
+        vm.stopPrank();
+    }
+
+    function _liquidateFuseTrove(uint256 troveId_) private {
+        // halve the collateral price so the vault Trove (ICR close to MCR) becomes liquidatable
+        _liquidateFuseTroveAtPriceBps(troveId_, 5_000);
+    }
+
+    /// @dev Liquidates the Trove after scaling the Liquity collateral price to `priceBps_` / 10_000 of the last good price
+    function _liquidateFuseTroveAtPriceBps(uint256 troveId_, uint256 priceBps_) private {
+        _openForeignSusdeTrove();
+        IPriceFeed feed = IAddressesRegistry(SUSDE_REGISTRY).priceFeed();
+        uint256 price = (feed.lastGoodPrice() * priceBps_) / 10_000;
+        vm.mockCall(address(feed), abi.encodeWithSelector(IPriceFeed.fetchPrice.selector), abi.encode(price, false));
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = troveId_;
+        ITroveManagerLiquidation(ILeverageZapper(SUSDE_ZAPPER).troveManager()).batchLiquidateTroves(ids);
+        vm.clearMockedCalls();
+        assertEq(
+            uint8(ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager()).getTroveStatus(troveId_)),
+            uint8(ITroveManager.Status.closedByLiquidation),
+            "Trove should be liquidated"
+        );
+    }
+
+    function _vaultTroveId(uint256 ownerIndex_) private view returns (uint256) {
+        return
+            EbisuMathLib.calculateTroveId(
+                wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault)),
+                address(plasmaVault),
+                SUSDE_ZAPPER,
+                ownerIndex_
+            );
+    }
+
+    function testShouldOpenNewTroveAfterLiquidation() public {
+        // given
+        _fundAndOpenSusdeTrove(true);
+        uint256 firstTroveId = _vaultTroveId(1);
+        _liquidateFuseTrove(firstTroveId);
+
+        // the stale id still blocks nothing: a fresh enter needs fresh collateral and gas compensation
+        deal(WETH, address(this), ETH_GAS_COMPENSATION);
+        ERC20(WETH).transfer(address(plasmaVault), ETH_GAS_COMPENSATION);
+        _swapUSDCtoToken(4_000 * 1e6, SUSDE);
+
+        // when
+        vm.expectEmit(false, false, false, true, address(plasmaVault));
+        emit EbisuZapperCreateFuseStaleTroveCleared(
+            SUSDE_ZAPPER,
+            firstTroveId,
+            uint8(ITroveManager.Status.closedByLiquidation)
+        );
+        plasmaVault.execute(_enterCalls(_susdeEnterData()));
+
+        // then
+        uint256 secondTroveId = _vaultTroveId(2);
+        assertTrue(secondTroveId != firstTroveId, "new trove id must differ");
+        assertEq(
+            uint8(ITroveManager(ILeverageZapper(SUSDE_ZAPPER).troveManager()).getTroveStatus(secondTroveId)),
+            uint8(ITroveManager.Status.active),
+            "new Trove should be active"
+        );
+    }
+
+    function testShouldClearStaleTroveOnExitAfterLiquidation() public {
+        // given
+        _fundAndOpenSusdeTrove(true);
+        _liquidateFuseTrove(_vaultTroveId(1));
+
+        EbisuZapperCreateFuseExitData memory exitData = EbisuZapperCreateFuseExitData({
+            zapper: SUSDE_ZAPPER,
+            flashLoanAmount: 0,
+            minExpectedCollateral: 0,
+            exitFromCollateral: false
+        });
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction(
+            address(zapperFuse),
+            abi.encodeWithSignature("exit((address,bool,uint256,uint256))", exitData)
+        );
+        // give the vault some ebUSD so that a wrongly executed transfer to the adapter would be visible
+        deal(EBUSD, address(plasmaVault), 1_000 * 1e18);
+        address adapter = wethEthAdapterAddressReader.getEbisuWethEthAdapterAddress(address(plasmaVault));
+        uint256 ebusdBefore = ERC20(EBUSD).balanceOf(address(plasmaVault));
+        uint256 adapterEbusdBefore = ERC20(EBUSD).balanceOf(adapter);
+
+        // when
+        vm.expectEmit(false, false, false, true, address(plasmaVault));
+        emit EbisuZapperCreateFuseStaleTroveCleared(
+            SUSDE_ZAPPER,
+            _vaultTroveId(1),
+            uint8(ITroveManager.Status.closedByLiquidation)
+        );
+        plasmaVault.execute(exitCalls);
+
+        // then: no ebUSD was moved to the adapter and the slot is empty (a second exit is TroveNotOpen)
+        assertEq(ERC20(EBUSD).balanceOf(address(plasmaVault)), ebusdBefore, "vault ebUSD must not change");
+        assertEq(ERC20(EBUSD).balanceOf(adapter), adapterEbusdBefore, "adapter ebUSD must not change");
+        vm.expectRevert(abi.encodeWithSignature("TroveNotOpen()"));
+        plasmaVault.execute(exitCalls);
+
+        ReadResult memory readResult = UniversalReader(address(plasmaVault)).read(
+            address(balanceFuse),
+            abi.encodeWithSignature("balanceOf()")
+        );
+        assertEq(abi.decode(readResult.data, (uint256)), 0, "Ebisu balance should be 0 after clearing");
+    }
+
+    // --- collateral surplus (claim + valuation) ---
+
+    event EbisuClaimCollateralFuseEnter(address registry, address collToken, uint256 amount);
+
+    function _ebisuBalance() private view returns (uint256) {
+        ReadResult memory readResult = UniversalReader(address(plasmaVault)).read(
+            address(balanceFuse),
+            abi.encodeWithSignature("balanceOf()")
+        );
+        return abi.decode(readResult.data, (uint256));
+    }
+
+    function _claimCalls(address registry_) private view returns (FuseAction[] memory) {
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(claimCollateralFuse),
+            abi.encodeWithSignature("enter((address))", EbisuClaimCollateralFuseEnterData({registry: registry_}))
+        );
+        return calls;
+    }
+
+    /// @dev Opens the vault Trove and liquidates it at a collateral price that leaves a surplus for the owner
+    function _openAndLiquidateWithSurplus() private returns (uint256 surplus) {
+        _fundAndOpenSusdeTrove(true);
+        _liquidateFuseTroveAtPriceBps(_vaultTroveId(1), SURPLUS_PRICE_BPS);
+        surplus = ICollSurplusPool(IAddressesRegistry(SUSDE_REGISTRY).collSurplusPool()).getCollateral(
+            address(plasmaVault)
+        );
+    }
+
+    /// @dev A third party (griefer) opens a Trove that names the vault as owner and gets it liquidated, which books a
+    ///      collateral surplus for the vault in the CollSurplusPool. The vault itself never opens a Trove here.
+    function _giftSurplusToVault() private returns (uint256 surplus) {
+        address griefer = address(0xBADD1E);
+        vm.deal(griefer, 1 ether);
+        deal(SUSDE, griefer, 4_000 * 1e18);
+        vm.startPrank(griefer);
+        ERC20(SUSDE).approve(SUSDE_ZAPPER, type(uint256).max);
+        ILeverageZapper(SUSDE_ZAPPER).openLeveragedTroveWithRawETH{value: ETH_GAS_COMPENSATION}(
+            ILeverageZapper.OpenLeveragedTroveParams({
+                owner: address(plasmaVault),
+                ownerIndex: 0,
+                collAmount: 4_000 * 1e18,
+                flashLoanAmount: 1_000 * 1e18,
+                boldAmount: 5_000 * 1e18,
+                upperHint: 0,
+                lowerHint: 0,
+                annualInterestRate: 20 * 1e16,
+                batchManager: address(0),
+                maxUpfrontFee: 5 * 1e18,
+                addManager: address(0),
+                removeManager: griefer,
+                receiver: griefer
+            })
+        );
+        vm.stopPrank();
+
+        /// @dev the Ebisu zapper derives the owner index from the caller, exactly as for the vault adapter
+        uint256 troveId = EbisuMathLib.calculateTroveId(griefer, address(plasmaVault), SUSDE_ZAPPER, 0);
+        _liquidateFuseTroveAtPriceBps(troveId, SURPLUS_PRICE_BPS);
+        surplus = ICollSurplusPool(IAddressesRegistry(SUSDE_REGISTRY).collSurplusPool()).getCollateral(
+            address(plasmaVault)
+        );
+    }
+
+    function _mockSusdePriceUnsupported() private {
+        vm.mockCallRevert(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.getAssetPrice.selector, SUSDE),
+            abi.encodeWithSelector(IPriceOracleMiddleware.UnsupportedAsset.selector)
+        );
+    }
+
+    /// @dev sUSDe is NOT an ERC20_VAULT_BALANCE substrate here, so a claim is enough to recover the refresh
+    function testClaimRecoversRefreshWhenGiftedSurplusCollateralUnpriced() public {
+        // given: only ebUSD is an ERC20 substrate
+        bytes32[] memory erc20Assets = new bytes32[](1);
+        erc20Assets[0] = PlasmaVaultConfigLib.addressToBytes32(EBUSD);
+        PlasmaVaultGovernance(address(plasmaVault)).grantMarketSubstrates(
+            IporFusionMarkets.ERC20_VAULT_BALANCE,
+            erc20Assets
+        );
+        uint256 surplus = _giftSurplusToVault();
+        assertGt(surplus, 0, "gifted liquidation should leave a surplus");
+        ICollSurplusPool pool = IAddressesRegistry(SUSDE_REGISTRY).collSurplusPool();
+        uint256 vaultCollBefore = ERC20(SUSDE).balanceOf(address(plasmaVault));
+        _mockSusdePriceUnsupported();
+
+        uint256[] memory markets = new uint256[](1);
+        markets[0] = IporFusionMarkets.EBISU;
+
+        // when / then: the refresh is blocked by the unpriced surplus collateral
+        vm.expectRevert(IPriceOracleMiddleware.UnsupportedAsset.selector);
+        plasmaVault.updateMarketsBalances(markets);
+
+        // when: the claim moves the surplus into the vault
+        plasmaVault.execute(_claimCalls(SUSDE_REGISTRY));
+
+        // then: the next refresh passes
+        plasmaVault.updateMarketsBalances(markets);
+        assertEq(pool.getCollateral(address(plasmaVault)), 0, "pool surplus must be claimed");
+        assertEq(ERC20(SUSDE).balanceOf(address(plasmaVault)), vaultCollBefore + surplus, "vault receives the surplus");
+        assertEq(plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU), 0, "Ebisu market must be empty");
+    }
+
+    /// @dev sUSDe IS an ERC20_VAULT_BALANCE substrate (default setUp) and unpriced, so the claim itself reverts
+    function testClaimRevertsWhenUnpricedSurplusCollateralIsErc20Substrate() public {
+        // given
+        uint256 surplus = _giftSurplusToVault();
+        assertGt(surplus, 0, "gifted liquidation should leave a surplus");
+        ICollSurplusPool pool = IAddressesRegistry(SUSDE_REGISTRY).collSurplusPool();
+        _mockSusdePriceUnsupported();
+        FuseAction[] memory calls = _claimCalls(SUSDE_REGISTRY);
+
+        // when / then: the post-claim refresh of the dependent ERC20 market cannot price sUSDe
+        vm.expectRevert(IPriceOracleMiddleware.UnsupportedAsset.selector);
+        plasmaVault.execute(calls);
+        assertEq(pool.getCollateral(address(plasmaVault)), surplus, "failed claim must leave the surplus in the pool");
+
+        // when: the price source is back
+        vm.clearMockedCalls();
+        plasmaVault.execute(calls);
+
+        // then
+        assertEq(pool.getCollateral(address(plasmaVault)), 0, "pool surplus must be claimed");
+        assertEq(ERC20(SUSDE).balanceOf(address(plasmaVault)), surplus, "vault receives the surplus");
+    }
+
+    function testShouldValueCollateralSurplusInBalanceAfterLiquidation() public {
+        // given
+        uint256 surplus = _openAndLiquidateWithSurplus();
+        assertGt(surplus, 0, "liquidation should leave a surplus");
+
+        // when
+        uint256 ebisuBalance = _ebisuBalance();
+
+        // then: the Trove is gone, so the whole balance is the pool surplus priced by the oracle
+        (uint256 price, uint256 priceDecimals) = priceOracle.getAssetPrice(SUSDE);
+        uint256 expected = IporMath.convertToWad(surplus * price, ERC20(SUSDE).decimals() + priceDecimals);
+        assertGt(expected, 0, "expected surplus value should be positive");
+        assertEq(ebisuBalance, expected, "Ebisu balance must equal the surplus value");
+    }
+
+    function testShouldNotQueryCollateralPriceWhenRegistryBranchHasNoSurplus() public {
+        // given: every branch is granted as REGISTRY, none has a surplus, and the collateral prices revert
+        address[4] memory collaterals = [WEETH, SUSDE, WBTC, LBTC];
+        for (uint256 i; i < collaterals.length; ++i) {
+            vm.mockCallRevert(
+                address(priceOracle),
+                abi.encodeWithSelector(priceOracle.getAssetPrice.selector, collaterals[i]),
+                bytes("price must not be requested")
+            );
+        }
+
+        // when
+        uint256 ebisuBalance = _ebisuBalance();
+
+        // then
+        assertEq(ebisuBalance, 0, "no trove and no surplus means zero balance");
+    }
+
+    function testShouldClaimCollateralSurplusAndKeepNavUnchanged() public {
+        // given
+        uint256 surplus = _openAndLiquidateWithSurplus();
+        assertGt(surplus, 0, "liquidation should leave a surplus");
+        ICollSurplusPool pool = IAddressesRegistry(SUSDE_REGISTRY).collSurplusPool();
+
+        uint256[] memory markets = new uint256[](2);
+        markets[0] = IporFusionMarkets.EBISU;
+        markets[1] = IporFusionMarkets.ERC20_VAULT_BALANCE;
+        plasmaVault.updateMarketsBalances(markets);
+        uint256 navBefore = plasmaVault.totalAssets();
+        uint256 ebisuBefore = plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU);
+        uint256 erc20Before = plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
+        uint256 vaultCollBefore = ERC20(SUSDE).balanceOf(address(plasmaVault));
+        assertGt(ebisuBefore, 0, "surplus must be inside the Ebisu market before the claim");
+
+        // when
+        vm.expectEmit(false, false, false, true, address(plasmaVault));
+        emit EbisuClaimCollateralFuseEnter(SUSDE_REGISTRY, SUSDE, surplus);
+        plasmaVault.execute(_claimCalls(SUSDE_REGISTRY));
+
+        // then
+        assertEq(pool.getCollateral(address(plasmaVault)), 0, "pool surplus must be claimed");
+        assertEq(ERC20(SUSDE).balanceOf(address(plasmaVault)), vaultCollBefore + surplus, "vault receives the surplus");
+
+        uint256 ebisuAfter = plasmaVault.totalAssetsInMarket(IporFusionMarkets.EBISU);
+        uint256 erc20After = plasmaVault.totalAssetsInMarket(IporFusionMarkets.ERC20_VAULT_BALANCE);
+        assertEq(ebisuAfter, 0, "Ebisu market must be empty after the claim");
+        assertGt(erc20After, erc20Before, "ERC20 market must grow");
+        assertApproxEqAbs(erc20After - erc20Before, ebisuBefore, 2, "ERC20 market gains what Ebisu market lost");
+        assertApproxEqAbs(plasmaVault.totalAssets(), navBefore, 2, "NAV must not change across the claim");
+    }
+
+    function testShouldRevertClaimWhenNothingToClaim() public {
+        // given: a vault with no liquidation, so the CollSurplusPool holds nothing for it
+        _fundAndOpenSusdeTrove(true);
+        assertEq(
+            ICollSurplusPool(IAddressesRegistry(SUSDE_REGISTRY).collSurplusPool()).getCollateral(address(plasmaVault)),
+            0
+        );
+        FuseAction[] memory calls = _claimCalls(SUSDE_REGISTRY);
+
+        // when / then: Liquity itself rejects an empty claim, the fuse does not swallow it
+        vm.expectRevert(bytes("CollSurplusPool: No collateral available to claim"));
+        plasmaVault.execute(calls);
+    }
+
+    function testShouldRevertClaimWhenRegistryNotGranted() public {
+        // given: a registry that is not a substrate of the market
+        address ungranted = address(0xBEEF);
+        FuseAction[] memory calls = _claimCalls(ungranted);
+
+        // when / then
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EbisuClaimCollateralFuse.EbisuClaimCollateralFuseUnsupportedSubstrate.selector,
+                ungranted
+            )
+        );
+        plasmaVault.execute(calls);
+    }
+
+    function testShouldRevertClaimWhenZapperGivenAsRegistry() public {
+        // given: the zapper is granted, but only as ZAPPER type, not REGISTRY
+        FuseAction[] memory calls = _claimCalls(SUSDE_ZAPPER);
+
+        // when / then
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EbisuClaimCollateralFuse.EbisuClaimCollateralFuseUnsupportedSubstrate.selector,
+                SUSDE_ZAPPER
+            )
+        );
+        plasmaVault.execute(calls);
+    }
+
+    function testShouldRevertClaimFuseWithZeroMarketId() public {
+        vm.expectRevert(EbisuClaimCollateralFuse.EbisuClaimCollateralFuseInvalidMarketId.selector);
+        new EbisuClaimCollateralFuse(0);
+    }
+
+    function testShouldRevertTroveAlreadyOpenWhenActive() public {
+        // given
+        _fundAndOpenSusdeTrove(true);
+        deal(WETH, address(this), ETH_GAS_COMPENSATION);
+        ERC20(WETH).transfer(address(plasmaVault), ETH_GAS_COMPENSATION);
+        _swapUSDCtoToken(4_000 * 1e6, SUSDE);
+
+        // when / then
+        FuseAction[] memory calls = _enterCalls(_susdeEnterData());
+        vm.expectRevert(abi.encodeWithSignature("TroveAlreadyOpen()"));
+        plasmaVault.execute(calls);
+    }
+
+    /// @dev Zombie Troves (below MIN_DEBT after a redemption) keep their NFT, so the id must stay stored.
+    ///      Status is set through the TroveManager's own setter as the branch manager (the path Ebisu uses after a
+    ///      redemption); a real redemption is not reproducible on this fork. Enum order checked against the
+    ///      verified impl 0x96d4...3f86.
+    function testShouldRevertTroveAlreadyOpenWhenZombie() public {
+        // given
+        _fundAndOpenSusdeTrove(true);
+        uint256 troveId = _vaultTroveId(1);
+        address troveManager = ILeverageZapper(SUSDE_ZAPPER).troveManager();
+        vm.prank(IEbisuRegistryBm(SUSDE_REGISTRY).branchManager());
+        IEbisuTroveManagerZombie(troveManager).setTroveStatusToZombie(troveId);
+        assertEq(
+            uint8(ITroveManager(troveManager).getTroveStatus(troveId)),
+            uint8(ITroveManager.Status.zombie),
+            "vendor zombie status"
+        );
+        deal(WETH, address(this), ETH_GAS_COMPENSATION);
+        ERC20(WETH).transfer(address(plasmaVault), ETH_GAS_COMPENSATION);
+        _swapUSDCtoToken(4_000 * 1e6, SUSDE);
+
+        // when / then
+        FuseAction[] memory calls = _enterCalls(_susdeEnterData());
+        vm.expectRevert(abi.encodeWithSignature("TroveAlreadyOpen()"));
+        plasmaVault.execute(calls);
+    }
+
     function _swapUSDCtoToken(uint256 amountToSwap, address tokenToObtain) private {
         // Swap USDC to tokenToObtain using the mock dex
         address[] memory targets = new address[](3);
@@ -1006,7 +1511,11 @@ contract EbisuZapperTest is Test {
             amountToSwap * 1e12
         );
         data[2] = abi.encodeWithSignature("approve(address,uint256)", address(mockDex), 0);
-        UniversalTokenSwapperData memory swapData = UniversalTokenSwapperData({targets: targets, data: data});
+        UniversalTokenSwapperData memory swapData = UniversalTokenSwapperData({
+            targets: targets,
+            data: data,
+            tokensToReturn: new address[](0)
+        });
 
         UniversalTokenSwapperEnterData memory enterData = UniversalTokenSwapperEnterData({
             tokenIn: USDC,
@@ -1019,7 +1528,7 @@ contract EbisuZapperTest is Test {
         FuseAction[] memory swapCalls = new FuseAction[](1);
         swapCalls[0] = FuseAction(
             address(swapFuse),
-            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[])))", enterData)
+            abi.encodeWithSignature("enter((address,address,uint256,uint256,(address[],bytes[],address[])))", enterData)
         );
 
         // swap
@@ -1191,13 +1700,16 @@ contract EbisuZapperTest is Test {
         adjustRateFuse = new EbisuAdjustInterestRateFuse(IporFusionMarkets.EBISU);
         adjustTroveFuse = new EbisuAdjustTroveFuse(IporFusionMarkets.EBISU);
 
-        fuses = new address[](6);
+        claimCollateralFuse = new EbisuClaimCollateralFuse(IporFusionMarkets.EBISU);
+
+        fuses = new address[](7);
         fuses[0] = address(zapperFuse);
         fuses[1] = address(leverModifyFuse);
         fuses[2] = address(adjustRateFuse);
         fuses[3] = address(adjustTroveFuse);
         fuses[4] = address(swapFuse);
         fuses[5] = address(transientStorageSetterFuse);
+        fuses[6] = address(claimCollateralFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {

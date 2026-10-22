@@ -62,12 +62,12 @@ library TermFinancePendingBidsStorageLib {
         mapping(address servicer => ServicerBids) byServicer;
     }
 
-
     /// @notice Add a pending bid for a servicer (or refresh an existing entry in-place).
     /// @dev If `(servicer_, bidId_)` is already tracked, refreshes the bound `bidLocker_`,
     ///      `amount_`, `collateralTokens_`, and `collateralAmounts_` so the latest enter call
     ///      is reflected accurately in NAV (covers the edit-flow which re-uses the same id
-    ///      with a different amount / collateral mix).
+    ///      with a different amount). The collateral token list of a tracked bid does not change on
+    ///      edit (the fuse enforces it), so the stored list is also the reference for that edit check.
     /// @param servicer_ TermRepoServicer proxy address.
     /// @param bidLocker_ TermAuctionBidLocker proxy address that produced the bid id.
     /// @param bidId_ Bid id returned by `lockBids`.
@@ -230,7 +230,7 @@ library TermFinancePendingBidsStorageLib {
             s.slot := TERM_FINANCE_PENDING_BIDS_SLOT
         }
     }
-    
+
     function _removeServicer(PendingBidsStorage storage s_, address servicer_) private {
         uint256 idxPlus = s_.servicerIndexOf[servicer_];
         // Defensive: unreachable from current callers. `_removeServicer` is only invoked at

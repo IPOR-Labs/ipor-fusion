@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {PlasmaVaultConfigLib} from "../../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {PlasmaVaultLib} from "../../../../contracts/libraries/PlasmaVaultLib.sol";
 import {TransientStorageLib} from "../../../../contracts/transient_storage/TransientStorageLib.sol";
 
 /// @title EulerV2SwapTestVault
@@ -18,6 +19,11 @@ contract EulerV2SwapTestVault {
     /// @notice Grant substrates as assets to a market.
     function grantSubstratesAsAssetsToMarket(uint256 marketId_, address[] calldata substrates_) external {
         PlasmaVaultConfigLib.grantSubstratesAsAssetsToMarket(marketId_, substrates_);
+    }
+
+    /// @notice Set the price oracle middleware address in ERC-7201 storage
+    function setPriceOracle(address oracle_) external {
+        PlasmaVaultLib.setPriceOracleMiddleware(oracle_);
     }
 
     /// @notice Forward `data_` to `target_` via delegatecall, bubbling reverts.

@@ -8,7 +8,7 @@ import {IPlasmaVaultVotesPlugin} from "../../contracts/interfaces/IPlasmaVaultVo
 
 /// @title VotesFunctionSelectorsTest
 /// @notice Verifies that function selectors for IVotes, IERC6372, and IPlasmaVaultVotesPlugin match expected values
-/// @dev These tests ensure that the selectors used in PlasmaVault._isVotesFunction are correct
+/// @dev These tests ensure that the selectors used in the PlasmaVaultBase fallback Votes routing are correct
 contract VotesFunctionSelectorsTest is Test {
     // ============================================
     // IVotes selectors
@@ -55,7 +55,11 @@ contract VotesFunctionSelectorsTest is Test {
     // ============================================
 
     function testIPlasmaVaultVotesPlugin_numCheckpoints_selector() public pure {
-        assertEq(IPlasmaVaultVotesPlugin.numCheckpoints.selector, bytes4(0x6fcfff45), "numCheckpoints selector mismatch");
+        assertEq(
+            IPlasmaVaultVotesPlugin.numCheckpoints.selector,
+            bytes4(0x6fcfff45),
+            "numCheckpoints selector mismatch"
+        );
     }
 
     function testIPlasmaVaultVotesPlugin_checkpoints_selector() public pure {
@@ -63,11 +67,15 @@ contract VotesFunctionSelectorsTest is Test {
     }
 
     function testIPlasmaVaultVotesPlugin_transferVotingUnits_selector() public pure {
-        assertEq(IPlasmaVaultVotesPlugin.transferVotingUnits.selector, bytes4(0x0d207a0f), "transferVotingUnits selector mismatch");
+        assertEq(
+            IPlasmaVaultVotesPlugin.transferVotingUnits.selector,
+            bytes4(0x0d207a0f),
+            "transferVotingUnits selector mismatch"
+        );
     }
 
     // Note: _transferVotingUnits is internal in OpenZeppelin ERC20VotesUpgradeable,
-    // so it's not callable externally and should not be checked in _isVotesFunction
+    // so it's not callable externally and should not be routed by the PlasmaVaultBase fallback
 
     // ============================================
     // Verify keccak256 computation matches interface selectors

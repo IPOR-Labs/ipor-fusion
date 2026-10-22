@@ -49,10 +49,15 @@ contract ERC20BalanceFuse is IMarketBalanceFuse {
      * @dev This function:
      *      1. Retrieves all substrates (ERC20 token addresses) configured for the market
      *      2. For each token, skips if it matches the vault's underlying asset (to avoid double counting)
-     *      3. Gets the token balance held by the vault
-     *      4. Retrieves the token price from price oracle middleware
+     *      3. Gets the token balance held by the vault and skips the token when the balance is zero
+     *      4. Retrieves the token price from price oracle middleware (only for held tokens)
      *      5. Converts balance to USD value normalized to WAD (18 decimals)
      *      6. Sums all token balances and returns the total
+     * @dev The price is read only for tokens the vault actually holds, so a granted token without a price
+     *      (the middleware reverts) does not block the whole market while its balance is zero. A held token
+     *      without a price still reverts. Residual: anyone can transfer 1 wei of a granted unpriced token to
+     *      the vault and restore the revert; unblock by adding the price to the middleware or removing the
+     *      substrate from the market.
      * @return The total balance of all ERC20 tokens in USD, normalized to WAD (18 decimals)
      */
     function balanceOf() external view override returns (uint256) {
@@ -66,6 +71,7 @@ contract ERC20BalanceFuse is IMarketBalanceFuse {
 
         uint256 balance;
         address asset;
+        uint256 tokenBalance;
         uint256 price;
         uint256 priceDecimals;
         address underlyingAsset = IERC4626(address(this)).asset();
@@ -76,12 +82,13 @@ contract ERC20BalanceFuse is IMarketBalanceFuse {
             if (address(asset) == underlyingAsset) {
                 continue;
             }
+            tokenBalance = IERC20(asset).balanceOf(address(this));
+            if (tokenBalance == 0) {
+                continue;
+            }
             (price, priceDecimals) = IPriceOracleMiddleware(priceOracleMiddleware).getAssetPrice(asset);
 
-            balance += IporMath.convertToWad(
-                IERC20(asset).balanceOf(address(this)) * price,
-                IERC20Metadata(asset).decimals() + priceDecimals
-            );
+            balance += IporMath.convertToWad(tokenBalance * price, IERC20Metadata(asset).decimals() + priceDecimals);
         }
 
         return balance;

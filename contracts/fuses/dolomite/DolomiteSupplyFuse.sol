@@ -22,7 +22,7 @@ struct DolomiteSupplyFuseEnterData {
     uint256 minBalanceIncrease;
     /// @notice sub-account to deposit into
     uint8 subAccountId;
-    /// @notice isolation mode market id (0 for non-isolation mode)
+    /// @notice isolation mode market id; only 0 (non-isolation mode) is supported, non-zero reverts
     uint256 isolationModeMarketId;
 }
 
@@ -36,7 +36,7 @@ struct DolomiteSupplyFuseExitData {
     uint256 minAmountOut;
     /// @notice sub-account to withdraw from
     uint8 subAccountId;
-    /// @notice isolation mode market id (0 for non-isolation mode)
+    /// @notice isolation mode market id; only 0 (non-isolation mode) is supported, non-zero reverts
     uint256 isolationModeMarketId;
 }
 
@@ -76,6 +76,9 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     error DolomiteSupplyFuseUnsupportedAsset(string action, address asset, uint8 subAccountId);
     error DolomiteSupplyFuseBalanceIncreaseTooSmall(uint256 increased, uint256 minRequired);
     error DolomiteSupplyFuseWithdrawAmountTooSmall(uint256 received, uint256 minRequired);
+    /// @notice Thrown when a non-zero isolation mode market id is requested; only 0 (non-isolation mode) is supported
+    /// @dev Isolation-mode deposits are credited to a separate proxy account that DolomiteBalanceFuse does not read
+    error DolomiteSupplyFuseIsolationModeNotSupported(uint256 isolationModeMarketId);
 
     constructor(uint256 marketId_, address dolomiteMargin_, address depositWithdrawalRouter_) {
         if (marketId_ == 0) {
@@ -104,6 +107,10 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 revert DolomiteSupplyFuseBalanceIncreaseTooSmall(0, data_.minBalanceIncrease);
             }
             return (data_.asset, 0);
+        }
+
+        if (data_.isolationModeMarketId != 0) {
+            revert DolomiteSupplyFuseIsolationModeNotSupported(data_.isolationModeMarketId);
         }
 
         if (!DolomiteFuseLib.canSupply(MARKET_ID, data_.asset, data_.subAccountId)) {
@@ -138,7 +145,7 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         ERC20(data_.asset).forceApprove(DEPOSIT_WITHDRAWAL_ROUTER, finalAmount);
 
         IDepositWithdrawalRouter(DEPOSIT_WITHDRAWAL_ROUTER).depositWei(
-            data_.isolationModeMarketId,
+            0, // isolation mode is not supported (rejected above)
             uint256(data_.subAccountId),
             dolomiteMarketId,
             finalAmount,
@@ -179,7 +186,7 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     /// @notice Performs instant withdrawal with exception handling
-    /// @param params_ Parameters: [0]=amount, [1]=asset, [2]=subAccountId (optional), [3]=isolationModeMarketId (optional), [4]=minAmountOut (optional)
+    /// @param params_ Parameters: [0]=amount, [1]=asset, [2]=subAccountId (optional), [3]=isolationModeMarketId (optional, must be 0; non-zero reverts), [4]=minAmountOut (optional)
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
@@ -199,6 +206,10 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 revert DolomiteSupplyFuseWithdrawAmountTooSmall(0, data_.minAmountOut);
             }
             return (data_.asset, 0);
+        }
+
+        if (data_.isolationModeMarketId != 0) {
+            revert DolomiteSupplyFuseIsolationModeNotSupported(data_.isolationModeMarketId);
         }
 
         if (!DolomiteFuseLib.canSupply(MARKET_ID, data_.asset, data_.subAccountId)) {
@@ -240,7 +251,6 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 finalAmount,
                 data_.minAmountOut,
                 data_.subAccountId,
-                data_.isolationModeMarketId,
                 catchExceptions_
             );
     }
@@ -251,14 +261,13 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 finalAmount_,
         uint256 minAmountOut_,
         uint8 subAccountId_,
-        uint256 isolationModeMarketId_,
         bool catchExceptions_
     ) private returns (address asset, uint256 amount) {
         uint256 balanceBefore = ERC20(asset_).balanceOf(address(this));
         if (catchExceptions_) {
             try
                 IDepositWithdrawalRouter(DEPOSIT_WITHDRAWAL_ROUTER).withdrawWei(
-                    isolationModeMarketId_,
+                    0,
                     uint256(subAccountId_),
                     dolomiteMarketId_,
                     finalAmount_,
@@ -274,7 +283,7 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             }
         } else {
             IDepositWithdrawalRouter(DEPOSIT_WITHDRAWAL_ROUTER).withdrawWei(
-                isolationModeMarketId_,
+                0,
                 uint256(subAccountId_),
                 dolomiteMarketId_,
                 finalAmount_,

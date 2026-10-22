@@ -148,6 +148,8 @@ if quotient < (1 - slippageLimit):
 
 **Default Slippage**: 1% (1e16 WAD) if not configured in substrates.
 
+**Range**: the slippage substrate must be `<= 1e18` (100%). Values above 1e18 are rejected by both `VeloraSubstrateLib.encodeSlippageSubstrate` and the fuse at read time (`VeloraSwapperFuseSlippageExceeds100Percent`). Exactly `1e18` is a valid configuration that **disables the USD bound**: the swap is then protected only by the ALPHA-supplied `minAmountOut`. Curators should treat `1e18` (and any value close to it) as "trust ALPHA fully" and set it only for markets where that is intended.
+
 ## Execution Flow
 
 ```
@@ -156,9 +158,10 @@ if quotient < (1 - slippageLimit):
 3. Fuse validates:
    - tokenIn is whitelisted in substrates
    - tokenOut is whitelisted in substrates
+   - every tokensToReturn entry is whitelisted
    - tokenIn != tokenOut
    - amountIn > 0
-4. Fuse records balances before swap
+4. Fuse records the executor's tokenIn/tokenOut balances before the swap
 5. Fuse transfers tokenIn to VeloraSwapExecutor
 6. Executor:
    a. Approves Augustus v6.2 for tokenIn
@@ -166,11 +169,29 @@ if quotient < (1 - slippageLimit):
    c. Resets approval to 0
    d. Transfers remaining tokenIn back to PlasmaVault
    e. Transfers tokenOut to PlasmaVault
-7. Fuse validates:
+   f. Transfers every tokensToReturn balance to PlasmaVault
+   g. Returns the tokenIn / tokenOut amounts it transferred to the fuse
+7. Fuse computes spent / received from the executor return values and validates:
    - Actual output >= minAmountOut (alpha check)
    - USD slippage within limit
 8. Fuse emits VeloraSwapperFuseEnter event
 ```
+
+### Swap measurement (IL-8767)
+
+`VeloraSwapExecutor.execute()` returns the `tokenIn` / `tokenOut` amounts it transferred back to the fuse. The fuse measures
+the swap on the executor, **not** on the vault balances:
+
+- `spent = amountIn + executorTokenInBefore - tokenInReturned` (0 means nothing of the vault's `tokenIn` was used and
+  `enter` returns without emitting an event);
+- `received = tokenOutReturned - executorTokenOutBefore` (a spend with `received == 0` reverts with
+  `VeloraSwapperFuseSlippageFail`).
+
+spent/received are the amounts the executor transferred, not the amounts the vault received: a token that delivers less than the nominal amount on transfer loosens minAmountOut and the USD slippage check by that difference on the final transfer. Do not grant tokens with an active transfer fee as tokenIn/tokenOut; stETH-style share rounding (1-2 wei) is accepted; USDT is accepted while its fee is 0 (Tether can set at most 19 bps, capped at 49 USDT per transfer).
+
+`minAmountOut` and the USD slippage check use `spent` / `received`. Inflows to the vault during the call (for example a
+permissionless "claim on behalf of the vault" executed by the route) therefore neither hide a `tokenIn` outflow nor
+count as swap output. **Consequence:** the router must pay `tokenOut` to the executor (Velora: `userAddress`/`receiver` = executor). Output that does not reach the executor is not counted: `enter` reverts with `VeloraSwapperFuseSlippageFail` when nothing reaches it, and with `VeloraSwapperFuseMinAmountOutNotReached` or the USD check (`VeloraSwapperFuseSlippageFail`) when only part does. Each fuse deploys its own executor, so a new fuse brings a new executor address that the off-chain route builders must use.
 
 ## Usage
 
@@ -178,11 +199,14 @@ if quotient < (1 - slippageLimit):
 
 ```solidity
 struct VeloraSwapperEnterData {
-    address tokenIn;       // Token to swap from
-    address tokenOut;      // Token to swap to
-    uint256 amountIn;      // Amount of tokenIn to swap
-    uint256 minAmountOut;  // Minimum acceptable output (alpha slippage protection)
-    bytes swapCallData;    // Raw calldata from Velora/ParaSwap API
+    address tokenIn;              // Token to swap from
+    address tokenOut;             // Token to swap to
+    uint256 amountIn;             // Amount of tokenIn to swap
+    uint256 minAmountOut;         // Minimum acceptable output (alpha slippage protection)
+    bytes swapCallData;           // Raw calldata from Velora/ParaSwap API
+    address[] tokensToReturn;     // Additional output/intermediate tokens the router may leave in the
+                                   // executor (e.g. multi-output routes); each must be a granted token
+                                   // substrate; swept to PlasmaVault in the same call. Limited to 256 entries.
 }
 ```
 
@@ -229,14 +253,15 @@ VeloraSwapperEnterData memory enterData = VeloraSwapperEnterData({
     tokenOut: WETH,
     amountIn: 1000e6,           // 1000 USDC
     minAmountOut: 0.29 ether,   // Minimum ~0.29 WETH
-    swapCallData: paraswapApiCalldata
+    swapCallData: paraswapApiCalldata,
+    tokensToReturn: new address[](0)   // list any extra output token the route may leave in the executor
 });
 
 // Create fuse action
 FuseAction[] memory actions = new FuseAction[](1);
 actions[0] = FuseAction(
     address(veloraSwapperFuse),
-    abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes))", enterData)
+    abi.encodeWithSignature("enter((address,address,uint256,uint256,bytes,address[]))", enterData)
 );
 
 // Execute via PlasmaVault
@@ -259,7 +284,7 @@ event VeloraSwapperFuseEnter(
 
 | Error | Description |
 |-------|-------------|
-| `VeloraSwapperFuseUnsupportedAsset(address)` | Token not whitelisted in substrates |
+| `VeloraSwapperFuseUnsupportedAsset(address)` | Token not whitelisted in substrates (tokenIn, tokenOut, or a tokensToReturn entry) |
 | `VeloraSwapperFuseMinAmountOutNotReached(uint256, uint256)` | Output less than minAmountOut |
 | `VeloraSwapperFuseSlippageFail()` | USD slippage exceeds configured limit |
 | `VeloraSwapperFuseZeroAmount()` | amountIn is zero |
@@ -267,6 +292,8 @@ event VeloraSwapperFuseEnter(
 | `VeloraSwapperFuseInvalidMarketId()` | marketId is zero |
 | `VeloraSwapperFuseInvalidPrice(address)` | Price oracle returned zero for asset |
 | `VeloraSwapperFuseInvalidPriceOracleMiddleware()` | Price oracle middleware not configured |
+| `VeloraSwapperFuseSlippageExceeds100Percent(uint256)` | Configured slippage substrate exceeds 100% (1e18 WAD) |
+| `VeloraSubstrateLibSlippageExceeds100Percent(uint256)` | `encodeSlippageSubstrate` was called with a value above 1e18 |
 | `VeloraSwapExecutorSwapFailed()` | Augustus v6.2 call failed |
 
 ## Constants
@@ -286,6 +313,27 @@ event VeloraSwapperFuseEnter(
 5. **Token Whitelist**: Only tokens configured in substrates can be swapped
 6. **CEI Pattern**: Checks-Effects-Interactions pattern in execution flow
 7. **Same Token Protection**: Swapping token to itself is not allowed
+
+### Residual tokens and accounting
+
+- `VeloraSwapExecutor.execute()` is permissionless and pays `msg.sender`. Any token left in the executor after
+  `enter()` is **not** held for the vault: it is available to whoever next calls `execute()` on the executor
+  (e.g. `execute(token, token, 0, "", [])`), typically the next block. Augustus routes with multiple output
+  tokens, partial fills, or rebate tokens can all leave a residual. List every possible extra output token in
+  `tokensToReturn` so it is swept to PlasmaVault in the same call instead of being stranded.
+- A token returned to PlasmaVault is counted in `totalAssets()` only if it is the vault's underlying asset
+  (counted immediately as idle), or if it is granted under `ERC20_VAULT_BALANCE` (market 7) **and**
+  `VELORA_SWAPPER` is included in that market's dependency graph. `IporFusionMarkets.sol` does not currently
+  declare that dependency for `VELORA_SWAPPER` (unlike `UNIVERSAL_TOKEN_SWAPPER`, see `:36-39`), so a
+  `tokenOut`/`tokensToReturn` token other than the vault's underlying is invisible to `totalAssets()` unless the
+  vault's governance configures market 7 accordingly. This is pre-existing behaviour for `tokenOut`, now also
+  documented for `tokensToReturn`. Per policy, fuses do not police grant/revoke consequences or missing
+  dependency-graph configuration; this is a documentation note, not an enforced guard.
+- `VeloraSwapExecutor.execute()` has no access control (SEC-001, see `testExecutorCanBeCalledDirectlyByAnyone`).
+  `tokensToReturn` does not widen this: anyone who could already drain a token from the executor one call at a
+  time can still do so; the new parameter only lets the *fuse* sweep several tokens atomically instead of
+  leaving them for a permissionless third-party call. Adding access control to the executor is a separate,
+  out-of-scope follow-up.
 
 ## Testing
 

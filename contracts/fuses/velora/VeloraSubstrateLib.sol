@@ -20,6 +20,10 @@ library VeloraSubstrateLib {
     /// @param slippageWad The slippage value that caused the overflow
     error VeloraSubstrateLibSlippageOverflow(uint256 slippageWad);
 
+    /// @notice Error thrown when slippage value exceeds 100% (1e18 WAD)
+    /// @param slippageWad The slippage value that exceeds 100%
+    error VeloraSubstrateLibSlippageExceeds100Percent(uint256 slippageWad);
+
     /// @notice Encodes a token address as a substrate
     /// @param token_ The token address to encode
     /// @return encoded The bytes32 encoded substrate with Token type
@@ -30,13 +34,16 @@ library VeloraSubstrateLib {
     }
 
     /// @notice Encodes a slippage value as a substrate
-    /// @param slippageWad_ The slippage value in WAD (1e18 = 100%)
+    /// @param slippageWad_ The slippage value in WAD (1e18 = 100%); values above 1e18 are rejected
     /// @return encoded The bytes32 encoded substrate with Slippage type
     function encodeSlippageSubstrate(uint256 slippageWad_) internal pure returns (bytes32 encoded) {
         // Layout: [type (1 byte)][slippage uint248 (31 bytes)]
         // Slippage must fit in 248 bits (31 bytes)
         if (slippageWad_ > type(uint248).max) {
             revert VeloraSubstrateLibSlippageOverflow(slippageWad_);
+        }
+        if (slippageWad_ > 1e18) {
+            revert VeloraSubstrateLibSlippageExceeds100Percent(slippageWad_);
         }
         encoded = bytes32(uint256(VeloraSubstrateType.Slippage) << 248) | bytes32(slippageWad_);
     }

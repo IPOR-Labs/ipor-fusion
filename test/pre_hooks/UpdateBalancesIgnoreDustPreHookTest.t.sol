@@ -251,11 +251,11 @@ contract UpdateBalancesIgnoreDustPreHookTest is Test {
         vm.stopPrank();
 
         // then
-        // First market should be updated (2e6 > dust threshold of 1e6)
+        // First market is refreshed: its cached balance (1e7) is at or above the dust threshold (1e6)
         assertEq(erc4626BalanceBefore1 + 2e6, _plasmaVault.totalAssetsInMarket(_marketIds[0]));
-        // Second market should be updated (3e6 > dust threshold of 1e6)
+        // Second market is refreshed: its cached balance (2e7) is at or above the dust threshold (1e6)
         assertEq(erc4626BalanceBefore2 + 3e6, _plasmaVault.totalAssetsInMarket(_marketIds[1]));
-        // Third market should not be updated (5e5 < dust threshold of 1e6)
+        // Third market is skipped: its cached balance (3e5) is below the dust threshold (1e6), whatever the change
         assertEq(erc4626BalanceBefore3, _plasmaVault.totalAssetsInMarket(_marketIds[2]));
     }
 
@@ -292,7 +292,7 @@ contract UpdateBalancesIgnoreDustPreHookTest is Test {
         vm.stopPrank();
 
         // then
-        // All markets should be updated as all changes are above dust threshold (1e6)
+        // All markets are refreshed: their cached balances (1e7, 2e7, 3e7) are at or above the dust threshold (1e6)
         assertEq(erc4626BalanceBefore1 + 2e6, _plasmaVault.totalAssetsInMarket(_marketIds[0]));
         assertEq(erc4626BalanceBefore2 + 3e6, _plasmaVault.totalAssetsInMarket(_marketIds[1]));
         assertEq(erc4626BalanceBefore3 + 4e6, _plasmaVault.totalAssetsInMarket(_marketIds[2]));

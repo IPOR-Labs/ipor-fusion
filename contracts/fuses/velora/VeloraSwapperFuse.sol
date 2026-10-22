@@ -18,29 +18,26 @@ import {VeloraSubstrateLib} from "./VeloraSubstrateLib.sol";
 /// @param amountIn Amount of tokenIn to swap
 /// @param minAmountOut Minimum acceptable amount of tokenOut (alpha-specified slippage protection)
 /// @param swapCallData Raw calldata from Velora/ParaSwap API
+/// @param tokensToReturn Additional output/intermediate tokens the router may leave in the executor; each must be
+///        a granted token substrate; swept to the vault in the same call. Limited to 256 entries.
 struct VeloraSwapperEnterData {
     address tokenIn;
     address tokenOut;
     uint256 amountIn;
     uint256 minAmountOut;
     bytes swapCallData;
-}
-
-/// @notice Internal structure for tracking token balances during swap
-struct Balances {
-    uint256 tokenInBalanceBefore;
-    uint256 tokenOutBalanceBefore;
-    uint256 tokenInBalanceAfter;
-    uint256 tokenOutBalanceAfter;
+    address[] tokensToReturn;
 }
 
 /// @notice Struct containing validated substrate data (tokens, slippage)
 /// @param tokenInGranted Whether tokenIn is in the allowed substrates
 /// @param tokenOutGranted Whether tokenOut is in the allowed substrates
+/// @param grantedTokensToReturn Bitmask (bit i set means tokensToReturn[i] is granted); limited to 256 entries
 /// @param slippageWad The slippage limit in WAD (or 0 if not found)
 struct SubstrateValidationResult {
     bool tokenInGranted;
     bool tokenOutGranted;
+    uint256 grantedTokensToReturn;
     uint256 slippageWad;
 }
 
@@ -96,6 +93,9 @@ contract VeloraSwapperFuse is IFuseCommon {
     /// @notice Error thrown when price oracle middleware is not configured (zero address)
     error VeloraSwapperFuseInvalidPriceOracleMiddleware();
 
+    /// @notice Error thrown when the configured slippage substrate exceeds 100% (1e18 WAD)
+    error VeloraSwapperFuseSlippageExceeds100Percent(uint256 slippageWad);
+
     // ============ Constants ============
 
     /// @notice Default slippage limit in WAD (1e16 = 1%)
@@ -134,6 +134,11 @@ contract VeloraSwapperFuse is IFuseCommon {
 
     /// @notice Execute a swap operation via Velora
     /// @dev Called via delegatecall from PlasmaVault.execute()
+    ///      spent/received are the amounts the executor transferred, not the amounts the vault received: a
+    ///      token that delivers less than the nominal amount on transfer loosens minAmountOut and the USD
+    ///      slippage check by that difference on the final transfer. Do not grant tokens with an active
+    ///      transfer fee as tokenIn/tokenOut; stETH-style share rounding (1-2 wei) is accepted; USDT is
+    ///      accepted while its fee is 0 (Tether can set at most 19 bps, capped at 49 USDT per transfer).
     /// @custom:security This is the main entry point for swaps. Validates token addresses, amounts, and slippage.
     /// @param data_ Encoded VeloraSwapperEnterData struct
     function enter(VeloraSwapperEnterData calldata data_) external {
@@ -148,41 +153,41 @@ contract VeloraSwapperFuse is IFuseCommon {
         }
 
         // Single pass substrate validation - returns slippage for later use
-        uint256 slippageWad = _checkSubstrates(data_.tokenIn, data_.tokenOut);
+        uint256 slippageWad = _checkSubstrates(data_.tokenIn, data_.tokenOut, data_.tokensToReturn);
 
-        address plasmaVault = address(this);
-
-        // Record balances before swap
-        Balances memory balances = Balances({
-            tokenInBalanceBefore: ERC20(data_.tokenIn).balanceOf(plasmaVault),
-            tokenOutBalanceBefore: ERC20(data_.tokenOut).balanceOf(plasmaVault),
-            tokenInBalanceAfter: 0,
-            tokenOutBalanceAfter: 0
-        });
+        // Measure the swap on the executor, not on the vault balances: an inflow to the vault during execution
+        // (e.g. a permissionless claim paid to the vault) must neither mask a theft nor count as swap output.
+        uint256 executorTokenInBefore = ERC20(data_.tokenIn).balanceOf(EXECUTOR);
+        uint256 executorTokenOutBefore = ERC20(data_.tokenOut).balanceOf(EXECUTOR);
 
         // Transfer tokenIn to executor
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
         // Call executor.execute()
-        VeloraSwapExecutor(EXECUTOR).execute(data_.tokenIn, data_.tokenOut, data_.amountIn, data_.swapCallData);
+        (uint256 tokenInReturned, uint256 tokenOutReturned) = VeloraSwapExecutor(EXECUTOR).execute(
+            data_.tokenIn,
+            data_.tokenOut,
+            data_.amountIn,
+            data_.swapCallData,
+            data_.tokensToReturn
+        );
 
-        // Record balances after swap
-        balances.tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(plasmaVault);
-        balances.tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
+        // tokenIn the vault put in (plus anything already held by the executor) minus what came back
+        uint256 tokenInDelta = data_.amountIn + executorTokenInBefore > tokenInReturned
+            ? data_.amountIn + executorTokenInBefore - tokenInReturned
+            : 0;
 
-        // If no tokens were consumed, return early
-        if (balances.tokenInBalanceAfter >= balances.tokenInBalanceBefore) {
+        // If no tokenIn was consumed, return early
+        if (tokenInDelta == 0) {
             return;
         }
 
-        uint256 tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
-
-        // Validate that we received more tokenOut
-        if (balances.tokenOutBalanceAfter <= balances.tokenOutBalanceBefore) {
+        // Validate that the executor returned more tokenOut than it held before
+        if (tokenOutReturned <= executorTokenOutBefore) {
             revert VeloraSwapperFuseSlippageFail();
         }
 
-        uint256 tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
+        uint256 tokenOutDelta = tokenOutReturned - executorTokenOutBefore;
 
         // Validate minAmountOut (alpha check)
         if (tokenOutDelta < data_.minAmountOut) {
@@ -264,15 +269,21 @@ contract VeloraSwapperFuse is IFuseCommon {
     ///      There is no distinction between "unconfigured" and "explicitly set to 0" -
     ///      both cases result in using the default 1% slippage limit. This is by design to
     ///      ensure safe swap execution when slippage configuration is missing or invalid.
+    ///      A slippage substrate above 1e18 (100%) is rejected with
+    ///      `VeloraSwapperFuseSlippageExceeds100Percent`; exactly 1e18 disables the USD bound
+    ///      and leaves `minAmountOut` as the only output floor.
     /// @param tokenIn_ The input token address to validate
     /// @param tokenOut_ The output token address to validate
+    /// @param tokensToReturn_ The array of additional tokens to validate (limited to 256 entries)
     /// @return result Struct containing validation results for all checked items
     function _validateSubstrates(
         address tokenIn_,
-        address tokenOut_
+        address tokenOut_,
+        address[] calldata tokensToReturn_
     ) internal view returns (SubstrateValidationResult memory result) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 substratesLength = substrates.length;
+        uint256 tokensToReturnLength = tokensToReturn_.length;
 
         for (uint256 i; i < substratesLength; ++i) {
             bytes32 substrate = substrates[i];
@@ -285,8 +296,16 @@ contract VeloraSwapperFuse is IFuseCommon {
                 if (token == tokenOut_) {
                     result.tokenOutGranted = true;
                 }
+                for (uint256 j; j < tokensToReturnLength; ++j) {
+                    if (tokensToReturn_[j] == token) {
+                        result.grantedTokensToReturn |= (1 << j);
+                    }
+                }
             } else if (VeloraSubstrateLib.isSlippageSubstrate(substrate)) {
                 result.slippageWad = VeloraSubstrateLib.decodeSlippage(substrate);
+                if (result.slippageWad > _ONE) {
+                    revert VeloraSwapperFuseSlippageExceeds100Percent(result.slippageWad);
+                }
             }
         }
 
@@ -303,8 +322,13 @@ contract VeloraSwapperFuse is IFuseCommon {
     /// @dev Checks tokenIn and tokenOut against configured substrates in single pass
     /// @param tokenIn_ The input token address to validate
     /// @param tokenOut_ The output token address to validate
+    /// @param tokensToReturn_ The array of additional tokens to validate (limited to 256 entries)
     /// @return slippageWad The slippage limit in WAD for use in USD slippage validation
-    function _checkSubstrates(address tokenIn_, address tokenOut_) private view returns (uint256 slippageWad) {
+    function _checkSubstrates(
+        address tokenIn_,
+        address tokenOut_,
+        address[] calldata tokensToReturn_
+    ) private view returns (uint256 slippageWad) {
         // Validate token addresses are non-zero (defense-in-depth)
         if (tokenIn_ == address(0)) {
             revert VeloraSwapperFuseUnsupportedAsset(address(0));
@@ -314,13 +338,26 @@ contract VeloraSwapperFuse is IFuseCommon {
         }
 
         // Single pass substrate validation - reads substrates only once
-        SubstrateValidationResult memory validation = _validateSubstrates(tokenIn_, tokenOut_);
+        SubstrateValidationResult memory validation = _validateSubstrates(tokenIn_, tokenOut_, tokensToReturn_);
 
         if (!validation.tokenInGranted) {
             revert VeloraSwapperFuseUnsupportedAsset(tokenIn_);
         }
         if (!validation.tokenOutGranted) {
             revert VeloraSwapperFuseUnsupportedAsset(tokenOut_);
+        }
+
+        // Check all tokensToReturn entries are granted using bitmask
+        uint256 tokensToReturnLength = tokensToReturn_.length;
+        if (tokensToReturnLength > 0) {
+            uint256 expectedTokensToReturnMask = (1 << tokensToReturnLength) - 1;
+            if (validation.grantedTokensToReturn != expectedTokensToReturnMask) {
+                for (uint256 i; i < tokensToReturnLength; ++i) {
+                    if ((validation.grantedTokensToReturn & (1 << i)) == 0) {
+                        revert VeloraSwapperFuseUnsupportedAsset(tokensToReturn_[i]);
+                    }
+                }
+            }
         }
 
         return validation.slippageWad;

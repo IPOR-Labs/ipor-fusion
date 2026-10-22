@@ -32,4 +32,7 @@ interface IBorrowerOperations {
         bool _isDebtIncrease,
         uint256 _maxUpfrontFee
     ) external;
+
+    /// @notice Transfers the caller's collateral surplus (left by a liquidation) from the CollSurplusPool to the caller
+    function claimCollateral() external;
 }

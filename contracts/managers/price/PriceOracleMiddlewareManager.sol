@@ -175,6 +175,23 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
         assets = PriceOracleMiddlewareManagerLib.getConfiguredPriceValidationAssets();
     }
 
+    /// @notice Returns the price validation state of an asset.
+    /// @dev The baseline re-anchors at most once per `block.timestamp` (once per second on chains with sub-second
+    ///      blocks); `lastValidatedTimestamp` is the timestamp of the last baseline write (0 when no baseline
+    ///      exists). Within one timestamp an accepted price stays within (1 +- `maxPricesDelta`) of that timestamp's
+    ///      baseline, i.e. at most (1 + `maxPricesDelta`)^2 of the previous baseline.
+    ///      A price that stays outside the band keeps reverting with `PriceChangeExceeded` in later blocks (the
+    ///      baseline does not move on a reverting call); recovery is ATOMIST-only: `removePriceValidation` +
+    ///      `updatePriceValidation`, or temporarily raising `maxPricesDelta` to a value in [d, 2d) with
+    ///      d = |price - baseline| * 1e18 / baseline (a value of 2d or more accepts the price without re-anchoring,
+    ///      so validation reverts again once it is restored).
+    ///      A feed kept displaced by an attacker over many blocks can still be walked one step per timestamp;
+    ///      this is mitigated by the feed policy (Chainlink/TWAP only) and monitoring of
+    ///      `PriceValidationBaselineUpdated`.
+    /// @param asset_ Asset address.
+    /// @return maxPricesDelta Maximum allowed price change (1e18 = 100%).
+    /// @return lastValidatedPrice Current baseline price.
+    /// @return lastValidatedTimestamp Timestamp of the last baseline write.
     function getPriceValidationInfo(
         address asset_
     ) external view returns (uint256 maxPricesDelta, uint256 lastValidatedPrice, uint256 lastValidatedTimestamp) {

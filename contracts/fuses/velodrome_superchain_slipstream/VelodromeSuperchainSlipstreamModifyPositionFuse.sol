@@ -5,11 +5,16 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
+import {FuseStorageLib} from "../../libraries/FuseStorageLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {INonfungiblePositionManager} from "./ext/INonfungiblePositionManager.sol";
-import {VelodromeSuperchainSlipstreamSubstrateLib, VelodromeSuperchainSlipstreamSubstrateType, VelodromeSuperchainSlipstreamSubstrate} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
+import {
+    VelodromeSuperchainSlipstreamSubstrateLib,
+    VelodromeSuperchainSlipstreamSubstrateType,
+    VelodromeSuperchainSlipstreamSubstrate
+} from "./VelodromeSuperchainSlipstreamSubstrateLib.sol";
 
 /// @notice Data for entering a position in Velodrome Superchain Slipstream
 struct VelodromeSuperchainSlipstreamModifyPositionFuseEnterData {
@@ -69,6 +74,10 @@ struct VelodromeSuperchainSlipstreamModifyPositionFuseExitResult {
 
 /// @title Fuse for modifying Velodrome Superchain Slipstream positions
 /// @notice Allows increasing and decreasing liquidity for existing positions
+/// @dev Untracked vault-owned NFTs (minted by a NewPosition fuse built before the tracked list, 2026-01, or donated)
+///      cannot be modified with this fuse. Unwind them (decreaseLiquidity + collect) with the previous Modify fuse
+///      before `removeFuses`; `NewPositionFuse.exit` can then burn the empty NFT. Swap the NewPosition, Modify,
+///      Collect and gauge fuses together; never pair this fuse with a NewPosition fuse that does not write the list.
 contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
@@ -100,6 +109,10 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
 
     error VelodromeSuperchainSlipstreamModifyPositionFuseUnsupportedPool(address pool);
     error VelodromeSuperchainSlipstreamModifyPositionFuseInvalidAddress();
+
+    /// @notice Thrown when the tokenId is not in the vault's tracked Velodrome Superchain Slipstream position list
+    /// @param tokenId The NFT token ID that is not tracked
+    error VelodromeSuperchainSlipstreamModifyPositionFuseTokenIdNotTracked(uint256 tokenId);
     error InvalidReturnData();
 
     /// @notice The address of this fuse contract
@@ -130,9 +143,12 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
     /// @notice Increases liquidity for an existing position
     /// @param data_ The data for increasing liquidity
     /// @return result The result containing tokenId, liquidity, amount0, and amount1
+    /// @custom:revert VelodromeSuperchainSlipstreamModifyPositionFuseTokenIdNotTracked When tokenId is not in the vault's tracked position list
     function enter(
         VelodromeSuperchainSlipstreamModifyPositionFuseEnterData memory data_
     ) public returns (VelodromeSuperchainSlipstreamModifyPositionFuseEnterResult memory result) {
+        _requireTracked(data_.tokenId);
+
         (address token0, address token1, int24 tickSpacing) = _getPositionInfo(data_.tokenId);
 
         address pool = VelodromeSuperchainSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
@@ -186,11 +202,18 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
     }
 
     /// @notice Decreases liquidity for an existing position
+    /// @dev Untracked vault-owned NFTs (minted by a NewPosition fuse built before the tracked list, 2026-01, or donated)
+    ///      cannot be modified with this fuse. Unwind them (decreaseLiquidity + collect) with the previous Modify fuse
+    ///      before `removeFuses`; `NewPositionFuse.exit` can then burn the empty NFT. Swap the NewPosition, Modify,
+    ///      Collect and gauge fuses together; never pair this fuse with a NewPosition fuse that does not write the list.
     /// @param data_ The data for decreasing liquidity
     /// @return result The result containing tokenId, amount0, and amount1
+    /// @custom:revert VelodromeSuperchainSlipstreamModifyPositionFuseTokenIdNotTracked When tokenId is not in the vault's tracked position list
     function exit(
         VelodromeSuperchainSlipstreamModifyPositionFuseExitData memory data_
     ) public returns (VelodromeSuperchainSlipstreamModifyPositionFuseExitResult memory result) {
+        _requireTracked(data_.tokenId);
+
         (address token0, address token1, int24 tickSpacing) = _getPositionInfo(data_.tokenId);
 
         address pool = VelodromeSuperchainSlipstreamSubstrateLib.getPoolAddress(FACTORY, token0, token1, tickSpacing);
@@ -319,5 +342,24 @@ contract VelodromeSuperchainSlipstreamModifyPositionFuse is IFuseCommon {
         outputs[1] = TypeConversionLib.toBytes32(result.amount0);
         outputs[2] = TypeConversionLib.toBytes32(result.amount1);
         TransientStorageLib.setOutputs(VERSION, outputs);
+    }
+
+    /// @notice Reverts unless the tokenId is registered in the vault's tracked Velodrome Superchain Slipstream position list
+    /// @dev NPM increaseLiquidity does not check ownership, and the balance fuse values only tracked positions.
+    ///      Only tokenIds registered by the NewPosition fuse (and therefore owned and valued by the vault) can be
+    ///      modified or staked.
+    ///      Untracked vault-owned NFTs (minted by a NewPosition fuse built before the tracked list, 2026-01, or donated)
+    ///      cannot be modified with this fuse. Unwind them (decreaseLiquidity + collect) with the previous Modify fuse
+    ///      before `removeFuses`; `NewPositionFuse.exit` can then burn the empty NFT. Swap the NewPosition, Modify,
+    ///      Collect and gauge fuses together; never pair this fuse with a NewPosition fuse that does not write the list.
+    function _requireTracked(uint256 tokenId_) private view {
+        FuseStorageLib.VelodromeSuperchainSlipstreamTokenIds storage tokensIds = FuseStorageLib
+            .getVelodromeSuperchainSlipstreamTokenIds();
+
+        uint256 index = tokensIds.indexes[tokenId_];
+
+        if (index >= tokensIds.tokenIds.length || tokensIds.tokenIds[index] != tokenId_) {
+            revert VelodromeSuperchainSlipstreamModifyPositionFuseTokenIdNotTracked(tokenId_);
+        }
     }
 }

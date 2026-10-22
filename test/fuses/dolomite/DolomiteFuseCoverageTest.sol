@@ -15,9 +15,21 @@ import {WETHPriceFeed} from "../../../contracts/price_oracle/price_feed/WETHPric
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 
-import {DolomiteSupplyFuse, DolomiteSupplyFuseEnterData, DolomiteSupplyFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteSupplyFuse.sol";
-import {DolomiteBorrowFuse, DolomiteBorrowFuseEnterData, DolomiteBorrowFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteBorrowFuse.sol";
-import {DolomiteCollateralFuse, DolomiteCollateralFuseEnterData, DolomiteCollateralFuseExitData} from "../../../contracts/fuses/dolomite/DolomiteCollateralFuse.sol";
+import {
+    DolomiteSupplyFuse,
+    DolomiteSupplyFuseEnterData,
+    DolomiteSupplyFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteSupplyFuse.sol";
+import {
+    DolomiteBorrowFuse,
+    DolomiteBorrowFuseEnterData,
+    DolomiteBorrowFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteBorrowFuse.sol";
+import {
+    DolomiteCollateralFuse,
+    DolomiteCollateralFuseEnterData,
+    DolomiteCollateralFuseExitData
+} from "../../../contracts/fuses/dolomite/DolomiteCollateralFuse.sol";
 import {DolomiteBalanceFuse} from "../../../contracts/fuses/dolomite/DolomiteBalanceFuse.sol";
 import {DolomiteFuseLib, DolomiteSubstrate} from "../../../contracts/fuses/dolomite/DolomiteFuseLib.sol";
 import {IDolomiteMargin} from "../../../contracts/fuses/dolomite/ext/IDolomiteMargin.sol";
@@ -329,6 +341,109 @@ contract DolomiteFuseCoverageTest is Test {
 
         vm.prank(alpha);
         PlasmaVault(plasmaVault).execute(actions);
+    }
+
+    // ============================================================================
+    // ISOLATION MODE (IL-8749): only isolationModeMarketId == 0 is supported
+    // ============================================================================
+
+    function test_SupplyFuse_Enter_RevertWhen_IsolationModeMarketIdNonZero() public {
+        uint256 supplyAmount = 1000e6;
+        deal(USDC, plasmaVault, supplyAmount);
+
+        uint256 navBefore = PlasmaVault(plasmaVault).totalAssets();
+        uint256 usdcBefore = ERC20(USDC).balanceOf(plasmaVault);
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: address(supplyFuse),
+            data: abi.encodeCall(
+                supplyFuse.enter,
+                (
+                    DolomiteSupplyFuseEnterData({
+                        asset: USDC,
+                        amount: supplyAmount,
+                        minBalanceIncrease: 0,
+                        subAccountId: 0,
+                        isolationModeMarketId: 1
+                    })
+                )
+            )
+        });
+
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(DolomiteSupplyFuse.DolomiteSupplyFuseIsolationModeNotSupported.selector, 1)
+        );
+        PlasmaVault(plasmaVault).execute(actions);
+
+        assertEq(PlasmaVault(plasmaVault).totalAssets(), navBefore, "NAV unchanged");
+        assertEq(ERC20(USDC).balanceOf(plasmaVault), usdcBefore, "USDC untouched");
+    }
+
+    function test_SupplyFuse_Exit_RevertWhen_IsolationModeMarketIdNonZero() public {
+        uint256 supplyAmount = 1000e6;
+        deal(USDC, plasmaVault, supplyAmount);
+        _supplyToDolomite(USDC, supplyAmount, 0);
+
+        uint256 navBefore = PlasmaVault(plasmaVault).totalAssets();
+        uint256 usdcBefore = ERC20(USDC).balanceOf(plasmaVault);
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: address(supplyFuse),
+            data: abi.encodeCall(
+                supplyFuse.exit,
+                (
+                    DolomiteSupplyFuseExitData({
+                        asset: USDC,
+                        amount: 500e6,
+                        minAmountOut: 0,
+                        subAccountId: 0,
+                        isolationModeMarketId: 7
+                    })
+                )
+            )
+        });
+
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(DolomiteSupplyFuse.DolomiteSupplyFuseIsolationModeNotSupported.selector, 7)
+        );
+        PlasmaVault(plasmaVault).execute(actions);
+
+        assertEq(PlasmaVault(plasmaVault).totalAssets(), navBefore, "NAV unchanged");
+        assertEq(ERC20(USDC).balanceOf(plasmaVault), usdcBefore, "position untouched");
+    }
+
+    function test_SupplyFuse_InstantWithdraw_RevertWhen_IsolationParamNonZero() public {
+        uint256 supplyAmount = 1000e6;
+        deal(USDC, plasmaVault, supplyAmount);
+        _supplyToDolomite(USDC, supplyAmount, 0);
+
+        uint256 navBefore = PlasmaVault(plasmaVault).totalAssets();
+
+        // params_: [amount, asset, subAccountId, isolationModeMarketId]
+        bytes32[] memory params = new bytes32[](4);
+        params[0] = bytes32(uint256(500e6));
+        params[1] = bytes32(uint256(uint160(USDC)));
+        params[2] = bytes32(uint256(0));
+        params[3] = bytes32(uint256(1));
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: address(supplyFuse),
+            data: abi.encodeCall(supplyFuse.instantWithdraw, (params))
+        });
+
+        // The isolation check runs before the try/catch, so it is not swallowed by instant-withdraw exception handling
+        vm.prank(alpha);
+        vm.expectRevert(
+            abi.encodeWithSelector(DolomiteSupplyFuse.DolomiteSupplyFuseIsolationModeNotSupported.selector, 1)
+        );
+        PlasmaVault(plasmaVault).execute(actions);
+
+        assertEq(PlasmaVault(plasmaVault).totalAssets(), navBefore, "NAV unchanged");
     }
 
     // ============================================================================

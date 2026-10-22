@@ -37,18 +37,6 @@ struct UniversalTokenSwapperWithVerificationEnterData {
     UniversalTokenSwapperWithVerificationData data;
 }
 
-/// @notice Data structure used for tracking token balances during swap operations.
-/// @param  tokenInBalanceBefore - The balance of input token before the swap operation.
-/// @param  tokenOutBalanceBefore - The balance of output token before the swap operation.
-/// @param  tokenInBalanceAfter - The balance of input token after the swap operation.
-/// @param  tokenOutBalanceAfter - The balance of output token after the swap operation.
-struct Balances {
-    uint256 tokenInBalanceBefore;
-    uint256 tokenOutBalanceBefore;
-    uint256 tokenInBalanceAfter;
-    uint256 tokenOutBalanceAfter;
-}
-
 /// @notice Data structure used for substrate verification in token swaps.
 /// @param  functionSelector - The function selector to be called on the target contract, For tokenIn and TokenOut and tokenDustToCheck this value is 0
 /// @param  target - The address of the contract to be called.
@@ -105,7 +93,9 @@ contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
 
     /// @notice Constructor to initialize the contract
     /// @param marketId_ The market ID
-    /// @param executor_ The address of the swap executor
+    /// @param executor_ The address of the swap executor; must be a SwapExecutorEth from this build, whose execute()
+    ///        returns (tokenInReturned, tokenOutReturned). An older shared executor makes every enter revert on
+    ///        decoding the return data.
     /// @param slippageReverse_ The reverse slippage tolerance
     constructor(uint256 marketId_, address executor_, uint256 slippageReverse_) {
         if (executor_ == address(0)) {
@@ -121,6 +111,14 @@ contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
     }
 
     /// @notice Enters the swap operation
+    /// @dev tokenIn spent and tokenOut received are measured on EXECUTOR, not on the vault. The route must deliver
+    ///      tokenOut to EXECUTOR (never directly to the vault); a route paying the vault directly reverts with
+    ///      SlippageFail.
+    ///      spent/received are the amounts the executor transferred, not the amounts the vault received: a
+    ///      token that delivers less than the nominal amount on transfer loosens minAmountOut and the USD
+    ///      slippage check by that difference on the final transfer. Do not grant tokens with an active
+    ///      transfer fee as tokenIn/tokenOut; stETH-style share rounding (1-2 wei) is accepted; USDT is
+    ///      accepted while its fee is 0 (Tether can set at most 19 bps, capped at 49 USDT per transfer).
     /// @param data_ The input data for the swap
     /// @return result The swap operation result containing tokenIn, tokenOut, tokenInDelta, and tokenOutDelta
     function enter(
@@ -150,15 +148,6 @@ contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
     ) internal returns (SwapResult memory result) {
         _checkSubstrates(swapData);
 
-        address plasmaVault = address(this);
-
-        Balances memory balances = Balances({
-            tokenInBalanceBefore: ERC20(swapData.tokenIn).balanceOf(plasmaVault),
-            tokenOutBalanceBefore: ERC20(swapData.tokenOut).balanceOf(plasmaVault),
-            tokenInBalanceAfter: 0,
-            tokenOutBalanceAfter: 0
-        });
-
         if (amountIn == 0) {
             result.tokenIn = swapData.tokenIn;
             result.tokenOut = swapData.tokenOut;
@@ -167,28 +156,34 @@ contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
             return result;
         }
 
+        // Measure the swap on the executor, not on the vault balances: an inflow to the vault during execution
+        // (e.g. a permissionless claim paid to the vault) must neither mask a theft nor count as swap output.
+        // Requires an executor whose execute() returns the returned amounts (SwapExecutorEth with return values).
+        uint256 executorTokenInBefore = ERC20(swapData.tokenIn).balanceOf(EXECUTOR);
+        uint256 executorTokenOutBefore = ERC20(swapData.tokenOut).balanceOf(EXECUTOR);
+
         ERC20(swapData.tokenIn).safeTransfer(EXECUTOR, amountIn);
 
-        SwapExecutorEth(EXECUTOR).execute(swapData);
+        (uint256 tokenInReturned, uint256 tokenOutReturned) = SwapExecutorEth(EXECUTOR).execute(swapData);
 
-        balances.tokenInBalanceAfter = ERC20(swapData.tokenIn).balanceOf(plasmaVault);
-        balances.tokenOutBalanceAfter = ERC20(swapData.tokenOut).balanceOf(plasmaVault);
+        // tokenIn the vault put in (plus anything already held by the executor) minus what came back
+        result.tokenInDelta = amountIn + executorTokenInBefore > tokenInReturned
+            ? amountIn + executorTokenInBefore - tokenInReturned
+            : 0;
 
-        if (balances.tokenInBalanceAfter >= balances.tokenInBalanceBefore) {
+        if (result.tokenInDelta == 0) {
+            // Nothing of the vault's tokenIn was used
             result.tokenIn = swapData.tokenIn;
             result.tokenOut = swapData.tokenOut;
-            result.tokenInDelta = 0;
             result.tokenOutDelta = 0;
             return result;
         }
 
-        result.tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
-
-        if (balances.tokenOutBalanceAfter <= balances.tokenOutBalanceBefore) {
+        if (tokenOutReturned <= executorTokenOutBefore) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
 
-        result.tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
+        result.tokenOutDelta = tokenOutReturned - executorTokenOutBefore;
 
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
 

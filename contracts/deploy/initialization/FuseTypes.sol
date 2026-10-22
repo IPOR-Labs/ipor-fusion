@@ -328,8 +328,31 @@ library FuseTypes {
     string public constant COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE_NAME =
         "COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE";
 
+    uint16 public constant HYPERCORE_DEPOSIT_FUSE_ID = 108;
+    string public constant HYPERCORE_DEPOSIT_FUSE_NAME = "HyperCoreDepositFuse";
+
+    uint16 public constant HYPERCORE_MARGIN_FUSE_ID = 109;
+    string public constant HYPERCORE_MARGIN_FUSE_NAME = "HyperCoreMarginFuse";
+
+    uint16 public constant HYPERCORE_SEND_FUSE_ID = 110;
+    string public constant HYPERCORE_SEND_FUSE_NAME = "HyperCoreSendFuse";
+
+    uint16 public constant HYPERCORE_ORDER_FUSE_ID = 111;
+    string public constant HYPERCORE_ORDER_FUSE_NAME = "HyperCoreOrderFuse";
+
+    uint16 public constant HYPERCORE_CANCEL_FUSE_ID = 112;
+    string public constant HYPERCORE_CANCEL_FUSE_NAME = "HyperCoreCancelFuse";
+
+    uint16 public constant HYPERCORE_BUILDER_FEE_FUSE_ID = 113;
+    string public constant HYPERCORE_BUILDER_FEE_FUSE_NAME = "HyperCoreBuilderFeeFuse";
+
+    uint16 public constant HYPERCORE_BALANCE_FUSE_ID = 114;
+    string public constant HYPERCORE_BALANCE_FUSE_NAME = "HyperCoreBalanceFuse";
+
+    // Fuse id 115 is reserved: it was HyperCoreSettlementFuse (removed in IL-8543) and must not be reused.
+
     function getAllFuseIds() internal pure returns (uint16[] memory) {
-        uint16[] memory fuseIds = new uint16[](107);
+        uint16[] memory fuseIds = new uint16[](114);
         fuseIds[0] = AAVE_V2_BALANCE_FUSE_ID;
         fuseIds[1] = AAVE_V2_SUPPLY_FUSE_ID;
         fuseIds[2] = AAVE_V3_BALANCE_FUSE_ID;
@@ -437,11 +460,18 @@ library FuseTypes {
         fuseIds[104] = ERC4626_MARKET_14_SUPPLY_FUSE_ID;
         fuseIds[105] = COMPOUND_V3_USDC_BORROW_FUSE_ID;
         fuseIds[106] = COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE_ID;
+        fuseIds[107] = HYPERCORE_DEPOSIT_FUSE_ID;
+        fuseIds[108] = HYPERCORE_MARGIN_FUSE_ID;
+        fuseIds[109] = HYPERCORE_SEND_FUSE_ID;
+        fuseIds[110] = HYPERCORE_ORDER_FUSE_ID;
+        fuseIds[111] = HYPERCORE_CANCEL_FUSE_ID;
+        fuseIds[112] = HYPERCORE_BUILDER_FEE_FUSE_ID;
+        fuseIds[113] = HYPERCORE_BALANCE_FUSE_ID;
         return fuseIds;
     }
 
     function getAllFuseNames() internal pure returns (string[] memory) {
-        string[] memory fuseNames = new string[](107);
+        string[] memory fuseNames = new string[](114);
         fuseNames[0] = AAVE_V2_BALANCE_FUSE_NAME;
         fuseNames[1] = AAVE_V2_SUPPLY_FUSE_NAME;
         fuseNames[2] = AAVE_V3_BALANCE_FUSE_NAME;
@@ -549,6 +579,13 @@ library FuseTypes {
         fuseNames[104] = ERC4626_MARKET_14_SUPPLY_FUSE_NAME;
         fuseNames[105] = COMPOUND_V3_USDC_BORROW_FUSE_NAME;
         fuseNames[106] = COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE_NAME;
+        fuseNames[107] = HYPERCORE_DEPOSIT_FUSE_NAME;
+        fuseNames[108] = HYPERCORE_MARGIN_FUSE_NAME;
+        fuseNames[109] = HYPERCORE_SEND_FUSE_NAME;
+        fuseNames[110] = HYPERCORE_ORDER_FUSE_NAME;
+        fuseNames[111] = HYPERCORE_CANCEL_FUSE_NAME;
+        fuseNames[112] = HYPERCORE_BUILDER_FEE_FUSE_NAME;
+        fuseNames[113] = HYPERCORE_BALANCE_FUSE_NAME;
         return fuseNames;
     }
 }

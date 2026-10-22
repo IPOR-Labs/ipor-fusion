@@ -596,9 +596,8 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
     }
 
     /// @notice Tests previewWithdraw accuracy with withdraw fees - CRITICAL TEST for fixed bug
-    /// @dev This test validates the fix for the previewWithdraw formula:
-    ///      CORRECT: shares = sharesForAssets * (1e18 + withdrawFee) / 1e18
-    ///      BUG WAS: shares = sharesForAssets * 1e18 / (1e18 - withdrawFee) [WRONG!]
+    /// @dev IL-8751: the fee is a share of the gross shares burned (the base redeem uses):
+    ///      shares = sharesForAssets * 1e18 / (1e18 - withdrawFee), rounded up
     function testPreviewWithdrawWithWithdrawFee() public {
         // First deposit
         _depositAsUser(USER, 10_000e6);
@@ -641,14 +640,14 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
     }
 
     /// @notice Tests mathematical consistency of withdraw fee formula
-    /// @dev Verifies: shares_burned = shares_for_assets * (1 + feeRate)
+    /// @dev Verifies: shares_burned = shares_for_assets / (1 - feeRate) (fee is a share of the gross shares)
     function testWithdrawFeeFormulaConsistency() public {
         // Set various fee levels and verify formula
         uint256[] memory feeRates = new uint256[](4);
-        feeRates[0] = 1e16;  // 1%
-        feeRates[1] = 5e16;  // 5%
-        feeRates[2] = 1e17;  // 10%
-        feeRates[3] = 2e17;  // 20%
+        feeRates[0] = 1e16; // 1%
+        feeRates[1] = 5e16; // 5%
+        feeRates[2] = 1e17; // 10%
+        feeRates[3] = 2e17; // 20%
 
         for (uint256 i = 0; i < feeRates.length; i++) {
             // Reset state for each fee level
@@ -660,8 +659,8 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
 
             uint256 assets = 1000e6;
             uint256 sharesWithoutFee = _plasmaVault.convertToShares(assets);
-            // Correct formula: totalShares = sharesForAssets * (1e18 + feeRate) / 1e18
-            uint256 expectedSharesWithFee = sharesWithoutFee.mulDiv(1e18 + feeRates[i], 1e18, Math.Rounding.Ceil);
+            // Correct formula: totalShares = sharesForAssets * 1e18 / (1e18 - feeRate)
+            uint256 expectedSharesWithFee = sharesWithoutFee.mulDiv(1e18, 1e18 - feeRates[i], Math.Rounding.Ceil);
             uint256 previewedShares = _plasmaVault.previewWithdraw(assets);
 
             assertApproxEqRel(
@@ -678,10 +677,10 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
     function testRedeemFeeFormulaConsistency() public {
         // Set various fee levels and verify formula
         uint256[] memory feeRates = new uint256[](4);
-        feeRates[0] = 1e16;  // 1%
-        feeRates[1] = 5e16;  // 5%
-        feeRates[2] = 1e17;  // 10%
-        feeRates[3] = 2e17;  // 20%
+        feeRates[0] = 1e16; // 1%
+        feeRates[1] = 5e16; // 5%
+        feeRates[2] = 1e17; // 10%
+        feeRates[3] = 2e17; // 20%
 
         for (uint256 i = 0; i < feeRates.length; i++) {
             // Reset state for each fee level
@@ -721,13 +720,12 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
         _plasmaVault.maxRedeem(USER);
 
         // Verify maxWithdraw calculation with 50% fee
-        // Formula: effectiveShares = ownerShares * 1e18 / (1e18 + feeRate)
-        // With 50% fee (5e17): effectiveShares = ownerShares * 1e18 / 1.5e18 = ownerShares * 2/3
-        // So maxWithdraw ≈ 66.67% of full balance (not 50%)
+        // Formula (IL-8751, same base as previewRedeem): effectiveShares = ownerShares * (1e18 - feeRate) / 1e18
+        // With 50% fee (5e17): effectiveShares = ownerShares / 2, so maxWithdraw = 50% of full balance
         uint256 maxWith = _plasmaVault.maxWithdraw(USER);
         uint256 fullBalance = _plasmaVault.convertToAssets(_plasmaVault.balanceOf(USER));
-        uint256 expectedMaxWith = fullBalance.mulDiv(1e18, 1e18 + 5e17, Math.Rounding.Floor);
-        assertApproxEqRel(maxWith, expectedMaxWith, 1e15, "maxWithdraw should follow formula: balance / (1 + feeRate)");
+        uint256 expectedMaxWith = fullBalance.mulDiv(1e18 - 5e17, 1e18, Math.Rounding.Floor);
+        assertApproxEqRel(maxWith, expectedMaxWith, 1e15, "maxWithdraw should follow formula: balance * (1 - feeRate)");
     }
 
     /// @notice Tests preview functions return 0 for 0 input with withdraw fee
@@ -753,7 +751,7 @@ contract PlasmaVaultErc4626WithdrawFeeTest is Test {
         vm.stopPrank();
 
         // With 10% withdraw fee: effective assets = depositAmount * 0.90 = 9000
-        uint256 expectedMin = depositAmount * 90 / 100;
+        uint256 expectedMin = (depositAmount * 90) / 100;
 
         assertApproxEqRel(assetsReceived, expectedMin, 1e15, "Roundtrip should account for withdraw fee");
         assertLt(assetsReceived, depositAmount, "Should receive less than deposited due to fee");

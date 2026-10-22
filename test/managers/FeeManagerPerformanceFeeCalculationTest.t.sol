@@ -67,7 +67,8 @@ contract FeeManagerPerformanceFeeCalculationTest is Test {
 
         assertEq(feeShares1, 0, "First call should return 0 fees and set HWM");
 
-        // 2. Calculate Fee with new Rate
+        // 2. Calculate Fee with new Rate (the FeeManager prices the share rate after the fee mint from the vault)
+        _mockVault(uint8(shareDecimals), 2000 * 10 ** assetDecimals);
         vm.prank(plasmaVault);
         (address recipient2, uint256 feeShares2) = feeManager.calculateAndUpdatePerformanceFee(
             currentRate,
@@ -95,5 +96,20 @@ contract FeeManagerPerformanceFeeCalculationTest is Test {
 
         // Assert that it DOES NOT match the INCORRECT expectation
         assertTrue(feeShares2 != expectedSharesIncorrect, "Should not be over-minted anymore");
+
+        // IL-8744: the HWM is the share price after the fee mint: (TA + 1) / (S + f + 1) per 1e18 shares
+        _assertPostMintHwm(feeShares2, totalSupply, currentRate);
+    }
+
+    function _mockVault(uint8 shareDecimals_, uint256 totalAssets_) private {
+        vm.mockCall(plasmaVault, abi.encodeWithSignature("decimals()"), abi.encode(shareDecimals_));
+        vm.mockCall(plasmaVault, abi.encodeWithSignature("totalAssets()"), abi.encode(totalAssets_));
+    }
+
+    function _assertPostMintHwm(uint256 feeShares_, uint256 totalSupply_, uint128 preMintRate_) private view {
+        uint256 expectedHwm = (1e18 * (2000e18 + 1)) / (totalSupply_ + feeShares_ + 1);
+        uint256 storedHwm = feeManager.getPlasmaVaultHighWaterMarkPerformanceFee().highWaterMark;
+        assertEq(storedHwm, expectedHwm, "HWM is the post-mint share price");
+        assertLt(storedHwm, preMintRate_, "HWM is below the pre-mint rate");
     }
 }

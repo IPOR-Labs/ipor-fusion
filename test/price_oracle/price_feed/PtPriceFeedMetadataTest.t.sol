@@ -34,7 +34,7 @@ contract PtPriceFeedMetadataTest is Test {
         );
 
         // Calculate price at this block
-        int256 calculatedPrice = factoryProxy.calculatePrice(TEST_MARKET, TWAP_WINDOW, PRICE_ORACLE, 0);
+        int256 calculatedPrice = factoryProxy.calculatePrice(TEST_MARKET, TWAP_WINDOW, PRICE_ORACLE, 1);
 
         // Create price feed
         vm.prank(ADMIN);
@@ -43,7 +43,7 @@ contract PtPriceFeedMetadataTest is Test {
             TEST_MARKET,
             TWAP_WINDOW,
             PRICE_ORACLE,
-            0, // usePendleOracleMethod
+            1, // usePendleOracleMethod
             calculatedPrice
         );
 

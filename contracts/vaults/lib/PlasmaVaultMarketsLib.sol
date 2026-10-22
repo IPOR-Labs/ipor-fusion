@@ -18,6 +18,9 @@ library PlasmaVaultMarketsLib {
     /// @dev Error thrown when asset price is zero
     error AssetPriceIsZero();
 
+    /// @dev Error thrown when a market passed to updateMarketsBalances has no registered balance fuse
+    error MarketWithoutBalanceFuse(uint256 marketId);
+
     /// @notice Updates balances for specified markets by fetching balance from balance fuses and converting from USD to underlying asset
     /// @param markets_ Array of market IDs to update balances for
     /// @param assetAddress_ Address of the underlying asset
@@ -25,7 +28,8 @@ library PlasmaVaultMarketsLib {
     /// @param decimalsOffset_ Offset to apply when converting decimals
     /// @return dataToCheck Data structure containing markets and their balances for validation
     /// @dev Filters zero markets, checks balance fuse dependencies, fetches asset price from oracle,
-    ///      converts balances from USD (WAD) to underlying asset decimals, and updates total assets in markets
+    ///      converts balances from USD (WAD) to underlying asset decimals, and updates total assets in markets.
+    ///      Reverts with MarketWithoutBalanceFuse if a market has no registered balance fuse.
     function updateMarketsBalances(
         uint256[] memory markets_,
         address assetAddress_,
@@ -57,6 +61,10 @@ library PlasmaVaultMarketsLib {
             }
 
             balanceFuse = FusesLib.getBalanceFuse(markets[i]);
+
+            if (balanceFuse == address(0)) {
+                revert MarketWithoutBalanceFuse(markets[i]);
+            }
 
             wadBalanceAmountInUSD = abi.decode(
                 balanceFuse.functionDelegateCall(abi.encodeWithSignature("balanceOf()")),

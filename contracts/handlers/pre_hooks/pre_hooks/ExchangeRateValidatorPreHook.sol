@@ -4,7 +4,13 @@ pragma solidity 0.8.30;
 import {IPreHook} from "../IPreHook.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
-import {ExchangeRateValidatorConfigLib, Hook, ValidatorData, HookType, ExchangeRateValidatorConfig} from "./ExchangeRateValidatorConfigLib.sol";
+import {
+    ExchangeRateValidatorConfigLib,
+    Hook,
+    ValidatorData,
+    HookType,
+    ExchangeRateValidatorConfig
+} from "./ExchangeRateValidatorConfigLib.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title ExchangeRateValidatorPreHook
@@ -26,6 +32,13 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 /// - Uses delegatecall for hook execution
 /// - Validates threshold values (must be <= 100%)
 /// - Prevents exchange rate manipulation attacks
+///
+/// Nested hooks and ContextManager:
+/// - Nested pre/post hooks run via delegatecall in the vault context. A nested UpdateBalancesPreHook or
+///   UpdateBalancesIgnoreDustPreHook self-calls PlasmaVault.updateMarketsBalances; on vaults created from
+///   a PlasmaVault implementation that predates IL-8310 that self-call is authorized against the
+///   ContextManager context sender, so relayed calls on the hooked selector revert with
+///   AccessManagedUnauthorized. See the ContextManager notes in those hooks.
 contract ExchangeRateValidatorPreHook is IPreHook {
     /// @notice Market identifier associated with this pre-hook implementation
     /// @dev Mirrors fuse pattern: immutable MARKET_ID set at construction
@@ -102,8 +115,35 @@ contract ExchangeRateValidatorPreHook is IPreHook {
     /// @notice Validates current exchange rate against expected with +/- threshold tolerance
     /// @dev Threshold is in 1e18 precision where 1e18 = 100%.
     ///      If |deviation| <= threshold/2, do not update substrates.
-    ///      If threshold/2 < |deviation| <= threshold, update validator config in substrates at validatorIndex_.
-    ///      If |deviation| > threshold, revert.
+    ///      If threshold/2 < |deviation| <= threshold, update validator config in substrates at validatorIndex_,
+    ///      but at most once per `block.timestamp` (`lastUpdateTimestamp` stored in the validator config; 0 in
+    ///      configs written before IL-8832, which therefore allow one re-anchor); on chains with sub-second blocks
+    ///      (e.g. Arbitrum) that is once per second, because several blocks share a timestamp. Within one
+    ///      timestamp an accepted rate stays within (1 +- threshold) of that timestamp's stored rate, i.e. at most
+    ///      (1 + threshold)^2 of the previously stored rate, no matter how many validations run. A call that
+    ///      moves the rate by more than threshold/2 a second time in the same timestamp passes without a write.
+    ///      If |deviation| > threshold, revert. A reverting call does not move the stored rate, so a rate that
+    ///      stays outside the band keeps reverting in later blocks too. Recovery needs the FUSE_MANAGER role
+    ///      (administered by the ATOMIST): call `grantMarketSubstrates`, which REPLACES the whole substrate list
+    ///      of the market, so resend the full list including any nested hook entries, with the validator entry
+    ///      carrying the current rate and `lastUpdateTimestamp` = 0. Configurators must always write
+    ///      `lastUpdateTimestamp` = 0: a value in the future freezes re-anchoring until that time.
+    ///      Rollback warning: once this hook has written a non-zero `lastUpdateTimestamp`, the previous hook build
+    ///      (and the vault-validator module that predates IL-8832) misreads the config, because it reads the
+    ///      threshold from 120 bits (bits 80-119 now hold the timestamp) and reverts with `ThresholdTooHigh`.
+    ///      Do not roll the hook back without first resetting the validator config (timestamp 0).
+    ///      One hook build per vault: the previous build reads bits 80-119 as part of a 120-bit threshold, so the
+    ///      same failure happens when a vault runs the previous build on one selector and this build on another.
+    ///      Move every hooked selector to this build in one `setPreHookImplementations` call before a validator
+    ///      config is enabled, and never mix builds (also not during a rollback).
+    ///      Before the switch, check that the validator entry decodes with a threshold <= 1e18 and a timestamp of 0:
+    ///      a legacy entry with non-zero bits 80-119 (which made the previous build revert `ThresholdTooHigh`) is read
+    ///      here as an 80-bit threshold plus a timestamp (see `bytes31ToValidatorData`).
+    ///      The band is +-threshold around the stored rate, not symmetric in ratio terms. After a re-anchor DOWN
+    ///      by d with threshold/(1+threshold) < d <= threshold, a return to the previous level is outside the band
+    ///      (d/(1-d) > threshold), so validation keeps reverting until the config is reset as described above.
+    ///      Residual risk: a rate that an attacker can keep displaced over many blocks can still be walked one
+    ///      step per timestamp. This is mitigated by the feed policy and by monitoring `ExchangeRateUpdated`.
     /// @param substrates_ Raw substrates storage array
     /// @param validatorIndex_ Index of validator entry in substrates
     /// @param validationData_ Decoded validator data containing expected exchangeRate and threshold
@@ -137,11 +177,12 @@ contract ExchangeRateValidatorPreHook is IPreHook {
         uint256 lowerHalf = (expected * (_ONE - half)) / _ONE;
 
         // If outside half band but within full band, update validator exchangeRate in substrates
-        if (current < lowerHalf || current > upperHalf) {
-            // Keep same threshold, update exchangeRate to current
+        if ((current < lowerHalf || current > upperHalf) && validationData_.lastUpdateTimestamp < block.timestamp) {
+            // Keep same threshold, update exchangeRate to current and record the re-anchor timestamp
             ValidatorData memory updated = ValidatorData({
                 exchangeRate: uint128(current),
-                threshold: validationData_.threshold
+                threshold: validationData_.threshold,
+                lastUpdateTimestamp: uint40(block.timestamp)
             });
             bytes31 encodedValidator = ExchangeRateValidatorConfigLib.validatorDataToBytes31(updated);
             bytes32 updatedConfig = ExchangeRateValidatorConfigLib.exchangeRateValidatorConfigToBytes32(

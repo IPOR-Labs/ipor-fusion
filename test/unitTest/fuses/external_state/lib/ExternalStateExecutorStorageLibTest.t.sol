@@ -35,12 +35,12 @@ contract ExternalStateExecutorStorageLibHarness {
         ExternalStateExecutorStorageLib.setLastTotalBalance(v_);
     }
 
-    function getLastCheckedCustodianTimestamp() external view returns (uint256) {
-        return ExternalStateExecutorStorageLib.getLastCheckedCustodianTimestamp();
+    function getLastCheckedCustodianConfirmCount() external view returns (uint256) {
+        return ExternalStateExecutorStorageLib.getLastCheckedCustodianConfirmCount();
     }
 
-    function setLastCheckedCustodianTimestamp(uint256 v_) external {
-        ExternalStateExecutorStorageLib.setLastCheckedCustodianTimestamp(v_);
+    function setLastCheckedCustodianConfirmCount(uint256 v_) external {
+        ExternalStateExecutorStorageLib.setLastCheckedCustodianConfirmCount(v_);
     }
 
     function getPaused() external view returns (bool) {
@@ -137,9 +137,9 @@ contract ExternalStateExecutorStorageLibTest is Test {
     }
 
     // ---------- 2.7 ----------
-    function test_getLastCheckedCustodianTimestamp_setterRoundtrip() public {
-        h.setLastCheckedCustodianTimestamp(1_700_000_000);
-        assertEq(h.getLastCheckedCustodianTimestamp(), 1_700_000_000);
+    function test_getLastCheckedCustodianConfirmCount_setterRoundtrip() public {
+        h.setLastCheckedCustodianConfirmCount(1_700_000_000);
+        assertEq(h.getLastCheckedCustodianConfirmCount(), 1_700_000_000);
     }
 
     // ---------- 2.8 ----------
@@ -188,13 +188,13 @@ contract ExternalStateExecutorStorageLibTest is Test {
         // Writing different fields must not cross-contaminate storage.
         h.setExecutor(address(0x1));
         h.setLastTotalBalance(100);
-        h.setLastCheckedCustodianTimestamp(200);
+        h.setLastCheckedCustodianConfirmCount(200);
         h.setPaused(true);
         h.markUnpauseNonceUsed(300);
 
         assertEq(h.getExecutor(), address(0x1));
         assertEq(h.getLastTotalBalance(), 100);
-        assertEq(h.getLastCheckedCustodianTimestamp(), 200);
+        assertEq(h.getLastCheckedCustodianConfirmCount(), 200);
         assertTrue(h.getPaused());
         assertTrue(h.isUnpauseNonceUsed(300));
     }

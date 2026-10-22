@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {ILeverageZapper} from "./ext/ILeverageZapper.sol";
+import {ITroveManager} from "./ext/ITroveManager.sol";
 import {IActivePool} from "./ext/IActivePool.sol";
 import {IAddressesRegistry} from "./ext/IAddressesRegistry.sol";
 import {IPriceFeed} from "./ext/IPriceFeed.sol";
@@ -14,7 +15,11 @@ import {PlasmaVaultConfigLib} from "../../libraries/PlasmaVaultConfigLib.sol";
 import {IWethEthAdapter} from "./IWethEthAdapter.sol";
 import {WethEthAdapterStorageLib} from "./lib/WethEthAdapterStorageLib.sol";
 import {WethEthAdapter} from "./WethEthAdapter.sol";
-import {EbisuZapperSubstrateLib, EbisuZapperSubstrate, EbisuZapperSubstrateType} from "./lib/EbisuZapperSubstrateLib.sol";
+import {
+    EbisuZapperSubstrateLib,
+    EbisuZapperSubstrate,
+    EbisuZapperSubstrateType
+} from "./lib/EbisuZapperSubstrateLib.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {TypeConversionLib} from "../../libraries/TypeConversionLib.sol";
 import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
@@ -168,6 +173,12 @@ contract EbisuZapperCreateFuse is IFuseCommon {
     /// @param ownerIndex The owner index associated with the closed Trove
     event EbisuZapperCreateFuseExit(address zapper, uint256 ownerIndex);
 
+    /// @notice Emitted when a stored Trove id is dropped because the Trove is no longer live (e.g. liquidated)
+    /// @param zapper The zapper (branch) whose stored Trove id was cleared
+    /// @param troveId The stale Trove id that was removed from storage
+    /// @param status The Liquity TroveManager status of the stale Trove (ITroveManager.Status as uint8)
+    event EbisuZapperCreateFuseStaleTroveCleared(address zapper, uint256 troveId, uint8 status);
+
     /// @notice Emitted when a new WethEthAdapter is created and stored
     /// @param adapterAddress The address of the newly created adapter
     /// @param plasmaVault The address of the Plasma Vault that owns the adapter
@@ -242,7 +253,13 @@ contract EbisuZapperCreateFuse is IFuseCommon {
 
         FuseStorageLib.EbisuTroveIds storage troveDataStorage = FuseStorageLib.getEbisuTroveIds();
 
-        if (troveDataStorage.troveIds[data_.zapper] != 0) revert TroveAlreadyOpen();
+        uint256 storedTroveId = troveDataStorage.troveIds[data_.zapper];
+        if (storedTroveId != 0) {
+            /// @dev A stored id whose Trove was liquidated (NFT burned) must not block the branch forever
+            (bool live, ITroveManager.Status status) = _troveStatus(data_.zapper, storedTroveId);
+            if (live) revert TroveAlreadyOpen();
+            _clearStaleTrove(troveDataStorage, data_.zapper, storedTroveId, status);
+        }
 
         uint256 ownerIndex = ++troveDataStorage.latestOwnerIndex;
         ILeverageZapper.OpenLeveragedTroveParams memory params = ILeverageZapper.OpenLeveragedTroveParams({
@@ -344,6 +361,14 @@ contract EbisuZapperCreateFuse is IFuseCommon {
 
         address adapter = WethEthAdapterStorageLib.getWethEthAdapter();
         if (adapter == address(0)) revert WethEthAdapterNotFound();
+
+        /// @dev Trove already closed (e.g. liquidated, NFT burned): the zapper cannot close it, only drop the id.
+        ///      Checked before any ebUSD is moved to the adapter.
+        (bool live, ITroveManager.Status status) = _troveStatus(data_.zapper, troveId);
+        if (!live) {
+            _clearStaleTrove(troveDataStorage, data_.zapper, troveId, status);
+            return (data_.zapper, troveDataStorage.latestOwnerIndex);
+        }
 
         if (!data_.exitFromCollateral) {
             IERC20 ebusdToken = IERC20(ILeverageZapper(data_.zapper).boldToken());
@@ -482,5 +507,39 @@ contract EbisuZapperCreateFuse is IFuseCommon {
             WethEthAdapterStorageLib.setWethEthAdapter(adapterAddress);
             emit WethEthAdapterCreated(adapterAddress, address(this), WETH);
         }
+    }
+
+    /**
+     * @notice Reads the Trove status from the Liquity TroveManager and tells whether the zapper can still operate it
+     * @dev Live means active or zombie (the Trove NFT still exists, so the zapper can close it).
+     *      closedByOwner, closedByLiquidation and nonExistent Troves have no NFT, so zapper close paths revert.
+     * @param zapper_ The zapper (branch) of the Trove
+     * @param troveId_ The Trove id to check
+     * @return live True when the zapper can still operate on the Trove
+     * @return status The TroveManager status of the Trove
+     */
+    function _troveStatus(
+        address zapper_,
+        uint256 troveId_
+    ) private view returns (bool live, ITroveManager.Status status) {
+        status = ITroveManager(ILeverageZapper(zapper_).troveManager()).getTroveStatus(troveId_);
+        live = status == ITroveManager.Status.active || status == ITroveManager.Status.zombie;
+    }
+
+    /**
+     * @notice Drops a stale Trove id from storage and emits EbisuZapperCreateFuseStaleTroveCleared
+     * @param troveDataStorage_ The EbisuTroveIds storage
+     * @param zapper_ The zapper (branch) of the Trove
+     * @param troveId_ The stale Trove id
+     * @param status_ The TroveManager status of the stale Trove
+     */
+    function _clearStaleTrove(
+        FuseStorageLib.EbisuTroveIds storage troveDataStorage_,
+        address zapper_,
+        uint256 troveId_,
+        ITroveManager.Status status_
+    ) private {
+        delete troveDataStorage_.troveIds[zapper_];
+        emit EbisuZapperCreateFuseStaleTroveCleared(zapper_, troveId_, uint8(status_));
     }
 }

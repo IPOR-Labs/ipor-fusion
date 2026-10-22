@@ -40,18 +40,6 @@ struct UniversalTokenSwapperEthEnterData {
     UniversalTokenSwapperEthData data;
 }
 
-/// @notice Struct to track token balances before and after swap execution
-/// @param tokenInBalanceBefore Balance of input token before swap
-/// @param tokenOutBalanceBefore Balance of output token before swap
-/// @param tokenInBalanceAfter Balance of input token after swap
-/// @param tokenOutBalanceAfter Balance of output token after swap
-struct Balances {
-    uint256 tokenInBalanceBefore;
-    uint256 tokenOutBalanceBefore;
-    uint256 tokenInBalanceAfter;
-    uint256 tokenOutBalanceAfter;
-}
-
 /// @notice Struct containing validated substrate data (tokens, targets, slippage)
 /// @param tokenInGranted Whether tokenIn is in the allowed substrates
 /// @param tokenOutGranted Whether tokenOut is in the allowed substrates
@@ -134,7 +122,14 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     }
 
     /// @notice Execute a swap operation
-    /// @dev Called via delegatecall from PlasmaVault.execute()
+    /// @dev Called via delegatecall from PlasmaVault.execute(). tokenIn spent and tokenOut received are measured on
+    ///      EXECUTOR, not on the vault. The route must deliver tokenOut to EXECUTOR (never directly to the vault); a
+    ///      route paying the vault directly reverts with SlippageFail.
+    ///      spent/received are the amounts the executor transferred, not the amounts the vault received: a
+    ///      token that delivers less than the nominal amount on transfer loosens minAmountOut and the USD
+    ///      slippage check by that difference on the final transfer. Do not grant tokens with an active
+    ///      transfer fee as tokenIn/tokenOut; stETH-style share rounding (1-2 wei) is accepted; USDT is
+    ///      accepted while its fee is 0 (Tether can set at most 19 bps, capped at 49 USDT per transfer).
     /// @param data_ Encoded UniversalTokenSwapperEthEnterData struct
     /// @custom:security Validates all tokens, targets and dust tokens against substrate configuration.
     ///                  Enforces minAmountOut and USD-based slippage protection.
@@ -152,18 +147,14 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
         // Single pass substrate validation - returns slippage for later use
         uint256 slippageWad = _checkSubstratesInternal(data_);
 
-        address plasmaVault = address(this);
-
-        Balances memory balances = Balances({
-            tokenInBalanceBefore: ERC20(data_.tokenIn).balanceOf(plasmaVault),
-            tokenOutBalanceBefore: ERC20(data_.tokenOut).balanceOf(plasmaVault),
-            tokenInBalanceAfter: 0,
-            tokenOutBalanceAfter: 0
-        });
+        // Measure the swap on the executor, not on the vault balances: an inflow to the vault during execution
+        // (e.g. a permissionless claim paid to the vault) must neither mask a theft nor count as swap output.
+        uint256 executorTokenInBefore = ERC20(data_.tokenIn).balanceOf(EXECUTOR);
+        uint256 executorTokenOutBefore = ERC20(data_.tokenOut).balanceOf(EXECUTOR);
 
         ERC20(data_.tokenIn).safeTransfer(EXECUTOR, data_.amountIn);
 
-        SwapExecutorEth(EXECUTOR).execute(
+        (uint256 tokenInReturned, uint256 tokenOutReturned) = SwapExecutorEth(EXECUTOR).execute(
             SwapExecutorEthData({
                 tokenIn: data_.tokenIn,
                 tokenOut: data_.tokenOut,
@@ -174,20 +165,21 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
             })
         );
 
-        balances.tokenInBalanceAfter = ERC20(data_.tokenIn).balanceOf(plasmaVault);
-        balances.tokenOutBalanceAfter = ERC20(data_.tokenOut).balanceOf(plasmaVault);
+        // tokenIn the vault put in (plus anything already held by the executor) minus what came back
+        uint256 tokenInDelta = data_.amountIn + executorTokenInBefore > tokenInReturned
+            ? data_.amountIn + executorTokenInBefore - tokenInReturned
+            : 0;
 
-        if (balances.tokenInBalanceAfter >= balances.tokenInBalanceBefore) {
+        if (tokenInDelta == 0) {
+            // Nothing of the vault's tokenIn was used
             return;
         }
 
-        uint256 tokenInDelta = balances.tokenInBalanceBefore - balances.tokenInBalanceAfter;
-
-        if (balances.tokenOutBalanceAfter <= balances.tokenOutBalanceBefore) {
+        if (tokenOutReturned <= executorTokenOutBefore) {
             revert UniversalTokenSwapperEthFuseSlippageFail();
         }
 
-        uint256 tokenOutDelta = balances.tokenOutBalanceAfter - balances.tokenOutBalanceBefore;
+        uint256 tokenOutDelta = tokenOutReturned - executorTokenOutBefore;
 
         // Check minAmountOut protection (if specified)
         if (data_.minAmountOut > 0 && tokenOutDelta < data_.minAmountOut) {
@@ -437,7 +429,9 @@ contract UniversalTokenSwapperEthFuse is IFuseCommon {
     /// @dev Checks tokenIn, tokenOut, all targets, and dust tokens against configured substrates in single pass
     /// @param data_ The swap data containing tokens and targets to validate
     /// @return slippageWad The slippage limit in WAD for use in USD slippage validation
-    function _checkSubstratesInternal(UniversalTokenSwapperEthEnterData memory data_) private view returns (uint256 slippageWad) {
+    function _checkSubstratesInternal(
+        UniversalTokenSwapperEthEnterData memory data_
+    ) private view returns (uint256 slippageWad) {
         uint256 targetsLength = data_.data.targets.length;
         if (targetsLength == 0) {
             revert UniversalTokenSwapperEthFuseEmptyTargets();

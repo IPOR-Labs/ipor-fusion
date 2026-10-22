@@ -59,8 +59,42 @@ interface IIporFusionAccessManager is IAccessManager {
     /// redemption delay (last deposit timestamp + REDEMPTION_DELAY_IN_SECONDS). The value moves
     /// immediately, in both directions, whenever the redemption delay is changed.
     /// @param account_ The account for which the account lock time is returned
+    /// @dev Exemption-agnostic: also returned for exempt accounts - combine it with isRedemptionDelayExempt.
     /// @return The unlock timestamp, possibly in the past when the lock has expired, 0 when the account never deposited
     function getAccountLockTime(address account_) external view returns (uint256);
+
+    /// @notice Adds or removes a batch of accounts to/from the redemption delay exemptions. An exempt account
+    /// behaves as if the vault-wide redemption delay were 0 on withdraw, redeem, transfer and transferFrom.
+    /// @dev Restricted to the TECH_PLASMA_VAULT_ROLE. Governance uses PlasmaVaultGovernance.setRedemptionDelayExemption,
+    /// which forwards here; that path is timelocked only through the OWNER_ROLE execution delay. Reverts with
+    /// Errors.WrongAddress for the whole batch when any account is the zero address. An empty batch is a no-op.
+    /// The RedemptionDelayExemptionUpdated(address account, bool exempt) event is emitted for every address, also
+    /// when the state did not change. The exemption is evaluated at exit time, so granting and revoking are immediate.
+    /// @param accounts_ The accounts to update
+    /// @param exempt_ True to exempt the accounts, false to remove the exemption
+    function setRedemptionDelayExemption(address[] calldata accounts_, bool exempt_) external;
+
+    /// @notice Checks whether an account is exempt from the redemption delay.
+    /// @param account_ The account to check
+    /// @return True when the account is exempt
+    function isRedemptionDelayExempt(address account_) external view returns (bool);
+
+    /// @notice Returns all accounts exempt from the redemption delay.
+    /// @dev The order is not stable across removals.
+    /// @return The full list of exempt accounts
+    function getRedemptionDelayExemptions() external view returns (address[] memory);
+
+    /// @notice Returns the number of accounts exempt from the redemption delay.
+    /// @return The number of exempt accounts
+    function getRedemptionDelayExemptionsCount() external view returns (uint256);
+
+    /// @notice Returns a page of accounts exempt from the redemption delay.
+    /// @dev Returns an empty array when offset_ >= count, otherwise min(limit_, count - offset_) accounts.
+    /// The order is not stable across removals, so read all pages in one block.
+    /// @param offset_ Index of the first account to return
+    /// @param limit_ Maximum number of accounts to return
+    /// @return The requested page of exempt accounts
+    function getRedemptionDelayExemptionsAt(uint256 offset_, uint256 limit_) external view returns (address[] memory);
 
     /// @notice Returns the function selector for the scheduled operation that is currently being consumed.
     /// @return The function selector

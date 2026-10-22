@@ -37,10 +37,17 @@ contract NapierCollectFuse is NapierUniversalRouterFuse {
     }
 
     /// @notice Collects interest and external rewards if any
+    /// @dev Reverts with NapierFuseInvalidToken unless PT, the underlying token (interest is paid in it) and
+    /// every reward token are granted substrates of the market.
     function enter(NapierCollectFuseEnterData calldata data_) external {
         IPrincipalToken principalToken = data_.principalToken;
 
         if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, address(principalToken))) {
+            revert NapierFuseInvalidToken();
+        }
+
+        // Interest is paid in the underlying token; an ungranted one would be missing from NAV.
+        if (!PlasmaVaultConfigLib.isSubstrateAsAssetGranted(MARKET_ID, principalToken.underlying())) {
             revert NapierFuseInvalidToken();
         }
 

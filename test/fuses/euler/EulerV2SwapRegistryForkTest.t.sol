@@ -58,6 +58,10 @@ contract EulerV2SwapRegistryForkTest is Test {
     // Sub-account dedicated to the EulerSwap LP position
     bytes1 private constant _SUB_ACCOUNT = 0x01;
 
+    // Curve pricing guard (IL-8039): max deviation of priceX/priceY from the oracle ratio. The
+    // fixture's priceX = 1.13309e18 is ~0.097% off the block's oracle ratio, comfortably inside 1%.
+    uint256 private constant _PRICE_DEVIATION_WAD = 1e16;
+
     // Roles
     address private constant _ATOMIST = address(1111111);
     address private constant _ALPHA = address(2222222);
@@ -155,7 +159,9 @@ contract EulerV2SwapRegistryForkTest is Test {
 
     function _setupFuses() private returns (address[] memory fuses) {
         _eulerSupplyFuse = address(new EulerV2SupplyFuse(IporFusionMarkets.EULER_V2, _EVC));
-        _eulerSwapDeployFuse = address(new EulerV2SwapDeployFuse(IporFusionMarkets.EULER_V2, _EVC, _EULERSWAP_FACTORY));
+        _eulerSwapDeployFuse = address(
+            new EulerV2SwapDeployFuse(IporFusionMarkets.EULER_V2, _EVC, _EULERSWAP_FACTORY, _PRICE_DEVIATION_WAD)
+        );
         _eulerSwapRegistryFuse = address(
             new EulerV2SwapRegistryFuse(IporFusionMarkets.EULER_V2, _EVC, _EULERSWAP_REGISTRY)
         );

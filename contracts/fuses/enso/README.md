@@ -67,8 +67,11 @@ The EnsoExecutor provides several critical benefits:
 1. First enter() call → Creates EnsoExecutor if not exists
 2. Transfer tokens → PlasmaVault transfers tokens to EnsoExecutor
 3. Execute shortcut → EnsoExecutor performs delegatecall to DelegateEnsoShortcuts
-4. Return tokens → EnsoExecutor transfers result tokens back to PlasmaVault
-5. Track balance → Store any pending balance for future reconciliation
+4. Return tokens → EnsoExecutor transfers re-wrapped ETH, the residual tokenOut, and every
+   token in tokensToReturn back to PlasmaVault
+5. Track balance → A pending balance is recorded only when tokensToReturn is empty; a
+   non-empty tokensToReturn declares that the route's outputs were delivered in this
+   transaction, so nothing is pending
 6. exit() call → Withdraw remaining tokens from EnsoExecutor
 ```
 
@@ -101,8 +104,11 @@ The `enter()` function executes an Enso shortcut through the following steps:
 4. **Token Transfer**: Transfers specified tokens (tokenOut) to the executor
 5. **WETH Transfer**: Transfers WETH to the executor if needed for ETH operations
 6. **Shortcut Execution**: Executor performs delegatecall to execute the Enso shortcut
-7. **Return Tokens**: Executor automatically returns tokens to PlasmaVault
-8. **Balance Tracking**: Stores pending balance for future reconciliation
+7. **Return Tokens**: Executor returns residual `tokenOut`, re-wrapped ETH, and every token in
+   `tokensToReturn`
+8. **Balance Tracking**: Stores the consumed `tokenOut` as a pending balance only if
+   `tokensToReturn` is empty; a non-empty `tokensToReturn` declares that the route's outputs
+   were delivered in this transaction, so nothing is pending
 
 **Parameters:**
 
@@ -115,9 +121,15 @@ struct EnsoFuseEnterData {
     bytes32 requestId; // Enso API request identifier
     bytes32[] commands; // Array of encoded commands (target + selector + flags)
     bytes[] state; // Calldata parameters for each command
-    address[] tokensToReturn; // Tokens expected to be returned to PlasmaVault
+    address[] tokensToReturn; // Route output tokens to return to PlasmaVault in this transaction (leave empty for cross-chain / delayed legs)
+    address[] tokensToRevoke; // Tokens whose allowance to the paired spender is revoked after the shortcut
+    address[] spendersToRevoke; // Spenders paired by index with tokensToRevoke
 }
 ```
+
+> **ABI-breaking addition:** `tokensToRevoke` and `spendersToRevoke` were added to
+> `EnsoFuseEnterData` after the initial release. Off-chain calldata builders must supply both
+> fields (empty arrays if there is nothing to revoke) or the call will not match `enter()`'s ABI.
 
 ### Exit Operation (Withdraw Tokens)
 
@@ -158,20 +170,56 @@ Each command is encoded as bytes32 with the following structure:
 
 ### Command Flags
 
+-   **FLAG_CT_DELEGATECALL (0x00)**: DELEGATECALL operation (runs in the executor's storage context; validated like any other call — see Security Considerations below)
 -   **FLAG_CT_CALL (0x01)**: Standard CALL operation (state-changing, no ETH)
 -   **FLAG_CT_STATICCALL (0x02)**: STATICCALL operation (read-only, skipped in validation)
 -   **FLAG_CT_VALUECALL (0x03)**: CALL with ETH value transfer
--   **FLAG_EXTENDED_COMMAND (0x40)**: Next command contains indices/metadata (not a call)
+-   **FLAG_DATA (0x20)**: The command takes its WHOLE calldata from a single state slot. The VM
+    discards the selector encoded in the command word and calls the target with
+    `state[idx & 0x7f]` verbatim, where `idx` is the first argument-index byte — the SECOND byte
+    for VALUECALL, whose first index carries the ETH value. Validation therefore reads the
+    effective selector out of that state slot instead of out of the command word, and rejects the
+    command if an earlier command wrote that slot (see Command Validation, step 3).
+-   **FLAG_EXTENDED_COMMAND (0x40)**: The argument indices for THIS command are stored in the
+    NEXT array element instead of inline. The flagged command word itself is still a real call
+    and is validated exactly like a non-extended command; only the following element (the raw
+    index word) is metadata and is skipped.
 
 ### Command Validation
 
-The integration validates all commands (except STATICCALL) against granted substrates:
+The integration validates every command word that represents a real call (i.e. every command
+except STATICCALL, including DELEGATECALL and extended commands) against granted substrates:
 
-1. **Extract command data**: Parse target address, function selector, and flags
+1. **Extract command data**: Parse target address, function selector, and flags from the command word
 2. **Skip read-only calls**: STATICCALL commands are skipped (no state changes)
-3. **Skip extended commands**: FLAG_EXTENDED_COMMAND indicates metadata, not a call
-4. **Validate substrate**: Check if substrate (target + selector) is granted
+3. **Resolve the effective selector**: Normally this is `bytes4(command)`. With **FLAG_DATA** set
+   the VM never dispatches that selector — it passes a raw state slot as the whole calldata — so
+   the selector is read from that slot instead (`bytes4(state[idx])`). Without this step the
+   (target, selector) allowlist would degrade to target-only: a grant of `(Router, swap)` would
+   expose every other function of the same router, and `(token, transfer)` would additionally
+   expose `approve` / `permit`. A slot addressed out of range reverts with
+   `EnsoFuseInvalidStateIndex`; a slot shorter than four bytes with `EnsoFuseInvalidStateCalldata`.
+   The supplied slot is only what the VM dispatches if no **earlier** command wrote it: the VM
+   stores every command's return data back into `state` (output index, byte 11 of the command
+   word) before running the next one, and a STATICCALL — never substrate-checked, so its return
+   data is fully caller-controlled — could otherwise restage the slot after validation and smuggle
+   a non-granted selector through a granted target. Validation therefore tracks the output index
+   of every preceding command (all call types; argument-index words are skipped): `0xff` writes
+   nothing, a non-tuple `0xfe` replaces the whole array, any other value writes
+   `state[out & 0x7f]`. A FLAG_DATA command reading a written slot, or any slot once the array was
+   replaced, reverts with `EnsoFuseStateSlotOverwritten`. Writes by later commands, and writes to
+   other slots, are unaffected
+4. **Validate substrate**: For every other call type — CALL, VALUECALL, and DELEGATECALL, extended
+   or not — check if substrate (target + effective selector) is granted; the extended flag does
+   NOT exempt the flagged word from validation, it only marks that the following array element
+   must be skipped (it holds argument indices, not a call)
 5. **Revert if not granted**: Throws `EnsoFuseUnsupportedCommand` error
+6. **Skip the index word**: If the command was extended, the next array element is skipped
+   (it is consumed as argument indices, never validated as a command)
+
+Note that the argument-index word is resolved **before** the substrate check, because a FLAG_DATA
+command reaches its state slot through the first index byte, which for an extended command lives
+in the following array element.
 
 ## Substrate Configuration
 
@@ -288,16 +336,36 @@ struct EnsoExecutorBalance {
 ### Balance Lifecycle
 
 1. **Execution Start**: Balance is set to zero (or reverts if not zero)
-2. **After Execution**: Tracks remaining `tokenOut` that wasn't returned to PlasmaVault
-3. **Cross-Chain Scenarios**: Holds expected balance for tokens arriving later
+2. **After Execution**: If `tokensToReturn` is non-empty, the balance is zero - the caller
+   declared that the route's outputs (swept back to PlasmaVault in the same transaction) leave
+   nothing pending. If `tokensToReturn` is empty, tracks the remaining `tokenOut` that wasn't
+   returned to PlasmaVault
+3. **Cross-Chain Scenarios**: With `tokensToReturn` left empty, holds expected balance for
+   tokens arriving later
 4. **Withdrawal**: Balance is cleared when tokens are withdrawn via `exit()`
 
 ### Important Balance Behaviors
 
 -   **One Asset at a Time**: Only tracks the last `tokenOut` from the most recent execution
 -   **Safety Check**: New execution reverts if previous balance is not zero
--   **Automatic Return**: Tokens returned during execution reduce the pending balance
+-   **Automatic Return**: The residual `tokenOut` and every token in `tokensToReturn` are swept
+    back to PlasmaVault during `execute()`; a non-empty `tokensToReturn` zeroes the pending
+    balance outright instead of merely reducing it (see "Accounting for returned tokens" below)
 -   **Complete Cleanup**: `withdrawAll()` clears both address and balance to zero
+
+### Accounting for returned tokens
+
+Returned underlying (the vault's `asset()`) is counted as idle balance immediately. Any other
+returned token is counted only if it is granted as a substrate of `ERC20_VAULT_BALANCE`
+(market 7) with the dependency graph `ENSO → ERC20_VAULT_BALANCE` configured (as
+`IporFusionMarkets.sol` requires for the other swap-type markets) - the same requirement that
+already applied to tokens recovered via `exit()`. Listing a token in `tokensToReturn` whose
+output actually arrives later (e.g. a cross-chain leg) under-states NAV until the leg lands and
+`exit()` sweeps it; this is the conservative direction for redemptions (nobody can withdraw
+against value the vault does not hold yet), although a deposit made in that window mints shares
+against the under-stated NAV and dilutes existing holders until the leg lands. Per this
+integration's policy of not policing grant/revoke consequences in fuses, it is documented here
+rather than guarded in code.
 
 ## ETH/WETH Handling
 
@@ -331,11 +399,68 @@ PlasmaVault (WETH) → EnsoExecutor (unwrap to ETH) → Protocol Operations (ETH
 1. Validate `tokenOut` has transfer substrate granted
 2. Validate `WETH` has transfer substrate granted (if `wEthAmount > 0`)
 3. Validate each `tokenToReturn` has transfer substrate granted
-4. Validate each command's target + selector is granted (except STATICCALL)
+4. Validate each command's target + selector is granted (except STATICCALL); this includes
+   DELEGATECALL commands and the flagged word of extended commands — only the trailing index
+   word of an extended command is exempt from validation
 
 **For exit() operation:**
 
 1. Validate each token in array has transfer substrate granted
+
+### DELEGATECALL Substrate Risk
+
+A command with call type `FLAG_CT_DELEGATECALL (0x00)` is validated by `(target, selector)` like
+any other command. Note that on the **production** `DelegateEnsoShortcuts` V2
+(`0xA2F4f9C6ec598CA8c633024f8851c79CA5F43e48`, enso-weiroll 1.4.1) this call type is marked "not
+currently supported" and hits `revert("Invalid calltype")`, so the scenario below is currently
+unreachable there; validating `0x00` is a cheap hedge against a future VM that re-enables it, not
+a live mitigation.
+
+Were it enabled, a granted delegatecall substrate would run arbitrary code from `target` **in
+`EnsoExecutor`'s own storage context** (not the target's). Granting such a substrate is a
+governance decision with real blast radius (it could rewrite `EnsoExecutor`'s storage, including
+the pending-balance bookkeeping and the address of the vault it serves). The fuse validates that
+the substrate is granted, but does not — and must not — police what a governance-granted
+delegatecall target actually does; assess delegatecall targets carefully before granting them.
+
+### Residual ERC-20 Allowances After a Shortcut (IL-8048)
+
+Weiroll shortcuts routinely issue `approve(spender, type(uint256).max)` from `EnsoExecutor`'s own
+context as their normal way of moving funds into a protocol. `EnsoExecutor` is long-lived per
+vault and, by design, may hold tokens between operations (e.g. while waiting for a cross-chain
+leg to settle), so an unrevoked max approval is a standing risk for as long as the executor holds
+value. Enumerating the `(token, spender)` pairs a shortcut approves is not implementable on-chain
+in general: the spender argument can be a runtime value produced by an earlier command via
+weiroll's argument-index indirection, which the executor cannot statically decode.
+
+The mitigation is a **caller-declared revocation list**: `EnsoFuseEnterData.tokensToRevoke` /
+`spendersToRevoke` (paired by index) are passed through to `EnsoExecutorData` and, after the
+shortcut's delegatecall returns, `EnsoExecutor.execute()` unconditionally revokes each declared
+pair to zero via `forceApprove`. Declaring these pairs is the alpha's responsibility — the alpha
+builds the shortcut from the Enso API response and therefore knows every approval it contains.
+Per the "fuses do not police grant/revoke consequences" policy, revocation is unconditional and
+the declared pairs are **not** substrate-validated, since revoking an allowance to zero is
+strictly risk-reducing and cannot itself be abused.
+
+**This is a mitigation, not a guarantee: any `(token, spender)` pair the caller fails to declare
+is not detected by the contract and its allowance persists on the executor indefinitely.**
+Operators integrating with the Enso API must derive `tokensToRevoke`/`spendersToRevoke` from the
+same shortcut response used to build `commands`/`state`, for every approval it contains.
+
+**No on-chain remediation path exists today for an undeclared pair.** Concretely:
+
+- While a pending balance is recorded (`_balance.assetAddress != address(0)`, set at the end of
+  `execute()`), both `EnsoExecutor.execute()` (`EnsoExecutor.sol:133-135`, `EnsoExecutorBalanceAlreadySet`)
+  and `EnsoExecutor.recovery()` (`EnsoExecutor.sol:229-231`, `EnsoExecutorBalanceNotEmpty`) revert.
+  An undeclared allowance therefore cannot be revoked until `exit()` (via `withdrawAll`) clears the
+  balance.
+- `exit()` / `EnsoExecutor.withdrawAll` (`EnsoExecutor.sol:205-226`) sweeps token balances but has
+  no revocation channel — `EnsoFuseExitData` carries only the tokens to withdraw, not spenders to
+  revoke.
+- `EnsoExecutor.recovery` is gated on an empty balance and has no fuse in this repo that calls it
+  (`grep -rn "recovery(" --include='*.sol' contracts/ test/` returns only the function definition),
+  so it is not an available escape hatch today for an undeclared allowance. Using it for this
+  purpose would require a dedicated recovery fuse, which does not currently exist.
 
 ## Important Considerations
 

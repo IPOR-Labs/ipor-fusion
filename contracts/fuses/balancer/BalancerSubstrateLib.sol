@@ -39,10 +39,11 @@ library BalancerSubstrateLib {
      * Calculation: For each token, amountOut = balance * (bptAmountIn / bptTotalSupply).
      * Rounding down is used to prevent withdrawing more than the pool can afford.
      *
-     * @param balances Array of current token balances in the pool in 18 decimals
+     * @param balances Array of current token balances in the pool, in the same decimals as the caller
+     * provides them (e.g. native token decimals when called with `balancesRaw` from `getTokenInfo()`)
      * @param bptTotalSupply Total supply of the pool tokens (BPT)
      * @param bptAmountIn The amount of pool tokens that will be burned
-     * @return amountsOut Array of amounts for each token to be withdrawn in 18 decimals
+     * @return amountsOut Array of amounts for each token to be withdrawn, in the same decimals as `balances`
      */
     function computeProportionalAmountsOut(
         uint256[] memory balances,

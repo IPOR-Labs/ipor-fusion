@@ -10,15 +10,15 @@ import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 
-import {IExternalStateExecutor} from "./IExternalStateExecutor.sol";
 import {ExternalStateErrors} from "./errors/ExternalStateErrors.sol";
 import {ExternalStateExecutorStorageLib} from "./lib/ExternalStateExecutorStorageLib.sol";
+import {ExternalStateBigChangeLib} from "./lib/ExternalStateBigChangeLib.sol";
 
 /// @title ExternalStateBalanceFuse
 /// @notice Balance fuse for the ExternalState market. Reports the total underlying balance tracked by the
 ///         executor converted to USD WAD, and detects "big-change" events on custodian updates
 ///         to set the vault-scoped pause flag.
-/// @dev Not a view function: writes `lastTotalBalance`, `lastCheckedCustodianTimestamp`, and the
+/// @dev Not a view function: writes `lastTotalBalance`, `lastCheckedCustodianConfirmCount`, and the
 ///      pause flag into ERC-7201 vault storage. Runs via delegatecall from PlasmaVault.
 /// @author IPOR Labs
 contract ExternalStateBalanceFuse is IMarketBalanceFuse, IFuseCommon {
@@ -28,19 +28,19 @@ contract ExternalStateBalanceFuse is IMarketBalanceFuse, IFuseCommon {
     /// @notice Market identifier bound to this fuse instance.
     uint256 public immutable override MARKET_ID;
 
-    /// @notice Emitted when a big-change event triggers the pause flag.
+    /// @notice Emitted when a big-change event triggers the pause flag (emitted by `ExternalStateBigChangeLib`, same signature).
     /// @param previousTotal Previously observed total balance.
     /// @param newTotal Newly observed total balance.
     /// @param thresholdBps Configured big-change threshold in basis points.
     event ExternalStateBigChangeDetected(uint256 previousTotal, uint256 newTotal, uint256 thresholdBps);
 
-    /// @notice Emitted when the balance fuse advances its `lastCheckedCustodianTimestamp` snapshot
-    ///         after observing a new custodian update.
-    /// @param oldTimestamp Previously stored snapshot timestamp.
-    /// @param newTimestamp New snapshot timestamp (matches `lastCustodianUpdateTimestamp` from the executor).
-    event ExternalStateBalanceFuseLastCustodianTimestampUpdated(uint256 oldTimestamp, uint256 newTimestamp);
+    /// @notice Emitted (by `ExternalStateBigChangeLib`, from `balanceOf` and from OperationFuse `enter`/`exit`) when
+    ///         the `lastCheckedCustodianConfirmCount` snapshot advances after a new custodian update.
+    /// @param oldConfirmCount Previously stored snapshot confirm count.
+    /// @param newConfirmCount New snapshot confirm count (matches `confirmCount` from the executor).
+    event ExternalStateBalanceFuseLastCustodianConfirmCountUpdated(uint256 oldConfirmCount, uint256 newConfirmCount);
 
-    /// @notice Emitted when the balance fuse persists a changed `lastTotalBalance` snapshot.
+    /// @notice Emitted (by `ExternalStateBigChangeLib`) when a changed `lastTotalBalance` snapshot is persisted.
     /// @dev Emitted only when the new value differs from the previous one to avoid spamming logs
     ///      on every NAV refresh.
     /// @param oldTotalBalance Previously stored total balance (underlying units).
@@ -59,8 +59,11 @@ contract ExternalStateBalanceFuse is IMarketBalanceFuse, IFuseCommon {
     ///      `IMarketBalanceFuse` interface and shared across every balance fuse in this codebase),
     ///      `balanceOf()` MUTATES vault ERC-7201 storage on every call:
     ///      - `setLastTotalBalance(...)` records the latest observed total (snapshot for big-change detection),
-    ///      - `setLastCheckedCustodianTimestamp(...)` advances the custodian timestamp watermark,
+    ///      - `setLastCheckedCustodianConfirmCount(...)` advances the custodian confirm-count watermark,
     ///      - `setPaused(true)` may flip the pause flag when a custodian update breaches `bigChangeBps`.
+    ///      The big-change logic lives in `ExternalStateBigChangeLib.processCustodianUpdate`, which
+    ///      `ExternalStateOperationFuse.enter/exit` also run BEFORE ALPHA's flow, so this call normally only sees
+    ///      custodian changes (IL-8775).
     ///      Renaming the function would require breaking changes throughout the PlasmaVault
     ///      balance-aggregation pipeline, so the convention is preserved.
     ///
@@ -76,30 +79,9 @@ contract ExternalStateBalanceFuse is IMarketBalanceFuse, IFuseCommon {
             return 0;
         }
 
-        (uint256 totalBalance, uint256 bigChangeBps, uint256 lastCustodianTs) = IExternalStateExecutor(executor).getBalanceFuseSnapshot();
-
-        uint256 lastChecked = ExternalStateExecutorStorageLib.getLastCheckedCustodianTimestamp();
-        uint256 prevTotal = ExternalStateExecutorStorageLib.getLastTotalBalance();
-
-        // Big-change check ONLY when a new custodian update has been observed.
-        if (lastCustodianTs != lastChecked) {
-            // First custodian update establishes the baseline and does not trigger a pause
-            // (prevTotal == 0 corresponds to the "alpha-only" pre-custodian period).
-            if (prevTotal != 0 && bigChangeBps != 0) {
-                uint256 delta = totalBalance > prevTotal ? totalBalance - prevTotal : prevTotal - totalBalance;
-                if ((delta * 10_000) / prevTotal > bigChangeBps) {
-                    ExternalStateExecutorStorageLib.setPaused(true);
-                    emit ExternalStateBigChangeDetected(prevTotal, totalBalance, bigChangeBps);
-                }
-            }
-            emit ExternalStateBalanceFuseLastCustodianTimestampUpdated(lastChecked, lastCustodianTs);
-            ExternalStateExecutorStorageLib.setLastCheckedCustodianTimestamp(lastCustodianTs);
-        }
-
-        if (totalBalance != prevTotal) {
-            emit ExternalStateBalanceFuseLastTotalBalanceUpdated(prevTotal, totalBalance);
-            ExternalStateExecutorStorageLib.setLastTotalBalance(totalBalance);
-        }
+        // Settles a pending custodian update (big-change check + watermark + lastTotalBalance). The same call runs
+        // before every ALPHA enter/exit, so a delta seen here never contains ALPHA's own flow (IL-8775).
+        uint256 totalBalance = ExternalStateBigChangeLib.processCustodianUpdate(executor);
 
         if (totalBalance == 0) {
             return 0;

@@ -32,6 +32,7 @@ library FusionFactoryLib {
     error InvalidUnderlyingToken();
     error InvalidOwner();
     error InvalidWithdrawWindow();
+    error InvalidVestingPeriod();
 
     /// @notice Thrown when DAO fee package index is out of bounds
     /// @param index Requested index

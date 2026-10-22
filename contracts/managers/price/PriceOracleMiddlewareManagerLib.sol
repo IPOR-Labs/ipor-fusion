@@ -13,7 +13,8 @@ struct PriceValidation {
     /// @dev The price change is recorded in percentages where 1e18 = 100%.
     mapping(address asset => uint256 maxPriceDelta) maxPriceDeltas;
     mapping(address asset => uint256 lastValidatedPrice) lastValidatedPrices;
-    /// @dev Not implemented yet
+    /// @dev Timestamp of the last baseline write (first baseline or re-anchor). The baseline re-anchors at most
+    ///      once per `block.timestamp`, see `validatePriceChange`.
     mapping(address asset => uint256 lastValidatedTimestamp) lastValidatedTimestamps;
     EnumerableSet.AddressSet assets;
 }
@@ -163,6 +164,7 @@ library PriceOracleMiddlewareManagerLib {
 
         delete priceValidation.maxPriceDeltas[asset_];
         delete priceValidation.lastValidatedPrices[asset_];
+        delete priceValidation.lastValidatedTimestamps[asset_];
 
         emit PriceValidationRemoved(asset_);
     }
@@ -186,6 +188,26 @@ library PriceOracleMiddlewareManagerLib {
     }
 
     /// @notice Validates price change for an asset against configured delta.
+    /// @dev The price must stay within `maxPriceDelta` of the stored baseline. The baseline is re-anchored to the
+    ///      validated price when the deviation exceeds `maxPriceDelta / 2`, but at most once per `block.timestamp`
+    ///      (`lastValidatedTimestamps`); on chains with sub-second blocks (e.g. Arbitrum) that is once per second,
+    ///      because several blocks share a timestamp. Within one timestamp an accepted price stays within
+    ///      (1 +- `maxPriceDelta`) of that timestamp's baseline, i.e. at most (1 + `maxPriceDelta`)^2 of the
+    ///      previous baseline, no matter how many validations run.
+    ///      The baseline does not move on a reverting call, so a price that stays outside the band keeps reverting
+    ///      with `PriceChangeExceeded` in later blocks too. Recovery is ATOMIST-only: `removePriceValidation` +
+    ///      `updatePriceValidation` (the next validation takes the current price as the baseline), or temporarily
+    ///      raising `maxPriceDelta` to a value in [d, 2d), where d = |price - baseline| * 1e18 / baseline: only then
+    ///      does the next validation (in a later `block.timestamp` than `lastValidatedTimestamps`) re-anchor. A value
+    ///      of 2d or more accepts the price without moving the baseline, so validation reverts again once
+    ///      `maxPriceDelta` is restored; check `getPriceValidationInfo` before restoring it.
+    ///      Residual risk: a feed that an attacker can keep displaced over many blocks can still be walked one
+    ///      step per timestamp. This is mitigated by the feed policy (Chainlink/TWAP feeds only) and by monitoring
+    ///      the `PriceValidationBaselineUpdated` event.
+    ///      The band is +-`maxPriceDelta` around the baseline, not symmetric in ratio terms. After a re-anchor DOWN
+    ///      by d with `maxPriceDelta` / (1 + `maxPriceDelta`) < d <= `maxPriceDelta`, a return to the previous
+    ///      level is outside the band (d / (1 - d) > `maxPriceDelta`), so validation keeps reverting until the
+    ///      ATOMIST recovers as described above.
     /// @param asset_ Asset address under validation.
     /// @param price_ Current price expressed in 18 decimals.
     /// @return baselineUpdated True when stored baseline was updated with the new price.
@@ -208,6 +230,7 @@ library PriceOracleMiddlewareManagerLib {
         uint256 lastValidatedPrice = priceValidation.lastValidatedPrices[asset_];
         if (lastValidatedPrice == 0) {
             priceValidation.lastValidatedPrices[asset_] = price_;
+            priceValidation.lastValidatedTimestamps[asset_] = block.timestamp;
             emit PriceValidationBaselineUpdated(asset_, price_);
             return true;
         }
@@ -222,8 +245,12 @@ library PriceOracleMiddlewareManagerLib {
             revert PriceChangeExceeded(asset_, lastValidatedPrice, price_, maxPriceDelta);
         }
 
-        if (priceDifferencePercent > maxPriceDelta / 2) {
+        if (
+            priceDifferencePercent > maxPriceDelta / 2 &&
+            priceValidation.lastValidatedTimestamps[asset_] < block.timestamp
+        ) {
             priceValidation.lastValidatedPrices[asset_] = price_;
+            priceValidation.lastValidatedTimestamps[asset_] = block.timestamp;
             emit PriceValidationBaselineUpdated(asset_, price_);
             return true;
         }

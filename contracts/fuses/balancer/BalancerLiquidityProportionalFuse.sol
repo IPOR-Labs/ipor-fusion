@@ -156,6 +156,10 @@ contract BalancerLiquidityProportionalFuse is IFuseCommon {
         for (uint256 i; i < len; ++i) {
             uint256 amountIn = data_.maxAmountsIn[i];
             if (amountIn > 0) {
+                // Validate that the input token is granted as a TOKEN substrate for this market
+                // This prevents spending non-whitelisted tokens out of the vault
+                BalancerSubstrateLib.validateTokenGranted(MARKET_ID, data_.tokens[i]);
+
                 IERC20(data_.tokens[i]).forceApprove(PERMIT2, amountIn);
                 IPermit2(PERMIT2).approve(
                     data_.tokens[i],

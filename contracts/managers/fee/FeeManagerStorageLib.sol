@@ -40,8 +40,9 @@ struct FeeRecipientDataStorage {
 /// @notice Storage structure for high water mark performance fee logic in plasma vaults
 /// @dev Used to track the high water mark (HWM) for performance fee calculation,
 ///      ensuring fees are only charged on new profits above the previous HWM.
-///      - `highWaterMark`: The highest value (assets per share) reached by the vault,
-///         used as a reference for performance fee accrual. Expressed in asset units per 1 unit of share (10**shareDecimals).
+///      - `highWaterMark`: The share price (assets per share) right after the last crystallized performance fee,
+///         or the current rate when set by initialize, the owner reset, interval lowering or a zero-share crystallization,
+///         used as a reference for performance fee accrual (IL-8744: post-mint, not the pre-mint rate). Expressed in asset units per 1 unit of share (10**shareDecimals).
 ///      - `lastUpdate`: The timestamp (in seconds) of the last HWM update. Used to enforce update intervals and prevent fee gaming.
 ///      - `updateInterval`: The minimum interval (in seconds) required between HWM updates.
 ///         Prevents frequent updates that could allow manipulation of performance fee calculations.
@@ -208,9 +209,14 @@ library FeeManagerStorageLib {
     }
 
     /// @notice Sets all management fee recipient addresses
-    /// @dev Overwrites the entire array of management fee recipients
+    /// @dev Overwrites only the recipientAddresses array; it does NOT touch the recipientFees mapping, so any
+    /// @dev address dropped from the previous array keeps its stale mapping entry until the caller clears it,
+    /// @dev and the caller is responsible for ensuring addresses_ has no duplicate entries. The only caller
+    /// @dev today is the FeeManager constructor, which writes into fresh storage (nothing to clear) and
+    /// @dev rejects duplicate addresses in the same loop. Note that the replacement path,
+    /// @dev FeeManager._updateFees, does not use this setter: it clears recipientFees for the outgoing
+    /// @dev addresses and assigns recipientAddresses directly.
     /// @param addresses_ Array of recipient addresses to set
-    /// @dev Important: This replaces all existing recipients
     function setManagementFeeRecipientAddresses(address[] memory addresses_) internal {
         _managementFeeRecipientDataStorage().recipientAddresses = addresses_;
     }
@@ -236,6 +242,13 @@ library FeeManagerStorageLib {
     }
 
     /// @notice Sets all performance fee recipient addresses
+    /// @dev Overwrites only the recipientAddresses array; it does NOT touch the recipientFees mapping, so any
+    /// @dev address dropped from the previous array keeps its stale mapping entry until the caller clears it,
+    /// @dev and the caller is responsible for ensuring addresses_ has no duplicate entries. The only caller
+    /// @dev today is the FeeManager constructor, which writes into fresh storage (nothing to clear) and
+    /// @dev rejects duplicate addresses in the same loop. Note that the replacement path,
+    /// @dev FeeManager._updateFees, does not use this setter: it clears recipientFees for the outgoing
+    /// @dev addresses and assigns recipientAddresses directly.
     /// @param addresses_ Array of recipient addresses to set
     function setPerformanceFeeRecipientAddresses(address[] memory addresses_) internal {
         _performanceFeeRecipientDataStorage().recipientAddresses = addresses_;

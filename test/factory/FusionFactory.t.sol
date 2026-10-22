@@ -393,14 +393,77 @@ contract FusionFactoryTest is Test {
         vm.stopPrank();
     }
 
-    function testShouldNotRevertWhenUpdatingVestingPeriodWithZero() public {
+    function testShouldRevertWhenUpdatingVestingPeriodWithZero() public {
         // when/then
+        vm.expectRevert(FusionFactoryLib.InvalidVestingPeriod.selector);
         vm.startPrank(maintenanceManager);
         fusionFactory.updateVestingPeriodInSeconds(0);
         vm.stopPrank();
 
         // then
-        assertEq(fusionFactory.getVestingPeriodInSeconds(), 0);
+        assertEq(fusionFactory.getVestingPeriodInSeconds(), 1 weeks);
+    }
+
+    function testShouldRevertWhenUpdatingVestingPeriodAboveUint32Max() public {
+        // given
+        uint256 aboveUint32Max = uint256(type(uint32).max) + 1;
+
+        // when/then
+        vm.expectRevert(FusionFactoryLib.InvalidVestingPeriod.selector);
+        vm.startPrank(maintenanceManager);
+        fusionFactory.updateVestingPeriodInSeconds(aboveUint32Max);
+        vm.stopPrank();
+
+        // then
+        assertEq(fusionFactory.getVestingPeriodInSeconds(), 1 weeks);
+    }
+
+    function testShouldUpdateVestingPeriodInSecondsAtUint32Max() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        uint256 vestingPeriod = uint256(type(uint32).max);
+
+        vm.startPrank(maintenanceManager);
+        fusionFactory.updateVestingPeriodInSeconds(vestingPeriod);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        // then
+        RewardsClaimManager rewardsClaimManager = RewardsClaimManager(instance.rewardsManager);
+        assertEq(rewardsClaimManager.getVestingData().vestingTime, vestingPeriod);
+    }
+
+    function testShouldUpdateVestingPeriodInSecondsToOne() public {
+        // given
+        uint256 redemptionDelay = 1 seconds;
+        uint256 vestingPeriod = 1;
+
+        vm.startPrank(maintenanceManager);
+        fusionFactory.updateVestingPeriodInSeconds(vestingPeriod);
+        vm.stopPrank();
+
+        // when
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+
+        // then
+        RewardsClaimManager rewardsClaimManager = RewardsClaimManager(instance.rewardsManager);
+        assertEq(rewardsClaimManager.getVestingData().vestingTime, vestingPeriod);
     }
 
     function testShouldCreateVaultWithoutAdmin() public {
@@ -1841,14 +1904,14 @@ contract FusionFactoryTest is Test {
         // given
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
-            managementFee: 10001, // > 10000
+            managementFee: 501, // > PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE (500)
             performanceFee: 500,
             feeRecipient: address(0x111)
         });
 
         // when / then
         vm.startPrank(daoFeeManager);
-        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 10001, 10000));
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 501, 500));
         fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
     }
@@ -1858,15 +1921,95 @@ contract FusionFactoryTest is Test {
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
             managementFee: 500,
-            performanceFee: 10001, // > 10000
+            performanceFee: 5001, // > PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE (5000)
             feeRecipient: address(0x111)
         });
 
         // when / then
         vm.startPrank(daoFeeManager);
-        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 10001, 10000));
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 5001, 5000));
         fusionFactory.setDaoFeePackages(packages);
         vm.stopPrank();
+    }
+
+    function testShouldRevertWhenSetDaoFeePackagesWithManagementFeeAboveVaultCap() public {
+        // given - PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE is 500 (5%)
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 501, // > PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE (500)
+            performanceFee: 0,
+            feeRecipient: address(0x111)
+        });
+
+        // when / then
+        vm.startPrank(daoFeeManager);
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 501, 500));
+        fusionFactory.setDaoFeePackages(packages);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenSetDaoFeePackagesWithPerformanceFeeAboveVaultCap() public {
+        // given - PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE is 5000 (50%)
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 0,
+            performanceFee: 5001, // > PlasmaVaultLib.PERFORMANCE_MAX_FEE_IN_PERCENTAGE (5000)
+            feeRecipient: address(0x111)
+        });
+
+        // when / then
+        vm.startPrank(daoFeeManager);
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 5001, 5000));
+        fusionFactory.setDaoFeePackages(packages);
+        vm.stopPrank();
+    }
+
+    function testShouldRevertWhenSetDaoFeePackagesWithManagementFeeAtOldFactoryBound() public {
+        // given - the finding's PoC value: the old (incorrect) factory bound of 10_000 must no longer be accepted
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 10_000,
+            performanceFee: 0,
+            feeRecipient: address(0x111)
+        });
+
+        // when / then
+        vm.startPrank(daoFeeManager);
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 10_000, 500));
+        fusionFactory.setDaoFeePackages(packages);
+        vm.stopPrank();
+    }
+
+    function testShouldRejectOversizedDaoPackageInsteadOfBrickingClone() public {
+        // given - an oversized package must never be stored; clone() at an untouched index must keep working
+        uint256 lengthBefore = fusionFactory.getDaoFeePackagesLength();
+
+        FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
+        packages[0] = FusionFactoryStorageLib.FeePackage({
+            managementFee: 10_000,
+            performanceFee: 0,
+            feeRecipient: address(0x111)
+        });
+
+        // when / then - the setter itself must reject the oversized package
+        vm.startPrank(daoFeeManager);
+        vm.expectRevert(abi.encodeWithSelector(FusionFactoryLib.FeeExceedsMaximum.selector, 10_000, 500));
+        fusionFactory.setDaoFeePackages(packages);
+        vm.stopPrank();
+
+        // then - storage is untouched and clone() at index 0 still succeeds
+        assertEq(fusionFactory.getDaoFeePackagesLength(), lengthBefore, "Package array must be unchanged");
+
+        uint256 redemptionDelay = 1 seconds;
+        FusionFactoryLogicLib.FusionInstance memory instance = fusionFactory.clone(
+            "Test Asset",
+            "TEST",
+            address(underlyingToken),
+            redemptionDelay,
+            owner,
+            0
+        );
+        assertTrue(instance.plasmaVault != address(0), "clone() must still succeed");
     }
 
     function testShouldRevertWhenSetDaoFeePackagesWithZeroFeeRecipient() public {
@@ -1987,7 +2130,7 @@ contract FusionFactoryTest is Test {
 
         FusionFactoryStorageLib.FeePackage[] memory newPackages = new FusionFactoryStorageLib.FeePackage[](1);
         newPackages[0] = FusionFactoryStorageLib.FeePackage({
-            managementFee: 999,
+            managementFee: 499,
             performanceFee: 888,
             feeRecipient: address(0x444)
         });
@@ -2000,7 +2143,7 @@ contract FusionFactoryTest is Test {
         // then - array should be replaced, not appended
         assertEq(fusionFactory.getDaoFeePackagesLength(), 1, "Should have 1 package after replacement");
         FusionFactoryStorageLib.FeePackage memory pkg = fusionFactory.getDaoFeePackage(0);
-        assertEq(pkg.managementFee, 999);
+        assertEq(pkg.managementFee, 499);
         assertEq(pkg.performanceFee, 888);
         assertEq(pkg.feeRecipient, address(0x444));
     }
@@ -2039,7 +2182,8 @@ contract FusionFactoryTest is Test {
         // given - PlasmaVaultLib limits:
         // - MANAGEMENT_MAX_FEE_IN_PERCENTAGE = 500 (5%)
         // - PERFORMANCE_MAX_FEE_IN_PERCENTAGE = 5000 (50%)
-        // Note: The factory validates up to 10000 (100%), but PlasmaVault has stricter limits
+        // Note: The factory validates against these same PlasmaVaultLib caps (strict `>`), so exactly
+        // 500/5000 is the maximum accepted value and remains clone-able
         FusionFactoryStorageLib.FeePackage[] memory packages = new FusionFactoryStorageLib.FeePackage[](1);
         packages[0] = FusionFactoryStorageLib.FeePackage({
             managementFee: 500, // 5% - max allowed by PlasmaVault for management

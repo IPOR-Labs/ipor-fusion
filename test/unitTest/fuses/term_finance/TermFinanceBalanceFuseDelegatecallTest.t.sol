@@ -9,6 +9,7 @@ import {PlasmaVaultConfigLib} from "contracts/libraries/PlasmaVaultConfigLib.sol
 import {PlasmaVaultLib} from "contracts/libraries/PlasmaVaultLib.sol";
 
 import {TermFinanceBalanceFuse} from "contracts/fuses/term_finance/TermFinanceBalanceFuse.sol";
+import {TermFinanceSubstrateLib} from "contracts/fuses/term_finance/lib/TermFinanceSubstrateLib.sol";
 
 import {MockERC20Decimals} from "./mocks/MockERC20Decimals.sol";
 import {MockPriceOracleMiddlewareForTermFinance} from "./mocks/MockPriceOracleMiddlewareForTermFinance.sol";
@@ -124,8 +125,9 @@ contract TermFinanceBalanceFuseDelegatecallTest is Test {
     }
 
     function _grantSubstrate(address servicer_) internal {
-        bytes32[] memory subs = new bytes32[](1);
+        bytes32[] memory subs = new bytes32[](2);
         subs[0] = PlasmaVaultConfigLib.addressToBytes32(servicer_);
+        subs[1] = TermFinanceSubstrateLib.repoTokenHoldingKey(servicer_);
         vault.setMarketSubstrates(MARKET_ID, subs);
     }
 

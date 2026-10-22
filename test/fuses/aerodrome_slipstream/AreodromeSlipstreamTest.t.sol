@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {PlasmaVault, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovernance.sol";
@@ -18,12 +19,32 @@ import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
 import {FusionFactoryDaoFeePackagesHelper} from "../../test_helpers/FusionFactoryDaoFeePackagesHelper.sol";
 import {Roles} from "../../../contracts/libraries/Roles.sol";
-import {AreodromeSlipstreamCollectFuse, AreodromeSlipstreamCollectFuseEnterData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
-import {AreodromeSlipstreamNewPositionFuse, AreodromeSlipstreamNewPositionFuseEnterData, AreodromeSlipstreamNewPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
-import {AreodromeSlipstreamModifyPositionFuse, AreodromeSlipstreamModifyPositionFuseEnterData, AreodromeSlipstreamModifyPositionFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
-import {AreodromeSlipstreamCLGaugeFuse, AreodromeSlipstreamCLGaugeFuseEnterData, AreodromeSlipstreamCLGaugeFuseExitData} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
+import {
+    AreodromeSlipstreamCollectFuse,
+    AreodromeSlipstreamCollectFuseEnterData
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCollectFuse.sol";
+import {
+    AreodromeSlipstreamNewPositionFuse,
+    AreodromeSlipstreamNewPositionFuseEnterData,
+    AreodromeSlipstreamNewPositionFuseExitData
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamNewPositionFuse.sol";
+import {
+    AreodromeSlipstreamModifyPositionFuse,
+    AreodromeSlipstreamModifyPositionFuseEnterData,
+    AreodromeSlipstreamModifyPositionFuseExitData
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamModifyPositionFuse.sol";
+import {
+    AreodromeSlipstreamCLGaugeFuse,
+    AreodromeSlipstreamCLGaugeFuseEnterData,
+    AreodromeSlipstreamCLGaugeFuseExitData
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamCLGaugeFuse.sol";
 import {AreodromeSlipstreamBalanceFuse} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamBalanceFuse.sol";
-import {AreodromeSlipstreamSubstrateLib, AreodromeSlipstreamSubstrateType, AreodromeSlipstreamSubstrate, PoolNotDeployed} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
+import {
+    AreodromeSlipstreamSubstrateLib,
+    AreodromeSlipstreamSubstrateType,
+    AreodromeSlipstreamSubstrate,
+    PoolNotDeployed
+} from "../../../contracts/fuses/aerodrome_slipstream/AreodromeSlipstreamLib.sol";
 import {USDPriceFeed} from "../../../contracts/price_oracle/price_feed/USDPriceFeed.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
@@ -38,7 +59,27 @@ import {AreodromeSlipstreamGaugeClaimFuse} from "../../../contracts/rewards_fuse
 import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
-import {TransientStorageSetInputsFuse, TransientStorageSetInputsFuseEnterData} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {
+    TransientStorageSetInputsFuse,
+    TransientStorageSetInputsFuseEnterData
+} from "../../../contracts/fuses/transient_storage/TransientStorageSetInputsFuse.sol";
+import {TickMath} from "../../../contracts/fuses/uniswap/ext/TickMath.sol";
+import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
+import {ICLPool} from "../../../contracts/fuses/aerodrome_slipstream/ext/ICLPool.sol";
+import {ISlipstreamSugar} from "../../../contracts/fuses/aerodrome_slipstream/ext/ISlipstreamSugar.sol";
+
+/// @dev Minimal interface for the Slipstream CL pool's `swap`, used only by the IL-7959 regression
+/// tests to manipulate the pool's spot price with a direct, single-transaction swap (the same
+/// mechanism a flash-loan attacker would use). Not used by the fuse under test.
+interface ICLPoolSwapLike {
+    function swap(
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        bytes calldata data
+    ) external returns (int256 amount0, int256 amount1);
+}
 
 /// @title AreodromeSlipstreamTest
 /// @notice Test suite for Velodrom Superchain Slipstream Collect Fuse
@@ -578,6 +619,117 @@ contract AreodromeSlipstreamTest is Test {
             stakedValuesBefore.length - 1,
             stakedValuesAfter.length,
             "stakedValuesBefore should be equal to stakedValuesAfter"
+        );
+    }
+
+    /// @notice Regression test for IL-7958: staking a position to the gauge must not change
+    /// market/vault NAV. Before the fix, the Pool branch kept counting the staked NFT's
+    /// principal (it never checks custody) while the Gauge branch independently added it again
+    /// via stakedValues, roughly doubling the market balance.
+    function test_shouldNotChangeMarketBalanceWhenStakingToGauge() public {
+        test_shouldCollectFromNFTPosition();
+
+        uint256 tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        AreodromeSlipstreamCLGaugeFuseEnterData memory stakeParams = AreodromeSlipstreamCLGaugeFuseEnterData({
+            gaugeAddress: _AREODROME_GAUGE,
+            tokenId: tokenId
+        });
+
+        FuseAction[] memory stakeCalls = new FuseAction[](1);
+        stakeCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCLGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", stakeParams)
+        );
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(stakeCalls);
+        vm.stopPrank();
+
+        // then
+        uint256[] memory stakedValues = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
+        assertEq(stakedValues[0], tokenId, "stakedValues[0] should be equal to tokenId");
+
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
+
+        assertApproxEqRel(
+            marketBalanceAfter,
+            marketBalanceBefore,
+            1e15, // 0.1% tolerance for residual tokensOwed no longer counted while staked
+            "market balance must not roughly double when a position is staked to the gauge"
+        );
+        assertApproxEqRel(
+            totalAssetsAfter,
+            totalAssetsBefore,
+            1e15,
+            "vault totalAssets must not roughly double when a position is staked to the gauge"
+        );
+    }
+
+    /// @notice Regression test for IL-7958: unstaking a position from the gauge must not change
+    /// market/vault NAV either (position returns to being counted by the Pool branch alone).
+    function test_shouldNotChangeMarketBalanceWhenUnstakingFromGauge() public {
+        test_shouldNotChangeMarketBalanceWhenStakingToGauge();
+
+        uint256[] memory stakedValuesBefore = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
+
+        AreodromeSlipstreamCLGaugeFuseExitData memory unstakeParams = AreodromeSlipstreamCLGaugeFuseExitData({
+            gaugeAddress: _AREODROME_GAUGE,
+            tokenId: stakedValuesBefore[0]
+        });
+
+        FuseAction[] memory unstakeCalls = new FuseAction[](1);
+        unstakeCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCLGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", unstakeParams)
+        );
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
+
+        // when
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(unstakeCalls);
+        vm.stopPrank();
+
+        // then
+        uint256[] memory stakedValuesAfter = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
+        assertEq(
+            stakedValuesBefore.length - 1,
+            stakedValuesAfter.length,
+            "stakedValuesBefore should be equal to stakedValuesAfter"
+        );
+
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
+
+        assertApproxEqRel(
+            marketBalanceAfter,
+            marketBalanceBefore,
+            1e15,
+            "market balance must not roughly halve when a position is unstaked from the gauge"
+        );
+        assertApproxEqRel(
+            totalAssetsAfter,
+            totalAssetsBefore,
+            1e15,
+            "vault totalAssets must not roughly halve when a position is unstaked from the gauge"
         );
     }
 
@@ -1441,5 +1593,506 @@ contract AreodromeSlipstreamTest is Test {
         vm.stopPrank();
 
         // then - should not revert (empty array case)
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // IL-7959 regression tests: the balance fuse must derive the token0/token1 composition of a
+    // position from oracle prices, not from the pool's manipulable slot0().sqrtPriceX96. Before the
+    // fix, pushing the pool spot price past a position's range edge collapsed its computed
+    // composition to a single token while the resulting leg was still priced at the (unmoved,
+    // unmanipulated) oracle price, inflating the market's reported NAV.
+    // ---------------------------------------------------------------------------------------
+
+    /// @dev Mints a wide, genuinely in-range WETH/USDC position so that a subsequent swap can push
+    /// the pool spot price fully past the position's upper range edge (fully out-of-range), which is
+    /// the state the finding's PoC exploits. The pool's tick at the fork block is -194361 (tickSpacing
+    /// 100); the range below is chosen to straddle it with a wide margin on both sides.
+    function _mintWideInRangePosition() internal returns (uint256 tokenId) {
+        AreodromeSlipstreamNewPositionFuseEnterData memory mintParams = AreodromeSlipstreamNewPositionFuseEnterData({
+            token0: _WETH,
+            token1: _USDC,
+            tickSpacing: 100,
+            tickLower: -201400,
+            tickUpper: -187300,
+            amount0Desired: 10e18,
+            amount1Desired: 30_000e6,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp + 100,
+            sqrtPriceX96: 0
+        });
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(
+            address(_areodromeSlipstreamNewPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,int24,int24,int24,uint256,uint256,uint256,uint256,uint256,uint160))",
+                mintParams
+            )
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(enterCalls);
+        vm.stopPrank();
+
+        tokenId = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+    }
+
+    /// @dev Pushes the Aerodrome pool's spot price with a direct, single-transaction swap against the
+    /// live pool - the same mechanism a flash-loan attacker would use (only capital is required, no
+    /// privileged role). `targetTick_` is where the swap's price limit is set; the swap consumes as
+    /// much of the input token as needed (up to the huge `amountSpecified` below) until either that
+    /// price limit is hit or the amount is exhausted.
+    function _pushAerodromePoolSpotToTick(bool zeroForOne_, int24 targetTick_) internal {
+        uint160 sqrtPriceLimitX96 = TickMath.getSqrtRatioAtTick(targetTick_);
+
+        if (zeroForOne_) {
+            deal(_WETH, address(this), 1_000_000_000e18);
+        } else {
+            deal(_USDC, address(this), 1_000_000_000e6);
+        }
+
+        ICLPoolSwapLike(_AREODROME_POOL).swap(
+            address(this),
+            zeroForOne_,
+            type(int256).max / 2,
+            sqrtPriceLimitX96,
+            abi.encode(_WETH, _USDC)
+        );
+    }
+
+    /// @dev `totalAssetsInMarket`/`totalAssets` read the vault's cached per-market NAV, which is only
+    /// refreshed by `_updateMarketsBalances` inside `execute()`/`withdraw()`/`redeem()` (see
+    /// PlasmaVault.sol). A pool-spot manipulation is therefore only observable in NAV once some action
+    /// touching the market runs; this issues a harmless no-op call (exit with an empty tokenIds array)
+    /// through a fuse on the AREODROME_SLIPSTREAM market purely to trigger that refresh, mirroring the
+    /// real attack path (an ordinary withdrawal, or the ALPHA's post-batch refresh, does the same).
+    function _refreshAreodromeSlipstreamMarket() internal {
+        AreodromeSlipstreamNewPositionFuseExitData memory noopExit = AreodromeSlipstreamNewPositionFuseExitData({
+            tokenIds: new uint256[](0)
+        });
+
+        FuseAction[] memory refreshCalls = new FuseAction[](1);
+        refreshCalls[0] = FuseAction(
+            address(_areodromeSlipstreamNewPositionFuse),
+            abi.encodeWithSignature("exit((uint256[]))", noopExit)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(refreshCalls);
+        vm.stopPrank();
+    }
+
+    /// @dev Slipstream CL pools use the standard Uniswap V3 swap callback to pull payment for the
+    /// swap. Only used by the manipulation helper above.
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+        (address token0_, address token1_) = abi.decode(data, (address, address));
+        if (amount0Delta > 0) {
+            IERC20(token0_).transfer(msg.sender, uint256(amount0Delta));
+        }
+        if (amount1Delta > 0) {
+            IERC20(token1_).transfer(msg.sender, uint256(amount1Delta));
+        }
+    }
+
+    /// @notice Regression test for IL-7959 (Pool branch): pushing the pool's spot price past a
+    /// position's upper range edge must not change the reported market/vault NAV. Before the fix,
+    /// the Pool branch read `ICLPool.slot0().sqrtPriceX96` directly, so the manipulated spot collapsed
+    /// the position's computed composition to 100% USDC while that leg was still priced at the
+    /// unmoved oracle WETH/USDC price, inflating NAV.
+    function test_shouldNotInflateMarketBalanceWhenPoolSpotPushedToRangeEdge() public {
+        _mintWideInRangePosition();
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
+
+        // when: push the pool spot well past the position's upper range edge (-187300) with a
+        // single-transaction swap
+        _pushAerodromePoolSpotToTick(false, -186800);
+        _refreshAreodromeSlipstreamMarket();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
+
+        assertApproxEqRel(
+            marketBalanceAfter,
+            marketBalanceBefore,
+            1e15, // 0.1% tolerance
+            "market balance must not change when the pool spot is pushed past the position's range edge"
+        );
+        assertApproxEqRel(
+            totalAssetsAfter,
+            totalAssetsBefore,
+            1e15,
+            "vault totalAssets must not change when the pool spot is pushed past the position's range edge"
+        );
+    }
+
+    /// @notice Regression test for IL-7959 (Gauge branch): the Gauge branch reads
+    /// `ICLGauge.pool().slot0().sqrtPriceX96`, which is equally manipulable. Staking the position
+    /// into the gauge first moves valuation to the Gauge branch; the manipulated pool spot must still
+    /// not change the reported market/vault NAV.
+    function test_shouldNotInflateMarketBalanceWhenGaugePoolSpotManipulated() public {
+        uint256 tokenId = _mintWideInRangePosition();
+
+        AreodromeSlipstreamCLGaugeFuseEnterData memory stakeParams = AreodromeSlipstreamCLGaugeFuseEnterData({
+            gaugeAddress: _AREODROME_GAUGE,
+            tokenId: tokenId
+        });
+
+        FuseAction[] memory stakeCalls = new FuseAction[](1);
+        stakeCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCLGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", stakeParams)
+        );
+
+        vm.startPrank(_ALPHA);
+        _plasmaVault.execute(stakeCalls);
+        vm.stopPrank();
+
+        uint256[] memory stakedValues = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
+        assertEq(stakedValues[0], tokenId, "stakedValues[0] should be equal to tokenId");
+
+        uint256 marketBalanceBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        uint256 totalAssetsBefore = PlasmaVault(_plasmaVault).totalAssets();
+
+        // when: push the pool spot well past the position's upper range edge with a single-transaction
+        // swap; the gauge's `pool()` returns the same manipulated pool
+        _pushAerodromePoolSpotToTick(false, -186800);
+        _refreshAreodromeSlipstreamMarket();
+
+        // then
+        uint256 marketBalanceAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(
+            IporFusionMarkets.AREODROME_SLIPSTREAM
+        );
+        uint256 totalAssetsAfter = PlasmaVault(_plasmaVault).totalAssets();
+
+        assertApproxEqRel(
+            marketBalanceAfter,
+            marketBalanceBefore,
+            1e15, // 0.1% tolerance
+            "market balance must not change when the staked position's pool spot is manipulated"
+        );
+        assertApproxEqRel(
+            totalAssetsAfter,
+            totalAssetsBefore,
+            1e15,
+            "vault totalAssets must not change when the staked position's pool spot is manipulated"
+        );
+    }
+
+    /// @notice Sanity check for IL-7959: at the pool's true (unmanipulated) price, the oracle-implied
+    /// valuation used post-fix must be close to what the old spot-derived valuation would have been.
+    /// This proves the fix does not distort normal NAV reporting when nothing is being manipulated -
+    /// only healthy inputs (an untouched pool, a freshly-minted in-range position) are exercised.
+    function test_oracleImpliedValuationMatchesSpotValuationAtHealthyPrice() public {
+        _mintWideInRangePosition();
+
+        // The pool's spot price has not been touched; the fix's oracle-implied sqrtPriceX96 should
+        // value the (unmanipulated) position within a small tolerance of the pre-fix spot-derived
+        // valuation, since the fork's oracle price tracks the pool's real market price closely.
+        // `totalAssetsInMarket` is denominated in the vault's underlying asset (USDC, 6 decimals), not
+        // WAD; normalize to WAD before comparing against the WAD-normalized calc below.
+        uint256 marketBalanceWad = IporMath.convertToWad(
+            PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.AREODROME_SLIPSTREAM),
+            IERC20Metadata(_UNDERLYING_TOKEN).decimals()
+        );
+
+        assertGt(marketBalanceWad, 0, "market balance should be > 0 for a freshly minted in-range position");
+
+        // Re-derive the composition using the pool's own (unmanipulated) live spot, mirroring the
+        // pre-fix code path, and compare its USD value to the fix's oracle-implied valuation.
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).tokenOfOwnerByIndex(
+            address(_plasmaVault),
+            0
+        );
+
+        uint160 spotSqrtPriceX96 = ICLPool(_AREODROME_POOL).slot0().sqrtPriceX96;
+        (uint256 spotAmount0, uint256 spotAmount1) = ISlipstreamSugar(_SLIPSTREAM_SUPERCHAIN_VAULT).principal(
+            INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER),
+            tokenIds[0],
+            spotSqrtPriceX96
+        );
+
+        (uint256 wethPrice, uint256 wethPriceDecimals) = _priceOracleMiddleware.getAssetPrice(_WETH);
+        (uint256 usdcPrice, uint256 usdcPriceDecimals) = _priceOracleMiddleware.getAssetPrice(_USDC);
+
+        uint256 spotValueUsd = IporMath.convertToWad(spotAmount0 * wethPrice, 18 + wethPriceDecimals) +
+            IporMath.convertToWad(spotAmount1 * usdcPrice, 6 + usdcPriceDecimals);
+
+        assertApproxEqRel(
+            marketBalanceWad,
+            spotValueUsd,
+            1e14, // 0.01% tolerance - measured drift on this fork block is ~0.00015%, so this bound
+            // keeps ~66x margin while still catching a several-hundred-bp mispricing regression
+            "oracle-implied valuation should match the healthy spot-derived valuation closely"
+        );
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // IL-8752 (#17) / IL-8747 (#12): action fuses must only touch NFTs from the vault's tracked list
+    // ---------------------------------------------------------------------------------------------
+
+    /// @dev Mints an Aerodrome WETH/USDC position straight on the real NPM (outside the vault's fuses) for the
+    /// given recipient. ALPHA pays with its own tokens, so the NFT is not in the vault's tracked list.
+    function _mintUntrackedNft(address recipient_) internal returns (uint256 tokenId) {
+        deal(_WETH, _ALPHA, 1e18);
+        deal(_USDC, _ALPHA, 3_000e6);
+
+        vm.startPrank(_ALPHA);
+        IERC20(_WETH).approve(_NONFUNGIBLE_POSITION_MANAGER, type(uint256).max);
+        IERC20(_USDC).approve(_NONFUNGIBLE_POSITION_MANAGER, type(uint256).max);
+        (tokenId, , , ) = INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).mint(
+            INonfungiblePositionManager.MintParams({
+                token0: _WETH,
+                token1: _USDC,
+                tickSpacing: 100,
+                tickLower: -201400,
+                tickUpper: -187300,
+                amount0Desired: 0.1e18,
+                amount1Desired: 300e6,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: recipient_,
+                deadline: block.timestamp + 100,
+                sqrtPriceX96: 0
+            })
+        );
+        vm.stopPrank();
+    }
+
+    /// @notice Port of PoC 4b72df7f: ALPHA mints its own NFT and tries to pour the vault's idle tokens into it
+    function testShouldRevertWhenIncreasingLiquidityOfNonVaultNft() public {
+        // given
+        uint256 attackerTokenId = _mintUntrackedNft(_ALPHA);
+        assertEq(
+            INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(attackerTokenId),
+            _ALPHA,
+            "ALPHA owns the NFT"
+        );
+
+        uint256 vaultWethBefore = IERC20(_WETH).balanceOf(address(_plasmaVault));
+        uint256 vaultUsdcBefore = IERC20(_USDC).balanceOf(address(_plasmaVault));
+
+        AreodromeSlipstreamModifyPositionFuseEnterData
+            memory modifyParams = AreodromeSlipstreamModifyPositionFuseEnterData({
+                token0: _WETH,
+                token1: _USDC,
+                tokenId: attackerTokenId,
+                amount0Desired: 10e18,
+                amount1Desired: 30_000e6,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_areodromeSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature(
+                "enter((address,address,uint256,uint256,uint256,uint256,uint256,uint256))",
+                modifyParams
+            )
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AreodromeSlipstreamModifyPositionFuse.AreodromeSlipstreamModifyPositionFuseTokenIdNotTracked.selector,
+                attackerTokenId
+            )
+        );
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        assertEq(IERC20(_WETH).balanceOf(address(_plasmaVault)), vaultWethBefore, "vault WETH unchanged");
+        assertEq(IERC20(_USDC).balanceOf(address(_plasmaVault)), vaultUsdcBefore, "vault USDC unchanged");
+    }
+
+    /// @notice An NFT donated to the vault is owned by it but not tracked, so liquidity cannot be decreased
+    function testShouldRevertWhenDecreasingUntrackedNft() public {
+        // given
+        uint256 donatedTokenId = _mintUntrackedNft(address(_plasmaVault));
+        uint128 liquidity = _getLiquidity(donatedTokenId);
+
+        AreodromeSlipstreamModifyPositionFuseExitData
+            memory modifyParams = AreodromeSlipstreamModifyPositionFuseExitData({
+                tokenId: donatedTokenId,
+                liquidity: liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_areodromeSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", modifyParams)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AreodromeSlipstreamModifyPositionFuse.AreodromeSlipstreamModifyPositionFuseTokenIdNotTracked.selector,
+                donatedTokenId
+            )
+        );
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        assertEq(_getLiquidity(donatedTokenId), liquidity, "liquidity untouched");
+    }
+
+    /// @notice Pins the NatSpec promise of the gauge fuse: an NFT staked by an older gauge fuse (so not in the
+    /// tracked list) can always be unstaked, and Modify stays closed for it.
+    function testShouldUnstakeUntrackedNftFromGaugeAndKeepModifyClosed() public {
+        // given
+        uint256 untrackedTokenId = _mintUntrackedNft(address(_plasmaVault));
+
+        // simulates an older gauge fuse that staked without the tracked-list check
+        vm.startPrank(address(_plasmaVault));
+        INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).approve(_AREODROME_GAUGE, untrackedTokenId);
+        ICLGauge(_AREODROME_GAUGE).deposit(untrackedTokenId);
+        vm.stopPrank();
+
+        uint256[] memory stakedBefore = ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault));
+        assertEq(stakedBefore.length, 1, "NFT staked");
+        assertEq(stakedBefore[0], untrackedTokenId, "staked NFT is the untracked one");
+
+        AreodromeSlipstreamCLGaugeFuseExitData memory exitParams = AreodromeSlipstreamCLGaugeFuseExitData({
+            gaugeAddress: _AREODROME_GAUGE,
+            tokenId: untrackedTokenId
+        });
+        FuseAction[] memory exitCalls = new FuseAction[](1);
+        exitCalls[0] = FuseAction(
+            address(_areodromeSlipstreamCLGaugeFuse),
+            abi.encodeWithSignature("exit((address,uint256))", exitParams)
+        );
+
+        // when
+        vm.prank(_ALPHA);
+        _plasmaVault.execute(exitCalls);
+
+        // then
+        assertEq(
+            INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(untrackedTokenId),
+            address(_plasmaVault),
+            "NFT back in the vault"
+        );
+        assertEq(ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault)).length, 0, "nothing staked");
+
+        // and the Modify fuse is still closed for it
+        AreodromeSlipstreamModifyPositionFuseExitData
+            memory decreaseParams = AreodromeSlipstreamModifyPositionFuseExitData({
+                tokenId: untrackedTokenId,
+                liquidity: 1,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 100
+            });
+        FuseAction[] memory decreaseCalls = new FuseAction[](1);
+        decreaseCalls[0] = FuseAction(
+            address(_areodromeSlipstreamModifyPositionFuse),
+            abi.encodeWithSignature("exit((uint256,uint128,uint256,uint256,uint256))", decreaseParams)
+        );
+        vm.prank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AreodromeSlipstreamModifyPositionFuse.AreodromeSlipstreamModifyPositionFuseTokenIdNotTracked.selector,
+                untrackedTokenId
+            )
+        );
+        _plasmaVault.execute(decreaseCalls);
+    }
+
+    /// @notice Port of PoC 10f74130 on the real gauge: a donated NFT must not be stakeable (NAV toggle)
+    function testShouldRevertWhenStakingUntrackedNftToGauge() public {
+        // given
+        uint256 donatedTokenId = _mintUntrackedNft(address(_plasmaVault));
+        uint256 marketBalanceBefore = _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AREODROME_SLIPSTREAM);
+
+        AreodromeSlipstreamCLGaugeFuseEnterData memory stakeParams = AreodromeSlipstreamCLGaugeFuseEnterData({
+            gaugeAddress: _AREODROME_GAUGE,
+            tokenId: donatedTokenId
+        });
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction(
+            address(_areodromeSlipstreamCLGaugeFuse),
+            abi.encodeWithSignature("enter((address,uint256))", stakeParams)
+        );
+
+        // when
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AreodromeSlipstreamCLGaugeFuse.AreodromeSlipstreamCLGaugeFuseTokenIdNotTracked.selector,
+                donatedTokenId
+            )
+        );
+        _plasmaVault.execute(calls);
+        vm.stopPrank();
+
+        // then
+        assertEq(
+            INonfungiblePositionManager(_NONFUNGIBLE_POSITION_MANAGER).ownerOf(donatedTokenId),
+            address(_plasmaVault),
+            "NFT stays in the vault"
+        );
+        assertEq(ICLGauge(_AREODROME_GAUGE).stakedValues(address(_plasmaVault)).length, 0, "nothing staked");
+        assertEq(
+            _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AREODROME_SLIPSTREAM),
+            marketBalanceBefore,
+            "market balance unchanged"
+        );
+    }
+
+    /// @notice Regression test for IL-8789/IL-8795: a granted pool whose oracle-implied raw price
+    /// P = token1/token0 is >= 2^64 (but < 2^128, still inside Q64.96) must not make the market balance
+    /// refresh revert. Before the fix `_oracleSqrtPriceX96` overflowed in `mulDiv` for such a pool,
+    /// which is evaluated for every Pool/Gauge substrate, blocking the whole market.
+    function test_shouldNotRevertWhenOracleImpliedPriceAbove2Pow64() public {
+        address oracle = _plasmaVaultGovernance.getPriceOracleMiddleware();
+        address token0 = ICLPool(_AREODROME_POOL).token0();
+        address token1 = ICLPool(_AREODROME_POOL).token1();
+
+        // P = p0 * 10^t1 / (p1 * 10^t0) with p1 = 1, p0 = 10^(t0 + 25 - t1) and zero price decimals => P = 1e25
+        // (2^64 ~ 1.8e19 < 1e25 < 2^128 ~ 3.4e38)
+        uint256 token0Decimals = IERC20Metadata(token0).decimals();
+        uint256 token1Decimals = IERC20Metadata(token1).decimals();
+        vm.mockCall(
+            oracle,
+            abi.encodeWithSignature("getAssetPrice(address)", token0),
+            abi.encode(10 ** (token0Decimals + 25 - token1Decimals), uint256(0))
+        );
+        vm.mockCall(
+            oracle,
+            abi.encodeWithSignature("getAssetPrice(address)", token1),
+            abi.encode(uint256(1), uint256(0))
+        );
+
+        // the vault holds no position in this pool: the refresh must pass and report an empty market
+        _refreshAreodromeSlipstreamMarket();
+
+        assertEq(
+            _plasmaVault.totalAssetsInMarket(IporFusionMarkets.AREODROME_SLIPSTREAM),
+            0,
+            "market balance must be 0 for a granted pool without positions"
+        );
     }
 }

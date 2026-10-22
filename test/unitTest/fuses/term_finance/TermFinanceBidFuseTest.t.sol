@@ -16,8 +16,44 @@ import {TermFinanceSubstrateLib} from "contracts/fuses/term_finance/lib/TermFina
 import {TermFinanceBidFuseHarness} from "./mocks/TermFinanceBidFuseHarness.sol";
 import {MockERC20Decimals} from "./mocks/MockERC20Decimals.sol";
 import {MockTermAuctionBidLocker} from "./mocks/MockTermAuctionBidLocker.sol";
+import {IExtTermAuctionBidLocker} from "contracts/fuses/term_finance/ext/IExtTermAuctionBidLocker.sol";
 import {MockTermController} from "./mocks/MockTermController.sol";
 import {MockTermRepoServicer} from "./mocks/MockTermRepoServicer.sol";
+
+/// @notice Models the live `TermAuctionBidLocker._lock` id semantics: a submission edits in place only when
+///         its id exists in THIS locker, otherwise a new id `keccak256(id, bidder, locker)` is minted.
+///         `forcedEditId` makes an edit return a different id (misbehaving locker).
+contract EditSemanticsBidLocker {
+    address public termRepoServicer;
+    uint256 public revealTime;
+    mapping(bytes32 => bool) public exists;
+    bytes32 public forcedEditId;
+
+    constructor(address servicer_, uint256 revealTime_) {
+        termRepoServicer = servicer_;
+        revealTime = revealTime_;
+    }
+
+    function setForcedEditId(bytes32 id_) external {
+        forcedEditId = id_;
+    }
+
+    function lockBids(
+        IExtTermAuctionBidLocker.TermAuctionBidSubmission[] calldata subs_
+    ) external returns (bytes32[] memory ids) {
+        ids = new bytes32[](subs_.length);
+        for (uint256 i; i < subs_.length; ++i) {
+            bytes32 id;
+            if (exists[subs_[i].id]) {
+                id = forcedEditId != bytes32(0) ? forcedEditId : subs_[i].id;
+            } else {
+                id = keccak256(abi.encodePacked(subs_[i].id, msg.sender, address(this)));
+            }
+            exists[id] = true;
+            ids[i] = id;
+        }
+    }
+}
 
 /// @notice Unit-test suite for `TermFinanceBidFuse`.
 /// @dev Mirror of `TermFinanceOfferFuseTest` with additions specific to the borrower side:
@@ -151,19 +187,14 @@ contract TermFinanceBidFuseTest is Test {
     }
 
     function _exitData(bytes32[] memory ids_) internal view returns (TermFinanceBidFuseExitData memory) {
-        return
-            TermFinanceBidFuseExitData({
-                servicer: address(servicer),
-                bidLocker: address(bidLocker),
-                bidIds: ids_
-            });
+        return TermFinanceBidFuseExitData({servicer: address(servicer), bidLocker: address(bidLocker), bidIds: ids_});
     }
 
-    function _defaultEnterData(uint256 amt_, bytes32 hash_, bytes32 existingId_)
-        internal
-        view
-        returns (TermFinanceBidFuseEnterData memory)
-    {
+    function _defaultEnterData(
+        uint256 amt_,
+        bytes32 hash_,
+        bytes32 existingId_
+    ) internal view returns (TermFinanceBidFuseEnterData memory) {
         address[] memory tokens = new address[](2);
         tokens[0] = address(weth);
         tokens[1] = address(wsteth);
@@ -254,10 +285,11 @@ contract TermFinanceBidFuseTest is Test {
 
         // Edit-flow: pass firstId as existingBidId. The mock reuses the supplied id
         // when non-zero, matching the on-chain BidLocker semantics for the edit path.
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(weth);
-        uint256[] memory amounts = new uint256[](1);
+        // IL-8831: an edit must keep the same collateral token list; only amounts may change.
+        address[] memory tokens = _collateralTokens();
+        uint256[] memory amounts = new uint256[](2);
         amounts[0] = 3 ether;
+        amounts[1] = 5 ether;
         harness.enter(_enterData(2_000_000_000, keccak256("h2"), firstId, tokens, amounts));
 
         // Length unchanged — in-place refresh.
@@ -267,8 +299,12 @@ contract TermFinanceBidFuseTest is Test {
             .getPendingBidsForServicer(address(servicer));
         assertEq(ids[0], firstId, "same id");
         assertEq(storedAmounts[0], 2_000_000_000, "refreshed amount");
-        assertEq(storedTokens[0].length, 1, "refreshed collateral tokens count");
+        assertEq(storedTokens[0].length, 2, "collateral tokens count kept");
         assertEq(storedTokens[0][0], address(weth));
+        assertEq(storedTokens[0][1], address(wsteth));
+        (, , , , uint256[][] memory storedAmts) = harness.getPendingBidsForServicer(address(servicer));
+        assertEq(storedAmts[0][0], 3 ether, "refreshed amount0");
+        assertEq(storedAmts[0][1], 5 ether, "refreshed amount1");
     }
 
     function testEnterShouldClearApprovalsAfterLock() public {
@@ -381,10 +417,7 @@ contract TermFinanceBidFuseTest is Test {
         bytes32[] memory empty = new bytes32[](0);
         harness.setMarketSubstrates(MARKET_ID, empty);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseUnsupportedMarket.selector,
-                address(servicer)
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseUnsupportedMarket.selector, address(servicer))
         );
         harness.enter(_defaultEnterData(1_000_000_000, keccak256("h"), bytes32(0)));
     }
@@ -410,10 +443,7 @@ contract TermFinanceBidFuseTest is Test {
     function testEnterShouldRevertWhenTermNotDeployed() public {
         controller.setIsTermDeployed(address(servicer), false);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseTermNotDeployed.selector,
-                address(servicer)
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseTermNotDeployed.selector, address(servicer))
         );
         harness.enter(_defaultEnterData(1_000_000_000, keccak256("h"), bytes32(0)));
     }
@@ -434,10 +464,7 @@ contract TermFinanceBidFuseTest is Test {
         data.bidLocker = address(spoof);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseBidLockerNotDeployed.selector,
-                address(spoof)
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseBidLockerNotDeployed.selector, address(spoof))
         );
         harness.enter(data);
     }
@@ -496,10 +523,7 @@ contract TermFinanceBidFuseTest is Test {
         harness.setMarketSubstrates(MARKET_ID, empty);
         bytes32[] memory ids = new bytes32[](0);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseUnsupportedMarket.selector,
-                address(servicer)
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseUnsupportedMarket.selector, address(servicer))
         );
         harness.exit(_exitData(ids));
     }
@@ -575,10 +599,7 @@ contract TermFinanceBidFuseTest is Test {
         amounts[1] = 50e18;
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                TermFinanceBidFuse.TermFinanceBidFuseDuplicateCollateralToken.selector,
-                dup
-            )
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseDuplicateCollateralToken.selector, dup)
         );
         harness.enter(_enterData(1_000_000_000, keccak256("h"), bytes32(0), tokens, amounts));
     }
@@ -748,5 +769,226 @@ contract TermFinanceBidFuseTest is Test {
         harness.enter(_defaultEnterData(2_000_000_000, keccak256("refresh"), known));
 
         assertEq(harness.pendingBidsLength(address(servicer)), cap, "length unchanged after refresh");
+    }
+
+    // ============ edit-flow: locker binding and id stability (IL-8741) ============
+
+    function _twoLockers() internal returns (EditSemanticsBidLocker l1, EditSemanticsBidLocker l2) {
+        l1 = new EditSemanticsBidLocker(address(servicer), REVEAL_TIME);
+        l2 = new EditSemanticsBidLocker(address(servicer), REVEAL_TIME + 1 days);
+        controller.setIsTermDeployed(address(l1), true);
+        controller.setIsTermDeployed(address(l2), true);
+    }
+
+    function _enterOn(
+        address locker_,
+        bytes32 existingId_
+    ) internal view returns (TermFinanceBidFuseEnterData memory d) {
+        d = _defaultEnterData(1_000_000_000, keccak256("h"), existingId_);
+        d.bidLocker = locker_;
+    }
+
+    function testEnterShouldRevertWhenEditingBidTrackedAgainstAnotherLocker() public {
+        (EditSemanticsBidLocker l1, EditSemanticsBidLocker l2) = _twoLockers();
+
+        harness.enter(_enterOn(address(l1), bytes32(0)));
+        bytes32 x = keccak256(abi.encodePacked(bytes32(0), address(harness), address(l1)));
+        assertTrue(harness.isBidPending(address(servicer), x), "X tracked");
+        assertEq(harness.pendingBidsLength(address(servicer)), 1, "one entry");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TermFinanceBidFuse.TermFinanceBidFuseExistingBidLockerMismatch.selector,
+                x,
+                address(l1),
+                address(l2)
+            )
+        );
+        harness.enter(_enterOn(address(l2), x));
+
+        assertTrue(harness.isBidPending(address(servicer), x), "X still tracked");
+        assertEq(harness.pendingBidsLength(address(servicer)), 1, "tracked set unchanged");
+        (address[] memory lockers, , , , ) = harness.getPendingBidsForServicer(address(servicer));
+        assertEq(lockers[0], address(l1), "still bound to L1");
+    }
+
+    function testEnterShouldEditInPlaceOnSameLocker() public {
+        (EditSemanticsBidLocker l1, ) = _twoLockers();
+
+        harness.enter(_enterOn(address(l1), bytes32(0)));
+        bytes32 x = keccak256(abi.encodePacked(bytes32(0), address(harness), address(l1)));
+
+        TermFinanceBidFuseEnterData memory d = _enterOn(address(l1), x);
+        d.amount = 2_000_000_000;
+        harness.enter(d);
+
+        assertEq(harness.pendingBidsLength(address(servicer)), 1, "length unchanged");
+        (, bytes32[] memory ids, uint256[] memory amounts, , ) = harness.getPendingBidsForServicer(address(servicer));
+        assertEq(ids[0], x, "same id");
+        assertEq(amounts[0], 2_000_000_000, "amount refreshed");
+    }
+
+    function testEnterShouldRevertWhenLockerReturnsDifferentIdOnEdit() public {
+        (EditSemanticsBidLocker l1, ) = _twoLockers();
+
+        harness.enter(_enterOn(address(l1), bytes32(0)));
+        bytes32 x = keccak256(abi.encodePacked(bytes32(0), address(harness), address(l1)));
+        bytes32 other = keccak256("other-id");
+        l1.setForcedEditId(other);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseEditedBidIdMismatch.selector, x, other)
+        );
+        harness.enter(_enterOn(address(l1), x));
+
+        assertTrue(harness.isBidPending(address(servicer), x), "X still tracked after revert");
+        assertEq(harness.pendingBidsLength(address(servicer)), 1, "tracked set unchanged");
+    }
+
+    function testEnterShouldTrackNewBidWhenExistingIdIsUntracked() public {
+        (EditSemanticsBidLocker l1, ) = _twoLockers();
+        bytes32 untracked = keccak256("untracked");
+
+        harness.enter(_enterOn(address(l1), untracked));
+
+        bytes32 minted = keccak256(abi.encodePacked(untracked, address(harness), address(l1)));
+        assertTrue(harness.isBidPending(address(servicer), minted), "new id tracked");
+        assertEq(harness.pendingBidsLength(address(servicer)), 1, "one entry");
+    }
+
+    // ============ edit-flow: collateral token list must stay identical (IL-8831) ============
+
+    function _trackedBidOnL1() internal returns (EditSemanticsBidLocker l1, bytes32 x) {
+        (l1, ) = _twoLockers();
+        harness.enter(_enterOn(address(l1), bytes32(0)));
+        x = keccak256(abi.encodePacked(bytes32(0), address(harness), address(l1)));
+        assertTrue(harness.isBidPending(address(servicer), x), "X tracked");
+    }
+
+    function _editWith(
+        EditSemanticsBidLocker l1_,
+        bytes32 x_,
+        address[] memory tokens_,
+        uint256[] memory amounts_
+    ) internal view returns (TermFinanceBidFuseEnterData memory d) {
+        d = _enterData(1_000_000_000, keccak256("h"), x_, tokens_, amounts_);
+        d.bidLocker = address(l1_);
+    }
+
+    function _assertTrackedUnchanged(bytes32 x_) internal view {
+        assertEq(harness.pendingBidsLength(address(servicer)), 1, "tracked set unchanged");
+        (, bytes32[] memory ids, , address[][] memory toks, uint256[][] memory amts) = harness
+            .getPendingBidsForServicer(address(servicer));
+        assertEq(ids[0], x_, "same id");
+        assertEq(toks[0].length, 2, "two tokens");
+        assertEq(toks[0][0], address(weth), "token0");
+        assertEq(toks[0][1], address(wsteth), "token1");
+        assertEq(amts[0][0], 1 ether, "amount0");
+        assertEq(amts[0][1], 2 ether, "amount1");
+    }
+
+    function testEnterShouldRevertWhenEditDropsACollateralToken() public {
+        (EditSemanticsBidLocker l1, bytes32 x) = _trackedBidOnL1();
+        address[] memory t = new address[](1);
+        t[0] = address(weth);
+        uint256[] memory a = new uint256[](1);
+        a[0] = 1 ether;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseEditedCollateralTokensMismatch.selector, x)
+        );
+        harness.enter(_editWith(l1, x, t, a));
+        _assertTrackedUnchanged(x);
+    }
+
+    function testEnterShouldRevertWhenEditSwapsCollateralToken() public {
+        (EditSemanticsBidLocker l1, bytes32 x) = _trackedBidOnL1();
+        address[] memory t = new address[](2);
+        t[0] = address(weth);
+        t[1] = address(usdc);
+        uint256[] memory a = new uint256[](2);
+        a[0] = 1 ether;
+        a[1] = 2 ether;
+        // usdc is not an allowlisted collateral pair, so grant it to isolate the new check
+        address[] memory granted = new address[](3);
+        granted[0] = address(weth);
+        granted[1] = address(wsteth);
+        granted[2] = address(usdc);
+        _grantSubstrates(address(servicer), granted);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseEditedCollateralTokensMismatch.selector, x)
+        );
+        harness.enter(_editWith(l1, x, t, a));
+        _assertTrackedUnchanged(x);
+    }
+
+    function testEnterShouldRevertWhenEditReordersCollateralTokens() public {
+        (EditSemanticsBidLocker l1, bytes32 x) = _trackedBidOnL1();
+        address[] memory t = new address[](2);
+        t[0] = address(wsteth);
+        t[1] = address(weth);
+        uint256[] memory a = new uint256[](2);
+        a[0] = 2 ether;
+        a[1] = 1 ether;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseEditedCollateralTokensMismatch.selector, x)
+        );
+        harness.enter(_editWith(l1, x, t, a));
+        _assertTrackedUnchanged(x);
+    }
+
+    function testEnterShouldRevertWhenEditAddsACollateralToken() public {
+        (EditSemanticsBidLocker l1, bytes32 x) = _trackedBidOnL1();
+        address[] memory t = new address[](3);
+        t[0] = address(weth);
+        t[1] = address(wsteth);
+        t[2] = address(usdc);
+        uint256[] memory a = new uint256[](3);
+        a[0] = 1 ether;
+        a[1] = 2 ether;
+        a[2] = 1;
+        address[] memory granted = new address[](3);
+        granted[0] = address(weth);
+        granted[1] = address(wsteth);
+        granted[2] = address(usdc);
+        _grantSubstrates(address(servicer), granted);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TermFinanceBidFuse.TermFinanceBidFuseEditedCollateralTokensMismatch.selector, x)
+        );
+        harness.enter(_editWith(l1, x, t, a));
+        _assertTrackedUnchanged(x);
+    }
+
+    function testEnterShouldAllowEditWithSameTokensAndNewAmounts() public {
+        (EditSemanticsBidLocker l1, bytes32 x) = _trackedBidOnL1();
+        address[] memory t = _collateralTokens();
+        uint256[] memory a = new uint256[](2);
+        a[0] = 3 ether;
+        a[1] = 4 ether;
+
+        harness.enter(_editWith(l1, x, t, a));
+
+        assertEq(harness.pendingBidsLength(address(servicer)), 1, "length unchanged");
+        (, bytes32[] memory ids, , , uint256[][] memory amts) = harness.getPendingBidsForServicer(address(servicer));
+        assertEq(ids[0], x, "same id");
+        assertEq(amts[0][0], 3 ether, "amount0 refreshed");
+        assertEq(amts[0][1], 4 ether, "amount1 refreshed");
+    }
+
+    function testEnterShouldNotCheckTokenListForNewBid() public {
+        (EditSemanticsBidLocker l1, bytes32 x) = _trackedBidOnL1();
+        address[] memory t = new address[](1);
+        t[0] = address(wsteth);
+        uint256[] memory a = new uint256[](1);
+        a[0] = 1 ether;
+
+        // Untracked id -> brand-new bid (new id minted) with a different token list is accepted
+        harness.enter(_editWith(l1, keccak256("nonce"), t, a));
+
+        assertEq(harness.pendingBidsLength(address(servicer)), 2, "second bid tracked");
+        assertTrue(harness.isBidPending(address(servicer), x), "first bid untouched");
     }
 }

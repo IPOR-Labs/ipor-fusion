@@ -28,13 +28,18 @@ struct Hook {
 
 /// @notice Structure for storing validator data
 /// @param exchangeRate The exchange rate value (128 bits)
-/// @param threshold The threshold value (120 bits) expressed as a percentage in 1e18 precision, where 1e18 = 100%
+/// @param threshold The threshold value (80 bits) expressed as a percentage in 1e18 precision, where 1e18 = 100%
+/// @param lastUpdateTimestamp Timestamp of the last exchange rate re-anchor written by the validator (40 bits),
+///        0 in every config written before IL-8832 (such configs allow one re-anchor)
 /// @dev The entire struct is packed into a single bytes31 value (248 bits total):
-///      - First 120 bits: threshold
-///      - Remaining 128 bits: exchangeRate
+///      - Bits 0-79: threshold (the validator rejects values above 1e18 < 2^60, so bits 60-119 of a legacy
+///        120-bit threshold field are zero in every config the previous build accepted)
+///      - Bits 80-119: lastUpdateTimestamp
+///      - Bits 120-247: exchangeRate
 struct ValidatorData {
     uint128 exchangeRate;
-    uint120 threshold;
+    uint80 threshold;
+    uint40 lastUpdateTimestamp;
 }
 
 /// @title ExchangeRateValidatorConfigLib
@@ -111,22 +116,34 @@ library ExchangeRateValidatorConfigLib {
     /// @notice Converts ValidatorData struct to bytes31
     /// @param validatorData_ The ValidatorData struct to convert
     /// @return The packed bytes31 value
-    /// @dev Packs threshold (120 bits) and exchangeRate (128 bits) into bytes31
+    /// @dev Packs threshold (bits 0-79), lastUpdateTimestamp (bits 80-119) and exchangeRate (bits 120-247) into bytes31
     function validatorDataToBytes31(ValidatorData memory validatorData_) internal pure returns (bytes31) {
-        // Pack threshold in first 120 bits, exchangeRate in remaining 128 bits (shifted by 120 bits)
-        return bytes31(uint248(uint256(validatorData_.threshold) | (uint256(validatorData_.exchangeRate) << 120)));
+        return
+            bytes31(
+                uint248(
+                    uint256(validatorData_.threshold) |
+                        (uint256(validatorData_.lastUpdateTimestamp) << 80) |
+                        (uint256(validatorData_.exchangeRate) << 120)
+                )
+            );
     }
 
     /// @notice Converts bytes31 to ValidatorData struct
     /// @param bytes31ValidatorData_ The packed bytes31 value
     /// @return validatorData The unpacked ValidatorData struct
-    /// @dev Extracts threshold from first 120 bits, exchangeRate from remaining 128 bits
+    /// @dev Extracts threshold from bits 0-79, lastUpdateTimestamp from bits 80-119 and exchangeRate from bits 120-247.
+    ///      A config written before IL-8832 stored the threshold in 120 bits; as the threshold is capped at 1e18,
+    ///      bits 80-119 of every such config that the previous build accepted are zero and it decodes with
+    ///      lastUpdateTimestamp = 0. A legacy config with non-zero bits 80-119 (threshold >= 2^80) made the previous
+    ///      build revert `ThresholdTooHigh` on every call; this build reads it as an 80-bit threshold plus a
+    ///      timestamp, so it may start validating with an unintended threshold (or freeze re-anchoring until a
+    ///      future timestamp). Rewrite such a config before moving the vault to this build.
     function bytes31ToValidatorData(
         bytes31 bytes31ValidatorData_
     ) internal pure returns (ValidatorData memory validatorData) {
         uint256 packed = uint256(uint248(bytes31ValidatorData_));
-        // Extract threshold from first 120 bits
-        validatorData.threshold = uint120(packed & type(uint120).max);
+        validatorData.threshold = uint80(packed);
+        validatorData.lastUpdateTimestamp = uint40(packed >> 80);
         // Extract exchangeRate from remaining 128 bits (bits 120-247)
         validatorData.exchangeRate = uint128(packed >> 120);
     }

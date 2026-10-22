@@ -184,4 +184,22 @@ interface IPlasmaVaultGovernance {
     /// @param redemptionDelayInSeconds_ The new redemption delay in seconds, at most
     /// IporFusionAccessManager.MAX_REDEMPTION_DELAY_IN_SECONDS
     function setRedemptionDelay(uint256 redemptionDelayInSeconds_) external;
+
+    /// @notice Adds or removes accounts from the list exempt from the redemption delay.
+    /// @dev Forwards to IporFusionAccessManager.setRedemptionDelayExemption. The owner-facing entry point lives on
+    /// the vault so the call CAN be put behind the OWNER_ROLE execution delay like every other governance function.
+    /// The timelock is not a default: it applies only when the owner account holds OWNER_ROLE with a non-zero
+    /// execution delay (the default initializer grants it with 0, so the change is immediate). Reverts with
+    /// Errors.WrongAddress if any account is the zero address. The access manager emits
+    /// RedemptionDelayExemptionUpdated(address,bool) for every address, also without a state change. The vault has
+    /// no getters: read isRedemptionDelayExempt, getRedemptionDelayExemptions, getRedemptionDelayExemptionsCount and
+    /// getRedemptionDelayExemptionsAt(offset, limit) on the access manager.
+    /// @custom:risk An exempt address exits immediately under a non-zero vault delay and can pass fresh shares to a
+    /// never-deposited address (transfers do not lock the receiver). The lock check sees only the address the vault
+    /// passes (caller, share owner, from), so exempting a contract that acts for many users (a wrapper, router, zap or
+    /// ContextManager-relayed path) exempts all of its users at once. An exemption also removes the same-block
+    /// deposit -> withdraw guard that a 1-second delay provides. Exempt only trusted, specific addresses.
+    /// @param accounts_ The accounts to add to or remove from the exemption list
+    /// @param exempt_ True to exempt the accounts, false to remove the exemption
+    function setRedemptionDelayExemption(address[] calldata accounts_, bool exempt_) external;
 }

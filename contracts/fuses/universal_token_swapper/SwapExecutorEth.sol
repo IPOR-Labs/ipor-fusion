@@ -14,7 +14,9 @@ import {IWETH9} from "../../interfaces/ext/IWETH9.sol";
 /// @param targets Array of target addresses for the swap operations
 /// @param callDatas Array of encoded function calls for each target
 /// @param ethAmounts Array of ETH amounts to be sent with each call
-/// @param tokensDustToCheck Array of token addresses to check for dust balances
+/// @param tokensDustToCheck Array of token addresses to check for dust balances - any token the route may leave
+/// in the executor (e.g. multi-target sequential swaps); this is this executor's equivalent of the
+/// `tokensToReturn` mechanism added to the other swap executors in IL-7944
 struct SwapExecutorEthData {
     address tokenIn;
     address tokenOut;
@@ -68,7 +70,15 @@ contract SwapExecutorEth is ReentrancyGuard {
     ///      - Converts remaining ETH to WETH and transfers it
     ///      - Checks and transfers any dust balances
     ///      Protected against reentrancy via nonReentrant modifier.
-    function execute(SwapExecutorEthData memory data_) external nonReentrant {
+    ///      Return values (added without changing the selector, so older callers that ignore them keep working):
+    ///      the amounts transferred to the caller, which the fuse uses to measure the swap instead of the vault
+    ///      balances. Wrapped ETH (including native ETH that was on this contract before the call) is attributed to the
+    ///      side that equals `W_ETH`; when `tokenIn == tokenOut` the whole balance is reported as `tokenInReturned`. Dust tokens are not reported.
+    /// @return tokenInReturned Amount of `tokenIn` (plus wrapped ETH when `tokenIn == W_ETH`) sent to the caller
+    /// @return tokenOutReturned Amount of `tokenOut` (plus wrapped ETH when `tokenOut == W_ETH`) sent to the caller
+    function execute(
+        SwapExecutorEthData memory data_
+    ) external nonReentrant returns (uint256 tokenInReturned, uint256 tokenOutReturned) {
         uint256 len = data_.targets.length;
 
         if (len != data_.callDatas.length || len != data_.ethAmounts.length) {
@@ -83,15 +93,23 @@ contract SwapExecutorEth is ReentrancyGuard {
             }
         }
 
-        uint256 balanceTokenIn = IERC20(data_.tokenIn).balanceOf(address(this));
-        uint256 balanceTokenOut = IERC20(data_.tokenOut).balanceOf(address(this));
+        if (data_.tokenIn == data_.tokenOut) {
+            // Same token on both sides: read the balance once to avoid a double transfer
+            tokenInReturned = IERC20(data_.tokenIn).balanceOf(address(this));
+            if (tokenInReturned > 0) {
+                IERC20(data_.tokenIn).safeTransfer(msg.sender, tokenInReturned);
+            }
+        } else {
+            tokenInReturned = IERC20(data_.tokenIn).balanceOf(address(this));
+            tokenOutReturned = IERC20(data_.tokenOut).balanceOf(address(this));
 
-        if (balanceTokenIn > 0) {
-            IERC20(data_.tokenIn).safeTransfer(msg.sender, balanceTokenIn);
-        }
+            if (tokenInReturned > 0) {
+                IERC20(data_.tokenIn).safeTransfer(msg.sender, tokenInReturned);
+            }
 
-        if (balanceTokenOut > 0) {
-            IERC20(data_.tokenOut).safeTransfer(msg.sender, balanceTokenOut);
+            if (tokenOutReturned > 0) {
+                IERC20(data_.tokenOut).safeTransfer(msg.sender, tokenOutReturned);
+            }
         }
 
         uint256 balanceEth = address(this).balance;
@@ -99,6 +117,11 @@ contract SwapExecutorEth is ReentrancyGuard {
         if (balanceEth > 0) {
             IWETH9(W_ETH).deposit{value: balanceEth}();
             IERC20(W_ETH).safeTransfer(msg.sender, balanceEth);
+            if (data_.tokenIn == W_ETH) {
+                tokenInReturned += balanceEth;
+            } else if (data_.tokenOut == W_ETH) {
+                tokenOutReturned += balanceEth;
+            }
         }
 
         uint256 lenDustToCheck = data_.tokensDustToCheck.length;

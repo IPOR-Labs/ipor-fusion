@@ -69,18 +69,24 @@ interface IRewardsClaimManager {
     /// @param releaseTokensDelay_ The delay in seconds before the tokens are released.
     /// @dev This method configures the vesting schedule by setting the delay time for token release.
     /// The delay defines the period that must pass before the tokens can be released to the beneficiary.
-    /// @dev Setting this to zero will stop vesting and freeze underlying token on the contract.
-    /// @dev When called mid-flight (transferredTokens > 0 and lastUpdateBalance > 0), reverts with
-    /// UnsafeVestingTime when the requested duration would force balanceOf() into the clamp window
-    /// where vested_now < transferredTokens.
+    /// @dev Setting this to zero disables vesting: balanceOf() returns the live balance of the manager.
+    /// @dev Switching from zero to a non-zero duration first runs the updateBalance() logic, which moves
+    /// the live balance to the Plasma Vault and re-anchors the schedule.
+    /// @dev Changing a non-zero duration while transferredTokens > 0 reverts with UnsafeVestingTime when
+    /// the requested duration would force balanceOf() into the clamp window where vested_now < transferredTokens.
     function setupVestingTime(uint256 releaseTokensDelay_) external;
 
-    /// @notice Rebase the vesting schedule in place without transferring tokens to the Plasma Vault.
+    /// @notice Rebase the vesting schedule in place; the vested-but-not-transferred amount is first pushed to the Plasma Vault.
     /// @param newVestingTime_ New vesting duration in seconds. Must be > 0.
     /// @param newUpdateBalanceTimestamp_ New anchor timestamp for the linear curve. Must be <= block.timestamp.
     /// @dev Reverts with UnsafeReschedule when the new tuple would force balanceOf() to clamp at
-    /// block.timestamp. Useful when governance changes the vesting length but totalAssets() must
-    /// stay continuous at this block.
+    /// block.timestamp. Before the new schedule is written, the vested-but-not-transferred amount is pushed
+    /// to the Plasma Vault (vestingTime == 0: the updateBalance() logic runs), so no tuple can lower
+    /// totalAssets(). Continuous anchor: t0' = block.timestamp - ceil(V * newVestingTime / lastUpdateBalance),
+    /// V = transferredTokens + balanceOf() at the execution timestamp; an earlier anchor raises totalAssets(),
+    /// a later one reverts with UnsafeReschedule; lastUpdateBalance == 0: any t0' <= block.timestamp.
+    /// The exact formula can be refused by 1 wei of rounding in vestedAt() when V * newVestingTime / lastUpdateBalance
+    /// is an integer (fails safe with UnsafeReschedule): use an anchor one second earlier, or simulate with eth_call first.
     function rescheduleVesting(uint32 newVestingTime_, uint32 newUpdateBalanceTimestamp_) external;
 
     /// @notice Updates the balance based on the current vesting schedule and transferred tokens.
