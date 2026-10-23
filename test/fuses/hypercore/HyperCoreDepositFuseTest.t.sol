@@ -334,7 +334,10 @@ contract HyperCoreDepositFuseTest is Test {
             )
         });
 
-        vm.expectRevert(); // HyperCoreActionPending(pendingUntil) - exact pendingUntil depends on block.timestamp
+        // The first deposit enqueues the window (default 2 seconds), so the second one reverts with that deadline.
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCorePendingLib.HyperCoreActionPending.selector, uint64(block.timestamp + 2))
+        );
         vm.prank(TestAddresses.ALPHA);
         vault.execute(actions);
     }
@@ -661,8 +664,13 @@ contract HyperCoreDepositFuseTest is Test {
         try vault.execute(actions) {
             vm.revertToState(snapshot);
             return false;
-        } catch {
+        } catch (bytes memory reason) {
             vm.revertToState(snapshot);
+            assertEq(
+                bytes4(reason),
+                HyperCorePendingLib.HyperCoreActionPending.selector,
+                "deposit must be blocked only by the pending-action gate"
+            );
             return true;
         }
     }
