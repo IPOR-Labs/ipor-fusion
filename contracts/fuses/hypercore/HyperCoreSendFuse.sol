@@ -137,7 +137,9 @@ contract HyperCoreSendFuse is IFuseCommon {
     /// @dev @custom:revert HyperCoreSendFuseSpotSendBridgeDisabled When targeting a token system address
     ///      (Core -> EVM) while `Config{SpotSendBridgeEnabled}` is unset or not exactly 1. Fails closed:
     ///      the Atomist must explicitly opt the vault into the spot-send bridge route. `enterSendAsset`
-    ///      (action 13) is unaffected by this gate.
+    ///      (action 13) is unaffected by this gate: it is the designed Core -> EVM route (and cheaper on
+    ///      mainnet), while the flag only admits a second encoding (action 6) of the same withdrawal once it
+    ///      has been proven on a given chain. Both routes share the same destination, cap and balance checks.
     function enterSpotSend(HyperCoreSendFuseSpotSendData memory data_) public {
         if (data_.destination != address(this)) {
             (bool bridgeEnabledSet, uint240 bridgeEnabled) = HyperCoreSubstrateLib.getConfig(
