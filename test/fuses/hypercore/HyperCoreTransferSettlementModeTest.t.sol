@@ -77,13 +77,14 @@ contract HyperCoreTransferSettlementModeTest is HyperCoreEffectSettlementBase {
         uint256 evmBefore = _usdc.balanceOf(address(_vault));
         _executeSendToEvm(50_000e8);
         assertTrue(_isPendingLive(), "bridge enqueued");
+        uint64 pendingUntil = uint64(uint256(vm.load(address(_vault), PENDING_SLOT)));
 
         // Window + later L1 block pass, but the EVM credit has not landed.
         _settleWindowOnly(2);
         assertEq(_usdc.balanceOf(address(_vault)), evmBefore, "no EVM credit yet");
         assertTrue(_isPendingLive(), "a bridge does not settle by time alone");
         vm.prank(_secondUser);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(HyperCorePendingLib.HyperCoreActionPending.selector, pendingUntil));
         _vault.deposit(1e6, _secondUser);
 
         CoreSimulatorLib.nextBlock();

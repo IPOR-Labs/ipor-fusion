@@ -155,7 +155,7 @@ contract HyperCoreFactoryVaultSimulationTest is Test {
         _usdc.mint(_nonWhitelistedUser, 1_000e6);
         vm.startPrank(_nonWhitelistedUser);
         _usdc.approve(address(_vault), 1_000e6);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSignature("AccessManagedUnauthorized(address)", _nonWhitelistedUser));
         _vault.deposit(1_000e6, _nonWhitelistedUser);
         vm.stopPrank();
     }
