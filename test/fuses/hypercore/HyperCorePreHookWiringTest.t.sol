@@ -149,6 +149,26 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
         _depositToCore(100_000e6);
     }
 
+    // iii-b. IL-8938: each of the six share-priced selectors is required on its own. The gate reverts for the
+    //        selector that is unwired (address(0)) and for the one that carries a foreign hook, one at a time.
+    function testEveryShareFlowSelectorIsRequiredByTheWiringGate() public {
+        bytes4[6] memory flows = _flowSelectors();
+        address foreign = address(new ForeignFlowPreHook());
+        for (uint256 i; i < flows.length; ++i) {
+            uint256 snapshot = vm.snapshotState();
+            _wire(flows[i], address(0));
+            vm.expectRevert(_notWired(flows[i], address(0)));
+            _depositToCore(100_000e6);
+            vm.revertToState(snapshot);
+
+            snapshot = vm.snapshotState();
+            _wire(flows[i], foreign);
+            vm.expectRevert(_notWired(flows[i], foreign));
+            _depositToCore(100_000e6);
+            vm.revertToState(snapshot);
+        }
+    }
+
     // iv. correct wiring: deposit to Core, margin and an opening order all go through.
     function testCorrectWiringFullCoreCycleWorks() public {
         assertGt(_openLong(), 0, "deposit, margin and an opening order go through");
@@ -175,6 +195,15 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
             )
         );
         _vault.execute(actions);
+    }
+
+    // v-b. IL-8938: opening orders require the last selector of the gate list (redeemFromRequest) as well.
+    function testOpeningOrderRequiresEveryShareFlowSelectorWired() public {
+        _openLong();
+        _wire(PlasmaVault.redeemFromRequest.selector, address(0));
+
+        vm.expectRevert(_notWired(PlasmaVault.redeemFromRequest.selector, address(0)));
+        _executeOrder(true, 50e8, 10e8, false, HyperCoreLib.TIF_IOC, CLOID_2);
     }
 
     // vi. KNOWN LIMITATION: a re-wiring after exposure exists is not detected by the user flows. Here deposit loses
