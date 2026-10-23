@@ -103,8 +103,8 @@ library HyperCorePendingLib {
         bytes32 payloadHash
     );
     /// @notice Emitted by the PlasmaVault when a pending action record is cleared. It marks the on-chain end of
-    ///         every action: by `settleIfReady()` from the pre-hooks when a transfer is first observed settled, or by
-    ///         `clear()`.
+    ///         every action. In practice it is emitted by `settleIfReady()`, which the pre-hooks call when a transfer
+    ///         is first observed settled; `clear()` also clears a settled record, but no contract calls it.
     /// @param nonce Nonce of the cleared action, as emitted in `HyperCoreActionEnqueued`
     event HyperCoreActionSettled(uint256 nonce);
 
@@ -128,6 +128,10 @@ library HyperCorePendingLib {
     ///        executed or was rejected. Orders and cancels create no record (IL-8527).
     ///      - Cross-domain transfers (EVM -> Core deposit, Core -> EVM bridge, IL-8526): additionally requires
     ///        the balance effect to be observed (`isEffectObserved()`) or the transfer timeout to have passed.
+    ///      The timeout is evaluated first, so once `timeoutAt` has passed the effect balance is not read at all.
+    ///      The time and L1-block gates (including the 0x809 read) still apply before it: an unavailable 0x809 or an
+    ///      unchanged L1 block still blocks (fail-closed). Before `timeoutAt` the effect is still required and a
+    ///      reverting effect read still reverts.
     function isActionSettled() internal view returns (bool) {
         PendingAction storage pending = get();
         if (pending.actionClass == uint8(ActionClass.None)) return true;
@@ -136,7 +140,8 @@ library HyperCorePendingLib {
             return false;
         }
         if (pending.actionClass == uint8(ActionClass.Transfer) && pending.effectKind != EFFECT_NONE) {
-            return isEffectObserved() || block.timestamp >= pending.timeoutAt;
+            // Timeout first: once the timing and L1-block gates pass, no balance-effect read after `timeoutAt` (IL-8908).
+            return block.timestamp >= pending.timeoutAt || isEffectObserved();
         }
         return true;
     }
@@ -145,8 +150,9 @@ library HyperCorePendingLib {
     /// @dev Only the two transfers whose value is "in the void" carry an effect: an EVM -> Core deposit
     ///      (`EFFECT_CORE_SPOT`: the Core spot balance must reach `expectedBalance`) and a Core -> EVM bridge
     ///      (`EFFECT_EVM_BALANCE`: the vault's ERC20 balance must reach `expectedBalance`). Returns false for a
-    ///      record without an effect. Residual risk: once `timeoutAt` has passed the gate opens even if the
-    ///      effect never landed (so a rejected transfer cannot freeze the vault); if Core merely lags beyond
+    ///      record without an effect. Residual risk: once `timeoutAt` has passed (and the timing and L1-block gates
+    ///      hold) the gate opens without reading the effect, so neither a rejected transfer nor a reverting effect
+    ///      token can hold it shut beyond the timeout (it cannot freeze the vault); if Core merely lags beyond
     ///      the timeout, NAV is read live without the in-transit amount and the GUARDIAN must pause the vault.
     function isEffectObserved() internal view returns (bool) {
         PendingAction storage pending = get();
@@ -292,7 +298,7 @@ library HyperCorePendingLib {
 
     /// @notice Clears a settled action, preserving its monotonic nonce.
     /// @dev Reverts with `HyperCoreActionNotSettled` when there is no record or its settlement condition does not
-    ///      hold yet. The pre-hooks use the non-reverting `settleIfReady()`.
+    ///      hold yet. No contract calls it; the pre-hooks clear through `settleIfReady()`.
     function clear() internal {
         PendingAction storage pending = get();
         if (pending.actionClass == uint8(ActionClass.None) || !isActionSettled()) {
@@ -302,7 +308,9 @@ library HyperCorePendingLib {
     }
 
     /// @notice Latches settlement: clears the record once an action is observed settled.
-    /// @dev Never reverts. Does nothing (returns false) when there is no record or the settlement condition does
+    /// @dev Does not revert by itself, but propagates reverts of the reads behind the settlement predicate: a failed
+    ///      precompile read (`HyperCorePrecompileFailed`, fail-closed by design) and, before `timeoutAt`, the effect
+    ///      token's `balanceOf`. Does nothing (returns false) when there is no record or the settlement condition does
     ///      not hold.
     ///      Called first by the pre-hooks so that a later balance change (e.g. a user redeem lowering the EVM
     ///      balance after a Core -> EVM bridge settled) cannot re-open the pending state of a settled transfer.

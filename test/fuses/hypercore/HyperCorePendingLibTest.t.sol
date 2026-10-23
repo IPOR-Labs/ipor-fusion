@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
+import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {
     HyperCorePendingActionPreHook
 } from "../../../contracts/handlers/pre_hooks/pre_hooks/HyperCorePendingActionPreHook.sol";
@@ -387,6 +388,21 @@ contract HyperCorePendingEffectHarness {
         HyperCorePendingLib.clear();
     }
 
+    function settleIfReady() external returns (bool) {
+        return HyperCorePendingLib.settleIfReady();
+    }
+
+    function runPreHook(address hook_, bytes4 selector_) external {
+        (bool success, bytes memory returndata) = hook_.delegatecall(
+            abi.encodeWithSelector(HyperCorePendingActionPreHook.run.selector, selector_)
+        );
+        if (!success) {
+            assembly {
+                revert(add(returndata, 0x20), mload(returndata))
+            }
+        }
+    }
+
     function effect()
         external
         view
@@ -487,6 +503,66 @@ contract HyperCorePendingLibEffectTest is Test {
         assertFalse(_h.isActionPending(), "timeout opens the gate");
         assertFalse(_h.isEffectObserved());
         _h.clear();
+    }
+
+    function _armRevertingEvmEffect() private returns (uint64 until_) {
+        _h.enqueueWithEffect(1e18, 20, 2, 0, address(_usdc), 100e6, 600);
+        until_ = _h.pendingUntil();
+        _core.setL1BlockNumber(101);
+        vm.mockCallRevert(
+            address(_usdc),
+            abi.encodeWithSelector(_usdc.balanceOf.selector, address(_h)),
+            bytes("BALANCE_OF_REVERTS")
+        );
+    }
+
+    function testEvmBalanceEffectWithRevertingTokenOpensAtTimeout() public {
+        uint64 until = _armRevertingEvmEffect();
+
+        vm.warp(until + 599);
+        vm.expectRevert(bytes("BALANCE_OF_REVERTS"));
+        _h.isActionSettled();
+
+        vm.warp(until + 600);
+        assertTrue(_h.isActionSettled(), "timeout opens the gate without reading the effect");
+        assertFalse(_h.isActionPending());
+        assertTrue(_h.settleIfReady());
+        (uint8 kind, , , , ) = _h.effect();
+        assertEq(kind, 0, "record cleared");
+    }
+
+    function testCoreSpotEffectWithFailingSpotPrecompileOpensAtTimeout() public {
+        _h.enqueueWithEffect(1e18, 20, 1, 0, address(0), 500e8, 600);
+        uint64 until = _h.pendingUntil();
+        _setSpot(0);
+        _core.setL1BlockNumber(101);
+        // 0x801 returns empty data: HyperCoreLib._staticRead reverts with HyperCorePrecompileFailed(0x801)
+        vm.etch(address(0x801), "");
+
+        vm.warp(until + 599);
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.HyperCorePrecompileFailed.selector, address(0x801)));
+        _h.isActionSettled();
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.HyperCorePrecompileFailed.selector, address(0x801)));
+        _h.settleIfReady();
+
+        vm.warp(until + 600);
+        assertTrue(_h.isActionSettled(), "timeout opens the gate without reading the Core spot effect");
+        assertTrue(_h.settleIfReady());
+        (uint8 kind, , , , ) = _h.effect();
+        assertEq(kind, 0, "record cleared");
+    }
+
+    function testPendingActionHookLatchesTimedOutBridgeWithRevertingEffectToken() public {
+        uint64 until = _armRevertingEvmEffect();
+        HyperCorePendingActionPreHook hook = new HyperCorePendingActionPreHook();
+
+        vm.warp(until + 599);
+        vm.expectRevert(bytes("BALANCE_OF_REVERTS"));
+        _h.runPreHook(address(hook), PlasmaVault.execute.selector);
+
+        vm.warp(until + 600);
+        _h.runPreHook(address(hook), PlasmaVault.execute.selector);
+        assertEq(_h.pendingUntil(), 0, "record cleared by the hook");
     }
 
     function testTimeoutStillRequiresL1BlockAdvance() public {
