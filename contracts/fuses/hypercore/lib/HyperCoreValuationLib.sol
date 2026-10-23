@@ -17,9 +17,16 @@ import {HyperCoreSubstrateLib} from "./HyperCoreSubstrateLib.sol";
 /// @dev Called through a vault delegatecall. Never includes an EVM-side balance. The set of HIP-3
 ///      (builder-deployed) perp dexes valued here is whatever the vault's `PerpDexIds` config
 ///      substrate enables; each enabled dex contributes its full `accountMarginSummary` equity.
+///      Perp equity (`accountValue`) is an amount of the dex collateral token (USDC for every dex in
+///      `HyperCoreSupportedDexLib`), not a USD value, so the summed equity is priced with the vault oracle price
+///      of the `SpotToken(0)` grant's `evmAsset`, the same key as the spot USDC leg (IL-8923). Without that grant
+///      perp equity is not counted in NAV.
 library HyperCoreValuationLib {
     error HyperCoreNegativeBalance(int256 balance);
     error HyperCorePriceOverflow(uint64 tokenIndex);
+
+    /// @dev Decimals of the 0x80F `accountValue` (6-decimal units of the dex collateral token, USDC).
+    uint256 private constant ACCOUNT_VALUE_DECIMALS = 6;
 
     /// @dev Default `MaxNavJumpBps` (50%) when the config substrate is not granted.
     uint256 internal constant DEFAULT_MAX_NAV_JUMP_BPS = 5000;
@@ -190,15 +197,9 @@ library HyperCoreValuationLib {
             );
         }
 
-        // Native perp DEX 0 accountValue already contains margin, PnL, funding and fees.
+        // Perp leg (native dex 0 plus every enabled HIP-3 dex): signed USDC equity priced like spot USDC (IL-8923).
         // It is signed; do not cast to uint before adding the spot leg.
-        HyperCoreLib.AccountMarginSummary memory margin = HyperCoreLib.accountMarginSummary(
-            HyperCoreLib.NATIVE_PERP_DEX,
-            address(this)
-        );
-        value += IporMath.convertToWadInt(int256(margin.accountValue), 6);
-
-        value += _hip3ValueWad(perpDexBitmap);
+        value += _perpValueWad(perpDexBitmap, tokenIndexes, evmAssets, oracle);
 
         if (value < 0) {
             revert HyperCoreNegativeBalance(value);
@@ -206,29 +207,75 @@ library HyperCoreValuationLib {
         return uint256(value);
     }
 
+    /// @notice Perp leg of the live Core NAV in signed USD WAD (IL-8923).
+    /// @dev `P` = native dex 0 `accountValue` + the `accountValue` of every HIP-3 dex enabled in `bitmap_`. Each
+    ///      `accountValue` (margin, PnL, funding and fees, signed) is an amount of the dex collateral token with
+    ///      6 decimals; every dex in `HyperCoreSupportedDexLib` uses USDC, so the raw amounts are summed and priced
+    ///      once with the vault oracle price of the `evmAsset` of the first `SpotToken(0)` grant (the spot USDC key):
+    ///      - the 0x80F reads always happen, so a failed read still reverts with `HyperCorePrecompileFailed`;
+    ///      - `P == 0`: returns 0 without an oracle read (a vault with no perp equity needs no USDC price);
+    ///      - no `SpotToken(0)` grant: returns 0, perp equity is not counted (no fuse route funds perp margin
+    ///        without that grant, so this is only a donation or a revoked grant and must not freeze NAV);
+    ///      - USDC price 0: reverts with `Errors.UnsupportedQuoteCurrencyFromOracle`;
+    ///      - `|P| * price` above `type(int256).max`: reverts with `HyperCorePriceOverflow(USDC_TOKEN)`.
+    ///      A negative result is returned as is; the caller rejects a negative total.
+    function _perpValueWad(
+        uint240 bitmap_,
+        uint64[] memory tokenIndexes_,
+        address[] memory evmAssets_,
+        address oracle_
+    ) private view returns (int256) {
+        // Two statements keep the read order fixed: native dex 0 first, then the HIP-3 dexes.
+        int256 equity = _dexAccountValue(HyperCoreLib.NATIVE_PERP_DEX);
+        equity += _hip3AccountValue(bitmap_);
+        if (equity == 0) {
+            return 0;
+        }
+        // First (and, after deduplication, only) SpotToken(0) entry; `k == length` means the grant is missing.
+        uint256 length = tokenIndexes_.length;
+        uint256 k;
+        while (k < length && tokenIndexes_[k] != HyperCoreLib.USDC_TOKEN) {
+            ++k;
+        }
+        if (k == length) {
+            return 0;
+        }
+        (uint256 price, uint256 priceDecimals) = IPriceOracleMiddleware(oracle_).getAssetPrice(evmAssets_[k]);
+        if (price == 0) {
+            revert Errors.UnsupportedQuoteCurrencyFromOracle();
+        }
+        // |equity| stays far below the int256 range: it is a sum of at most six int64 values.
+        uint256 magnitude = equity < 0 ? uint256(-equity) : uint256(equity);
+        if (price > uint256(type(int256).max) / magnitude) {
+            revert HyperCorePriceOverflow(HyperCoreLib.USDC_TOKEN);
+        }
+        return IporMath.convertToWadInt(equity * int256(price), ACCOUNT_VALUE_DECIMALS + priceDecimals);
+    }
+
     /// @notice Sums `accountMarginSummary(dex, vault).accountValue` for every HIP-3 dex enabled in
     ///         `bitmap_`, in the fixed order XYZ, ABCD, PARA, MKTS, IO. A dex whose bit is clear is
     ///         never read, to avoid an extra `0x80F` staticcall.
-    function _hip3ValueWad(uint240 bitmap_) private view returns (int256 value) {
+    /// @dev Returns the raw signed sum in 6-decimal units of the dex collateral token (USDC), unpriced.
+    function _hip3AccountValue(uint240 bitmap_) private view returns (int256 value) {
         if (bitmap_ & (uint240(1) << HyperCoreSupportedDexLib.XYZ_PERP_DEX) != 0) {
-            value += _dexValueWad(HyperCoreSupportedDexLib.XYZ_PERP_DEX);
+            value += _dexAccountValue(HyperCoreSupportedDexLib.XYZ_PERP_DEX);
         }
         if (bitmap_ & (uint240(1) << HyperCoreSupportedDexLib.ABCD_PERP_DEX) != 0) {
-            value += _dexValueWad(HyperCoreSupportedDexLib.ABCD_PERP_DEX);
+            value += _dexAccountValue(HyperCoreSupportedDexLib.ABCD_PERP_DEX);
         }
         if (bitmap_ & (uint240(1) << HyperCoreSupportedDexLib.PARA_PERP_DEX) != 0) {
-            value += _dexValueWad(HyperCoreSupportedDexLib.PARA_PERP_DEX);
+            value += _dexAccountValue(HyperCoreSupportedDexLib.PARA_PERP_DEX);
         }
         if (bitmap_ & (uint240(1) << HyperCoreSupportedDexLib.MKTS_PERP_DEX) != 0) {
-            value += _dexValueWad(HyperCoreSupportedDexLib.MKTS_PERP_DEX);
+            value += _dexAccountValue(HyperCoreSupportedDexLib.MKTS_PERP_DEX);
         }
         if (bitmap_ & (uint240(1) << HyperCoreSupportedDexLib.IO_PERP_DEX) != 0) {
-            value += _dexValueWad(HyperCoreSupportedDexLib.IO_PERP_DEX);
+            value += _dexAccountValue(HyperCoreSupportedDexLib.IO_PERP_DEX);
         }
     }
 
-    function _dexValueWad(uint32 dex_) private view returns (int256) {
-        HyperCoreLib.AccountMarginSummary memory summary = HyperCoreLib.accountMarginSummary(dex_, address(this));
-        return IporMath.convertToWadInt(int256(summary.accountValue), 6);
+    /// @dev Raw signed `accountValue` of the vault on `dex_` (6-decimal units of the dex collateral token).
+    function _dexAccountValue(uint32 dex_) private view returns (int256) {
+        return int256(HyperCoreLib.accountMarginSummary(dex_, address(this)).accountValue);
     }
 }

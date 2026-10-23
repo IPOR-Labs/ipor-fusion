@@ -71,6 +71,10 @@ contract HyperCoreHip3ValuationTest is Test {
         vault = new PlasmaVaultMock(address(pendingSetter), address(balanceFuse));
         vault.setPriceOracleMiddleware(address(oracle));
         spotAsset = makeAddr("spotAsset");
+        // IL-8923: perp equity is counted only with the SpotToken(0) grant and is priced with its oracle price.
+        // Granting it at $1 keeps the USD expectations of the tests below unchanged; `_grantConfig` re-grants it.
+        _grantSpotUsdcOnly();
+        oracle.setAssetPriceWithDecimals(spotAsset, 1e8, 8);
     }
 
     // 1. No config, chain 999: only native value counts; forced HIP-3 failures are irrelevant
@@ -142,6 +146,9 @@ contract HyperCoreHip3ValuationTest is Test {
 
     // 5. Spot + native + xyz: granted USDC spot balance priced by the oracle plus both margin
     //    summaries.
+    //    IL-8923: the expected total changed on purpose from 6e18 to 7.5e18. The perp legs are 3 USDC, now
+    //    priced with the same USDC oracle price as the spot leg ($1.50 here), not as $3; 6e18 pinned the
+    //    par-USDC valuation fixed by IL-8923.
     function testSpotPlusNativePlusXyzSumsExactWadTotal() public {
         vm.chainId(999);
         _activate();
@@ -152,10 +159,10 @@ contract HyperCoreHip3ValuationTest is Test {
 
         _setSpotBalance(2e8, 15e7); // $3.00 total (see HyperCoreBalanceFuseTest for the same numbers)
         oracle.setAssetPriceWithDecimals(spotAsset, 15e7, 8);
-        _setNativeValue(1_000_000); // $1
-        _setDexValue(HyperCoreSupportedDexLib.XYZ_PERP_DEX, 2_000_000); // $2
+        _setNativeValue(1_000_000); // 1 USDC = $1.50
+        _setDexValue(HyperCoreSupportedDexLib.XYZ_PERP_DEX, 2_000_000); // 2 USDC = $3.00
 
-        assertEq(vault.balanceOf(), 6e18);
+        assertEq(vault.balanceOf(), 7.5e18);
     }
 
     // 6. Negative xyz equity offsets the rest, but the total stays positive.
@@ -280,9 +287,11 @@ contract HyperCoreHip3ValuationTest is Test {
                 coin: "xyz:NVDA", marginTableId: 0, szDecimals: 3, maxLeverage: 10, onlyIsolated: false
             })
         );
-        bytes32[] memory withPerpMarket = new bytes32[](2);
+        // IL-8923: the list keeps the SpotToken(0) grant, the pricing key of the perp equity.
+        bytes32[] memory withPerpMarket = new bytes32[](3);
         withPerpMarket[0] = _configSubstrate(CONFIG_XYZ_ONLY);
         withPerpMarket[1] = HyperCoreSubstrateLib.encodePerpMarket(110002, 0, false);
+        withPerpMarket[2] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
         vault.grantMarketSubstrates(MARKET_ID, withPerpMarket);
         assertEq(vault.balanceOf(), 2e18);
 
@@ -399,6 +408,37 @@ contract HyperCoreHip3ValuationTest is Test {
         assertEq(result, 21e18);
     }
 
+    // 17. IL-8923 (C-002): native and every enabled HIP-3 dex equity are USDC amounts, summed and priced once with
+    //     the USDC oracle price.
+    function testEveryDexEquityIsPricedWithUsdcOraclePrice() public {
+        vm.chainId(999);
+        _activate();
+        _grantConfig(CONFIG_XYZ_ONLY);
+        oracle.setAssetPriceWithDecimals(spotAsset, 9e7, 8); // USDC at $0.90
+        _setNativeValue(1_000_000); // 1 USDC
+        _setDexValue(HyperCoreSupportedDexLib.XYZ_PERP_DEX, 2_000_000); // 2 USDC
+
+        assertEq(vault.balanceOf(), 2.7e18, "3 USDC of perp equity at $0.90");
+    }
+
+    // 18. IL-8923 (C-002), Pete D-009: without the SpotToken(0) grant no dex equity is counted and nothing reverts;
+    //     the configured dexes are still read, so a failed read would still revert.
+    function testDexEquityWithoutUsdcGrantIsNotCounted() public {
+        vm.chainId(999);
+        _activate();
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = _configSubstrate(CONFIG_XYZ_ONLY); // replaces the setUp list: no SpotToken(0) grant
+        vault.grantMarketSubstrates(MARKET_ID, substrates);
+        _setNativeValue(1_000_000); // 1 USDC
+        _setDexValue(HyperCoreSupportedDexLib.XYZ_PERP_DEX, 2_000_000); // 2 USDC
+
+        vm.expectCall(
+            ACCOUNT_MARGIN_SUMMARY_PRECOMPILE,
+            abi.encode(HyperCoreSupportedDexLib.XYZ_PERP_DEX, address(vault))
+        );
+        assertEq(vault.balanceOf(), 0, "no grant: dex equity not counted");
+    }
+
     function _activate() private {
         core.setCoreUserExists(address(vault), true);
     }
@@ -407,9 +447,18 @@ contract HyperCoreHip3ValuationTest is Test {
         return HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.PerpDexIds, bitmap);
     }
 
+    /// @dev `grantMarketSubstrates` replaces the whole list, so the config is granted together with the
+    ///      SpotToken(0) grant that prices the perp equity (IL-8923).
     function _grantConfig(uint240 bitmap) private {
-        bytes32[] memory substrates = new bytes32[](1);
+        bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = _configSubstrate(bitmap);
+        substrates[1] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
+        vault.grantMarketSubstrates(MARKET_ID, substrates);
+    }
+
+    function _grantSpotUsdcOnly() private {
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
         vault.grantMarketSubstrates(MARKET_ID, substrates);
     }
 

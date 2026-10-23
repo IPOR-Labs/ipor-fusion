@@ -7,6 +7,8 @@ import {HyperCoreLib} from "./HyperCoreLib.sol";
 /// @notice IPOR product and risk policy: which HIP-3 perp dexes the HyperCore fuses allow.
 /// @dev This is not a HyperCore protocol fact. Enabling a dex is a deliberate decision of ours (USDC collateral only,
 ///      HyperEVM mainnet only); changing the set is a policy change, not a protocol update.
+///      `HyperCoreValuationLib` prices every listed dex's `accountValue` with the USDC oracle price (IL-8923); a dex
+///      with another collateral token must get its own pricing before it is added.
 library HyperCoreSupportedDexLib {
     /// @dev HyperEVM mainnet chain id; HIP-3 dexes are supported only on this chain
     uint256 internal constant HYPEREVM_MAINNET_CHAIN_ID = 999;
