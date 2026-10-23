@@ -35,22 +35,41 @@ ffi = true
 [profile.crosschain_deploy]
 # Fixed library addresses are isolated from the default test profile. Deployment
 # scripts must use FOUNDRY_PROFILE=crosschain_deploy so that creation-code hashes
-# and CREATE3 outputs are identical on all three mainnets.
+# and CREATE3 outputs are identical on every chain. The addresses are the libraries
+# deployed from release 2026-10-21 (10f0f8e4), at the same address on Arbitrum and
+# HyperEVM (ipor-abi mainnet-arbitrum-fusion / mainnet-hyperevm-fusion addresses.json).
 libraries = [
-    "contracts/crosschain/stargate/lib/StargateExecutorAccountingLib.sol:StargateExecutorAccountingLib:0x1bEa14792F3ebA23fa63b84E954c93d6eF901b04",
-    "contracts/crosschain/stargate/lib/StargateExecutorAttestationLib.sol:StargateExecutorAttestationLib:0xd3b89E73A9e75b68b6FAdb7Bc1150A2660DC690d",
-    "contracts/crosschain/stargate/lib/StargateExecutorDeploymentLib.sol:StargateExecutorDeploymentLib:0x11b710DEB2A6a1d702789ffdfe968193F48559EF",
-    "contracts/crosschain/stargate/lib/StargateLzSendLib.sol:StargateLzSendLib:0x47f52bbcf20AbC6FC6D4AaCc7C59Bd310c63652D",
-    "contracts/crosschain/lib/RescueLogicLib.sol:RescueLogicLib:0xC6F2F07bB9961bdFA11fe3C618F257bDF29EC22b",
-    "contracts/crosschain/stargate/lib/StargateAssetSendLib.sol:StargateAssetSendLib:0x5C746de4cE706F31533C3E18D22c6c5e28435125",
-    "contracts/crosschain/ccip/lib/CcipDecimalsLib.sol:CcipDecimalsLib:0xeffC518316b1dCdbA8501EdB6A13ac04BF06B11a",
-    "contracts/crosschain/ccip/lib/CcipExecutorAttestationLib.sol:CcipExecutorAttestationLib:0xA59998Bff1eCddD9d715A9A1Da6753FB5ab11605",
-    "contracts/crosschain/ccip/lib/CcipExecutorCommandLib.sol:CcipExecutorCommandLib:0x9e3dA1D08aDBe5474D8DeAa6b20165632Bd9b349",
-    "contracts/crosschain/ccip/lib/CcipExecutorTransferLib.sol:CcipExecutorTransferLib:0xC55c215e9a83c934658feA8eAC915f70606faCf9",
-    "contracts/crosschain/ccip/lib/CcipRouteLib.sol:CcipRouteLib:0x77f9C82967621e8dDc0D7E55806A75D59c12D528",
-    "contracts/crosschain/ccip/lib/CcipSendLib.sol:CcipSendLib:0x61fbe9Cc575f44A75fbFf5eBcC4597D229D1eF9b",
-    "contracts/crosschain/lib/CrosschainVaultActionLib.sol:CrosschainVaultActionLib:0x40374659dC3312e0D6e49eDAbCb02f7c48F1c125",
+    "contracts/crosschain/ccip/lib/CcipDecimalsLib.sol:CcipDecimalsLib:0x43bb2B17a1980c06d6039F08640Cac8FcA37F766",
+    "contracts/crosschain/ccip/lib/CcipDispatcherLib.sol:CcipDispatcherLib:0x75E4311Bf1fe29673F690df34Db0e5f29FDf2566",
+    "contracts/crosschain/ccip/lib/CcipExecutorAttestationLib.sol:CcipExecutorAttestationLib:0x0921B83330A54212094b9822a6D5697519B0DA9f",
+    "contracts/crosschain/ccip/lib/CcipExecutorCommandLib.sol:CcipExecutorCommandLib:0xFF29Cf09B706fD333A43A0EF3c8962f097a218Ff",
+    "contracts/crosschain/ccip/lib/CcipExecutorTransferLib.sol:CcipExecutorTransferLib:0x9AD0ED30fdd23c5e46F9043F13C7733eF932Ef2c",
+    "contracts/crosschain/ccip/lib/CcipRouteLib.sol:CcipRouteLib:0x2045A36f6f884A7e80B8f27BD9673066C5c34d9A",
+    "contracts/crosschain/ccip/lib/CcipSendLib.sol:CcipSendLib:0xf4CD217F464821822e069c8984168B723439B6Fb",
+    "contracts/crosschain/lib/CrosschainVaultActionLib.sol:CrosschainVaultActionLib:0x385Aa46Dd127b6976B5803CFB448662647E3B6fC",
+    "contracts/crosschain/lib/RescueLogicLib.sol:RescueLogicLib:0x38bbaab37b55d200e87d1a9B1524ADD1d4235E62",
+    "contracts/crosschain/stargate/lib/StargateAssetSendLib.sol:StargateAssetSendLib:0xEE0c14275281fC270094A768031191a09813aD1B",
+    "contracts/crosschain/stargate/lib/StargateDispatcherLib.sol:StargateDispatcherLib:0x9B20E3228Bf6DCf5c2df074486736615682F96aA",
+    "contracts/crosschain/stargate/lib/StargateExecutorAccountingLib.sol:StargateExecutorAccountingLib:0xf05e3DF11d3f0Ada5942C70F0c6Da5b0C55433D4",
+    "contracts/crosschain/stargate/lib/StargateExecutorAttestationLib.sol:StargateExecutorAttestationLib:0xf2ceaC4486084B7a495c75CA452b9FF06E5b9670",
+    "contracts/crosschain/stargate/lib/StargateExecutorCommandLib.sol:StargateExecutorCommandLib:0x9173507f0BF4E48B0f971bd026b67813E23cC22D",
+    "contracts/crosschain/stargate/lib/StargateExecutorDeploymentLib.sol:StargateExecutorDeploymentLib:0xD962Bf88631D48AA95B568bE85F665CaD884fd5A",
+    "contracts/crosschain/stargate/lib/StargateFactoryLib.sol:StargateFactoryLib:0xd53901d236424AC231AD7D7F011D42c01C949dfD",
+    "contracts/crosschain/stargate/lib/StargateLzSendLib.sol:StargateLzSendLib:0xE74551e430378F2A8E9171fDed4C09FdD5B0Df1E",
 ]
+
+[profile.hypercore_deploy]
+# Reproduces the executable bytecode of the HyperCore contracts deployed on HyperEVM
+# from release 2026-10-21 (10f0f8e4): the HyperCore fuses, HyperCoreCapitalFlowPreHook,
+# HyperCorePendingActionPreHook and HyperCorePendingReader (ipor-abi
+# mainnet-hyperevm-fusion addresses.json). Any optimizer_runs value from 100,000 up
+# yields the same executable code; 10,000 and the default profile's 2 do not. The
+# deployed runtimes carry an IPFS metadata hash (solc 0.8.30), so bytecode_hash is
+# ipfs here, but the exact runs value and the build environment of that deployment
+# are not recorded: the metadata hash, and so the full runtime and codehash, do not
+# reproduce from this checkout.
+optimizer_runs = 1_000_000
+bytecode_hash = "ipfs"
 
 [profile.arbitrum]
 # Arbitrum One supports Cancun opcodes (including PUSH0/EIP-1153). Keeping the
