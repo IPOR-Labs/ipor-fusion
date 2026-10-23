@@ -300,9 +300,20 @@ contract HyperCoreOrderFuseTest is Test {
     function testSellRevertDoesNotCallCoreWriter() public {
         _grantMarket(1_000e6, false);
         core.setMarkPx(ASSET, 400);
-        vm.expectRevert();
+        // Any CoreWriter call before the cap check would surface as CORE_WRITER_CALLED instead of the cap error.
+        vm.mockCallRevert(
+            address(coreWriter),
+            abi.encodeWithSelector(MockCoreWriter.sendRawAction.selector),
+            bytes("CORE_WRITER_CALLED")
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                HyperCoreOrderFuse.HyperCoreOrderFuseExceedsMaxNotional.selector,
+                uint256(40_000e6),
+                uint88(1_000e6)
+            )
+        );
         _execute(false, 1e8, 1_000e8, false, 3, 1);
-        assertEq(coreWriter.callCount(), 0);
     }
 
     function testSellWithinCapAtMarkSendsUnchangedLimitPayload() public {

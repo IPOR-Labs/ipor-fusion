@@ -509,7 +509,9 @@ contract HyperCoreSendFuseTest is Test {
             )
         });
 
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCorePendingLib.HyperCoreActionPending.selector, uint64(block.timestamp + 2))
+        );
         vm.prank(TestAddresses.ALPHA);
         vault.execute(actions);
     }
@@ -620,8 +622,13 @@ contract HyperCoreSendFuseTest is Test {
         try vault.execute(actions) {
             vm.revertToState(snapshot);
             return false;
-        } catch {
+        } catch (bytes memory reason) {
             vm.revertToState(snapshot);
+            assertEq(
+                bytes4(reason),
+                HyperCorePendingLib.HyperCoreActionPending.selector,
+                "send must be blocked only by the pending-action gate"
+            );
             return true;
         }
     }

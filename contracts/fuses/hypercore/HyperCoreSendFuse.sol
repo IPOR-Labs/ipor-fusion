@@ -137,7 +137,9 @@ contract HyperCoreSendFuse is IFuseCommon {
     /// @dev @custom:revert HyperCoreSendFuseSpotSendBridgeDisabled When targeting a token system address
     ///      (Core -> EVM) while `Config{SpotSendBridgeEnabled}` is unset or not exactly 1. Fails closed:
     ///      the Atomist must explicitly opt the vault into the spot-send bridge route. `enterSendAsset`
-    ///      (action 13) is unaffected by this gate.
+    ///      (action 13) is unaffected by this gate: it is the designed Core -> EVM route (and cheaper on
+    ///      mainnet), while the flag only admits a second encoding (action 6) of the same withdrawal once it
+    ///      has been proven on a given chain. Both routes share the same destination, cap and balance checks.
     function enterSpotSend(HyperCoreSendFuseSpotSendData memory data_) public {
         if (data_.destination != address(this)) {
             (bool bridgeEnabledSet, uint240 bridgeEnabled) = HyperCoreSubstrateLib.getConfig(
@@ -330,7 +332,8 @@ contract HyperCoreSendFuse is IFuseCommon {
             if (tokenIndex_ != HyperCoreLib.USDC_TOKEN) {
                 revert HyperCoreSendFuseUnsupportedToken(tokenIndex_);
             }
-            // M0-GATE: withdrawable() is assumed to be USD with 6 decimals; scale verified in M0.
+            // `withdrawable()` (0x803) returns the native perp account's withdrawable USD with 6 decimals
+            // (checked on HyperEVM mainnet: 22.0 USDC withdrawable reads 22000000, IL-8902).
             // amountWei_ is Core wei in USDC's own `weiDecimals`: fail closed on any scale this fuse
             // cannot safely reason about, rather than hardcoding a network-specific factor. Ceiling-divide
             // so a fractional-cent request never passes with an under-counted USD6 requirement.

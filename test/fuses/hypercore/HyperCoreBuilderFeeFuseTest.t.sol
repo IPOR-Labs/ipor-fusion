@@ -203,7 +203,9 @@ contract HyperCoreBuilderFeeFuseTest is Test {
             )
         });
 
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCorePendingLib.HyperCoreActionPending.selector, uint64(block.timestamp + 2))
+        );
         vm.prank(TestAddresses.ALPHA);
         vault.execute(actions);
     }

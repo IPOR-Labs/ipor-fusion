@@ -308,7 +308,9 @@ contract HyperCoreMarginFuseTest is Test {
             )
         });
 
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCorePendingLib.HyperCoreActionPending.selector, uint64(block.timestamp + 2))
+        );
         vm.prank(TestAddresses.ALPHA);
         vault.execute(actions);
     }
@@ -325,6 +327,110 @@ contract HyperCoreMarginFuseTest is Test {
 
         assertApproxEqAbs(vault.totalAssets(), totalAssetsBefore, 1, "margin transfer must be NAV-neutral (C = S)");
         assertEq(vault.totalSupply(), totalSupplyBefore, "no shares minted by execute()");
+    }
+
+    /// @dev Regression (IL-8915): a USDC `weiDecimals` outside [6, 18] must fail closed instead of mis-scaling.
+    function testEnterToPerpRevertsOnUnexpectedUsdcScale() public {
+        core.setSpotBalance(
+            address(vault),
+            HyperCoreLib.USDC_TOKEN,
+            HyperCoreMockState.SpotBalance({total: 1_000e8, hold: 0, entryNtl: 0})
+        );
+        core.setTokenInfo(
+            HyperCoreLib.USDC_TOKEN,
+            HyperCoreMockState.TokenInfo({
+                name: "USDC",
+                spots: new uint64[](0),
+                deployerTradingFeeShare: 0,
+                deployer: address(0),
+                evmContract: address(usdc),
+                szDecimals: 8,
+                weiDecimals: 5,
+                evmExtraWeiDecimals: -2
+            })
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCoreMarginFuse.HyperCoreMarginFuseUnexpectedUsdcScale.selector, uint8(5))
+        );
+        _execute(100e6, true);
+
+        core.setTokenInfo(
+            HyperCoreLib.USDC_TOKEN,
+            HyperCoreMockState.TokenInfo({
+                name: "USDC",
+                spots: new uint64[](0),
+                deployerTradingFeeShare: 0,
+                deployer: address(0),
+                evmContract: address(usdc),
+                szDecimals: 8,
+                weiDecimals: 19,
+                evmExtraWeiDecimals: -2
+            })
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCoreMarginFuse.HyperCoreMarginFuseUnexpectedUsdcScale.selector, uint8(19))
+        );
+        _execute(100e6, true);
+    }
+
+    /// @dev Boundary: `weiDecimals == 6` is accepted (factor 1).
+    function testEnterToPerpAcceptsUsdcScaleSix() public {
+        core.setSpotBalance(
+            address(vault),
+            HyperCoreLib.USDC_TOKEN,
+            HyperCoreMockState.SpotBalance({total: 1e6, hold: 0, entryNtl: 0})
+        );
+        core.setTokenInfo(
+            HyperCoreLib.USDC_TOKEN,
+            HyperCoreMockState.TokenInfo({
+                name: "USDC",
+                spots: new uint64[](0),
+                deployerTradingFeeShare: 0,
+                deployer: address(0),
+                evmContract: address(usdc),
+                szDecimals: 8,
+                weiDecimals: 6,
+                evmExtraWeiDecimals: -2
+            })
+        );
+
+        _execute(1e6, true);
+
+        assertEq(
+            coreWriter.lastAction(),
+            _expectPayload(HyperCoreLib.ACTION_USD_CLASS_TRANSFER, abi.encode(uint64(1e6), true))
+        );
+    }
+
+    /// @dev Boundary: `weiDecimals == 18` is accepted (factor 1e12).
+    function testEnterToPerpAcceptsUsdcScaleEighteen() public {
+        core.setSpotBalance(
+            address(vault),
+            HyperCoreLib.USDC_TOKEN,
+            HyperCoreMockState.SpotBalance({total: 1e18, hold: 0, entryNtl: 0})
+        );
+        core.setTokenInfo(
+            HyperCoreLib.USDC_TOKEN,
+            HyperCoreMockState.TokenInfo({
+                name: "USDC",
+                spots: new uint64[](0),
+                deployerTradingFeeShare: 0,
+                deployer: address(0),
+                evmContract: address(usdc),
+                szDecimals: 8,
+                weiDecimals: 18,
+                evmExtraWeiDecimals: -2
+            })
+        );
+
+        _execute(1e6, true);
+
+        assertEq(
+            coreWriter.lastAction(),
+            _expectPayload(HyperCoreLib.ACTION_USD_CLASS_TRANSFER, abi.encode(uint64(1e6), true))
+        );
     }
 
     /// @dev Regression (IL-8526): margin moves (spot <-> perp) are atomic inside Core, so they carry no

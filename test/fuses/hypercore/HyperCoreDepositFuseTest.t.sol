@@ -200,6 +200,8 @@ contract HyperCoreDepositFuseTest is Test {
             })
         );
         _grantSpotToken(9, address(usdc));
+        // IL-8890: a non-USDC deposit requires an existing Core account.
+        core.setCoreUserExists(address(vault), true);
 
         uint256 vaultBalanceBefore = usdc.balanceOf(address(vault));
         uint256 systemAddressBalanceBefore = usdc.balanceOf(HyperCoreLib.systemAddress(9));
@@ -385,6 +387,8 @@ contract HyperCoreDepositFuseTest is Test {
             })
         );
         _grantSpotToken(9, address(usdc));
+        // IL-8890: a non-USDC deposit requires an existing Core account.
+        core.setCoreUserExists(address(vault), true);
         oracle.setAssetPriceWithDecimals(address(usdc), 1e8, 8);
 
         uint256 vaultBalanceBefore = usdc.balanceOf(address(vault));
@@ -578,7 +582,31 @@ contract HyperCoreDepositFuseTest is Test {
         _execute(1e6);
     }
 
-    function testGenericTokenFirstDepositHasNoActivationAllowance() public {
+    /// @dev IL-8890: a non-USDC token into a missing Core account reverts before any transfer.
+    function testNonUsdcDepositRevertsWhileCoreAccountMissing() public {
+        _setGenericToken9();
+        // Sentinel: any ERC20 transfer of the token-9 asset (the generic system-address path) reverts with
+        // TRANSFER_CALLED, so the expected error below proves the guard fires before `_transferToCore`.
+        vm.mockCallRevert(address(usdc), abi.encodeWithSelector(usdc.transfer.selector), bytes("TRANSFER_CALLED"));
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCoreDepositFuse.HyperCoreDepositFuseCoreAccountNotActivated.selector, uint64(9))
+        );
+        _executeToken9(1_000e6);
+    }
+
+    /// @dev IL-8890: with an existing account a non-USDC deposit expects baseline + full credit (no allowance).
+    function testNonUsdcDepositIntoExistingAccountExpectsBaselinePlusFullCredit() public {
+        _setGenericToken9();
+        core.setCoreUserExists(address(vault), true);
+        core.setSpotBalance(address(vault), 9, _spot(50e6));
+        _executeToken9(1_000e6);
+        (uint8 kind, uint64 tokenIndex, , , uint256 expected) = _readEffect();
+        assertEq(kind, HyperCorePendingLib.EFFECT_CORE_SPOT);
+        assertEq(tokenIndex, 9);
+        assertEq(expected, 1_050e6, "baseline + full credit, no activation allowance");
+    }
+
+    function _setGenericToken9() private {
         core.setTokenInfo(
             9,
             HyperCoreMockState.TokenInfo({
@@ -593,17 +621,19 @@ contract HyperCoreDepositFuseTest is Test {
             })
         );
         _grantSpotToken(9, address(usdc));
+    }
+
+    function _executeToken9(uint256 amount_) private {
         FuseAction[] memory actions = new FuseAction[](1);
         actions[0] = FuseAction({
             fuse: address(depositFuse),
-            data: abi.encodeWithSignature("enter((uint64,uint256))", HyperCoreDepositFuseEnterData({tokenIndex: 9, amount: 1_000e6}))
+            data: abi.encodeWithSignature(
+                "enter((uint64,uint256))",
+                HyperCoreDepositFuseEnterData({tokenIndex: 9, amount: amount_})
+            )
         });
         vm.prank(TestAddresses.ALPHA);
         vault.execute(actions);
-        (uint8 kind, uint64 tokenIndex, , , uint256 expected) = _readEffect();
-        assertEq(kind, HyperCorePendingLib.EFFECT_CORE_SPOT);
-        assertEq(tokenIndex, 9);
-        assertEq(expected, 1_000e6, "only USDC gets the activation allowance");
     }
 
     function _spot(uint64 total_) private pure returns (HyperCoreMockState.SpotBalance memory) {

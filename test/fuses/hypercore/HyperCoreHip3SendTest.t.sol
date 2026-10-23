@@ -305,6 +305,33 @@ contract HyperCoreHip3SendTest is Test {
         _executeSendAsset(address(vault), 1, HyperCoreLib.SPOT_DEX, HyperCoreLib.USDC_TOKEN, 1);
     }
 
+    function testNativeSourceRejectsInvalidUsdcDecimals() public {
+        core.setWithdrawable(address(vault), 1e6);
+        _setUsdcWeiDecimals(5);
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCoreSendFuse.HyperCoreSendFuseUnexpectedUsdcScale.selector, uint8(5))
+        );
+        _executeSendAsset(
+            address(vault),
+            HyperCoreLib.NATIVE_PERP_DEX,
+            HyperCoreLib.SPOT_DEX,
+            HyperCoreLib.USDC_TOKEN,
+            1
+        );
+
+        _setUsdcWeiDecimals(19);
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCoreSendFuse.HyperCoreSendFuseUnexpectedUsdcScale.selector, uint8(19))
+        );
+        _executeSendAsset(
+            address(vault),
+            HyperCoreLib.NATIVE_PERP_DEX,
+            HyperCoreLib.SPOT_DEX,
+            HyperCoreLib.USDC_TOKEN,
+            1
+        );
+    }
+
     function testHip3SourceRejectsNegativeEquity() public {
         _grantDexes(2);
         _setEquity(1, -1);

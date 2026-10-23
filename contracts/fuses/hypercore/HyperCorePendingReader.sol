@@ -24,7 +24,9 @@ contract HyperCorePendingReader {
     /// @dev Mirrors `HyperCoreLib.L1_BLOCK_NUMBER_PRECOMPILE`, which is private to that library.
     ///      Queried here via a low-level `staticcall` (rather than `HyperCoreLib.l1BlockNumber()`)
     ///      so a revert (e.g. on a fork where the precompile is unavailable) can be caught and
-    ///      surfaced as `l1BlockAvailable == false` instead of reverting the whole read.
+    ///      surfaced as `l1BlockAvailable == false` instead of reverting the whole read. The fallback covers
+    ///      only this 0x809 read and the predicates evaluated after it: when a pending record exists and the
+    ///      probe failed, `pendingState()` does not evaluate the library predicates and reports the action as pending.
     address internal constant L1_BLOCK_NUMBER_PRECOMPILE = 0x0000000000000000000000000000000000000809;
 
     /// @notice Bundled return payload of `pendingState()`.
@@ -51,17 +53,33 @@ contract HyperCorePendingReader {
     ///      - `currentL1Block`: the current HyperCore L1 block number, or 0 if unavailable.
     ///      - `currentTimestamp`: the current EVM block timestamp (`block.timestamp`).
     ///      - `l1BlockAvailable`: whether the L1-block-number precompile call succeeded.
+    ///
+    ///      When `l1BlockAvailable == false` and a pending record exists (`state.actionClass != None`), the library
+    ///      predicates are not evaluated (they would revert on the unavailable 0x809) and the result fails closed:
+    ///      `actionPending = true`, `actionSettled = false`, matching the chain, where the pre-hooks revert and the
+    ///      vault stays blocked. With no record the predicates are evaluated as usual (`false` / `true`).
+    ///      The fallback covers 0x809 only. The effect read is evaluated only after the time and L1-block gates pass
+    ///      and only before `timeoutAt` (once `timeoutAt` has passed the effect is not read). In that window it can
+    ///      still revert `pendingState()` for both effect kinds: the 0x810/0x801 precompile reads of an
+    ///      `EFFECT_CORE_SPOT` record and the effect token's `balanceOf` of an `EFFECT_EVM_BALANCE` record.
     function pendingState() external view returns (PendingStateResult memory result) {
         result.state = HyperCorePendingLib.get();
-        result.actionPending = HyperCorePendingLib.isActionPending();
-        result.actionSettled = HyperCorePendingLib.isActionSettled();
         result.currentTimestamp = uint64(block.timestamp);
         (result.l1BlockAvailable, result.currentL1Block) = _tryL1BlockNumber();
+        if (result.l1BlockAvailable || result.state.actionClass == uint8(HyperCorePendingLib.ActionClass.None)) {
+            result.actionPending = HyperCorePendingLib.isActionPending();
+            result.actionSettled = HyperCorePendingLib.isActionSettled();
+        } else {
+            result.actionPending = true;
+            result.actionSettled = false;
+        }
     }
 
     /// @notice Whether a HyperCore action currently blocks ordinary vault calls.
     /// @dev Thin wrapper around `HyperCorePendingLib.isActionPending()`; see the contract-level NatSpec
-    ///      for why this predicate (not the raw slot) is authoritative.
+    ///      for why this predicate (not the raw slot) is authoritative. Unlike `pendingState()` it has no 0x809
+    ///      fallback: with a record whose `pendingUntil` has passed and a failing precompile it reverts
+    ///      `HyperCoreLib.HyperCorePrecompileFailed`. Off-chain consumers should use `pendingState()`.
     function isActionPending() external view returns (bool) {
         return HyperCorePendingLib.isActionPending();
     }

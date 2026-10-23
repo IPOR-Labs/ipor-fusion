@@ -130,7 +130,8 @@ contract HyperCoreMarginFuse is IFuseCommon {
                 revert HyperCoreMarginFuseInsufficientSpotBalance(available, required);
             }
         } else {
-            // M0-GATE: withdrawable() is assumed to be USD with 6 decimals (1e6); scale verified in M0.
+            // `withdrawable()` (0x803) returns the native perp account's withdrawable USD with 6 decimals
+            // (checked on HyperEVM mainnet: 22.0 USDC withdrawable reads 22000000, IL-8902).
             uint64 available = HyperCoreLib.withdrawable(address(this));
             if (available < data_.usd6) {
                 revert HyperCoreMarginFuseInsufficientWithdrawable(available, data_.usd6);
