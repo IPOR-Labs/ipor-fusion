@@ -29,6 +29,38 @@ contract ForeignFlowPreHook {
     function run(bytes4) external {}
 }
 
+/// @dev IL-8939: answers the marker call with a well-formed 32-byte reply holding the wrong value.
+contract WrongMarkerFlowPreHook {
+    function HYPERCORE_CAPITAL_FLOW_PRE_HOOK_ID() external pure returns (bytes32) {
+        return bytes32(uint256(1));
+    }
+
+    function run(bytes4) external {}
+}
+
+/// @dev IL-8939: answers with the correct marker value, but only 31 bytes.
+contract ShortMarkerFlowPreHook {
+    fallback() external {
+        bytes32 id = HyperCoreHookWiringLib.CAPITAL_FLOW_PRE_HOOK_ID;
+        assembly {
+            mstore(0, id)
+            return(0, 31)
+        }
+    }
+}
+
+/// @dev IL-8939: answers with 64 bytes whose first word is the correct marker value.
+contract LongMarkerFlowPreHook {
+    fallback() external {
+        bytes32 id = HyperCoreHookWiringLib.CAPITAL_FLOW_PRE_HOOK_ID;
+        assembly {
+            mstore(0, id)
+            mstore(32, 0)
+            return(0, 64)
+        }
+    }
+}
+
 /// @notice IL-8529: both HyperCore pre-hooks must refuse to run under a selector they are not meant for.
 ///         Mis-wiring is reproduced on the factory-vault fixture by re-pointing single selectors after the
 ///         correct M4 installation done in setUp. The action fuses additionally refuse to create Core exposure
@@ -149,6 +181,48 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
         _depositToCore(100_000e6);
     }
 
+    // iii-b. IL-8938: each of the six share-priced selectors is required on its own. The gate reverts for the
+    //        selector that is unwired (address(0)) and for the one that carries a foreign hook, one at a time.
+    function testEveryShareFlowSelectorIsRequiredByTheWiringGate() public {
+        bytes4[6] memory flows = _flowSelectors();
+        address foreign = address(new ForeignFlowPreHook());
+        for (uint256 i; i < flows.length; ++i) {
+            uint256 snapshot = vm.snapshotState();
+            _wire(flows[i], address(0));
+            vm.expectRevert(_notWired(flows[i], address(0)));
+            _depositToCore(100_000e6);
+            vm.revertToState(snapshot);
+
+            snapshot = vm.snapshotState();
+            _wire(flows[i], foreign);
+            vm.expectRevert(_notWired(flows[i], foreign));
+            _depositToCore(100_000e6);
+            vm.revertToState(snapshot);
+        }
+    }
+
+    // iii-c. IL-8939: a marker reply with the wrong value, too short or too long is not a CapitalFlow marker.
+    function testFlowHookWithWrongMarkerReplyReverts() public {
+        address stub = address(new WrongMarkerFlowPreHook());
+        _wireFlows(stub, stub);
+        vm.expectRevert(_notWired(PlasmaVault.deposit.selector, stub));
+        _depositToCore(100_000e6);
+    }
+
+    function testFlowHookWithShortMarkerReplyReverts() public {
+        address stub = address(new ShortMarkerFlowPreHook());
+        _wireFlows(stub, stub);
+        vm.expectRevert(_notWired(PlasmaVault.deposit.selector, stub));
+        _depositToCore(100_000e6);
+    }
+
+    function testFlowHookWithLongMarkerReplyReverts() public {
+        address stub = address(new LongMarkerFlowPreHook());
+        _wireFlows(stub, stub);
+        vm.expectRevert(_notWired(PlasmaVault.deposit.selector, stub));
+        _depositToCore(100_000e6);
+    }
+
     // iv. correct wiring: deposit to Core, margin and an opening order all go through.
     function testCorrectWiringFullCoreCycleWorks() public {
         assertGt(_openLong(), 0, "deposit, margin and an opening order go through");
@@ -175,6 +249,15 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
             )
         );
         _vault.execute(actions);
+    }
+
+    // v-b. IL-8938: opening orders require the last selector of the gate list (redeemFromRequest) as well.
+    function testOpeningOrderRequiresEveryShareFlowSelectorWired() public {
+        _openLong();
+        _wire(PlasmaVault.redeemFromRequest.selector, address(0));
+
+        vm.expectRevert(_notWired(PlasmaVault.redeemFromRequest.selector, address(0)));
+        _executeOrder(true, 50e8, 10e8, false, HyperCoreLib.TIF_IOC, CLOID_2);
     }
 
     // vi. KNOWN LIMITATION: a re-wiring after exposure exists is not detected by the user flows. Here deposit loses

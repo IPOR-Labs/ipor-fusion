@@ -257,6 +257,20 @@ contract HyperCoreDepositFuseTest is Test {
         _execute(1e6);
     }
 
+    function testEnterRevertsWhenDepositWalletTokenReadReverts() public {
+        vm.mockCallRevert(address(depositWallet), abi.encodeWithSelector(depositWallet.token.selector), "");
+
+        vm.expectRevert(HyperCoreDepositFuse.HyperCoreDepositFuseDepositWalletUnavailable.selector);
+        _execute(1e6);
+    }
+
+    function testEnterRevertsWhenDepositWalletPausedReadReverts() public {
+        vm.mockCallRevert(address(depositWallet), abi.encodeWithSelector(depositWallet.paused.selector), "");
+
+        vm.expectRevert(HyperCoreDepositFuse.HyperCoreDepositFuseDepositWalletUnavailable.selector);
+        _execute(1e6);
+    }
+
     function testEnterRevertsWhenTokenNotGranted() public {
         vm.expectRevert(
             abi.encodeWithSelector(HyperCoreDepositFuse.HyperCoreDepositFuseUnsupportedToken.selector, uint64(7))
@@ -334,7 +348,10 @@ contract HyperCoreDepositFuseTest is Test {
             )
         });
 
-        vm.expectRevert(); // HyperCoreActionPending(pendingUntil) - exact pendingUntil depends on block.timestamp
+        // The first deposit enqueues the window (default 2 seconds), so the second one reverts with that deadline.
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCorePendingLib.HyperCoreActionPending.selector, uint64(block.timestamp + 2))
+        );
         vm.prank(TestAddresses.ALPHA);
         vault.execute(actions);
     }
@@ -342,6 +359,7 @@ contract HyperCoreDepositFuseTest is Test {
     function testEnterIsNoOpWhenAmountBelowCoreRepresentableUnit() public {
         // Grant a token whose Core wei is coarser than the EVM asset: evmExtraWeiDecimals = 2 means
         // dividing by 100 to reach Core precision, so any amount < 100 rounds to zero Core wei.
+        // The mock asset has 6 decimals, so the Hyperliquid relation EVM = wei + extra gives weiDecimals = 4.
         core.setTokenInfo(
             9,
             HyperCoreMockState.TokenInfo({
@@ -351,7 +369,7 @@ contract HyperCoreDepositFuseTest is Test {
                 deployer: address(0),
                 evmContract: address(usdc),
                 szDecimals: 8,
-                weiDecimals: 6,
+                weiDecimals: 4,
                 evmExtraWeiDecimals: 2
             })
         );
@@ -373,6 +391,7 @@ contract HyperCoreDepositFuseTest is Test {
     }
 
     function testEnterRoundsDownNonRepresentableAmountAndKeepsRemainder() public {
+        // The mock asset has 6 decimals, so the Hyperliquid relation EVM = wei + extra gives weiDecimals = 4.
         core.setTokenInfo(
             9,
             HyperCoreMockState.TokenInfo({
@@ -382,7 +401,7 @@ contract HyperCoreDepositFuseTest is Test {
                 deployer: address(0),
                 evmContract: address(usdc),
                 szDecimals: 8,
-                weiDecimals: 6,
+                weiDecimals: 4,
                 evmExtraWeiDecimals: 2
             })
         );
@@ -406,6 +425,30 @@ contract HyperCoreDepositFuseTest is Test {
 
         uint256 transferred = vaultBalanceBefore - usdc.balanceOf(address(vault));
         assertEq(transferred, 12_300, "transferred amount rounded down to the Core-representable unit");
+
+        // The in-transit credit is priced on the rounded amount (12_300 units = 0.0123 USD), not on the requested one.
+        (, , , , , , , uint256 cachedValueWad) = _readPending();
+        assertEq(cachedValueWad, 1.23e16, "cached value is S + the rounded credit with S = 0");
+        // Existing account without a balance: expected balance is baseline 0 + 123 Core wei, no activation allowance.
+        (, uint64 tokenIndex, , , uint256 expectedBalance) = _readEffect();
+        assertEq(tokenIndex, 9);
+        assertEq(expectedBalance, 123, "expected Core balance is the rounded amount in Core wei");
+
+        // Once the 123 Core wei land, the live value equals the cached credit: no valuation jump at settlement.
+        core.setSpotBalance(address(vault), 9, _spot(123));
+        _openTimeAndL1Gates();
+        // `_isBlocked` probes a USDC deposit, and the grants replace the substrate list: keep token 9 for the valuation.
+        vm.prank(TestAddresses.FUSE_MANAGER);
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(HyperCoreLib.USDC_TOKEN, address(usdc));
+        substrates[1] = HyperCoreSubstrateLib.encodeSpotToken(9, address(usdc));
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        assertFalse(_isBlocked(), "credit landed and the pending window is over");
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = MARKET_ID;
+        vm.prank(TestAddresses.ATOMIST);
+        vault.updateMarketsBalances(marketIds);
+        assertEq(vault.totalAssetsInMarket(MARKET_ID), 12_300, "stored market value equals the cached credit");
     }
 
     function testEnterRevertsOnZeroWindowConfig() public {
@@ -661,8 +704,13 @@ contract HyperCoreDepositFuseTest is Test {
         try vault.execute(actions) {
             vm.revertToState(snapshot);
             return false;
-        } catch {
+        } catch (bytes memory reason) {
             vm.revertToState(snapshot);
+            assertEq(
+                bytes4(reason),
+                HyperCorePendingLib.HyperCoreActionPending.selector,
+                "deposit must be blocked only by the pending-action gate"
+            );
             return true;
         }
     }

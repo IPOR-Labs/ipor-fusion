@@ -247,9 +247,10 @@ contract HyperCoreNavJumpBreakerTest is HyperCoreEffectSettlementBase {
 
     function testMissingOraclePriceRevertsReferenceUnavailable() public {
         _activateWithSpot(100_000e6);
-        // Value the account through the perp leg only so the spot-token oracle read is skipped
+        // IL-8923: perp equity is priced with the USDC oracle, so the perp leg must stay empty here. With an empty
+        // Core account valuation returns 0 without reading the oracle; the stored value is still ~99_999 USDC, so the
+        // breaker reads the underlying price, gets 0 from the mock and reverts before the deposit fuse's own read.
         CoreSimulatorLib.forceSpotBalance(address(_vault), USDC_TOKEN, 0);
-        CoreSimulatorLib.forcePerpBalance(address(_vault), 50_000e6);
         vm.mockCall(
             address(_priceManager),
             abi.encodeWithSignature("getAssetPrice(address)", address(_usdc)),

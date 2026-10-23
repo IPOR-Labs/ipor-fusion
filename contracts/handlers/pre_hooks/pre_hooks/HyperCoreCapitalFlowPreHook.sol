@@ -13,9 +13,16 @@ import {HyperCoreHookWiringLib} from "../../../fuses/hypercore/lib/HyperCoreHook
 ///         while a TIMING order sent in the current block is unprocessed), then refreshes
 ///         the HyperCore market so current positions, funding and fills are used for pricing.
 /// @dev Register one instance for deposit, depositWithPermit, mint, withdraw, redeem and
-///      redeemFromRequest. The vault must grant itself UPDATE_MARKETS_BALANCES_ROLE. Do not
-///      route these selectors through ContextManager: its sender substitution breaks the nested
-///      updateMarketsBalances call (IL-8310). Wiring it on execute or updateMarketsBalances is a
+///      redeemFromRequest. The vault must grant itself UPDATE_MARKETS_BALANCES_ROLE.
+///      ContextManager: the hook calls PlasmaVault(address(this)).updateMarketsBalances, and PlasmaVault authorizes
+///      its own self-calls against the vault, so relayed calls (runWithContext / runWithContextAndSignature) on
+///      these selectors work like direct calls (IL-8310). Vaults created from a PlasmaVault implementation that
+///      predates IL-8310 authorize this self-call against the context sender instead: there a relayed call reverts
+///      with AccessManagedUnauthorized unless the context sender itself holds UPDATE_MARKETS_BALANCES_ROLE (direct
+///      calls are not affected), so such vaults must treat relayed user operations on these selectors as
+///      unsupported. Do not remove the vault from ContextManager's approved targets and do not make
+///      updateMarketsBalances public as a workaround (IL-8948).
+///      Wiring it on execute or updateMarketsBalances is a
 ///      misconfiguration (recursion / settlement deadlock), so the hook reverts with
 ///      HyperCorePreHookWrongSelector under those selectors (IL-8529). HyperCorePendingActionPreHook
 ///      is the hook for execute and updateMarketsBalances.

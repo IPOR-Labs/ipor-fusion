@@ -100,24 +100,27 @@ library HyperCoreLib {
     }
 
     /// @notice Margin summary of one Core account on one perp dex (account margin summary precompile 0x80F).
-    /// @dev All amounts are USD with 6 decimals. The summary is per dex: native dex 0 or one HIP-3 dex, selected
-    ///      by the `perpDex_` argument of `accountMarginSummary`. NAV relies only on `accountValue`; the other
+    /// @dev All amounts are in units of the dex collateral token (USDC for every dex the fuses support), with
+    ///      6 decimals, not USD: Core applies no USDC/USD rate in perp accounting (IL-8923). The summary is per dex:
+    ///      native dex 0 or one HIP-3 dex, selected by the `perpDex_` argument of `accountMarginSummary`. NAV relies
+    ///      only on `accountValue` (priced with the vault's USDC oracle price in `HyperCoreValuationLib`); the other
     ///      fields are raw precompile values that the code does not interpret further.
     struct AccountMarginSummary {
-        /// @dev Signed total equity of the account on this dex, in USD with 6 decimals: collateral (USD balance)
-        ///      plus unrealized PnL of cross and isolated positions at the Core mark price, plus accrued funding,
-        ///      minus fees. For a HIP-3 dex it is that dex's full equity. Positions must never be added on top of
-        ///      it again. May be negative.
+        /// @dev Signed total equity of the account on this dex, in units of the dex collateral token (USDC for
+        ///      every dex the fuses support), 6 decimals: collateral balance plus unrealized PnL of cross and
+        ///      isolated positions at the Core mark price, plus accrued funding, minus fees. For a HIP-3 dex it is
+        ///      that dex's full equity. Positions must never be added on top of it again. May be negative.
         int64 accountValue;
-        /// @dev Margin currently locked by open positions and orders on this dex (USD, 6 decimals), as reported
-        ///      by Core. Not used for NAV.
+        /// @dev Margin currently locked by open positions and orders on this dex, in units of the dex collateral
+        ///      token (USDC for every dex the fuses support), 6 decimals, as reported by Core. Not used for NAV.
         uint64 marginUsed;
-        /// @dev Total absolute notional of the open positions on this dex (USD, 6 decimals), as reported by
-        ///      Core. Not used for NAV.
+        /// @dev Total absolute notional of the open positions on this dex, in units of the dex collateral token
+        ///      (USDC for every dex the fuses support), 6 decimals, as reported by Core. Not used for NAV.
         uint64 ntlPos;
-        /// @dev Signed raw USD balance of the account on this dex (USD, 6 decimals) before the mark-to-market
-        ///      value of positions is added, i.e. `accountValue` is expected to equal `rawUsd` plus the signed
-        ///      position values at mark price (see README, equity identity check). Not used for NAV.
+        /// @dev Signed raw balance of the account on this dex, in units of the dex collateral token (USDC for every
+        ///      dex the fuses support), 6 decimals, before the mark-to-market value of positions is added, i.e.
+        ///      `accountValue` is expected to equal `rawUsd` plus the signed position values at mark price (see
+        ///      README, equity identity check). Not used for NAV.
         int64 rawUsd;
     }
 

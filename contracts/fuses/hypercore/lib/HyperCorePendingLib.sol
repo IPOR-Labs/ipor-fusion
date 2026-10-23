@@ -154,6 +154,13 @@ library HyperCorePendingLib {
     ///      hold) the gate opens without reading the effect, so neither a rejected transfer nor a reverting effect
     ///      token can hold it shut beyond the timeout (it cannot freeze the vault); if Core merely lags beyond
     ///      the timeout, NAV is read live without the in-transit amount and the GUARDIAN must pause the vault.
+    ///      The `EFFECT_EVM_BALANCE` effect is only a balance threshold (`balanceOf(vault) >= expectedBalance`); it is
+    ///      not bound to the credit of the bridged amount. Before `timeoutAt`, any inflow of that token satisfies it,
+    ///      including one that is free and already counted in NAV, for example the PUBLIC_ROLE
+    ///      `RewardsClaimManager.transferVestedTokensToVault` or the keeper's `RewardsClaimManager.updateBalance`
+    ///      releasing vested underlying. Pricing safety while Core lags therefore also rests on Hyperliquid crediting
+    ///      the EVM side in the block in which the Core debit becomes visible, and on a `WindowTransferSeconds` of at
+    ///      least 2 (the default; the fuses accept 1, only 0 reverts) (IL-8927).
     function isEffectObserved() internal view returns (bool) {
         PendingAction storage pending = get();
         if (pending.effectKind == EFFECT_CORE_SPOT) {

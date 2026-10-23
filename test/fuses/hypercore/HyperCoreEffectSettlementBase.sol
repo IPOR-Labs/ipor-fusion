@@ -11,6 +11,7 @@ import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.
 import {Roles} from "../../../contracts/libraries/Roles.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {PriceOracleMiddlewareManager} from "../../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
+import {ContextManager} from "../../../contracts/managers/context/ContextManager.sol";
 
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryLogicLib} from "../../../contracts/factory/lib/FusionFactoryLogicLib.sol";
@@ -91,6 +92,7 @@ contract HyperCoreEffectSettlementBase is Test {
     PlasmaVault internal _vault;
     IporFusionAccessManager internal _accessManager;
     PriceOracleMiddlewareManager internal _priceManager;
+    ContextManager internal _contextManager;
     HyperCoreMockUsdc internal _usdc;
     HyperCore internal _hyperCore;
     SimCoreDepositWallet internal _depositWallet;
@@ -125,6 +127,7 @@ contract HyperCoreEffectSettlementBase is Test {
         _vault = PlasmaVault(instance.plasmaVault);
         _accessManager = IporFusionAccessManager(instance.accessManager);
         _priceManager = PriceOracleMiddlewareManager(instance.priceManager);
+        _contextManager = ContextManager(instance.contextManager);
 
         _wireRoles();
         _configurePriceOracle();

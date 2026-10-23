@@ -136,6 +136,37 @@ contract HyperCoreBuilderFeeFuseTest is Test {
         assertEq(cachedValueWad, 0, "builder fee approval is NAV-neutral: C = S = 0 here");
     }
 
+    /// @dev IL-8958 (C-037): with non-zero Core equity the enqueued snapshot is the live value `S`, so the stored
+    ///      market value is kept while the approval is pending and after the window.
+    function testEnterCachesNonZeroLiveValueAndKeepsStoredValue() public {
+        bytes32[] memory substrates = new bytes32[](2);
+        substrates[0] = HyperCoreSubstrateLib.encodeBuilder(builder, 100);
+        substrates[1] = HyperCoreSubstrateLib.encodeSpotToken(0, address(usdc));
+        vm.prank(TestAddresses.FUSE_MANAGER);
+        PlasmaVaultGovernance(address(vault)).grantMarketSubstrates(MARKET_ID, substrates);
+
+        // 1,000 USDC on Core spot (weiDecimals = 8), priced 1:1 by the oracle.
+        core.setSpotBalance(address(vault), 0, HyperCoreMockState.SpotBalance({total: 1_000e8, hold: 0, entryNtl: 0}));
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = MARKET_ID;
+        vm.prank(TestAddresses.ATOMIST);
+        vault.updateMarketsBalances(marketIds);
+        uint256 storedBefore = vault.totalAssetsInMarket(MARKET_ID);
+        assertEq(storedBefore, 1_000e6, "precondition: stored market value is the live Core equity");
+
+        _execute(builder, 50);
+
+        (, , , , , , , uint256 cachedValueWad) = _readPending();
+        assertEq(cachedValueWad, 1_000e18, "enqueued snapshot equals the live value S");
+        assertEq(vault.totalAssetsInMarket(MARKET_ID), storedBefore, "stored value kept by execute");
+
+        vm.warp(block.timestamp + 3);
+        core.setL1BlockNumber(core.getL1BlockNumber() + 10);
+        vm.prank(TestAddresses.ATOMIST);
+        vault.updateMarketsBalances(marketIds);
+        assertEq(vault.totalAssetsInMarket(MARKET_ID), storedBefore, "refresh after the window yields the same value");
+    }
+
     function testEnterRevertsWhenAccountNotActivated() public {
         core.setCoreUserExists(address(vault), false);
         vm.expectRevert(HyperCoreBuilderFeeFuse.HyperCoreBuilderFeeFuseAccountNotActivated.selector);
