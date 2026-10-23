@@ -104,7 +104,7 @@ Builds without the key revert `HyperCoreInvalidConfigKey` on it (`getConfig` dec
 
 If Hyperliquid changes a precompile layout: (1) pause the vault via GUARDIAN; (2) redeploy every contract importing `HyperCoreLib` / `HyperCoreValuationLib`: the action fuses (deposit, margin, order, cancel, send, builder fee), the balance fuse, both pre-hooks and the pending reader; (3) swap them in through governance; (4) verify the new reads against the Hyperliquid API; (5) unpause.
 
-`HyperCorePendingLib` is compiled into the whole set (the 7 fuses, both pre-hooks and `HyperCorePendingReader`), so a change to it (for example IL-8908) requires redeploying and swapping the whole set the same way.
+`HyperCorePendingLib` is compiled into the whole set (the 7 fuses, both pre-hooks and `HyperCorePendingReader`), so a change to it (for example IL-8908) requires redeploying and swapping the whole set the same way. `HyperCoreLib.PRECOMPILE_GAS` (100,000 gas per read; the most expensive measured read is about 19,000) is compiled into the same contracts; a Hyperliquid gas-schedule change that makes a read exceed it ends in `HyperCorePrecompileFailed` and needs the same procedure.
 
 ### Mark price band and position cap (IL-8534)
 
