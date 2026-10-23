@@ -257,6 +257,20 @@ contract HyperCoreDepositFuseTest is Test {
         _execute(1e6);
     }
 
+    function testEnterRevertsWhenDepositWalletTokenReadReverts() public {
+        vm.mockCallRevert(address(depositWallet), abi.encodeWithSelector(depositWallet.token.selector), "");
+
+        vm.expectRevert(HyperCoreDepositFuse.HyperCoreDepositFuseDepositWalletUnavailable.selector);
+        _execute(1e6);
+    }
+
+    function testEnterRevertsWhenDepositWalletPausedReadReverts() public {
+        vm.mockCallRevert(address(depositWallet), abi.encodeWithSelector(depositWallet.paused.selector), "");
+
+        vm.expectRevert(HyperCoreDepositFuse.HyperCoreDepositFuseDepositWalletUnavailable.selector);
+        _execute(1e6);
+    }
+
     function testEnterRevertsWhenTokenNotGranted() public {
         vm.expectRevert(
             abi.encodeWithSelector(HyperCoreDepositFuse.HyperCoreDepositFuseUnsupportedToken.selector, uint64(7))
