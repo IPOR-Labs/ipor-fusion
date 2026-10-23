@@ -30,8 +30,12 @@ struct HyperCoreDepositFuseEnterData {
 ///         balance by transferring it to the token's Core system address.
 /// @dev Executes in PlasmaVault storage context via delegatecall. MUST NOT contain storage
 ///      variables. This is the account-activation path: unlike every other HyperCore fuse it
-///      does NOT require `coreUserExists()` beforehand, because the first inbound transfer is
-///      what activates the vault's HyperCore account.
+///      does NOT require `coreUserExists()` beforehand for USDC, because the first inbound USDC
+///      transfer is what activates the vault's HyperCore account. Only a USDC deposit activates the
+///      account here: the activation allowance nets only the USDC route, and Core's activation fee
+///      behaviour for other tokens is not uniform (verified on mainnet for USDC, USDT0 and HYPE;
+///      inconsistent for non-quote tokens such as UBTC/UETH). Any other token therefore requires
+///      `coreUserExists()` and reverts with `HyperCoreDepositFuseCoreAccountNotActivated` otherwise (IL-8890).
 contract HyperCoreDepositFuse is IFuseCommon {
     using SafeERC20 for IERC20;
 
@@ -85,6 +89,11 @@ contract HyperCoreDepositFuse is IFuseCommon {
     /// @notice Thrown when the configured activation-fee allowance does not fit `uint64` (Core wei)
     error HyperCoreDepositFuseInvalidActivationFeeAllowance(uint240 value);
 
+    /// @notice Thrown when a non-USDC token is deposited while the vault's HyperCore account does not exist yet
+    /// @dev Activate the account with a USDC deposit first; only that route is netted by the activation allowance.
+    /// @param tokenIndex The HyperCore token index of the rejected deposit
+    error HyperCoreDepositFuseCoreAccountNotActivated(uint64 tokenIndex);
+
     /// @notice Constructor for HyperCoreDepositFuse
     /// @param marketId_ The Market ID associated with the Fuse
     constructor(uint256 marketId_) {
@@ -110,6 +119,8 @@ contract HyperCoreDepositFuse is IFuseCommon {
     ///      `MIN_TRANSFER_TIMEOUT_SECONDS` (60) or exceeds `type(uint64).max`
     /// @dev @custom:revert HyperCoreDepositFuseInvalidActivationFeeAllowance When the configured allowance
     ///      does not fit `uint64`
+    /// @dev @custom:revert HyperCoreDepositFuseCoreAccountNotActivated When the token is not USDC and the vault's
+    ///      HyperCore account does not exist yet (activate it with a USDC deposit first)
     /// @dev The deposit stays pending until the vault's Core spot balance reaches the expected net credit,
     ///      or `pendingUntil + timeout` passes (residual risk: Core lagging beyond the timeout opens the gate
     ///      with NAV missing the in-transit amount; the GUARDIAN must pause the vault in that case).
@@ -151,6 +162,8 @@ contract HyperCoreDepositFuse is IFuseCommon {
         // in-transit USD value of this deposit as the cached value for the pending window.
         uint256 cachedValueWad = HyperCoreValuationLib.liveValueWad(MARKET_ID) + _creditValueWad(evmAsset, rounded);
 
+        // IL-8890: for a non-USDC token this reverts while the Core account is missing; it runs before
+        // `_transferToCore`, so no funds leave the vault in that case.
         uint256 expectedBalance = _expectedCoreBalance(data_.tokenIndex, coreWei);
 
         _transferToCore(viaWallet, info.evmContract, evmAsset, data_.tokenIndex, rounded);
@@ -160,9 +173,14 @@ contract HyperCoreDepositFuse is IFuseCommon {
     /// @dev Core spot balance the vault must reach for the deposit to count as landed:
     ///      `baseline + coreWei - min(coreWei, allowance)`. Must be read BEFORE the transfer. For a first USDC
     ///      deposit into a not-yet-activated account Core charges an activation fee out of the credit, so the
-    ///      configured `ActivationFeeAllowanceUsdcWei` is netted off; any other case expects the full credit.
+    ///      configured `ActivationFeeAllowanceUsdcWei` is netted off; an existing account expects the full credit.
+    ///      A non-USDC token into a missing account reverts (IL-8890): the allowance nets only the USDC route and
+    ///      the fee behaviour for other tokens is not uniform (see the contract NatSpec).
     function _expectedCoreBalance(uint64 tokenIndex_, uint64 coreWei_) internal view returns (uint256) {
         bool existed = HyperCoreLib.coreUserExists(address(this));
+        if (!existed && tokenIndex_ != HyperCoreLib.USDC_TOKEN) {
+            revert HyperCoreDepositFuseCoreAccountNotActivated(tokenIndex_);
+        }
         uint256 baseline = existed ? HyperCoreLib.spotBalance(address(this), tokenIndex_).total : 0;
         uint256 allowance = (!existed && tokenIndex_ == HyperCoreLib.USDC_TOKEN) ? _activationFeeAllowance() : 0;
         return baseline + coreWei_ - IporMath.min(coreWei_, allowance);
