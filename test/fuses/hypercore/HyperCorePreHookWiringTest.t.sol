@@ -29,6 +29,38 @@ contract ForeignFlowPreHook {
     function run(bytes4) external {}
 }
 
+/// @dev IL-8939: answers the marker call with a well-formed 32-byte reply holding the wrong value.
+contract WrongMarkerFlowPreHook {
+    function HYPERCORE_CAPITAL_FLOW_PRE_HOOK_ID() external pure returns (bytes32) {
+        return bytes32(uint256(1));
+    }
+
+    function run(bytes4) external {}
+}
+
+/// @dev IL-8939: answers with the correct marker value, but only 31 bytes.
+contract ShortMarkerFlowPreHook {
+    fallback() external {
+        bytes32 id = HyperCoreHookWiringLib.CAPITAL_FLOW_PRE_HOOK_ID;
+        assembly {
+            mstore(0, id)
+            return(0, 31)
+        }
+    }
+}
+
+/// @dev IL-8939: answers with 64 bytes whose first word is the correct marker value.
+contract LongMarkerFlowPreHook {
+    fallback() external {
+        bytes32 id = HyperCoreHookWiringLib.CAPITAL_FLOW_PRE_HOOK_ID;
+        assembly {
+            mstore(0, id)
+            mstore(32, 0)
+            return(0, 64)
+        }
+    }
+}
+
 /// @notice IL-8529: both HyperCore pre-hooks must refuse to run under a selector they are not meant for.
 ///         Mis-wiring is reproduced on the factory-vault fixture by re-pointing single selectors after the
 ///         correct M4 installation done in setUp. The action fuses additionally refuse to create Core exposure
@@ -167,6 +199,28 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
             _depositToCore(100_000e6);
             vm.revertToState(snapshot);
         }
+    }
+
+    // iii-c. IL-8939: a marker reply with the wrong value, too short or too long is not a CapitalFlow marker.
+    function testFlowHookWithWrongMarkerReplyReverts() public {
+        address stub = address(new WrongMarkerFlowPreHook());
+        _wireFlows(stub, stub);
+        vm.expectRevert(_notWired(PlasmaVault.deposit.selector, stub));
+        _depositToCore(100_000e6);
+    }
+
+    function testFlowHookWithShortMarkerReplyReverts() public {
+        address stub = address(new ShortMarkerFlowPreHook());
+        _wireFlows(stub, stub);
+        vm.expectRevert(_notWired(PlasmaVault.deposit.selector, stub));
+        _depositToCore(100_000e6);
+    }
+
+    function testFlowHookWithLongMarkerReplyReverts() public {
+        address stub = address(new LongMarkerFlowPreHook());
+        _wireFlows(stub, stub);
+        vm.expectRevert(_notWired(PlasmaVault.deposit.selector, stub));
+        _depositToCore(100_000e6);
     }
 
     // iv. correct wiring: deposit to Core, margin and an opening order all go through.
