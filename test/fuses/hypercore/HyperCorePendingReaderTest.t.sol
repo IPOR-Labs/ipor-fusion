@@ -270,6 +270,30 @@ contract HyperCorePendingReaderTest is Test {
         assertEq(result.state.actionNonce, 0);
     }
 
+    function testPendingStateFailsClosedWhenL1BlockProbeFailsWithRecord() public {
+        _executeDeposit(1_000e6);
+        HyperCorePendingReader.PendingStateResult memory beforeProbe = _readPendingState();
+        vm.warp(beforeProbe.state.pendingUntil);
+        vm.etch(L1_BLOCK_NUMBER_PRECOMPILE, "");
+
+        HyperCorePendingReader.PendingStateResult memory result = _readPendingState();
+
+        assertFalse(result.l1BlockAvailable, "probe failed");
+        assertEq(result.currentL1Block, 0);
+        assertTrue(result.actionPending, "record + failed probe fails closed");
+        assertFalse(result.actionSettled);
+        assertEq(result.state.actionNonce, 1);
+        assertEq(result.state.actionClass, uint8(HyperCorePendingLib.ActionClass.Transfer));
+
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.HyperCorePrecompileFailed.selector, address(0x809)));
+        this.readIsPendingExternal();
+    }
+
+    /// @dev External wrapper so `vm.expectRevert` observes the revert at a call boundary.
+    function readIsPendingExternal() external view returns (bool) {
+        return _readIsPending();
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
