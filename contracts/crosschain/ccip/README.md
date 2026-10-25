@@ -1193,6 +1193,10 @@ checklist when the queue is not empty:
      kept clock is later cleared by the cancelled recalls' answers (an expired request comes back `EXPIRED` in the
      same generation) or by `FORCE_SET_SETTLED`, whose guard is then bounded because the blocked chain refuses new
      recalls. Executed after `refusedUntil` the advance resets the clock as before.
+   Before executing a skip, check the token-bearing returns queued behind the dropped response: each carries the
+   `remoteBalance` encoded when it was queued, lower by the dropped amount. If one of them will empty `settled`,
+   or will land while `settled` is already zero (IL-9134 then lowers the anchor to its stale balance), approve the
+   residual before it lands, or plan `FORCE_SET_SETTLED` (or a credit followed by an attestation) (IL-9146).
    Skip-valve exit ORDER: skip -> cancel -> `ADVANCE_FRONTIER` -> approve. The skip drops the answer, so nothing
    resolves the cancelled recall's clock: for the advance to clear it, it must be executed after `refusedUntil`
    (`createdAt + TRANSFER_STALENESS_MAX + 15 minutes` of the newest cancelled recall). With a long
