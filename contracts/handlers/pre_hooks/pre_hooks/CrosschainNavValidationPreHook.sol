@@ -57,13 +57,17 @@ contract CrosschainNavValidationPreHook is IPreHook {
         MARKET_ID = marketId_;
     }
 
-    /// @notice Non-reverting best-effort probe: would `run()` pass for a gated selector on `plasmaVault_` right now?
+    /// @notice Best-effort probe: would `run()` pass for a gated selector on `plasmaVault_` right now?
     /// @dev Mirrors the substrate walk of `run()` but is a plain view: a hook called directly has no vault storage,
     ///      so the substrates are read from `plasmaVault_` through `getMarketSubstrates(MARKET_ID)`. Returns false
     ///      when that read fails, a substrate is malformed or has no code, an executor reports a different
     ///      `MANAGER`, or an executor's `getBalance()` reverts (stale attestation, blocked chain, stale in-flight
     ///      record). Returns true when no EXECUTOR substrate is granted (the hook is then a no-op). It is NOT a
     ///      security control: the answer can change in the same block and the real gate is `run()` (IL-8639).
+    ///      A read that succeeds but returns data shorter than its type (`getMarketSubstrates`, `MANAGER()` or
+    ///      `getBalance()` on a contract that is neither a PlasmaVault nor an executor) makes this view REVERT, because
+    ///      `try ... returns` does not catch a decode failure in the caller (IL-9118). Real PlasmaVaults and executors
+    ///      always return well-formed data; reverting is the safe direction for an integrator signal.
     /// @param plasmaVault_ The PlasmaVault whose CROSSCHAIN executors are probed.
     /// @return True when every granted executor currently passes the fail-closed gate.
     function isNavHealthy(address plasmaVault_) external view returns (bool) {
