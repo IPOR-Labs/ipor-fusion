@@ -329,9 +329,21 @@ contract FactoryTicketTest is FactoryTestBase {
 
     function testShouldRejectTicketWithBadImmutableParamsHash() public requiresFactory {
         DeploymentTicket memory ticket = _makeTicket(1, address(0xC0FFEE), keccak256("d1"), REMOTE_CHAIN);
+        bytes32 expectedHash = ticket.immutableParamsHash; // the commitment the factory recomputes from the ticket fields
         ticket.immutableParamsHash = keccak256("bogus");
-        vm.expectRevert(); // ImmutableParamsHashMismatch
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CrosschainErrors.ImmutableParamsHashMismatch.selector,
+                expectedHash,
+                keccak256("bogus")
+            )
+        );
         _deliverTicket(ticket, REMOTE_EID);
+        assertEq(ticket.executor.code.length, 0, "no dispatcher deployed");
+        // The rejected ticket was not consumed: the same ticket with the correct hash is still accepted.
+        ticket.immutableParamsHash = expectedHash;
+        _deliverTicket(ticket, REMOTE_EID);
+        assertGt(ticket.executor.code.length, 0, "the valid ticket deploys afterwards");
     }
 
     function testShouldRejectTicketForWrongDestinationChain() public requiresFactory {
