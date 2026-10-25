@@ -324,14 +324,35 @@ contract ExecutorNavTest is CrosschainTestBase {
     function testShouldTimelockFrontierRepairAndRequireFreshApprovalToUnblock() public {
         _readyDispatcher(); // frontier = 0
         bytes32 repairId = bytes32((REMOTE_CHAIN << 64) | uint256(uint64(4)));
+        uint256 t0 = block.timestamp;
         vm.prank(admin);
         uint256 rescueId = executor.scheduleForceResolveTransfer(repairId, ResolveOutcome.ADVANCE_STATE_FRONTIER);
 
+        // The frontier repair runs on its own, shorter timelock: FRONTIER_REPAIR_DELAY (6 h), not RESCUE_DELAY.
+        assertLt(CrosschainConstants.FRONTIER_REPAIR_DELAY, RESCUE_DELAY, "repair delay is the shorter one");
+        uint256 executableAt = t0 + CrosschainConstants.FRONTIER_REPAIR_DELAY;
+
         vm.prank(admin);
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(CrosschainErrors.RescueTimelockNotElapsed.selector, rescueId, t0, executableAt)
+        );
         executor.executeForceResolveTransfer(rescueId, repairId, ResolveOutcome.ADVANCE_STATE_FRONTIER);
 
-        vm.warp(block.timestamp + RESCUE_DELAY);
+        // One second early still reverts, and reports the current time.
+        vm.warp(executableAt - 1);
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CrosschainErrors.RescueTimelockNotElapsed.selector,
+                rescueId,
+                executableAt - 1,
+                executableAt
+            )
+        );
+        executor.executeForceResolveTransfer(rescueId, repairId, ResolveOutcome.ADVANCE_STATE_FRONTIER);
+
+        // Exactly at the delay it executes, long before RESCUE_DELAY would allow it.
+        vm.warp(executableAt);
         vm.prank(admin);
         executor.executeForceResolveTransfer(rescueId, repairId, ResolveOutcome.ADVANCE_STATE_FRONTIER);
         assertEq(executor.acknowledgedRemoteStateVersion(REMOTE_CHAIN), 4);
