@@ -1584,12 +1584,20 @@ library StargateExecutorAccountingLib {
     ///      `permissionless_disarm_of_fail_closed_nav_staleness_gate`). That state is deliberately left to
     ///      the timelocked rescue (`applyForceResolve`), which is the only path that also removes the
     ///      value from the NAV buckets.
-    function cancelStaleReturn(StargateExecutorState storage self, uint256 chainId_, uint256 stalenessMax_) public {
+    /// @param self The executor state.
+    /// @param chainId_ The remote chain whose active return request is cancelled.
+    /// @param transferStalenessMax_ The transfer staleness bound `TRANSFER_STALENESS_MAX` (not the attestation
+    ///        bound `STALENESS_MAX`): the request is stale once `createdAt + transferStalenessMax_` has passed.
+    function cancelStaleReturn(
+        StargateExecutorState storage self,
+        uint256 chainId_,
+        uint256 transferStalenessMax_
+    ) public {
         bytes32 requestId = self.activeReturnRequest[chainId_];
         if (requestId == bytes32(0)) revert CrosschainErrors.NoActiveReturnRequest(chainId_);
         ReturnRecord storage rec = self.returnRecords[requestId];
-        uint256 staleAt = uint256(rec.createdAt) + stalenessMax_;
-        if (stalenessMax_ == 0 || block.timestamp <= staleAt) {
+        uint256 staleAt = uint256(rec.createdAt) + transferStalenessMax_;
+        if (transferStalenessMax_ == 0 || block.timestamp <= staleAt) {
             revert CrosschainErrors.ReturnRequestNotStale(chainId_, rec.createdAt, staleAt);
         }
         if (rec.metadataArrived || rec.composeArrived) {
