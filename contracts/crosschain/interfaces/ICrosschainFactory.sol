@@ -92,7 +92,11 @@ interface ICrosschainFactory {
     function computeExecutorAddress(address creator_, bytes32 userSalt_) external view returns (address);
 
     /// @notice Return every executor created with `manager_` as its immutable manager.
-    /// @dev For PlasmaVault integrations, `manager_` is the vault address.
+    /// @dev For PlasmaVault integrations, `manager_` is the vault address. The list is an append-only, uncapped
+    ///      registry meant for off-chain reads: the array is copied whole, so a manager with very many executors
+    ///      can make this call too large for another contract to consume. Any allowed creator can list an executor
+    ///      under any `manager_`, so an entry does not prove that the manager uses it: integrations must check the
+    ///      vault's EXECUTOR substrates instead.
     function executorsOf(address manager_) external view returns (address[] memory);
 
     /// @notice Begin a dispatcher deployment for a locally registered executor.

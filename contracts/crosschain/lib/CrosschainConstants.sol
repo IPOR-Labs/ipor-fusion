@@ -194,8 +194,10 @@ enum ReturnRejectReason {
 /// @title CrosschainConstants
 /// @notice Codec version, hard caps, timelocks / windows and command gas budgets shared across the crosschain
 ///         contracts.
-/// @dev Caps bound every unbounded collection. Exceeding a cap reverts BEFORE any
-///      iteration or storage growth. All numeric limits are POC-tuned and intentionally small.
+/// @dev Caps bound every collection an on-chain path iterates or a remote party can grow. Exceeding a cap reverts
+///      BEFORE any iteration or storage growth. The factories' `executorsOf` registry is not capped: it is an
+///      append-only list meant for off-chain reads that no on-chain path iterates. All numeric limits are
+///      POC-tuned and intentionally small.
 library CrosschainConstants {
     /// @notice Current envelope codec version. `decodeEnvelope` rejects any other value.
     uint8 internal constant CODEC_VERSION = 4;
