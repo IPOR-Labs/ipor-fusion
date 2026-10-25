@@ -669,6 +669,12 @@ Out-of-gas, `Panic`, `Error(string)` and any other revert are rethrown with thei
 reaches the vault as `FailedInnerCall`). A future fail-closed error that is not in this list blocks recovery
 batches until the fuse is updated, which is the fail-safe direction.
 
+The executor `ASSET` must be an exact-transfer token (no fee-on-transfer, no rebasing). The claim correction
+(`addRecoveredUsd`) uses the net amount the vault measured, while the executor debits the gross amount; the two are
+equal only when the transfer is exact. The asset is owner-configured (`scheduleAsset` / `executeAsset`, timelocked,
+then frozen); nothing on-chain checks that it transfers exactly. Fee-on-transfer and rebasing tokens must not be configured
+(standard CCIP token pools do not carry them) (IL-9133).
+
 Cached-NAV fallback with several executors (TP-M-33, IL-8611). The balance fuse used to serve the recovery fallback
 only when exactly one executor was granted to the market, because the cached value is one market-wide aggregate that
 cannot be decomposed per executor. With two executors any stale or blocked getter therefore made the mandatory

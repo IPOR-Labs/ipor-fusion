@@ -564,6 +564,12 @@ The fail-closed selectors on Stargate are `ChainBlocked`, `NavSettledStale` and 
 rethrown. In a multi-executor market `ChainBlocked` is rethrown too, and only the two staleness selectors are
 substituted.
 
+The executor `ASSET` must be an exact-transfer token (no fee-on-transfer, no rebasing). The claim correction
+(`addRecoveredUsd`) uses the net amount the vault measured, while the executor debits the gross amount; the two are
+equal only when the transfer is exact. The factory binds the asset to a Stargate v2 pool whose `token()` equals the
+token (`_validateAssetConfig`), which is not a check that the token transfers exactly: such tokens are not supported
+(IL-9133).
+
 Diagnostic commands are recovery-marked (TP-M-34, IL-8612). `CANCEL_DISPATCHER_REQUEST` cancels a pending deployment
 request, moves no value and is recovery-marked, so it works while NAV is fail-closed. `REGISTER_CHAIN`,
 `CREATE_DISPATCHER` and `UPDATE_PLASMA_VAULTS` stay blocked. Same trade-off as on CCIP: each recovery-marked command

@@ -74,7 +74,10 @@ contract CrosschainClaimFuse is IFuseCommon {
         // requested amount is an upper bound, not the delta. The measured delta is reported to the
         // recovery context so the balance fuse can remove it from the cached crosschain market value —
         // without that, these assets are counted both in the stale cache and in the vault's own balance
-        // (audit H-1).
+        // (audit H-1). The executor ASSET must transfer exactly (no fee-on-transfer, no rebasing): this
+        // correction uses the net amount the vault measured, while the executor debits the gross amount, and
+        // the two are equal only for an exact transfer. The asset is owner-configured (timelocked, then frozen) and must
+        // not be configured with such tokens (IL-9133).
         address executorAsset = IExecutorAssetView(data_.executor).ASSET();
         uint256 balanceBefore = IERC20(executorAsset).balanceOf(address(this));
         ICrosschainExecutor(data_.executor).claimAsset(data_.amount);
