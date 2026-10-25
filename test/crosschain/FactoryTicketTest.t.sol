@@ -910,7 +910,8 @@ contract FactoryTicketTest is FactoryTestBase {
         bytes memory packet = CrosschainMessages.encodeDeploymentAck(ack);
 
         vm.deal(address(exec), 0); // unfunded: the initial UPDATE_VAULTS send reverts
-        vm.expectRevert();
+        uint256 fee = endpoint.messagingFee();
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.InsufficientNativeBudget.selector, 0, fee));
         endpoint.deliverLz(address(factory), REMOTE_EID, _factoryPeer(), GUID, packet);
         assertEq(uint8(exec.deploymentStatus(1)), uint8(DeploymentStatus.PENDING), "ACK retained, still pending");
 
