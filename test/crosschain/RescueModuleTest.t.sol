@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 import {CrosschainTestBase} from "./CrosschainTestBase.sol";
 import {MockERC20} from "../test_helpers/MockERC20.sol";
@@ -14,6 +15,13 @@ import {
     Origin
 } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {MockRemoteVault} from "./mocks/MockRemoteVault.sol";
+
+/// @dev Rescue target whose fallback reverts with empty returndata (drives the `RescueCallFailed()` branch).
+contract RevertingRescueTarget {
+    fallback() external payable {
+        revert();
+    }
+}
 
 /// @title RescueModuleTest
 /// @notice Timelocked generic rescue + independent guardian veto, exercised through the executor (which
@@ -99,9 +107,29 @@ contract RescueModuleTest is CrosschainTestBase {
         vm.prank(admin);
         uint256 id = executor.scheduleRescue(address(usdc), 0, cd);
         vm.warp(block.timestamp + RESCUE_DELAY);
+        uint256 pendingBefore = executor.pendingRescueCount();
         vm.prank(admin);
-        vm.expectRevert(); // ERC20 insufficient-balance bubbles atomically
+        // The target's exact custom error is bubbled (not replaced by RescueCallFailed).
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(executor), 0, 1_000e6)
+        );
         executor.executeRescue(id, cd);
+        assertEq(_stateOf(id), uint8(RescueModule.RescueState.SCHEDULED), "record still scheduled");
+        assertEq(executor.pendingRescueCount(), pendingBefore, "pending count unchanged after revert");
+    }
+
+    function testShouldRevertRescueCallFailedOnEmptyTargetRevert() public {
+        RevertingRescueTarget target = new RevertingRescueTarget();
+        bytes memory cd = abi.encodeWithSignature("nothing()");
+        vm.prank(admin);
+        uint256 id = executor.scheduleRescue(address(target), 0, cd);
+        vm.warp(block.timestamp + RESCUE_DELAY);
+        uint256 pendingBefore = executor.pendingRescueCount();
+        vm.prank(admin);
+        vm.expectRevert(CrosschainErrors.RescueCallFailed.selector);
+        executor.executeRescue(id, cd);
+        assertEq(_stateOf(id), uint8(RescueModule.RescueState.SCHEDULED), "record still scheduled");
+        assertEq(executor.pendingRescueCount(), pendingBefore, "pending count unchanged after revert");
     }
 
     // ---------------------------------------------------------------------
