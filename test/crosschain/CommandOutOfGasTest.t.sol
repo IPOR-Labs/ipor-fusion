@@ -16,7 +16,7 @@ import {CcipMessages, CcipMsgType} from "../../contracts/crosschain/ccip/lib/Cci
 import {CcipExecutorCommandLib} from "../../contracts/crosschain/ccip/lib/CcipExecutorCommandLib.sol";
 import {BusinessAction, CommandStatus, CrosschainConstants} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
-import {Command, CrosschainMessages} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
+import {Command, CrosschainMessages, UpdateVaults} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {MockLzEndpoint} from "./mocks/MockLzEndpoint.sol";
 import {MockCcipRouter} from "./mocks/MockCcipRouter.sol";
 import {MockCcipRouteValidator} from "./mocks/MockCcipRouteValidator.sol";
@@ -248,9 +248,32 @@ contract StargateCommandOutOfGasTest is StargateTwoSidedBase {
         h.buildCommand(REMOTE_CHAIN, 0); // exactly the minimum is accepted
 
         // The empty UPDATE_VAULTS is a smaller payload than any command here, so its minimum is lower.
+        UpdateVaults memory emptyUpdate = UpdateVaults({
+            commandId: bytes32(0),
+            sequence: 0,
+            newConfigEpoch: 0,
+            minExecutionGas: 0,
+            vaults: new address[](0)
+        });
+        uint256 minUpdateLane = CrosschainMessages.laneGasFor(
+            CrosschainConstants.COMMAND_EXECUTION_MIN_GAS,
+            CrosschainMessages.payloadWords(abi.encode(emptyUpdate).length),
+            true
+        );
+        assertLt(minUpdateLane, minLane, "the UPDATE_VAULTS floor is lower than the command floor");
+
         h.setLane(REMOTE_CHAIN, 0);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.CommandLaneGasTooLow.selector, 0, minUpdateLane));
         h.buildUpdate(REMOTE_CHAIN);
+
+        h.setLane(REMOTE_CHAIN, uint128(minUpdateLane - 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(CrosschainErrors.CommandLaneGasTooLow.selector, minUpdateLane - 1, minUpdateLane)
+        );
+        h.buildUpdate(REMOTE_CHAIN);
+
+        h.setLane(REMOTE_CHAIN, uint128(minUpdateLane));
+        h.buildUpdate(REMOTE_CHAIN); // exactly the minimum is accepted
 
         h.setLane(777, 4_000_000);
         uint256 cap = CrosschainConstants.MAX_COMMAND_EXECUTION_GAS;
