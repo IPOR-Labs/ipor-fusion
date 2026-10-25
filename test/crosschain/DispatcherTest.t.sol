@@ -1546,4 +1546,45 @@ contract DispatcherTest is Test {
         _command(keccak256("req"), 2, uint8(BusinessAction.REQUEST_SHARES), req);
         assertEq(uint8(dispatcher.commandStatus(keccak256("req"))), uint8(CommandStatus.FAILED), "NACKed");
     }
+
+    function testShouldRejectDirectRunBusinessSelfFromStrangerForCommand() public {
+        // runBusinessSelf is self-call only; a stranger must not run a business command (here a DEPOSIT of idle).
+        _allowVault(address(vault));
+        _compose(keccak256("t1"), 100e6);
+        uint64 epochBefore = dispatcher.commandConfigEpoch();
+        Command memory c = Command({
+            commandId: keccak256("dep"),
+            sequence: 1,
+            commandConfigEpoch: epochBefore,
+            action: uint8(BusinessAction.DEPOSIT),
+            minExecutionGas: DEFAULT_COMMAND_BUDGET,
+            actionData: CrosschainMessages.encodeDepositAction(address(vault), 50e6, 0)
+        });
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.OnlySelf.selector, address(this)));
+        dispatcher.runBusinessSelf(c.commandId, uint8(MsgType.COMMAND), abi.encode(c));
+        assertEq(dispatcher.trackedIdle(), 100e6, "tracked idle untouched");
+        assertEq(dispatcher.commandConfigEpoch(), epochBefore, "config epoch unchanged");
+    }
+
+    function testShouldRejectDirectRunBusinessSelfFromStrangerForUpdateVaults() public {
+        // Without the guard a stranger could push UPDATE_VAULTS (epoch + 1) with a vault under their control.
+        _allowVault(address(vault));
+        _compose(keccak256("t1"), 100e6);
+        uint64 epochBefore = dispatcher.commandConfigEpoch();
+        address[] memory vaults = new address[](1);
+        vaults[0] = address(0xBAD2);
+        UpdateVaults memory uv = UpdateVaults({
+            commandId: keccak256("uv2"),
+            sequence: 1,
+            newConfigEpoch: epochBefore + 1,
+            minExecutionGas: DEFAULT_COMMAND_BUDGET,
+            vaults: vaults
+        });
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.OnlySelf.selector, address(this)));
+        dispatcher.runBusinessSelf(uv.commandId, uint8(MsgType.UPDATE_VAULTS), abi.encode(uv));
+        assertEq(dispatcher.commandConfigEpoch(), epochBefore, "config epoch unchanged");
+        assertEq(dispatcher.trackedIdle(), 100e6, "tracked idle untouched");
+        assertTrue(dispatcher.isAllowedVault(address(vault)), "allowlist unchanged");
+        assertFalse(dispatcher.isAllowedVault(address(0xBAD2)), "stranger vault not allowed");
+    }
 }
