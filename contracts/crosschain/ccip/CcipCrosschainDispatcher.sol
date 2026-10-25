@@ -493,7 +493,8 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
             (address vault, uint256 shares, uint256 minAssetsSD) = CrosschainMessages.decodeRedeemAction(
                 command.actionData
             );
-            if (!isTrackedVault[vault]) revert VaultNotAllowed(vault);
+            // Gate on the TRACKED set, as on Stargate: the redeem unwinds a position, it is not a deposit.
+            if (!isTrackedVault[vault]) revert VaultNotTracked(vault);
             // Clamp to the position actually held so an over-request degrades to a partial redeem instead
             // of a NACK that then needs the recall lane (matches the Stargate dispatcher, audit L-4).
             uint256 shareBalance = IERC20(vault).balanceOf(address(this));
@@ -508,10 +509,11 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
                 .decodeRequestSharesAction(command.actionData);
             // Gate on the TRACKED set, not the allowlist: a vault removed from the deposit allowlist may
             // still hold a live position that has to be unwound (matches Stargate, audit L-3).
-            if (!isTrackedVault[vault]) revert VaultNotAllowed(vault);
+            if (!isTrackedVault[vault]) revert VaultNotTracked(vault);
             _requireVaultWithdrawManager(vault, withdrawManager);
             uint256 balance = IERC20(vault).balanceOf(address(this));
-            if (shares > balance) revert MinimumNotMet(balance, shares);
+            // Not a slippage bound: the dispatcher holds fewer shares than the request names. Same error as Stargate.
+            if (shares > balance) revert CrosschainErrors.RequestSharesUnavailable(balance, shares);
             ICcipWithdrawManager(withdrawManager).requestShares(shares);
             // Bound the fee the (remotely mutable) manager took out of this contract's shares (IL-8603).
             uint256 balanceAfter = IERC20(vault).balanceOf(address(this));
@@ -533,8 +535,9 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
                 uint256 minAssetsSD,
                 address receiver
             ) = CrosschainMessages.decodeRedeemFromRequestAction(command.actionData);
-            if (!isTrackedVault[vault]) revert VaultNotAllowed(vault);
-            if (receiver != address(this)) revert VaultNotAllowed(receiver);
+            if (!isTrackedVault[vault]) revert VaultNotTracked(vault);
+            // The redeemed assets must land in this contract's own ledger: any other receiver is refused.
+            if (receiver != address(this)) revert CrosschainErrors.ReceiverMustBeSelf(receiver);
             // Consistency check only — the vault executes the redeem against its own manager; see
             // `_requireVaultWithdrawManager`.
             _requireVaultWithdrawManager(vault, withdrawManager);

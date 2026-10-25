@@ -670,9 +670,9 @@ library CrosschainErrors {
     /// @param receiver The offending receiver.
     error ReceiverMustBeSelf(address receiver);
 
-    /// @notice Thrown when a REQUEST_SHARES command asks for more shares than the dispatcher holds in the vault
-    ///         (the dispatcher keeps no copy of the request; the WithdrawManager bounds REDEEM_FROM_REQUEST).
-    ///         Stargate dispatcher only; the CCIP dispatcher reverts `MinimumNotMet(balance, shares)` there.
+    /// @notice Thrown by both dispatchers (the CCIP dispatcher since IL-9047) when a REQUEST_SHARES command asks
+    ///         for more shares than the dispatcher holds in the vault (the dispatcher keeps no copy of the
+    ///         request; the WithdrawManager bounds REDEEM_FROM_REQUEST).
     /// @param have The dispatcher's share balance in the vault.
     /// @param want The requested shares.
     error RequestSharesUnavailable(uint256 have, uint256 want);
