@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import {CcipDecimalsLib} from "./CcipDecimalsLib.sol";
 import {CrosschainConstants} from "../../lib/CrosschainConstants.sol";
 import {CrosschainErrors} from "../../lib/CrosschainErrors.sol";
 
@@ -505,13 +506,17 @@ library CcipExecutorAttestationLib {
 
     /// @dev Schedule-time gates of a `FORCE_SET_SETTLED` / `FORCE_SET_SETTLED_UNCHECKED` argument
     ///      `(observedStateVersion << 192) | (observedRemoteTimestamp << 128) | newSettledLD`. Body of the
-    ///      executor's `scheduleChainRescue` branch, moved here for EIP-170 headroom.
+    ///      executor's `scheduleChainRescue` branch, moved here for EIP-170 headroom. `rate_` is the executor's
+    ///      `DECIMAL_CONVERSION_RATE`: the low 128 bits are a balance in local asset decimals and must be a
+    ///      multiple of it, else the schedule reverts `CcipDecimalsLib.AmountHasDust` (IL-9025). Without the
+    ///      check a dusty value would only fail at execute, after `RESCUE_DELAY` had been spent.
     function checkForceSetSchedule(
         CcipAttestationState storage self,
         mapping(uint256 => uint64) storage lastRemoteStateVersion_,
         uint256 chainId_,
         uint256 arg_,
-        uint256 balanceStalenessMax_
+        uint256 balanceStalenessMax_,
+        uint256 rate_
     ) public view {
         // The observation must already be at the frontier: one behind it can never match at execute, and one
         // above it could only match after a queued response (e.g. a `RETURN_TRANSFER` the observation
@@ -530,6 +535,9 @@ library CcipExecutorAttestationLib {
         // RETURN_TRANSFER was flushed shares its version yet still counts the returned tokens.
         uint64 receiptAt = self.lastValueMovingReceiptAt[chainId_];
         if (observedAt <= receiptAt) revert ObservationPredatesValueMovingReceipt(chainId_, observedAt, receiptAt);
+        // IL-9025: the settled balance is booked in shared decimals, so the local-decimals value must convert
+        // exactly (same rule as `CcipDecimalsLib.toSDExact`, inline so the library gains no link reference).
+        if (uint128(arg_) % rate_ != 0) revert CcipDecimalsLib.AmountHasDust(uint128(arg_));
     }
 
     /// @dev Body of the executor's `RETURN_TRANSFER` debit (moved here so the debit and the accounting

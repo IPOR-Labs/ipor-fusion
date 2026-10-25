@@ -960,13 +960,18 @@ timestamp). `lastApprovalAt` (the local rate-limit marker) still takes the execu
 
 - The `FORCE_SET_SETTLED` (and `FORCE_SET_SETTLED_UNCHECKED`, the fifth `CcipChainRescue` member, value 4; see the
   clock bullet below) argument of `scheduleChainRescue` / `executeChainRescue` is `(observedStateVersion << 192) |
-  (observedRemoteTimestamp << 128) | newSettledLD`; the balance occupies the low 128 bits (it was 192). Off-chain
-  tooling must repack (an unpacked plain balance has timestamp 0 and is refused) and must assert `newSettledLD < 2^128`
-  before packing: a larger balance would OR into the timestamp bits and be truncated silently if it still passed the
-  freshness check (unreachable in practice: the dispatcher caps priced assets at uint128). Guardians decode all three
-  fields from the schedule calldata.
+  (observedRemoteTimestamp << 128) | newSettledLD`; the balance occupies the low 128 bits (it was 192).
+  `newSettledLD` is in local decimals but is booked in shared decimals, so it must be a multiple of
+  the executor's `DECIMAL_CONVERSION_RATE`: a figure with a remainder is refused at schedule time with
+  `AmountHasDust(newSettledLD)`
+  (checked last, after the version, staleness and value-moving-receipt gates) instead of failing only at execute,
+  after `RESCUE_DELAY`. Off-chain tooling must repack (an unpacked plain balance has timestamp 0 and is refused)
+  and must assert `newSettledLD < 2^128` before packing: a larger balance would OR into the timestamp bits and be
+  truncated silently if it still passed the freshness check (unreachable in practice: the dispatcher caps priced
+  assets at uint128). Guardians decode all three fields from the schedule calldata.
 - Schedule reverts `ObservationStale(chainId)` unless `0 < observedRemoteTimestamp <= block.timestamp` and
-  `block.timestamp - observedRemoteTimestamp <= BALANCE_STALENESS_MAX`.
+  `block.timestamp - observedRemoteTimestamp <= BALANCE_STALENESS_MAX`, and `AmountHasDust(newSettledLD)` unless
+  `newSettledLD % DECIMAL_CONVERSION_RATE == 0` (the executor's rate, IL-9025).
 - Staleness after execute (intended, conservative): the figure ages while it waits out `RESCUE_DELAY`. NAV is stale
   right after execute exactly when `executeTime - observedRemoteTimestamp > BALANCE_STALENESS_MAX` (`ObservationStale`).
   An observation older than `BALANCE_STALENESS_MAX - RESCUE_DELAY` at schedule is sufficient but not necessary (a late

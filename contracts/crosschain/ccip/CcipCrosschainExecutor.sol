@@ -841,7 +841,10 @@ contract CcipCrosschainExecutor is
     ///        approval with a NEWER observation than the committed one landed during the delay, the unchecked kind
     ///        may move the NAV freshness clock backwards on purpose; the kind is inside the commitment):
     ///        `(observedStateVersion << 192) | (observedRemoteTimestamp << 128) | newSettledLD` — the new settled
-    ///        balance in local ASSET decimals in the low 128 bits, in bits 128..191 the remote (dispatcher chain)
+    ///        balance in local ASSET decimals in the low 128 bits (it must be a multiple of
+    ///        the executor's `DECIMAL_CONVERSION_RATE`, else schedule reverts `AmountHasDust`, IL-9025: pack
+    ///        `observation().accountedBalance * <executor>.DECIMAL_CONVERSION_RATE()`), in bits 128..191
+    ///        the remote (dispatcher chain)
     ///        timestamp at which it was read (IL-8646 / TP-L-18: execute stamps it as the NAV freshness clock
     ///        instead of the execute time; schedule reverts `ObservationStale` unless
     ///        `block.timestamp - BALANCE_STALENESS_MAX <= timestamp <= block.timestamp` and non-zero; IL-8604 R1:
@@ -851,7 +854,9 @@ contract CcipCrosschainExecutor is
     ///        value-moving response during the delay voids the rescue by version), and in the
     ///        upper 64 bits the dispatcher
     ///        `stateVersion` (`CcipCrosschainDispatcher.stateVersion`) at which that balance was read. Tooling
-    ///        must assert `newSettledLD < 2^128` before packing: a larger balance would OR into the timestamp
+    ///        must assert `newSettledLD < 2^128` and `newSettledLD % DECIMAL_CONVERSION_RATE == 0`
+    ///        (the executor's rate) before
+    ///        packing: a larger balance would OR into the timestamp
     ///        bits and be truncated silently if it still passed the freshness check (unreachable in practice, the
     ///        dispatcher caps priced assets at uint128); guardians decode all three fields from the schedule
     ///        calldata. Execute
@@ -886,7 +891,13 @@ contract CcipCrosschainExecutor is
         if (kind_ == CcipChainRescue.FORCE_SET_SETTLED || kind_ == CcipChainRescue.FORCE_SET_SETTLED_UNCHECKED) {
             // Schedule-time gates of the packed argument (frontier version, fresh observation time, after the
             // last value-moving receipt); body in the linked library for EIP-170 headroom.
-            _attestationState.checkForceSetSchedule(lastRemoteStateVersion, chainId_, arg_, _balanceStalenessMax());
+            _attestationState.checkForceSetSchedule(
+                lastRemoteStateVersion,
+                chainId_,
+                arg_,
+                _balanceStalenessMax(),
+                _rate()
+            );
         }
         if (kind_ == CcipChainRescue.REALIGN_COMMAND_LANE && uint64(arg_ >> 192) == 0) {
             revert RealignExpectedEpochZero(chainId_);
