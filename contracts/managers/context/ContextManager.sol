@@ -60,10 +60,11 @@ struct ExecuteData {
  * @param nonce Sequential number for replay attack prevention
  * @param target The approved contract address to be called
  * @param data The calldata to be executed on the target
- * @param signature ECDSA signature over keccak256(abi.encodePacked(contextManagerAddress, expirationTime, nonce, chainId, target, data)).
+ * @param signature ECDSA signature over keccak256(abi.encodePacked(contextManagerAddress, expirationTime, nonce, chainId, target, data)),
+ *        where chainId is block.chainid at execution time.
  *        This is a custom (non-EIP-712) scheme — no domain separator or typed struct hash is used.
  * @dev Signature is verified using ECDSA.recover to match the sender.
- *      Replay protection is provided by including the contract address (address(this)) and CHAIN_ID in the signed preimage,
+ *      Replay protection is provided by including the contract address (address(this)) and block.chainid in the signed preimage,
  *      along with a strictly increasing nonce per sender.
  */
 struct ContextDataWithSender {
@@ -114,7 +115,7 @@ contract ContextManager is AccessManagedUpgradeable {
     error InvalidSignature();
     error NonceTooLow();
 
-    /// @notice Chain ID used for signature verification
+    /// @notice Chain ID at deployment; informational only, signatures bind block.chainid at execution time (IL-8981)
     uint256 public immutable CHAIN_ID;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -354,8 +355,9 @@ contract ContextManager is AccessManagedUpgradeable {
      * @param contextData_ The context data containing the signature to verify
      * @return bool True if the recovered signer matches the claimed sender
      * @dev Uses a custom (non-EIP-712) signature scheme.
-     * The signed digest is: keccak256(abi.encodePacked(address(this), expirationTime, nonce, CHAIN_ID, target, data)).
-     * Replay protection across contracts and chains is achieved by binding address(this) and CHAIN_ID into the preimage.
+     * The signed digest is: keccak256(abi.encodePacked(address(this), expirationTime, nonce, block.chainid, target, data)).
+     * Replay protection across contracts and chains is achieved by binding address(this) and block.chainid into the preimage;
+     * after a chain-id change (e.g. a fork) signatures made for the old chain id are rejected.
      * Note: this does NOT use an EIP-712 domain separator or typed struct hash, so wallets will not display
      * human-readable signing context. Variable-length `data` is included directly via abi.encodePacked,
      * which is unambiguous here because it is the last element in the encoding.
@@ -369,7 +371,7 @@ contract ContextManager is AccessManagedUpgradeable {
                         address(this),
                         contextData_.expirationTime,
                         contextData_.nonce,
-                        CHAIN_ID,
+                        block.chainid,
                         contextData_.target,
                         contextData_.data
                     )
