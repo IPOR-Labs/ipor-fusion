@@ -251,8 +251,9 @@ contract CcipAuditRemediationTest is Test {
         bytes32 commandId = executor.activeCommand(REMOTE_CHAIN);
         assertEq(uint8(executor.commandStatus(commandId)), uint8(CommandStatus.FAILED), "first NACK applied");
 
-        // The retry fails again and emits a SECOND NACK for the same id. It must be applied as a
-        // duplicate no-op instead of reverting and parking at the queue head forever.
+        // The retry re-arms the command to PENDING (`markRetrying`), fails again and emits a SECOND NACK for the
+        // same id. It is applied through the ordinary PENDING -> FAILED path instead of reverting and parking at
+        // the queue head forever.
         executor.retryCommand(REMOTE_CHAIN, commandId, 0, address(0), 2_000_000);
         assertEq(uint8(executor.commandStatus(commandId)), uint8(CommandStatus.FAILED), "second NACK absorbed");
         assertEq(dispatcher.responseQueueHead(), 0, "response queue fully drained");

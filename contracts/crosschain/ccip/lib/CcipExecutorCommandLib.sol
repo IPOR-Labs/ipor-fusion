@@ -610,9 +610,10 @@ library CcipExecutorCommandLib {
     }
 
     /// @notice Apply an authenticated NACK receipt. NEVER reverts (see `ReceiptIgnoreReason`).
-    /// @dev A command that fails again after `retryCommand` produces a SECOND NACK for the same id while
-    ///      the executor status is already FAILED. Treating that as a duplicate no-op keeps the receipt
-    ///      applied-or-ignored; reverting here would fail it on the OffRamp forever (audit C-1).
+    /// @dev `retryCommand` calls `markRetrying`, which sets the status back to PENDING, so a command that fails
+    ///      again after a retry is NACKed through the ordinary PENDING -> FAILED path. The FAILED branch below is
+    ///      defence against a duplicate NACK delivered while the status is still FAILED; it is a no-op that keeps
+    ///      the receipt applied-or-ignored, whereas reverting would fail it on the OffRamp forever (audit C-1).
     /// @return reason `NONE` when the receipt was applied, otherwise why it was ignored.
     function fail(CcipExecutorCommandState storage self, uint256 chainId_, bytes32 id_, uint64 sequence_)
         public
