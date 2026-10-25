@@ -96,6 +96,17 @@ contract PlasmaVaultExecuteHarness {
         _refreshBalances();
     }
 
+    /// @notice Values the CROSSCHAIN market through the balance fuse (delegatecall, as `PlasmaVaultMarketsLib` and
+    ///         `UniversalReader.read` do) without persisting anything, so a `staticcall` to it succeeds only
+    ///         when the balance fuse is write-free on the ordinary path.
+    function navOnly() external returns (uint256) {
+        return
+            abi.decode(
+                balanceFuse.functionDelegateCall(abi.encodeCall(CrosschainBalanceFuse.balanceOf, ())),
+                (uint256)
+            );
+    }
+
     function cachedMarketBalance() external view returns (uint256) {
         return PlasmaVaultLib.getTotalAssetsInMarket(MARKET_ID);
     }
@@ -291,6 +302,44 @@ contract CrosschainRecoveryBatchScopingTest is Test {
 
         assertEq(vault.cachedMarketBalance(), M0 - CLAIM_1, "live balance is used verbatim");
         assertEq(vault.totalAssets(), M0, "totalAssets conserved");
+    }
+
+    // ---------------------------------------------------------------------
+    // IL-9114: a live refresh that persists the SAME cache value must still close the accumulator
+    // ---------------------------------------------------------------------
+
+    /// @dev Batch 1 claims exactly the un-refreshed profit X, so the live post-claim NAV equals the old cache
+    ///      and the refresh persists the same number. Batch 2 (same transaction) claims Y under fail-closed
+    ///      NAV. Comparing cache values alone would keep X applicable and subtract it again; the balance
+    ///      fuse's valuation must consume the accumulator instead.
+    function test_sameValueLiveRefreshThenFailClosedClaim_subtractsOnlySecondClaim() public {
+        uint256 profit = CLAIM_1;
+        usdc.mint(address(executor), profit); // un-refreshed profit: live = M0 + X, cache = M0
+        executor.setBalanceReverts(false);
+        executor.setBalance(M0); // live NAV once the profit has been claimed out
+
+        vault.executeClaimBatch(CrosschainClaimFuseEnterData({executor: address(executor), amount: profit}));
+        assertEq(vault.cachedMarketBalance(), M0, "batch1: live refresh persisted the same value as the old cache");
+        assertEq(vault.totalAssets(), M0 + profit, "batch1: totalAssets includes the claimed profit");
+
+        executor.setBalanceReverts(true);
+        vault.executeClaimBatch(CrosschainClaimFuseEnterData({executor: address(executor), amount: CLAIM_2}));
+
+        assertEq(usdc.balanceOf(address(vault)), profit + CLAIM_2, "both claims are idle in the vault");
+        assertEq(vault.cachedMarketBalance(), M0 - CLAIM_2, "batch2: only the second claim is subtracted");
+        assertEq(vault.totalAssets(), M0 + profit, "batch2: totalAssets conserved");
+    }
+
+    /// @dev An ordinary NAV read arms nothing, so the consumption must not write: `staticcall` (the
+    ///      `UniversalReader.read` shape) would revert on any TSTORE.
+    function test_ordinaryNavRead_isWriteFreeUnderStaticcall() public {
+        executor.setBalanceReverts(false);
+        executor.setBalance(M0);
+
+        (bool ok, bytes memory ret) = address(vault).staticcall(abi.encodeCall(PlasmaVaultExecuteHarness.navOnly, ()));
+
+        assertTrue(ok, "ordinary NAV read must not write transient storage");
+        assertEq(abi.decode(ret, (uint256)), _usd(M0), "live value is returned");
     }
 
     // ---------------------------------------------------------------------
