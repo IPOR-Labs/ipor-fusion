@@ -1126,9 +1126,14 @@ checklist when the queue is not empty:
    dispatcher's `trackedIdle` and `settled` was never debited. The chain stays blocked until a fresh approved
    attestation at the new frontier.
 3. Delta 0: attest normally with the `observation()` values (`STATE_VERSION = observation().stateVersion`,
-   `SETTLED_BALANCE = accountedBalance`). Queued value-neutral responses no longer block it.
+   `SETTLED_BALANCE = accountedBalance * <executor>.DECIMAL_CONVERSION_RATE()`, read on the executor chain; the
+   dispatcher's own rate differs when the chains' local decimals differ). `accountedBalance` is in shared decimals
+   while `proposeBalance` takes local decimals, so convert it; the two units coincide only when the executor
+   asset's local decimals equal the shared decimals (e.g. 6/6). Queued value-neutral responses no longer block it.
 4. Delta greater than 0 and equal to the queued count: use `STATE_VERSION = lastRemoteStateVersion(chainId)` and
-   `SETTLED_BALANCE = accountedBalance - sum(amount of the queued TRANSFER_SETTLED responses)`: every queued
+   `SETTLED_BALANCE = (accountedBalance - sum(amount of the queued TRANSFER_SETTLED responses)) *
+   <executor>.DECIMAL_CONVERSION_RATE()` (the executor's rate; both terms are in shared decimals, the result is
+   passed in local decimals): every queued
    `TRANSFER_SETTLED` is credited when it lands, either from `outboundInFlight` or, for an outbound force-resolved
    without credit (`DROP_FROM_NAV`), as its late credit (IL-8619), so subtract it in both cases. A queued `RETURN_TRANSFER` needs no correction: its tokens
    are in `queuedTokenAmount` and the executor still counts them in settled.
