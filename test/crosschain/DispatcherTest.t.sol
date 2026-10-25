@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {IOAppCore} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppCore.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import {EnforcedOptionParam} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppOptionsType3.sol";
@@ -1091,11 +1092,52 @@ contract DispatcherTest is Test {
         assertEq(uint8(dispatcher.commandStatus(keccak256("dep"))), uint8(CommandStatus.FAILED), "future epoch NACKed");
     }
 
-    function testShouldEnforceExecutorChainBindingOnHappyPath() public {
-        // The dispatcher accepts messages only from its single executor chain/EID; delivery on the
-        // registered peer resolves srcChainId == EXECUTOR_CHAIN_ID (the base maps EID -> chain).
+    function testShouldBindDispatcherToTheSingleExecutorChain() public {
+        // The dispatcher is bound to a single executor chain/EID; delivery on the registered peer is accepted.
         _allowVault(address(vault));
         assertEq(dispatcher.EXECUTOR_CHAIN_ID(), EXECUTOR_CHAIN, "bound to the single executor chain");
+    }
+
+    function testShouldRejectDeliveryFromUnregisteredEid() public {
+        // The real source-chain guard is the vendored OAppReceiver peer check: an EID with no registered peer
+        // reverts NoPeer before any dispatcher logic runs.
+        address[] memory vaults = new address[](1);
+        vaults[0] = address(vault);
+        bytes memory envelope = CrosschainMessages.encodeUpdateVaults(
+            UpdateVaults({
+                commandId: keccak256("uv"),
+                sequence: 0,
+                newConfigEpoch: 1,
+                minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                vaults: vaults
+            })
+        );
+        vm.expectRevert(abi.encodeWithSelector(IOAppCore.NoPeer.selector, uint32(30999)));
+        endpoint.deliverLz(address(dispatcher), 30999, _peer(), GUID, envelope);
+        assertEq(dispatcher.commandConfigEpoch(), 0, "config epoch unchanged");
+        assertFalse(dispatcher.isAllowedVault(address(vault)), "allowlist unchanged");
+    }
+
+    function testShouldRejectDeliveryFromWrongSenderOnExecutorEid() public {
+        // On the registered executor EID, a sender other than the registered peer reverts OnlyPeer.
+        address stranger = address(0xBAD1);
+        address[] memory vaults = new address[](1);
+        vaults[0] = address(vault);
+        bytes memory envelope = CrosschainMessages.encodeUpdateVaults(
+            UpdateVaults({
+                commandId: keccak256("uv"),
+                sequence: 0,
+                newConfigEpoch: 1,
+                minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                vaults: vaults
+            })
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(IOAppCore.OnlyPeer.selector, EXECUTOR_EID, bytes32(uint256(uint160(stranger))))
+        );
+        endpoint.deliverLz(address(dispatcher), EXECUTOR_EID, bytes32(uint256(uint160(stranger))), GUID, envelope);
+        assertEq(dispatcher.commandConfigEpoch(), 0, "config epoch unchanged");
+        assertFalse(dispatcher.isAllowedVault(address(vault)), "allowlist unchanged");
     }
 
     // ---------------------------------------------------------------------
