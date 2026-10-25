@@ -5,6 +5,7 @@ import {CrosschainTestBase} from "./CrosschainTestBase.sol";
 import {LzComposeBuilder} from "./mocks/MockStargatePool.sol";
 import {CrosschainMessages, OutboundTransfer} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
+import {ResolveOutcome} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
 import {IOAppCore} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppCore.sol";
 
 /// @title ComposeAuthTest
@@ -89,6 +90,79 @@ contract ComposeAuthTest is CrosschainTestBase {
         bytes memory msg_ = LzComposeBuilder.build(address(executor), REMOTE_EID, 40e6, _envelope(requestId));
         endpoint.deliverCompose(address(executor), address(pool), GUID, msg_);
         assertEq(executor.pendingArrivalReserve(), 40e6, "authenticated compose reached business logic");
+    }
+
+    // ---------------------------------------------------------------------
+    // Compose integrity reverts (IL-9067): ReturnNotFound / GuidMismatch revert on purpose
+    // ---------------------------------------------------------------------
+
+    /// @dev Recall 40e6 and deliver the authenticated `RETURN_STARTED` first (order (a)) with guid `RGUID`.
+    function _orderAReturnStarted() internal returns (bytes32 requestId) {
+        _readyDispatcher();
+        _settle100();
+        (requestId, , ) = _requestAssets(40e6, 0);
+        _deliverReturnStarted(requestId, RGUID, 40e6, 40e6, 2);
+        usdc.mint(address(executor), 40e6);
+    }
+
+    function testShouldRejectComposeForUnknownReturn() public {
+        _readyDispatcher();
+        _settle100();
+        bytes32 unknown = bytes32(uint256(0xDEAD));
+        usdc.mint(address(executor), 40e6);
+        bytes memory msg_ = LzComposeBuilder.build(address(executor), REMOTE_EID, 40e6, _envelope(unknown));
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.ReturnNotFound.selector, unknown));
+        endpoint.deliverCompose(address(executor), address(pool), GUID, msg_);
+        assertEq(executor.idleLedger(), 0, "nothing booked");
+        assertEq(executor.pendingArrivalReserve(), 0, "no reserve booked");
+    }
+
+    function testShouldRejectOrderAComposeWithWrongGuid() public {
+        bytes32 requestId = _orderAReturnStarted();
+        uint256 inFlightBefore = executor.returnInFlight(REMOTE_CHAIN);
+        uint256 pendingBefore = executor.pendingTransferCount(REMOTE_CHAIN);
+        assertEq(inFlightBefore, 40e6, "expected credit is in flight");
+
+        // The compose carries a guid that differs from the RETURN_STARTED metadata guid.
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.GuidMismatch.selector, RGUID, GUID));
+        _deliverReturnCompose(requestId, GUID, 40e6);
+
+        // The whole delivery rolled back: no bucket moved and the record did not record the compose.
+        assertEq(executor.idleLedger(), 0, "idle unchanged");
+        assertEq(executor.returnInFlight(REMOTE_CHAIN), inFlightBefore, "in-flight unchanged");
+        assertEq(executor.pendingArrivalReserve(), 0, "reserve unchanged");
+        assertEq(executor.pendingTransferCount(REMOTE_CHAIN), pendingBefore, "slot count unchanged");
+
+        // The retained compose, delivered with the metadata guid, finalizes (it would be a silent
+        // duplicate no-op if the rejected delivery had left `composeArrived` set).
+        _deliverReturnCompose(requestId, RGUID, 40e6);
+        assertEq(executor.idleLedger(), 40e6, "idle credited by the actual amount");
+        assertEq(executor.returnInFlight(REMOTE_CHAIN), 0, "expected credit removed from in-flight");
+        assertEq(executor.pendingArrivalReserve(), 0, "no reserve in order (a)");
+
+        // The record is finalized: a further compose is a no-op.
+        _deliverReturnCompose(requestId, RGUID, 40e6);
+        assertEq(executor.idleLedger(), 40e6, "finalized record ignores a duplicate");
+    }
+
+    function testShouldExitMismatchingComposeThroughDropFromNav() public {
+        bytes32 requestId = _orderAReturnStarted();
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.GuidMismatch.selector, RGUID, GUID));
+        _deliverReturnCompose(requestId, GUID, 40e6);
+
+        // The documented exit: the timelocked DROP_FROM_NAV finalizes the record and removes the credit.
+        vm.prank(admin);
+        uint256 rescueId = executor.scheduleForceResolveTransfer(requestId, ResolveOutcome.DROP_FROM_NAV);
+        vm.warp(block.timestamp + RESCUE_DELAY);
+        vm.prank(admin);
+        executor.executeForceResolveTransfer(rescueId, requestId, ResolveOutcome.DROP_FROM_NAV);
+        assertEq(executor.returnInFlight(REMOTE_CHAIN), 0, "credit dropped from NAV");
+
+        // Retrying the retained, still mismatching compose is now a no-op instead of a revert.
+        _deliverReturnCompose(requestId, GUID, 40e6);
+        assertEq(executor.idleLedger(), 0, "tokens stay untracked surplus");
+        assertEq(executor.pendingArrivalReserve(), 0, "no reserve booked");
+        assertEq(executor.returnInFlight(REMOTE_CHAIN), 0, "in-flight stays dropped");
     }
 
     // ---------------------------------------------------------------------

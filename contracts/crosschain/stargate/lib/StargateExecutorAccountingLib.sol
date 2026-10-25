@@ -518,9 +518,15 @@ library StargateExecutorAccountingLib {
     ///      executor (which owns the decimal conversion rate). Order (b): if the record's staleness slot
     ///      was released without finalizing it (today only the permissionless `cancelStaleReturn` does
     ///      that), mirror `_onReturnStarted`'s own rule — try to reclaim a slot for the newly-booked
-    ///      reserve, or fail closed via `chainBlocked` if none is free. This handler must never revert:
-    ///      it is the inbound LayerZero compose callback, and a revert would retain the Stargate compose
-    ///      forever with the tokens already physically on the executor.
+    ///      reserve, or fail closed via `chainBlocked` if none is free. This handler must not revert on any
+    ///      delivery an honest twin dispatcher can produce: it is the inbound LayerZero compose callback, and
+    ///      a revert would retain the Stargate compose with the tokens already physically on the executor.
+    ///      The re-arm and no-free-slot paths therefore fail closed through `chainBlocked` instead of
+    ///      reverting. `ReturnNotFound`, `WrongSourceChain` and `GuidMismatch` revert on purpose: an honest
+    ///      dispatcher cannot produce such a compose, so it is a peer-integrity incident. LayerZero retains the
+    ///      compose, the tokens are untracked surplus (recoverable through the generic rescue), and an order-(a)
+    ///      record exits through `applyForceResolve(DROP_FROM_NAV)`, after which a retry of the retained
+    ///      compose is a no-op (the `finalized` early return).
     function handleReturnCompose(
         StargateExecutorState storage self,
         uint256 srcChainId_,
