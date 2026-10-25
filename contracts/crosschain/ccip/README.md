@@ -903,6 +903,12 @@ around the residual (`AttestationOutsideAnchorBand`), not by the relative limite
 iff `anchorPrincipal != 0` and inside the band; with no anchor the rule is unchanged (`UnanchoredAttestation`). A
 zero-to-zero approval stays allowed and leaves the residual anchor in place. A residual at or below
 `ATTESTATION_ZERO_DUST_SD` still zeroes the anchor (and is cleared with a zero attestation).
+A later authenticated `RETURN_TRANSFER` that arrives when `settled` is already zero (for example the return of a
+second recall opened after the first was cancelled) debits nothing, but it recomputes the anchor from the reported
+balance: `min(remoteBalance, anchorPrincipal)` when `remoteBalance` is above `ATTESTATION_ZERO_DUST_SD`, otherwise 0.
+On this path the anchor only decreases (IL-9134). A stale balance (a return queued behind a skipped response, or a
+return with a version at or below the frontier after `ADVANCE_FRONTIER`) can lower the anchor below the real
+residual; the exit is `FORCE_SET_SETTLED`.
 
 The residual is NOT recallable until it is attested (recall bounds use `settled`), so the order of operations matters.
 Attest the residual before re-supplying: a credit that lands before the attestation caps the anchor at the credited
