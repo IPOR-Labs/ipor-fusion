@@ -1347,8 +1347,14 @@ lets the transfer succeed and the tokens are frozen at `ADMIN` (IL-8807). Either
 **No exit fee on allowlisted vaults (IL-8607).** The dispatcher values remote shares with `convertToAssets`, which
 ERC-4626 permits to exclude exit/withdraw fees, so an attested position can be priced above what a redeem returns.
 Allowlist only remote vaults that charge no exit or withdraw fee, or make the attesters report net-of-fee value.
-`convertToAssets` is kept for consistency with core Fusion's `Erc4626BalanceFuse`; the overstatement is bounded by
-the vault's exit fee.
+`convertToAssets` is kept for consistency with core Fusion's `Erc4626BalanceFuse`.
+For a `PlasmaVault` child, `convertToAssets` is gross of the unrealized management fee, which `redeem` realizes first.
+The correction is `previewRedeem(balanceOf(dispatcher))` (it prices the pending management fee since IL-8343) or
+subtracting the dispatcher's share of `getUnrealizedManagementFee()`. Neither covers a pending performance fee above
+the high-water mark or the value change after the child's markets are refreshed (`PlasmaVault.previewRedeem`
+NatSpec), so both remain an approximation, not a full net valuation. Attesters take these risks into account (for
+example by refreshing the markets and subtracting the pending performance fee); when the difference exceeds the
+band, the existing exit remains (IL-9158).
 
 **Withdraw-manager discovery reads the legacy slot too (IL-8608).** `plasmaVaultWithdrawManager()` runs inside the
 remote vault through `UniversalReader.read` and returns the manager with the legacy fallback
