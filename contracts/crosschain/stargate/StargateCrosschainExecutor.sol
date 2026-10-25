@@ -771,6 +771,9 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
     }
 
     /// @inheritdoc ICrosschainExecutor
+    /// @dev Raw sum of `settledRemoteBalance`, `outboundInFlight` and `returnInFlight` for the chain, with no
+    ///      `ChainBlocked` or staleness gates, unlike the CCIP executor's fail-closed variant (IL-9066). Never use
+    ///      it to price anything.
     function getBalanceByChain(uint256 chainId_) external view override returns (uint256) {
         return _toLD(_s.settledRemoteBalance[chainId_] + _s.outboundInFlight[chainId_] + _s.returnInFlight[chainId_]);
     }

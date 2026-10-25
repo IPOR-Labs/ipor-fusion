@@ -131,7 +131,11 @@ interface ICrosschainExecutor {
     ///      selector, in a market with several executors) and MUST NOT price any value-adding decision.
     function getBalanceUnchecked() external view returns (uint256);
 
-    /// @notice Per-chain NAV component (settled + outbound + return), local ASSET decimals.
+    /// @notice Per-chain booked component (Stargate: settled + outbound + return; CCIP: settled +
+    ///         outbound), local ASSET decimals; idle tokens are not included.
+    /// @dev The two transports differ. CCIP: fail-closed like the per-chain term of `getBalance()` (`ChainBlocked` /
+    ///      `TransferStale` / `ObservationStale`). Stargate: a raw sum of the three booked buckets with no
+    ///      `ChainBlocked` or staleness gates (IL-9066). Never use it to price anything.
     function getBalanceByChain(uint256 chainId_) external view returns (uint256);
 
     /// @notice The PlasmaVault allowed to drive this executor.

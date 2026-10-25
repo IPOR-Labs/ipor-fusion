@@ -499,10 +499,8 @@ contract StargateCommandLaneRealignTest is StargateTwoSidedBase {
     /// @dev GUARD, not regression evidence: it asserts what the new writer must NOT do, so it passes both
     ///      with the realign branch present and with it stubbed out. It bounds the blast radius of a
     ///      writer that can lower a counter.
-    /// @dev `getBalanceByChain` is deliberately not part of the snapshot on this transport: its
-    ///      observation window is `STALENESS_MAX` (1 hour) while a rescue round is `RESCUE_DELAY`
-    ///      (3 days), so it would report staleness caused by the timelock rather than by the realign.
-    ///      The raw components it reads are snapshotted instead.
+    /// @dev On Stargate `getBalanceByChain` is a raw sum of the three booked buckets with no staleness
+    ///      window or `ChainBlocked` gate (IL-9066), so the snapshot holds the buckets it reads.
     function testShouldNotLetRepeatedRealignsTouchAnythingButTheMirrors() public {
         _readyWithCapital();
 
