@@ -20,6 +20,7 @@ import {
     CcipCommandType,
     CcipCommandFuseEnterData
 } from "../../contracts/fuses/crosschain/ccip/CcipCrosschainCommandFuse.sol";
+import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
 import {Command, CrosschainMessages} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {BusinessAction} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
 import {CrosschainSubstrateLib} from "../../contracts/fuses/crosschain/lib/CrosschainSubstrateLib.sol";
@@ -339,5 +340,41 @@ contract CcipFuseTest is Test {
                 minDelivered: 0
             })
         );
+    }
+
+    /// @dev IL-9003: with a settled remote balance and no balance attestation the real executor's `getBalance()`
+    ///      reverts `ObservationStale`; the supply fuse's NAV read must stop a second enter before any value moves.
+    ///      `sendAssetToDispatcher` has no such check, so removing the fuse's `getBalance()` read makes this fail.
+    function testShouldBlockNewCcipRemoteSupplyWhenNavBlocked() public {
+        token.mint(address(vault), 200e6);
+        CcipSupplyFuseEnterData memory data = CcipSupplyFuseEnterData({
+            executor: address(executor),
+            asset: address(token),
+            dstChainId: REMOTE_CHAIN,
+            amount: 100e6,
+            maxFee: 0,
+            feeToken: address(0),
+            gasLimit: 2_000_000,
+            minDelivered: 0
+        });
+        vault.enterCcipSupply(data);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 100e6, "first supply settled");
+
+        // NAV is now fail-closed: settled balance but no approved attestation.
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.ObservationStale.selector, REMOTE_CHAIN));
+        executor.getBalance();
+
+        uint256 vaultBefore = token.balanceOf(address(vault));
+        uint256 executorBefore = token.balanceOf(address(executor));
+        uint256 settledBefore = executor.settledRemoteBalance(REMOTE_CHAIN);
+        uint256 idleBefore = dispatcher.trackedIdle();
+
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.ObservationStale.selector, REMOTE_CHAIN));
+        vault.enterCcipSupply(data);
+
+        assertEq(token.balanceOf(address(vault)), vaultBefore, "vault balance unchanged");
+        assertEq(token.balanceOf(address(executor)), executorBefore, "executor balance unchanged");
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), settledBefore, "settled unchanged");
+        assertEq(dispatcher.trackedIdle(), idleBefore, "nothing reached the dispatcher");
     }
 }
