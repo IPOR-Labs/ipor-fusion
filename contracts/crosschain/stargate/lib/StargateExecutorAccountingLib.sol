@@ -922,8 +922,9 @@ library StargateExecutorAccountingLib {
             if (outcome_ == ResolveOutcome.DROP_RETURN_METADATA_INCLUDED) {
                 // Fits metadata that is merely LATE. When the `RETURN_STARTED` is LOST FOR GOOD and later
                 // versioned packets exist, they revert `StateVersionGap` until the frontier is advanced: run
-                // `ADVANCE_STATE_FRONTIER` to just below the lost version first, let the retained packets
-                // replay, then this drop + a force-set at the new frontier (the force-set clears the block
+                // `ADVANCE_STATE_FRONTIER` to the lost version (= lowest still-deliverable version - 1, rule
+                // above) first, let the retained packets replay,
+                // then this drop + a force-set at the new frontier (the force-set clears the block
                 // and the repair latch, so no fresh attestation is needed). See `stargate/README.md`,
                 // "Frontier repair (Stargate)" (IL-8487).
                 // The authoritative post-debit force-set is the required second half of this rescue.

@@ -460,8 +460,8 @@ contract CrosschainRecallSafetyTest is CrosschainTestBase {
     /// @notice IL-8487 (B-39). The compose leg landed first and the `RETURN_STARTED` metadata (version 2) is LOST
     ///         FOR GOOD, while a later packet (the settlement of an older transfer, version 3) is retained on
     ///         `StateVersionGap`. The compose-first rescue pair alone cannot help - the later packet keeps
-    ///         reverting - so the documented order is: ADVANCE to just below the lost version, let the retained
-    ///         packet replay, then `DROP_RETURN_METADATA_INCLUDED` + force-set at the new frontier. Both
+    ///         reverting - so the documented order is: ADVANCE to the lost version (= lowest deliverable minus one), let
+    ///         the retained packet replay, then `DROP_RETURN_METADATA_INCLUDED` + force-set at the new frontier. Both
     ///         rescue steps clear the block and the latch, so no fresh attestation is needed.
     function testShouldRecoverLostReturnMetadataByAdvancingThenComposeFirstRescue() public {
         _readyDispatcher();

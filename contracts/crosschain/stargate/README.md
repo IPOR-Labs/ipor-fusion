@@ -174,8 +174,8 @@ It fits metadata that is merely LATE. If the `RETURN_STARTED` is lost for good a
 later responses, those revert `StateVersionGap` until the frontier is advanced, and the rescue pair alone
 does not open the lane. Use this order:
 
-1. `ADVANCE_STATE_FRONTIER` to just below the lost `RETURN_STARTED` version (rule above), and wait for
-   `FRONTIER_REPAIR_DELAY`.
+1. `ADVANCE_STATE_FRONTIER` to the lost `RETURN_STARTED` version (= lowest still-deliverable version - 1, rule
+   above), and wait for `FRONTIER_REPAIR_DELAY`.
 2. Let the retained later packets replay in version order.
 3. Read the dispatcher's balance at the new frontier, then schedule `DROP_RETURN_METADATA_INCLUDED` for the
    recall together with
