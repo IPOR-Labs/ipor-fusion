@@ -655,7 +655,7 @@ contract CcipFactoryBudgetPolicyTest is Test {
         router.setFee(MAX_FEE + 1);
         vm.deal(address(factory), 10 * FEE);
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(CcipAppBase.CcipFeeTooHigh.selector, MAX_FEE + 1, MAX_FEE));
         _request(executor, _vaults());
         assertEq(factory.deploymentAttempts(executor, REMOTE_CHAIN), 0);
         assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), bytes32(0));
