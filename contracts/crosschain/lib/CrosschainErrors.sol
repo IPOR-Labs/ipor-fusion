@@ -488,12 +488,14 @@ library CrosschainErrors {
     error ProposalNotActive(uint256 proposalId);
 
     /// @notice Thrown when approving an expired proposal, or when proposing one whose `expiry` is not in the
-    ///         future (CCIP: or leaves less than `MIN_PROPOSAL_APPROVAL_WINDOW`); then `proposalId` is 0.
+    ///         future; then `proposalId` is 0. A future `expiry` that leaves too little time reverts
+    ///         `ProposalApprovalWindowTooShort` instead.
     /// @param proposalId The referenced proposal id.
     error ProposalExpired(uint256 proposalId);
 
-    /// @notice Thrown when a proposal's `expiry` does not leave a minimum meaningful approval window
-    ///         (`MIN_PROPOSAL_APPROVAL_WINDOW`) for the approver to act. A near-immediate expiry (e.g.
+    /// @notice Thrown by both transports (Stargate and CCIP executors) when a proposal's `expiry` does not leave
+    ///         a minimum meaningful approval window (`MIN_PROPOSAL_APPROVAL_WINDOW`) for the approver to act. A
+    ///         near-immediate expiry (e.g.
     ///         `block.timestamp + 1`) would let a proposer emit proposals that are practically impossible
     ///         to approve within a normal multisig/keeper cycle (audit V2-02).
     /// @param chainId The chain referenced.

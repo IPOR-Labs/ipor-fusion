@@ -94,6 +94,7 @@ interface ICcipExecutorLibraryAbi {
     error ProposalEpochChanged(uint256 chainId);
     error ObservationPredatesValueMovingReceipt(uint256 chainId, uint64 remoteTimestamp, uint64 receiptAt);
     error ProposalExpired(uint256 proposalId);
+    error ProposalApprovalWindowTooShort(uint256 chainId, uint256 window, uint256 minWindow);
     error ProposalNotActive(uint256 proposalId);
     error ProposalVersionMismatch(uint64 expected, uint64 received);
     error RetryGasBelowCommandBudget(bytes32 commandId, uint256 laneGas, uint256 requiredLaneGas);

@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {CrosschainConstants} from "../../lib/CrosschainConstants.sol";
+import {CrosschainErrors} from "../../lib/CrosschainErrors.sol";
 
 struct CcipBalanceProposal {
     uint256 chainId;
@@ -147,6 +148,10 @@ library CcipExecutorAttestationLib {
     ///         proposal supersedes it).
     event ProposalInvalidated(uint256 chainId, uint256 proposalId, uint64 newEpoch);
 
+    /// @dev Records a new balance proposal for `chainId_` and supersedes the chain's active one. Reverts
+    ///      `ProposalExpired(0)` when `expiry_` is not in the future, and `ProposalApprovalWindowTooShort`
+    ///      (`CrosschainErrors`, the same error as the Stargate executor) when it leaves less than
+    ///      `MIN_PROPOSAL_APPROVAL_WINDOW` for the approver to act (IL-9023).
     function propose(
         CcipAttestationState storage self,
         mapping(uint256 => uint64) storage versions_,
@@ -168,8 +173,18 @@ library CcipExecutorAttestationLib {
             block.timestamp - remoteTimestamp_ > stalenessMax_
         ) revert ObservationStale(chainId_);
         _requireObservedAfterReceipt(self, chainId_, remoteTimestamp_);
-        if (expiry_ <= block.timestamp || expiry_ - block.timestamp < CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW)
-            revert ProposalExpired(0);
+        if (expiry_ <= block.timestamp) revert ProposalExpired(0);
+        {
+            // Scoped: a function-level local would push `propose` over the stack limit (no `via_ir`).
+            uint256 window = expiry_ - block.timestamp;
+            if (window < CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW) {
+                revert CrosschainErrors.ProposalApprovalWindowTooShort(
+                    chainId_,
+                    window,
+                    CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW
+                );
+            }
+        }
         // A newer proposal replaces the active one: mark the old one SUPERSEDED and tell monitors (IL-8472).
         uint256 oldId = self.activeProposalId[chainId_];
         if (oldId != 0 && self.proposals[oldId].status == PROPOSAL_PENDING) {
