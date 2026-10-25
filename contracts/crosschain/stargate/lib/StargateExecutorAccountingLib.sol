@@ -1673,6 +1673,11 @@ library StargateExecutorAccountingLib {
     ///      once that loss puts the true value below the band floor and the residue is above
     ///      `ATTESTATION_ZERO_DUST_SD`, it cannot be attested down. The exit is `rejectAndBlockProposal` plus
     ///      `forceSetSettled` (IL-8585 / TP-M-07); operators attest known losses BEFORE recalling.
+    ///      Residual anchor: (1) a debit that empties the bucket keeps a non-dust `remoteBalanceSD_` as the
+    ///      anchor (IL-8606). (2) A later authenticated return at `settled == 0` (for example a second recall
+    ///      opened after the first one was cancelled) recomputes the anchor from the reported balance, only
+    ///      downwards and to zero at or below dust, so a stale residual cannot anchor a phantom attestation
+    ///      (IL-9163).
     function _applyReturnDebit(
         StargateExecutorState storage self,
         uint256 chainId_,
@@ -1691,8 +1696,8 @@ library StargateExecutorAccountingLib {
         // reported by the dispatcher, which keeps the anchor (residual rule below). Rounds UP (Ceil) so the
         // anchor never over-states remaining principal — the conservative direction, since the band is measured
         // against it. Inbound handler: clamp, never revert; `settled != 0` guards the denominator (a
-        // zero-settled chain never reaches this call — `bounded <= settled` and `accountedDebitSD` would
-        // already be 0, skipping `Math.mulDiv` below).
+        // zero-settled chain has `accountedDebitSD == 0` and skips `Math.mulDiv` below; the residual rule for
+        // that case is the `else if` branch, IL-9163).
         if (settled != 0 && accountedDebitSD != 0) {
             uint256 principal = self.anchorPrincipal[chainId_];
             uint256 principalDebit = Math.mulDiv(principal, accountedDebitSD, settled, Math.Rounding.Ceil);
@@ -1728,6 +1733,18 @@ library StargateExecutorAccountingLib {
             }
             self.anchorPrincipal[chainId_] = remaining;
             emit AttestationAnchorUpdated(chainId_, remaining);
+        } else if (settled == 0 && amountSentSD_ != 0) {
+            // Later return at `settled == 0` (IL-9163): a return authenticated after the bucket was already
+            // emptied (e.g. a second recall opened after the first one was cancelled) has nothing to debit,
+            // but its `remoteBalanceSD_` is still the dispatcher's authenticated post-debit balance. Follow
+            // it: the anchor becomes that balance (zero when at or below dust), capped at the current anchor
+            // so it only ever moves down.
+            uint256 principalAtZero = self.anchorPrincipal[chainId_];
+            uint256 anchorAtZero = remoteBalanceSD_ > CrosschainConstants.ATTESTATION_ZERO_DUST_SD
+                ? (remoteBalanceSD_ < principalAtZero ? remoteBalanceSD_ : principalAtZero)
+                : 0;
+            self.anchorPrincipal[chainId_] = anchorAtZero;
+            emit AttestationAnchorUpdated(chainId_, anchorAtZero);
         }
         // Net principal (IL-8578 / TP-H-02): debited by the amount the dispatcher declared it sent back
         // (`amountSentSD_`, authenticated by the transport), floored at zero, NOT by the settled delta. The

@@ -341,6 +341,10 @@ ATTESTATION_ZERO_DUST_SD`, `_applyReturnDebit` keeps `anchorPrincipal` at that r
 included). `settled` is not credited; an ordinary attestation prices the residual inside the anchor band;
 `StargateExecutorAttestationLib.approve` keys the zero-baseline rule on the anchor (positive attestation from `settled
 == 0` needs `anchorPrincipal != 0` and the band; zero-to-zero is unchanged; dust residual still zeroes the anchor).
+A later authenticated `RETURN_STARTED` that arrives when `settled` is already zero (for example the second recall,
+opened after the first was cancelled while the pool was paused, with A replayed before B) debits nothing, but it
+recomputes the anchor from `remoteBalanceSD`: `min(remoteBalanceSD, anchorPrincipal)` when `remoteBalanceSD` is above
+`ATTESTATION_ZERO_DUST_SD`, otherwise 0. On this path the anchor only decreases (IL-9163).
 
 The residual is NOT recallable until it is attested (recall bounds use `settled`), so the order of operations matters.
 Attest the residual before re-supplying: a credit that lands before the attestation caps the anchor at the credited
