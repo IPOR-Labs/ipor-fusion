@@ -703,9 +703,15 @@ contract CcipLifecycleTest is Test {
     }
 
     function testShouldRejectWrongPeer() public {
+        // A well-formed envelope of a type the executor handles, so the revert can only come from the peer check
+        // (an empty payload would revert in the envelope decoder even with the peer check removed).
         router.setSelector(address(this), DISPATCHER_SELECTOR);
-        vm.expectRevert();
-        router.ccipSend(DISPATCHER_SELECTOR, _emptyMessage(address(executor)));
+        CcipClient.EVM2AnyMessage memory message = _emptyMessage(address(executor));
+        message.data = CcipMessages.encode(CcipMsgType.UPDATE_VAULTS_ACK, "");
+        vm.expectRevert(
+            abi.encodeWithSelector(CcipAppBase.CcipUnauthorizedPeer.selector, DISPATCHER_SELECTOR, address(this))
+        );
+        router.ccipSend(DISPATCHER_SELECTOR, message);
     }
 
     function testShouldExcludeDonationAndFailClosedOnStaleTransfer() public {
