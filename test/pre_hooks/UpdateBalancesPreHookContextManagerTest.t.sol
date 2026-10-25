@@ -11,6 +11,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 
 import {PlasmaVault, PlasmaVaultInitData} from "contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultCloneLib} from "test/test_helpers/PlasmaVaultCloneLib.sol";
 import {PlasmaVaultBase} from "contracts/vaults/PlasmaVaultBase.sol";
 import {PlasmaVaultGovernance} from "contracts/vaults/PlasmaVaultGovernance.sol";
 import {IporFusionAccessManager} from "contracts/managers/access/IporFusionAccessManager.sol";
@@ -117,7 +118,7 @@ contract UpdateBalancesPreHookContextManagerTest is Test {
 
         _withdrawManager = address(new WithdrawManager(_accessManager));
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",

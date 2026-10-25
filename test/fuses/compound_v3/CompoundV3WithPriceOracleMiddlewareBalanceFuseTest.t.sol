@@ -34,6 +34,7 @@ import {PlasmaVaultGovernance} from "../../../contracts/vaults/PlasmaVaultGovern
 
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @notice Test-local declarations of Compound V3 Comet custom errors (not part of the production IComet interface)
 interface ICometErrorsCompoundV3MiddlewareBalanceFuseTest {
@@ -596,7 +597,7 @@ contract CompoundV3WithPriceOracleMiddlewareBalanceFuseTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         vm.startPrank(atomist);
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         plasmaVault.proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "Compound V3 Middleware Balance Fuse Vault",

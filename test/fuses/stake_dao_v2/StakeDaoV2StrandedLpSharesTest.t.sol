@@ -36,6 +36,7 @@ import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {ERC4626PriceFeed} from "../../../contracts/price_oracle/price_feed/ERC4626PriceFeed.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @notice Regression tests for IL-7947: StakeDaoV2BalanceFuse.balanceOf() must value loose
 /// (unstaked) LP-vault shares held by the PlasmaVault, not just reward-vault shares. Without this,
@@ -605,7 +606,7 @@ contract StakeDaoV2StrandedLpSharesIdleOverlapTest is Test {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         plasmaVault.proxyInitialize(
             PlasmaVaultInitData(
                 "TEST STAKEDAO IDLE OVERLAP VAULT",

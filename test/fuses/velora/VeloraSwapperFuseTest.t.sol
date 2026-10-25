@@ -26,6 +26,7 @@ import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {VeloraSwapperFuse, VeloraSwapperEnterData} from "../../../contracts/fuses/velora/VeloraSwapperFuse.sol";
 import {VeloraSwapExecutor} from "../../../contracts/fuses/velora/VeloraSwapExecutor.sol";
 import {VeloraSubstrateLib, VeloraSubstrateType} from "../../../contracts/fuses/velora/VeloraSubstrateLib.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @title VeloraSwapperFuseTest
 /// @notice Fork integration tests for VeloraSwapperFuse on Arbitrum.
@@ -102,7 +103,7 @@ contract VeloraSwapperFuseTest is Test {
         _withdrawManager = address(new WithdrawManager(_accessManager));
 
         // Deploy plasma vault
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST VELORA PLASMA VAULT",

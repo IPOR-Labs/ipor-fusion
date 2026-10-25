@@ -25,6 +25,7 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 contract MockDex {
     address tokenIn;
@@ -89,7 +90,7 @@ contract LiquityStabilityPoolFuseTest is Test {
         mockDex = new MockDex(WETH, BOLD);
         deal(BOLD, address(mockDex), 1e6 * 1e6);
 
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

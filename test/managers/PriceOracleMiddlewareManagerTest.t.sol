@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 
 import {Test} from "forge-std/Test.sol";
 
@@ -91,7 +92,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
         });
 
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(initData);
         vm.stopPrank();
 

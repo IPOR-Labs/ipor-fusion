@@ -19,6 +19,7 @@ import {DolomiteSupplyFuse} from "../../../contracts/fuses/dolomite/DolomiteSupp
 import {DolomiteBalanceFuse} from "../../../contracts/fuses/dolomite/DolomiteBalanceFuse.sol";
 import {DolomiteFuseLib, DolomiteSubstrate} from "../../../contracts/fuses/dolomite/DolomiteFuseLib.sol";
 import {IDolomiteAccountRegistry} from "../../../contracts/fuses/dolomite/ext/IDolomiteAccountRegistry.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @title MockDolomiteAccountRegistry
 /// @notice Mock implementation of DolomiteAccountRegistry for E-mode testing
@@ -386,7 +387,7 @@ contract DolomiteEModeTest is Test {
 
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
-        plasmaVault = address(new PlasmaVault());
+        plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "Dolomite EMode Test Vault",

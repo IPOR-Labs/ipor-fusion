@@ -6,6 +6,7 @@ import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessMana
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {PlasmaVault, PlasmaVaultInitData, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IPlasmaVault, FuseAction} from "../../contracts/interfaces/IPlasmaVault.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -479,7 +480,7 @@ contract CrosschainRealVaultRecoveryTest is CrosschainTestBase {
         // Heavy contracts come from their artifacts to keep this test contract small.
         address plasmaVaultBase = vm.deployCode("PlasmaVaultBase.sol:PlasmaVaultBase");
         address feeFactory = vm.deployCode("FeeManagerFactory.sol:FeeManagerFactory");
-        vault = PlasmaVault(vm.deployCode("PlasmaVault.sol:PlasmaVault"));
+        vault = PlasmaVaultCloneLib.clone(vm.deployCode("PlasmaVault.sol:PlasmaVault"));
         vm.label(address(vault), "PlasmaVault");
 
         vm.startPrank(ATOMIST);

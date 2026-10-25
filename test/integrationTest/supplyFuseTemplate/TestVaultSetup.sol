@@ -9,6 +9,7 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 abstract contract TestVaultSetup is TestStorage {
     function initPlasmaVault() public {
@@ -24,7 +25,7 @@ abstract contract TestVaultSetup is TestStorage {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         vm.startPrank(accounts[0]);
-        plasmaVault = address(new PlasmaVault());
+        plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",
@@ -66,7 +67,7 @@ abstract contract TestVaultSetup is TestStorage {
 
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         vm.startPrank(accounts[0]);
-        plasmaVault = address(new PlasmaVault());
+        plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

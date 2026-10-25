@@ -29,6 +29,7 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @title EulerV2SwapRegistryForkTest
 /// @notice Base-mainnet (chainId 8453) fork integration tests exercising EulerV2SwapRegistryFuse end-to-end
@@ -92,7 +93,7 @@ contract EulerV2SwapRegistryForkTest is Test {
         address withdrawManager = address(new WithdrawManager(_accessManager));
 
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

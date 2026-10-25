@@ -25,6 +25,7 @@ import {DolomiteBalanceFuse} from "contracts/fuses/dolomite/DolomiteBalanceFuse.
 import {DolomiteFuseLib, DolomiteSubstrate} from "contracts/fuses/dolomite/DolomiteFuseLib.sol";
 import {IDolomiteMargin} from "contracts/fuses/dolomite/ext/IDolomiteMargin.sol";
 import {IDepositWithdrawalRouter} from "contracts/fuses/dolomite/ext/IDepositWithdrawalRouter.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 // =====================================================================================================
 // Minimal stand-ins for the external Dolomite dependency (no RPC needed).
@@ -235,7 +236,7 @@ contract DolomiteIsolationModeEnterTest is Test {
         vm.stopPrank();
 
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
-        plasmaVault = PlasmaVault(deployCode("PlasmaVault.sol:PlasmaVault"));
+        plasmaVault = PlasmaVaultCloneLib.clone(deployCode("PlasmaVault.sol:PlasmaVault"));
 
         vm.startPrank(ATOMIST);
         plasmaVault.proxyInitialize(

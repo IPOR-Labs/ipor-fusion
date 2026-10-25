@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
@@ -194,7 +195,7 @@ contract PlasmaVaultDepositTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         // Tworzymy i inicjalizujemy vault
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion USDC",
@@ -289,7 +290,7 @@ contract PlasmaVaultDepositTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         // Create and initialize vault
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,

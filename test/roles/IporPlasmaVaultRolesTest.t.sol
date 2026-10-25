@@ -27,6 +27,7 @@ import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGov
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 
 import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
@@ -679,7 +680,7 @@ contract IporPlasmaVaultRolesTest is Test {
         balanceFuses[0] = MarketBalanceFuseConfig(IporFusionMarkets.AAVE_V3, address(balanceFuse));
         _accessManager = new IporFusionAccessManager(_deployer, 0);
         _withdrawManager = new WithdrawManager(address(_accessManager));
-        _plasmaVault = new PlasmaVault();
+        _plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,

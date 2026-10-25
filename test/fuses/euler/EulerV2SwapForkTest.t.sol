@@ -48,6 +48,7 @@ import {
 } from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @notice Minimal interface for the deployed EulerSwap v2 Periphery on Base.
 /// @dev Signatures verified against the on-chain verified source of the periphery at
@@ -139,7 +140,7 @@ contract EulerV2SwapForkTest is Test {
         address withdrawManager = address(new WithdrawManager(_accessManager));
 
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

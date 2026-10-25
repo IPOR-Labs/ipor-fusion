@@ -24,8 +24,6 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
-import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
-import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
@@ -106,24 +104,6 @@ contract FusionFactoryBusinessClientFeePackagesTest is Test {
         address priceManagerBase = address(new PriceOracleMiddlewareManager(owner, priceOracleMiddleware));
 
         address plasmaVaultCoreBase = address(new PlasmaVault());
-        PlasmaVault(plasmaVaultCoreBase).proxyInitialize(
-            PlasmaVaultInitData({
-                assetName: "fake",
-                assetSymbol: "fake",
-                underlyingToken: address(underlyingToken),
-                priceOracleMiddleware: priceOracleMiddleware,
-                feeConfig: FeeConfig({
-                    feeFactory: factoryAddresses.feeManagerFactory,
-                    iporDaoManagementFee: 111,
-                    iporDaoPerformanceFee: 222,
-                    iporDaoFeeRecipientAddress: address(this)
-                }),
-                accessManager: accessManagerBase,
-                plasmaVaultBase: plasmaVaultBase,
-                withdrawManager: withdrawManagerBase,
-                plasmaVaultVotesPlugin: address(0)
-            })
-        );
 
         address rewardsManagerBase = address(new RewardsClaimManager(owner, plasmaVaultCoreBase));
 

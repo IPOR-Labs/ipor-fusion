@@ -29,8 +29,6 @@ import {Roles} from "../../contracts/libraries/Roles.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
-import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
-import {PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 
 /// @title FuseManagerTimelockCancelTest
 /// @notice Test demonstrating FuseManager role with 24h timelock and guardian cancel functionality
@@ -140,24 +138,6 @@ contract FuseManagerTimelockCancelTest is Test {
         address priceManagerBase = address(new PriceOracleMiddlewareManager(owner, priceOracleMiddleware));
 
         address plasmaVaultCoreBase = address(new PlasmaVault());
-        PlasmaVault(plasmaVaultCoreBase).proxyInitialize(
-            PlasmaVaultInitData({
-                assetName: "fake",
-                assetSymbol: "fake",
-                underlyingToken: address(underlyingToken),
-                priceOracleMiddleware: priceOracleMiddleware,
-                feeConfig: FeeConfig({
-                    feeFactory: factoryAddresses.feeManagerFactory,
-                    iporDaoManagementFee: 111,
-                    iporDaoPerformanceFee: 222,
-                    iporDaoFeeRecipientAddress: address(this)
-                }),
-                accessManager: accessManagerBase,
-                plasmaVaultBase: plasmaVaultBase,
-                withdrawManager: withdrawManagerBase,
-                plasmaVaultVotesPlugin: address(0)
-            })
-        );
 
         address rewardsManagerBase = address(new RewardsClaimManager(owner, plasmaVaultCoreBase));
 

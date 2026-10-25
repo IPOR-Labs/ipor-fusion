@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -153,7 +154,7 @@ abstract contract CompoundV3BorrowEthereumSetup is Test {
         IporFusionAccessManager accessManager = RoleLib.createAccessManager(usersToRoles, 0, vm);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        vault = new PlasmaVault();
+        vault = PlasmaVaultCloneLib.newPlasmaVault();
 
         vm.prank(admin);
         vault.proxyInitialize(

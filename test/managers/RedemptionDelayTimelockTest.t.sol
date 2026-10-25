@@ -21,13 +21,12 @@ import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMid
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {RewardsClaimManager} from "../../contracts/managers/rewards/RewardsClaimManager.sol";
-import {PlasmaVault, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {FusionFactoryStorageLib} from "../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {IPlasmaVaultGovernance} from "../../contracts/interfaces/IPlasmaVaultGovernance.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {ContextManager} from "../../contracts/managers/context/ContextManager.sol";
 import {PriceOracleMiddlewareManager} from "../../contracts/managers/price/PriceOracleMiddlewareManager.sol";
-import {FeeConfig} from "../../contracts/managers/fee/FeeManagerFactory.sol";
 
 /// @title RedemptionDelayTimelockTest
 /// @notice Proves that the IL-7910 redemption delay setter can be put behind the OWNER_ROLE timelock.
@@ -137,24 +136,6 @@ contract RedemptionDelayTimelockTest is Test {
         address priceManagerBase = address(new PriceOracleMiddlewareManager(owner, priceOracleMiddleware));
 
         address plasmaVaultCoreBase = address(new PlasmaVault());
-        PlasmaVault(plasmaVaultCoreBase).proxyInitialize(
-            PlasmaVaultInitData({
-                assetName: "fake",
-                assetSymbol: "fake",
-                underlyingToken: address(underlyingToken),
-                priceOracleMiddleware: priceOracleMiddleware,
-                feeConfig: FeeConfig({
-                    feeFactory: factoryAddresses.feeManagerFactory,
-                    iporDaoManagementFee: 111,
-                    iporDaoPerformanceFee: 222,
-                    iporDaoFeeRecipientAddress: address(this)
-                }),
-                accessManager: accessManagerBase,
-                plasmaVaultBase: plasmaVaultBase,
-                withdrawManager: withdrawManagerBase,
-                plasmaVaultVotesPlugin: address(0)
-            })
-        );
 
         address rewardsManagerBase = address(new RewardsClaimManager(owner, plasmaVaultCoreBase));
 

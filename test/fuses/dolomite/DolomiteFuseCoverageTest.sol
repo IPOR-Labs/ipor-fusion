@@ -33,6 +33,7 @@ import {
 import {DolomiteBalanceFuse} from "../../../contracts/fuses/dolomite/DolomiteBalanceFuse.sol";
 import {DolomiteFuseLib, DolomiteSubstrate} from "../../../contracts/fuses/dolomite/DolomiteFuseLib.sol";
 import {IDolomiteMargin} from "../../../contracts/fuses/dolomite/ext/IDolomiteMargin.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @title DolomiteFuseCoverageTest
 /// @notice Tests for improving code coverage of Dolomite fuses
@@ -867,7 +868,7 @@ contract DolomiteFuseCoverageTest is Test {
 
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
-        plasmaVault = address(new PlasmaVault());
+        plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "Dolomite Coverage Test Vault",

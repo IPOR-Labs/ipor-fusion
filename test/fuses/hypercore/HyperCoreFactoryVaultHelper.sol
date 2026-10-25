@@ -7,14 +7,14 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {FusionFactory} from "../../../contracts/factory/FusionFactory.sol";
 import {FusionFactoryStorageLib} from "../../../contracts/factory/lib/FusionFactoryStorageLib.sol";
 import {PlasmaVaultFactory} from "../../../contracts/factory/PlasmaVaultFactory.sol";
-import {FeeManagerFactory, FeeConfig} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeManagerFactory} from "../../../contracts/managers/fee/FeeManagerFactory.sol";
 import {AccessManagerFactory} from "../../../contracts/factory/AccessManagerFactory.sol";
 import {PriceManagerFactory} from "../../../contracts/factory/PriceManagerFactory.sol";
 import {WithdrawManagerFactory} from "../../../contracts/factory/WithdrawManagerFactory.sol";
 import {RewardsManagerFactory} from "../../../contracts/factory/RewardsManagerFactory.sol";
 import {ContextManagerFactory} from "../../../contracts/factory/ContextManagerFactory.sol";
 import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
-import {PlasmaVault, PlasmaVaultInitData} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
 import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFusionAccessManager.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
@@ -53,8 +53,7 @@ library HyperCoreFactoryVaultHelper {
     /// @param owner_ Will hold `DEFAULT_ADMIN_ROLE`/`MAINTENANCE_MANAGER_ROLE` equivalents needed to
     /// finish wiring the factory (matches `FusionFactory.t.sol`'s `owner`/`maintenanceManager`).
     /// @param daoFeeManager_ Account that sets the (zero-fee) DAO fee package used by `clone()`.
-    /// @param underlyingToken_ Underlying ERC20 the throwaway "fake" `plasmaVaultCoreBase` instance
-    /// is initialized with; `Clones.clone()` requires that base to already be an initialized proxy.
+    /// @param underlyingToken_ Underlying ERC20 stored in the factory deploy context.
     function deployFusionFactory(
         Vm vm,
         address owner_,
@@ -135,7 +134,7 @@ library HyperCoreFactoryVaultHelper {
         address accessManagerBase = address(new IporFusionAccessManager(ctx.owner, 1 seconds));
         address withdrawManagerBase = address(new WithdrawManager(accessManagerBase));
         address priceManagerBase = address(new PriceOracleMiddlewareManager(ctx.owner, ctx.priceOracleMiddleware));
-        address plasmaVaultCoreBase = _deployFakePlasmaVaultCoreBase(ctx, accessManagerBase, withdrawManagerBase);
+        address plasmaVaultCoreBase = _deployPlasmaVaultCoreBase();
         address rewardsManagerBase = address(new RewardsClaimManager(ctx.owner, plasmaVaultCoreBase));
         address contextManagerBase = _deployContextManagerBase(ctx.owner);
 
@@ -157,32 +156,9 @@ library HyperCoreFactoryVaultHelper {
         return address(new ContextManager(owner_, approvedAddresses));
     }
 
-    /// @dev `PlasmaVaultFactory.clone()` uses `Clones.clone()` on this address, which requires it to
-    /// already be an initialized proxy; this "fake" instance is never used for anything else
-    /// (mirrors test/factory/FusionFactory.t.sol setUp()).
-    function _deployFakePlasmaVaultCoreBase(
-        FusionFactoryDeployContext memory ctx,
-        address accessManagerBase_,
-        address withdrawManagerBase_
-    ) private returns (address plasmaVaultCoreBase) {
+    /// @dev `PlasmaVaultFactory.clone()` uses `Clones.clone()` on this address. Like production, the
+    /// base is an uninitialized implementation; it is never used for anything else.
+    function _deployPlasmaVaultCoreBase() private returns (address plasmaVaultCoreBase) {
         plasmaVaultCoreBase = address(new PlasmaVault());
-        PlasmaVault(plasmaVaultCoreBase).proxyInitialize(
-            PlasmaVaultInitData({
-                assetName: "fake",
-                assetSymbol: "fake",
-                underlyingToken: ctx.underlyingToken,
-                priceOracleMiddleware: ctx.priceOracleMiddleware,
-                feeConfig: FeeConfig({
-                    feeFactory: ctx.factoryAddresses.feeManagerFactory,
-                    iporDaoManagementFee: 0,
-                    iporDaoPerformanceFee: 0,
-                    iporDaoFeeRecipientAddress: address(this)
-                }),
-                accessManager: accessManagerBase_,
-                plasmaVaultBase: ctx.plasmaVaultBase,
-                withdrawManager: withdrawManagerBase_,
-                plasmaVaultVotesPlugin: address(0)
-            })
-        );
     }
 }

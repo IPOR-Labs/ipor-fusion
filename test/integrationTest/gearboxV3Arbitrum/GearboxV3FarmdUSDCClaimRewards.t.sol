@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -65,7 +66,7 @@ contract GearboxV3FarmdUSDCClaimRewards is Test {
         address[] memory alphas = new address[](1);
         alphas[0] = address(this);
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "TEST PLASMA VAULT",

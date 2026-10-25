@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -78,7 +79,7 @@ contract PlasmaVaultManagementFeeMaxPreviewTest is Test {
         accessManager = _createAccessManager();
         withdrawManager = new WithdrawManager(address(accessManager));
 
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         plasmaVault.proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion mUSDC",
