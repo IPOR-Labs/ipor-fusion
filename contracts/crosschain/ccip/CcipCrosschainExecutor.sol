@@ -53,17 +53,6 @@ contract CcipCrosschainExecutor is
         uint256 transferStalenessMax;
     }
 
-    struct BalanceProposal {
-        uint256 chainId;
-        uint256 balance;
-        uint64 stateVersion;
-        uint64 remoteBlock;
-        uint64 remoteTimestamp;
-        uint64 expiry;
-        uint64 accountingEpoch;
-        uint8 status;
-    }
-
     error InvalidDecimals(uint8 localDecimals, uint8 sharedDecimals);
     /// @notice `localDecimals - sharedDecimals` exceeds 18 (conversion rate would exceed 1e18).
     error DecimalsGapTooLarge(uint8 localDecimals, uint8 sharedDecimals);
