@@ -56,6 +56,9 @@ library CrosschainVaultActionLib {
     ///      forwarded (gas-limited; also reported for a non-gas revert on a tight lane, so read `redeemError`) (D-065). `untracked` is always true: the caller
     ///      untracks the vault after the sweep whatever is left (D-028). ALPHA must withdraw or recall the position
     ///      BEFORE removing a vault; a residual is invisible to NAV until the vault is allowlisted again.
+    ///      When the share balance cannot be read AFTER the `redeem` call (reasons 2, 3 or 5), `sharesLeft` is the
+    ///      balance held BEFORE the sweep: a deliberately cautious over-report that assumes nothing was burned. The
+    ///      shares may already be gone, so check the dispatcher's actual balance before scheduling a rescue.
     event TrackedVaultSweepResidual(
         address vault,
         uint256 sharesLeft,
