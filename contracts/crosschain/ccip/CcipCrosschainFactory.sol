@@ -52,7 +52,7 @@ contract CcipCrosschainFactory is CcipAppBase {
     /// @dev NACK reason codes, see `_sendDeploymentNack`. A failed deployment attempt is answered with a NACK only
     ///      if (1) at least `NACK_MIN_GAS` remains for the NACK send and (2) the attempt consumed at most 90% of the
     ///      gas it started with (a deterministic rejection is early and cheap; a nested out-of-gas is not).
-    ///      Otherwise the receive reverts with `InsufficientGasForNack` and stays retryable.
+    ///      Otherwise the receive reverts with `InsufficientGasForDeploymentNack` and stays retryable.
     uint8 private constant NACK_CONFIG_REJECTED = 2;
     uint8 private constant NACK_VAULTS_REJECTED = 3;
     uint8 private constant NACK_TICKET_EXPIRED = 4;
@@ -104,7 +104,12 @@ contract CcipCrosschainFactory is CcipAppBase {
     error CreatorNotAllowed(address creator);
     error SweepFailed();
     error OnlySelf();
-    error InsufficientGasForNack(uint256 gasLeft);
+    /// @notice A failed deployment attempt cannot be answered with a NACK: too little gas is left for the send, or
+    ///         the attempt burned over 90% of its gas. The receive reverts and stays retryable.
+    /// @dev Named apart from `CrosschainErrors.InsufficientGasForNack(uint256,uint256)` (the command-NACK error of
+    ///      the dispatchers), whose selector differs.
+    /// @param gasLeft `gasleft()` at the revert.
+    error InsufficientGasForDeploymentNack(uint256 gasLeft);
     error TooManyVaults(uint256 supplied, uint256 maximum);
     error InvalidVaultAddress(address vault);
     error DuplicateVault(address vault);
@@ -660,7 +665,9 @@ contract CcipCrosschainFactory is CcipAppBase {
                 // Each nested frame (self-call, CREATE3 proxy, CREATE) keeps 1/64 of its gas when the callee runs
                 // out, so an out-of-gas deployment can leave more than `NACK_MIN_GAS`. Revert (retryable) when too
                 // little gas remains for the NACK send, or when the attempt burned over 90% of its gas.
-                if (gasleft() < NACK_MIN_GAS || gasleft() * 10 < gasBefore) revert InsufficientGasForNack(gasleft());
+                if (gasleft() < NACK_MIN_GAS || gasleft() * 10 < gasBefore) {
+                    revert InsufficientGasForDeploymentNack(gasleft());
+                }
                 _sendDeploymentNack(srcChainId_, ticket_, ticketHash, _nackReason(reason));
                 return;
             }

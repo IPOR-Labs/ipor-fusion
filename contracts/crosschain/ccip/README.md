@@ -284,7 +284,7 @@ ACK/NACK send itself (fee budget or ceiling) and gas exhaustion. An out-of-gas d
 revert: each nested call frame keeps 1/64 of its gas when the callee runs out and the deployment is three frames
 deep (self-call, CREATE3 proxy, CREATE), so with a large ticket gas limit it can leave more than 200,000 gas and be
 answered NACK(2) (the fee is lost and the ticket is freed, no inconsistent state; CCIP marks the message SUCCESS,
-so there is no manual re-execution). The factory therefore also reverts (`InsufficientGasForNack`) when the
+so there is no manual re-execution). The factory therefore also reverts (`InsufficientGasForDeploymentNack`) when the
 attempt consumed more than 90% of its gas, and when less than 200,000 gas remains; those receives stay
 retryable. The IL-8623 expiry sanity bound (`TicketExpiryOutOfRange`) and migration gate
 (`DestinationAssetMigrationScheduled`) also revert retryably instead of answering NACK (see below).
