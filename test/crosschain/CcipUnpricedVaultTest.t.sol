@@ -157,7 +157,17 @@ contract CcipUnpricedVaultTest is Test {
         obs = dispatcher.observation();
         assertEq(obs.unpricedCodes, 2, "vault index 0 failed on convertToAssets");
         vaultA.setFaults(false, false, true);
-        assertEq(dispatcher.observation().unpricedCount, 1, "short return flagged");
+        obs = dispatcher.observation();
+        assertEq(obs.unpricedCount, 1, "balanceOf short return flagged");
+        assertEq(obs.unpricedCodes, 1, "short balanceOf is a balanceOf failure");
+
+        // IL-9178: balanceOf works, only convertToAssets returns fewer than 32 bytes.
+        vaultA.setFaults(false, false, false);
+        vaultA.setConvertShortReturn(true);
+        obs = dispatcher.observation();
+        assertEq(obs.unpricedCount, 1, "convertToAssets short return flagged");
+        assertEq(obs.unpricedCodes, 2, "vault index 0 failed on convertToAssets");
+        assertEq(obs.accountedBalance, 30e18, "only B is counted");
     }
 
     function testShouldStillSettleInboundTransferWhenVaultReverts() public {

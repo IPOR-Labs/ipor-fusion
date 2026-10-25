@@ -154,7 +154,18 @@ contract StargateUnpricedVaultTest is Test {
         vaultA.setFaults(false, true, false);
         assertEq(dispatcher.observation().unpricedCount, 1, "convertToAssets revert flagged");
         vaultA.setFaults(false, false, true);
-        assertEq(dispatcher.observation().unpricedCount, 1, "short return flagged");
+        assertEq(dispatcher.observation().unpricedCount, 1, "balanceOf short return flagged");
+    }
+
+    /// @dev IL-9178: `balanceOf` works, only `convertToAssets` returns fewer than 32 bytes.
+    function testShouldFlagVaultWhenConvertToAssetsReturnsShortData() public {
+        vaultA.setConvertShortReturn(true);
+        Observation memory obs = dispatcher.observation();
+        assertEq(obs.unpricedCount, 1, "convertToAssets short return flagged");
+        assertFalse(obs.vaultValued[0], "A flagged");
+        assertEq(obs.vaultAssetValues[0], 0, "A contributes nothing");
+        assertTrue(obs.vaultValued[1], "B priced");
+        assertEq(obs.vaultAssetValues[1], 30e6, "B value intact");
     }
 
     /// @dev Behaviour pin: the Stargate settle path never reads vaults, so this holds with or without IL-8602.
