@@ -5,6 +5,7 @@ import {FactoryTestBase} from "./FactoryTestBase.sol";
 import {ExecutorInitParams} from "../../contracts/crosschain/interfaces/ICrosschainFactory.sol";
 import {StargateCrosschainFactory} from "../../contracts/crosschain/stargate/StargateCrosschainFactory.sol";
 import {CrosschainConstants} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
+import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
 
 /// @title FactoryDeterminismTest
 /// @notice CREATE3 addressing guarantees (plan §3.2): `computeExecutorAddress` matches the actually deployed
@@ -81,8 +82,15 @@ contract FactoryDeterminismTest is FactoryTestBase {
     function testShouldRejectExecutorForDisabledAsset() public requiresFactory {
         ExecutorInitParams memory p = _params(address(0x1234));
         p.assetId = keccak256("DAI");
-        vm.expectRevert();
+        address predicted = factory.computeExecutorAddress(address(this), keccak256("x"));
+        // The test contract is the factory owner, hence an allowed creator: the `enabled` guard is the one that fires.
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.AssetConfigNotEnabled.selector, keccak256("DAI")));
         factory.createExecutor(keccak256("x"), p);
+        assertEq(predicted.code.length, 0, "no executor deployed");
+        assertFalse(
+            StargateCrosschainFactory(payable(address(factory))).assetFrozen(keccak256("DAI")),
+            "the rejected asset is not frozen"
+        );
     }
 
     function testShouldRegisterExecutorInRegistryOnCreate() public requiresFactory {
