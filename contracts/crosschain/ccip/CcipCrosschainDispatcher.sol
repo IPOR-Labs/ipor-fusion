@@ -21,6 +21,10 @@ import {RescueModule} from "../lib/RescueModule.sol";
 import {ICcipDispatcherLibraryAbi} from "./ICcipDispatcherLibraryAbi.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 
+/// @notice Mirror of the WithdrawManager request view (`WithdrawManager.WithdrawRequestInfo`), field for field, so the
+///         dispatcher can decode `requestInfo` without importing the manager.
+/// @dev `shares` is the manager's outstanding request, `endWithdrawWindowTimestamp` the end of the window in which it
+///      can be redeemed, `canWithdraw` whether that window is open now, `withdrawWindowInSeconds` the window length.
 struct CcipWithdrawRequestInfo {
     uint256 shares;
     uint256 endWithdrawWindowTimestamp;
@@ -28,8 +32,11 @@ struct CcipWithdrawRequestInfo {
     uint256 withdrawWindowInSeconds;
 }
 
+/// @notice The two WithdrawManager entry points the dispatcher calls on a remote vault's manager.
 interface ICcipWithdrawManager {
+    /// @notice Registers (replaces) the caller's withdraw request for `shares_` vault shares.
     function requestShares(uint256 shares_) external;
+    /// @notice The manager's stored request of `account_`.
     function requestInfo(address account_) external view returns (CcipWithdrawRequestInfo memory);
 }
 
@@ -51,6 +58,15 @@ struct CcipObservation {
     uint256 unpricedCodes;
 }
 
+/// @title CcipCrosschainDispatcher
+/// @notice Remote-chain side of the CCIP crosschain lane: holds the bridged asset, runs the executor's sequenced
+///         commands (deposit, redeem, request shares, redeem from request, vault allowlist updates) against the
+///         allowlisted and tracked ERC-4626 vaults, and answers with receipts, balance reports and token returns.
+/// @dev Every non-expired command delivered with at least its gas budget runs through `runStoredCommand`, a
+///      self-call, so a business failure is caught, NACKed to the executor and never blocks the CCIP message.
+///      An expired command is NACKed without the self-call, and a delivery below the budget reverts on the OffRamp. `accountedBalance` is the value the executor attests: idle asset
+///      (`trackedIdle`), tokens queued for return and the priced tracked vault positions. Inbound CCIP messages enter
+///      through `ccipReceive` under the reentrancy guard.
 contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherLibraryAbi {
     error OnlyFactory();
     error InvalidTokenDelivery();
@@ -436,6 +452,17 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
         if (gasleft() < required) revert CrosschainErrors.InsufficientGasForCommand(gasleft(), required);
     }
 
+    /// @notice Runs one executor command (or a vault-allowlist update) against the allowlisted (DEPOSIT) or tracked
+    ///         (REDEEM, REQUEST_SHARES, REDEEM_FROM_REQUEST) vaults.
+    /// @dev Self-call only: any other caller reverts `OnlySelf`. `_runCommand` calls it through `this` with a capped
+    ///      gas stipend so that a revert is caught and turned into a NACK. It re-checks the command deadline
+    ///      (encoded in the high 64 bits of `commandId`, `CommandExpired` after it) and the config epoch
+    ///      (`InvalidConfigEpoch` unless `commandConfigEpoch` matches the one the command was built under), then
+    ///      applies `UPDATE_VAULTS` or a business action. Returns the signed change of the tracked ledger in shared
+    ///      decimals.
+    /// @param storedType_ `COMMAND` or `UPDATE_VAULTS`.
+    /// @param command_ The command as delivered.
+    /// @param extra_ ABI-encoded `(address[] vaults, bool allowed, bool replace)` for `UPDATE_VAULTS`, else unused.
     function runStoredCommand(
         CcipMsgType storedType_,
         Command calldata command_,
@@ -661,6 +688,9 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
         );
     }
 
+    /// @notice The balance the executor attests for this dispatcher, in shared decimals.
+    /// @dev Idle tracked asset, tokens queued for return and the priced tracked vault positions (see `observation`
+    ///      for the per-vault pricing flags and the other attestation fields read from the same state).
     function accountedBalance() external view returns (uint256) {
         return _accountedBalance();
     }
@@ -687,6 +717,7 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
             });
     }
 
+    /// @notice Number of vaults in the tracked set (at most `MAX_TRACKED_VAULTS`).
     function trackedVaultsLength() external view returns (uint256) {
         return trackedVaults.length;
     }
@@ -858,6 +889,11 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
         }
     }
 
+    /// @notice Sends the queued response `responseId_` to the executor.
+    /// @dev Self-call only (`OnlySelf`): it is reached through `this` from `flushResponse(maxCount_)` for every
+    ///      entry after the first, so a failed send stops the drain instead of reverting it, and from
+    ///      `_tryDispatchHead` for a response queued at the head (`_queueResponse`, and the RETURN_TRANSFER path). The queue is strictly
+    ///      FIFO, so `responseId_` has to be the head of the queue.
     function dispatchResponseSelf(uint64 responseId_) external returns (bytes32 messageId) {
         if (msg.sender != address(this)) revert OnlySelf();
         messageId = _dispatchResponse(responseId_);
@@ -1078,6 +1114,8 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
         if (balance < required) revert InsufficientTrackedIdle(balance, required);
     }
 
+    /// @inheritdoc CcipAppBase
+    /// @dev Adds `nonReentrant` to the base implementation, so no inbound message handler can be re-entered.
     function ccipReceive(CcipClient.Any2EVMMessage calldata message_) public override nonReentrant {
         super.ccipReceive(message_);
     }

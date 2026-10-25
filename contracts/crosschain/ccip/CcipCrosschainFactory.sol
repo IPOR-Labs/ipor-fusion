@@ -15,6 +15,7 @@ import {CcipCrosschainDispatcher} from "./CcipCrosschainDispatcher.sol";
 import {CrosschainConstants} from "../lib/CrosschainConstants.sol";
 import {CrosschainErrors} from "../lib/CrosschainErrors.sol";
 
+/// @dev Views of the executor that the factory reads, plus the callback it uses to mark a dispatcher ready.
 interface ICcipExecutorFactoryView {
     function MANAGER() external view returns (address);
     function ASSET_ID() external view returns (bytes32);
@@ -25,16 +26,20 @@ interface ICcipExecutorFactoryView {
     function hasDispatcher(uint256 chainId_) external view returns (bool);
 }
 
+/// @dev Route entry points of an executor that the factory drives.
 interface ICcipRoutePolicyReceiver {
     function registerRoute(uint256 chainId_, CcipRouteConfig calldata route_) external;
     function syncRoutePolicy(uint256 chainId_, address feeToken_, uint256 gasLimitsAndFlags_, uint256 maxFee_) external;
 }
 
+/// @dev Route-policy entry point of a dispatcher that the factory drives.
 interface ICcipDispatcherRoutePolicyReceiver {
     function EXECUTOR_CHAIN_ID() external view returns (uint256);
     function syncRoutePolicy(address feeToken_, uint256 gasLimitsAndFlags_, uint256 maxFee_) external;
 }
 
+/// @dev Init code that stores `data_` as the runtime code of the deployed contract, behind a leading `0x00` byte
+///      (STOP). Used to keep creation codes in contract storage chunks that are read back with `extcodecopy`.
 contract CcipCreationCodeStore {
     constructor(bytes memory data_) {
         bytes memory runtime = abi.encodePacked(hex"00", data_);
@@ -44,6 +49,14 @@ contract CcipCreationCodeStore {
     }
 }
 
+/// @title CcipCrosschainFactory
+/// @notice Deploys the CCIP executor on this chain and, on request of an executor, the matching dispatcher on a
+///         destination chain, both at deterministic CREATE3 addresses, and pays every CCIP message it originates
+///         from its own native or fee-token balance.
+/// @dev Same-address model: an executor, and the dispatcher deployed for it on the destination, share one address.
+///      The factory is also a CCIP app: it receives `CREATE_DISPATCHER` tickets (destination side) and
+///      `DEPLOYMENT_ACK` / `DEPLOYMENT_NACK` answers (source side) from its peer factory. Configuration (routes,
+///      assets, dispatcher gas limits) is owner-only and timelocked by `CONFIG_DELAY`; the creation codes are set once.
 contract CcipCrosschainFactory is CcipAppBase {
     using SafeERC20 for IERC20;
 
@@ -58,12 +71,28 @@ contract CcipCrosschainFactory is CcipAppBase {
     uint8 private constant NACK_TICKET_EXPIRED = 4;
     uint256 private constant NACK_MIN_GAS = 200_000;
 
+    /// @notice Shared-decimals asset an executor can be built for.
+    /// @param token Token the executor and dispatcher hold.
+    /// @param sharedDecimals Decimals used on the wire between chains.
+    /// @param enabled False until `executeAsset` has written the entry.
     struct AssetConfig {
         address token;
         uint8 sharedDecimals;
         bool enabled;
     }
 
+    /// @notice Payload of a `CREATE_DISPATCHER` message: what the destination factory must deploy.
+    /// @dev Its hash (`keccak256(abi.encode(ticket))`) identifies the deployment in ACK, NACK and cancel handling.
+    /// @param salt CREATE3 salt of the executor on the source chain; the dispatcher reuses it on the destination.
+    /// @param executor Executor address on the source chain; must equal the address derived from `salt`.
+    /// @param srcChainId Chain of the executor and of the requesting factory.
+    /// @param dstChainId Chain the dispatcher is deployed on.
+    /// @param assetId Asset the executor was built for.
+    /// @param sharedDecimals Shared decimals of that asset; must match the destination asset config.
+    /// @param vaults Vaults the dispatcher serves.
+    /// @param rescueAdmin Rescue admin of the executor, copied to the dispatcher.
+    /// @param rescueGuardian Rescue guardian of the executor, copied to the dispatcher.
+    /// @param rescueDelay Rescue delay of the executor, copied to the dispatcher.
     struct DeploymentTicket {
         bytes32 salt;
         address executor;
@@ -223,6 +252,9 @@ contract CcipCrosschainFactory is CcipAppBase {
         emit CreationRestrictionUpdated(true);
     }
 
+    /// @notice Version of the factory interface.
+    /// @dev Constant for off-chain tooling; no contract reads it.
+    /// @return Always 1.
     function factoryInterfaceVersion() external pure returns (uint32) {
         return 1;
     }
@@ -259,6 +291,8 @@ contract CcipCrosschainFactory is CcipAppBase {
         emit CreationRestrictionUpdated(restricted_);
     }
 
+    /// @notice Add or remove an address from the `createExecutor` allowlist.
+    /// @dev The list only matters while `creationRestricted` is true; entries are kept when it is switched off.
     function setCreatorAllowed(address creator_, bool allowed_) external onlyOwner {
         isAllowedCreator[creator_] = allowed_;
         emit CreatorAllowanceUpdated(creator_, allowed_);
@@ -316,6 +350,9 @@ contract CcipCrosschainFactory is CcipAppBase {
         emit DispatcherDeploymentGasLimitExecuted(chainId_, gasLimit_);
     }
 
+    /// @notice Schedule an asset config; `executeAsset` applies it after `CONFIG_DELAY`.
+    /// @dev Reverts for a frozen asset (see `executeAsset`). While a commitment for the asset is pending, a fresh
+    ///      `CREATE_DISPATCHER` for it reverts (IL-8623). Scheduling the same commitment again restarts its timer.
     function scheduleAsset(bytes32 assetId_, address token_, uint8 sharedDecimals_) external onlyOwner {
         if (token_ == address(0)) revert CcipZeroAddress();
         // A zero asset id is the "not an asset commitment" marker of `_scheduledAssetOf`; counting it would leak.
@@ -331,6 +368,9 @@ contract CcipCrosschainFactory is CcipAppBase {
         emit AssetConfigScheduled(assetId_, token_, sharedDecimals_, executableAt);
     }
 
+    /// @notice Apply a scheduled asset config once its timelock has passed.
+    /// @dev Reverts `AssetConfigFrozen` if an executor or dispatcher was built against the asset in the meantime
+    ///      (audit M-4): the first deployment freezes the asset for good, so it can no longer be repointed.
     function executeAsset(bytes32 assetId_, address token_, uint8 sharedDecimals_) external onlyOwner {
         bytes32 commitment = keccak256(abi.encode("ASSET", assetId_, token_, sharedDecimals_));
         _consumeConfig(commitment);
@@ -364,6 +404,13 @@ contract CcipCrosschainFactory is CcipAppBase {
         delete scheduledConfig[commitment_];
     }
 
+    /// @notice Store the executor and dispatcher creation codes the factory deploys from.
+    /// @dev One-shot: a second call reverts `CreationCodesAlreadyConfigured`. Each input must be non-empty and at
+    ///      most `2 * _CODE_CHUNK_SIZE` = 40 000 bytes (`InvalidCreationCode`). Each input is the creation code
+    ///      already linked against the deployed CCIP libraries (the `crosschain_deploy` profile), without
+    ///      constructor arguments, which `createExecutor` and the ticket handler append. The keccak256 of each
+    ///      input is stored as `executorCreationCodeHash` / `dispatcherCreationCodeHash` and emitted in
+    ///      `CreationCodesConfigured`, so anyone can verify on-chain which code the factory deploys.
     function configureCreationCodes(bytes calldata executorCode_, bytes calldata dispatcherCode_) external onlyOwner {
         if (creationCodesConfigured) revert CreationCodesAlreadyConfigured();
         if (executorCode_.length == 0 || dispatcherCode_.length == 0) revert InvalidCreationCode();
@@ -413,10 +460,15 @@ contract CcipCrosschainFactory is CcipAppBase {
         emit ExecutorCreated(manager_, executor, salt);
     }
 
+    /// @notice Address `createExecutor` yields for `creator_` and `userSalt_` on this factory.
+    /// @dev The same creator and salt give the same address on every chain where this factory has the same address.
     function computeExecutorAddress(address creator_, bytes32 userSalt_) external view returns (address) {
         return CREATE3.getDeployed(keccak256(abi.encode(creator_, userSalt_, uint8(7))), address(this));
     }
 
+    /// @notice Executors created for `manager_`, in creation order.
+    /// @dev An append-only, uncapped registry meant for off-chain reads: the array is copied whole, so a manager
+    ///      with very many executors can make this call too large for another contract to consume.
     function executorsOf(address manager_) external view returns (address[] memory) {
         return _executorsByManager[manager_];
     }

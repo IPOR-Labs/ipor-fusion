@@ -8,6 +8,12 @@ import {CcipClient, ICcipMessageReceiver} from "../interfaces/CcipClient.sol";
 import {CcipRouteLib} from "../lib/CcipRouteLib.sol";
 import {CcipSendLib} from "../lib/CcipSendLib.sol";
 
+/// @title CcipAppBase
+/// @notice Shared CCIP plumbing of the CCIP factory, executor and dispatcher: the route registry, the send path and
+///         the authenticated receive path.
+/// @dev Every message is sent unordered and bound to a registered route. Inbound messages must come from the
+///      router, be new, arrive from a registered source selector and carry that route's peer as sender; only then
+///      does `_handleCcipMessage` run.
 abstract contract CcipAppBase is ICcipMessageReceiver, IERC165 {
     error CcipZeroAddress();
     error CcipUnknownChain(uint256 chainId);
@@ -44,10 +50,13 @@ abstract contract CcipAppBase is ICcipMessageReceiver, IERC165 {
 
     receive() external payable {}
 
+    /// @notice Route registered for `chainId_`; all fields are zero if none is registered.
     function ccipRoute(uint256 chainId_) external view returns (CcipRouteConfig memory) {
         return _ccipRoutes[chainId_];
     }
 
+    /// @notice Chain id registered for a CCIP chain selector.
+    /// @dev Reverts `CcipUnknownSelector` if no route uses the selector.
     function chainIdOfSelector(uint64 selector_) external view returns (uint256) {
         uint256 chainId = _selectorToChain[selector_];
         if (chainId == 0) revert CcipUnknownSelector(selector_);
@@ -125,10 +134,17 @@ abstract contract CcipAppBase is ICcipMessageReceiver, IERC165 {
         );
     }
 
+    /// @notice ERC-165: true for the CCIP message receiver interface and ERC-165 itself.
     function supportsInterface(bytes4 interfaceId_) public pure returns (bool) {
         return interfaceId_ == type(ICcipMessageReceiver).interfaceId || interfaceId_ == type(IERC165).interfaceId;
     }
 
+    /// @notice Entry point for the CCIP router.
+    /// @dev Checks, in order: the caller is `CCIP_ROUTER` (`CcipInvalidRouter`); the message id was not processed
+    ///      before (`CcipMessageAlreadyProcessed`); the source selector is registered (`CcipUnknownSelector`); the
+    ///      sender is that route's peer (`CcipUnauthorizedPeer`). The message is marked processed before
+    ///      `_handleCcipMessage` runs, so a reentrant redelivery of the same id reverts. If the handler reverts, the
+    ///      mark is reverted with it and the message stays retryable.
     function ccipReceive(CcipClient.Any2EVMMessage calldata message_) public virtual override {
         if (msg.sender != CCIP_ROUTER) revert CcipInvalidRouter(msg.sender);
         if (processedCcipMessage[message_.messageId]) revert CcipMessageAlreadyProcessed(message_.messageId);
@@ -143,5 +159,6 @@ abstract contract CcipAppBase is ICcipMessageReceiver, IERC165 {
         emit CcipMessageReceived(message_.messageId, srcChainId, sender);
     }
 
+    /// @dev Handles an authenticated message from the peer on `srcChainId_`.
     function _handleCcipMessage(uint256 srcChainId_, CcipClient.Any2EVMMessage memory message_) internal virtual;
 }
