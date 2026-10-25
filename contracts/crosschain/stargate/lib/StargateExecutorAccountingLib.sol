@@ -272,6 +272,10 @@ library StargateExecutorAccountingLib {
     /// @notice Mirror of the executor's event: a stale recall was cancelled by `cancelStaleReturnRequest`.
     event ReturnRequestCancelled(uint256 chainId, bytes32 requestId);
 
+    /// @dev Sends the manager `amountLD_` floored to whole shared-decimal units (`amountLD_ / conversionRate_`) and
+    ///      capped at `idleLedger`, then decrements `idleLedger` by exactly the units sent. Sends nothing (and
+    ///      leaves the ledger untouched) when the floored amount is zero. Emits `AssetClaimed` with the amount
+    ///      actually sent in local decimals.
     function claimAsset(
         StargateExecutorState storage self,
         address asset_,
@@ -290,6 +294,10 @@ library StargateExecutorAccountingLib {
         emit AssetClaimed(manager_, sendLD);
     }
 
+    /// @dev Source-of-funds guard (invariant #4): only fresh, untracked tokens may be bridged out. Reverts
+    ///      `SourceOfFundsGuard(balance, need)` unless
+    ///      `balance >= (idleLedger + pendingArrivalReserve) * conversionRate_ + amountLD_`, so tokens that back
+    ///      the idle ledger or a booked arrival reserve cannot be sent away.
     function validateSourceOfFunds(
         StargateExecutorState storage self,
         address asset_,
