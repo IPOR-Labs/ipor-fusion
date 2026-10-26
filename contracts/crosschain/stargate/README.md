@@ -464,6 +464,15 @@ Consequence: the ALPHA role can no longer void a pending proposal with a cheap o
 flight blocks the latch-clearing approval (`FrontierRepairBlockedByOpenTransfers`, IL-8614) until it settles or is
 force-resolved.
 
+**Sending a command does not void a pending proposal (IL-8563, IL-9208).** A command (`DEPOSIT`, `REDEEM`,
+`REQUEST_SHARES`, `REDEEM_FROM_REQUEST` or `UPDATE_VAULTS`) changes the dispatcher's remote state without bumping its
+`stateVersion`, and sending it does not bump the executor's accounting epoch. The epoch moves only when the command's
+receipt is applied (a `SUCCEEDED` or `CANCELLED` ACK, including one adopted late, or the release of a failed command
+by an `EXPIRED` receipt) or when the command is abandoned through the timelocked `ABANDON_COMMAND_*` rescue. A
+proposal observed before the command therefore stays approvable from the moment the command is sent until that receipt
+arrives. Rule for the attester pair: do not approve an observation that is older than a value-moving command that has
+been sent, and attest again after the command's ACK.
+
 ### Approval freshness window and monotonic observation clock (IL-8631 / TP-L-03, IL-8648 / TP-L-20)
 
 `approveBalance` applies two extra gates, identically on the Stargate and CCIP executors (after the existing

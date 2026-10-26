@@ -966,6 +966,13 @@ below `BALANCE_STALENESS_MAX`, and rely on deposit/withdraw fees where remote yi
 The CCIP executor never bumped the accounting epoch on an outbound send, so a pending proposal already survived it;
 the Stargate executor now matches (TP-M-44 / IL-8622, see the Stargate README).
 
+**Commands do not void a pending proposal (IL-8582, IL-9208).** A command (`DEPOSIT`, `REDEEM`, `REQUEST_SHARES`,
+`REDEEM_FROM_REQUEST` or `UPDATE_VAULTS`) changes the dispatcher's remote state without bumping its `stateVersion`,
+and on this transport it does not bump the executor's accounting epoch either, not even when its `COMMAND_ACK`
+arrives: the ACK only records the balance evidence it carries. A proposal observed before the command therefore stays
+approvable after it, until it expires or goes stale. Rule for the attester pair: do not approve an observation that is
+older than a value-moving command that has been sent, and attest again after the command's ACK.
+
 ### Approval freshness window and monotonic observation clock (IL-8631 / TP-L-03, IL-8648 / TP-L-20)
 
 `approveBalance` applies two extra gates, identically on the Stargate and CCIP executors (after the existing
