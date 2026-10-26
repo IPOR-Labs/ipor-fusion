@@ -335,8 +335,9 @@ Residual anchor after a full recall (TP-M-28, IL-8606). Same failure and fix as 
 `RETURN_STARTED` message did not carry a balance. It now has a trailing field `remoteBalanceSD`: the dispatcher's
 post-debit balance (tracked idle plus every PRICED tracked vault, priced by `TrackedVaultPricingLib` with the on-chain
 budget `VAULT_READ_GAS`; a vault priced in `observation()` can count as 0 there). An unpriced vault, or one whose value
-is absurd (above `type(uint128).max`), counts as zero, so the figure can only understate and one faulty vault can
-neither overflow the sum nor revert the recall. When a return empties `settled` while `remoteBalanceSD >
+is absurd (above `type(uint128).max`), counts as zero, so this unpriced rule can only understate (a manipulable
+`convertToAssets` read can still overstate, IL-9191) and one faulty vault can neither overflow the sum nor revert the
+recall. When a return empties `settled` while `remoteBalanceSD >
 ATTESTATION_ZERO_DUST_SD`, `_applyReturnDebit` keeps `anchorPrincipal` at that residual (the late-metadata debit path
 included). `settled` is not credited; an ordinary attestation prices the residual inside the anchor band;
 `StargateExecutorAttestationLib.approve` keys the zero-baseline rule on the anchor (positive attestation from `settled
@@ -352,9 +353,22 @@ amount (`min(R + D, netPrincipal = D)`, see the anchor credit cap above), which 
 (covered by `testCreditBeforeResidualAttestationShouldCapTheAnchorAtTheCredit`). The first attestation from the zero
 baseline is bounded only by the anchor band, the relative limiter being skipped at a zero baseline, so a single step can
 move `settled` from 0 to 1.2 R. The residual anchor is capped at the pre-debit anchor: an honest residual (yield since
-the last attestation) never exceeds it, so a reported figure above it cannot raise the anchor, which stays
-non-increasing under debits. Until the residual is attested NAV excludes it (it understates, never overstates), and a
-zero attestation is allowed, so a lost residual needs no special exit; `rejectAndBlockProposal` plus the timelocked
+the last attestation) never exceeds it, so an inflated reported figure cannot RAISE the anchor, which stays
+non-increasing under debits. The cap does not stop such a figure from KEEPING the whole pre-recall anchor at
+`settled == 0` although almost nothing is left remotely (IL-9191). Example trigger: a tracked remote vault whose
+`convertToAssets` can be moved on a spot input, priced during a recall delivery that anyone can execute. From that zero
+baseline a single attestation can reach 1.2 times the kept anchor. After the manipulation is undone an honest
+observation shows the true residual, which lies below 0.8 times the kept anchor, so an honest positive approval reverts
+`AttestationOutsideAnchorBand` and an honest pair can only approve 0. A zero-to-zero approval leaves the kept anchor in
+place until a re-supply credit, a lower later return or a force-set changes it, so pricing the true residual needs the
+force-set. Booking the phantom value needs an attester pair approving a figure no honest observation shows (attester
+collusion as in FP-H-01 / IL-8554, but up to 1.2 times the kept anchor rather than +-20% of value the vault sent). The
+allowlisting rule in "Remote vault allowlisting rules" (IL-9191) is an operator rule, not an on-chain check; it is meant
+to keep such vaults out. The cap on the residual anchor is covered by
+`testReportedResidualAbovePreDebitAnchorShouldBeCappedAtThePreDebitAnchor` (`ResidualAnchorAfterFullRecallTest`).
+Until the residual is attested NAV excludes it (it understates, never overstates), and a
+zero attestation is allowed (it does not clear the kept anchor), so a lost residual needs no special exit;
+`rejectAndBlockProposal` plus the timelocked
 force-set (`scheduleForceSetSettledBalance`) is only needed to price a residual that has fallen out of the band.
 
 Deployment note. `ReturnStarted` gained one `uint256` (wire change), but `CODEC_VERSION` stayed 3 at that point (IL-8625 bumped it to 4). Creation codes are
@@ -1205,6 +1219,15 @@ the high-water mark or the value change after the child's markets are refreshed 
 NatSpec), so both remain an approximation, not a full net valuation. Attesters take these risks into account (for
 example by refreshing the markets and subtracting the pending performance fee); when the difference exceeds the
 band, the existing exit remains (IL-9158).
+
+**Atomically manipulable price reads (IL-9191).** The recall delivery reads each tracked vault with `convertToAssets`
+and reports tracked idle plus those values as the authenticated post-debit balance, which can become the residual
+anchor (see "Anchor credit cap and band limitation"). This is an operator rule; nothing on-chain checks it. Allowlist
+only remote vaults whose `convertToAssets` cannot be moved and moved back within one block (in one transaction or in a
+bundle around the delivery, for example through a spot-price input), because the recall delivery can be executed by
+anyone and so the caller controls the block state around the read. For a vault that can be moved this way an inflated
+read can keep the whole pre-recall anchor open at `settled == 0`, from where one attestation can reach 1.2 times that
+anchor.
 
 **Withdraw-manager discovery reads the legacy slot too (IL-8608).** `plasmaVaultWithdrawManager()` runs inside the
 remote vault through `UniversalReader.read` and returns the manager with the legacy fallback
