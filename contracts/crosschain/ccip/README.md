@@ -546,6 +546,16 @@ accepts a four-word payload, because the old three-word decode ignores trailing 
 ceiling, so dispatchers must be upgraded no later than the fuses and executors. The `SharesRequested` event gained a
 `feeShares` field, so its topic changed and indexers must be updated.
 
+**A repeated `REQUEST_SHARES` pays the request fee again (IL-8603, IL-9209).** The remote WithdrawManager replaces the
+stored request on every call and takes `shares * getRequestFee() / 1e18` out of the dispatcher's vault shares, so a
+second request on the same vault is charged on its whole new amount. `maxFeeShares` is counted in shares of the remote
+vault: set it to `shares * getRequestFee() / 1e18` plus a margin. Value that fee in assets (`convertToAssets` of the
+remote vault) together with the fees of any further requests made before the next attestation, and keep the total
+inside the `bigChangeBps` step of `settled`. The hub still carries the old value until the next attestation is
+approved, and while `settled` is non-zero and inside the anchor band a lower honest attestation beyond that step
+reverts `BigChangeExceeded`; the way out is the timelocked force-set. From a zero `settled` or from below the band the
+relative limit does not apply (see "Pricing window between propose and approve").
+
 ## Observability: unpriced tracked vaults (IL-8602)
 
 The valuation behind `observation()` and every response (`TRANSFER_SETTLED`, `RETURN_TRANSFER`, `COMMAND_ACK`,
