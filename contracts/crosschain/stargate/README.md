@@ -380,7 +380,19 @@ pre-hook change only when the proposal is approved and the CROSSCHAIN market is 
 after the proposal and before the approval pays the old share price and captures part of the attested remote yield
 once approve and refresh land (and the converse for an exit ahead of a negative proposal). This is inherent to a
 cached, discretely attested NAV and is bounded to one attestation step (at most `STALENESS_MAX` of yield,
-further capped by the per-approval relative limiter and the anchor band). Accepted by design: no hook blocks
+further capped by the per-approval relative limiter and the anchor band). The window does not end at approve:
+`approveBalance` never calls the vault, so until the CROSSCHAIN market is next
+refreshed (`updateMarketsBalances([CROSSCHAIN])`, an `execute` through a crosschain fuse or `UpdateBalancesPreHook`)
+deposits, mints, withdrawals and redeems are still priced at the old cache (a withdrawal refreshes only the markets it
+pulls from, and the crosschain supply fuses are not instant-withdraw fuses). If that refresh is late or reverts (for
+example `AssetDistributionProtectionLib.checkLimits` in `PlasmaVault._updateMarketsBalances` when the CROSSCHAIN market
+crosses its limit), successive attestations spaced by `MIN_UPDATE_INTERVAL` accumulate until `settled` reaches the
+anchor band edge (`ATTESTATION_ANCHOR_BAND_BPS`, +-20% of the anchor; the gap to the cached value can reach the band
+width), not just one step. A late transfer settlement after `DROP_FROM_NAV` (IL-8619) opens the same window in one
+step: it adds the whole recovered amount (`min(received, sent)`) to `settled` and to the anchor, so neither the
+relative limiter nor the band bounds it. Keep the side that profits from the stale price paused until the refresh
+succeeds: deposits/mints after a positive step, withdrawals/redeems after a negative one (or pause the vault)
+(IL-9190). Accepted by design: no hook blocks
 share-price operations while a proposal is pending, because it would only narrow the window and would fail-close
 user operations. Operational rule for the attester pair: submit propose + approve + `updateMarketsBalances`
 (`[CROSSCHAIN]`) back-to-back in one block through a private submission channel, keep the attestation cadence well
