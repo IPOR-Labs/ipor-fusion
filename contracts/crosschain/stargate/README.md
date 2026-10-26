@@ -3,7 +3,10 @@
 ## Recall cancellation
 
 Each chain has a single recall slot. `requestAssetsFromDispatcher` takes it and arms the record's
-transfer-staleness slot at the same time. The slot is released in three ways:
+transfer-staleness slot at the same time. A recall whose accounted bound `min(amount, settled)` is zero, because
+nothing is settled on the chain, is refused with `ZeroAccountedReturn(chainId)` before any record is written or
+anything is sent, as on CCIP: it could not move value, but it would arm the staleness slot and, once cancelled, the
+cancelled-recall clock (IL-9222). The recall slot is released in three ways:
 
 - by the recall finishing normally (compose plus `RETURN_STARTED`), or by an authenticated
   `RETURN_REJECTED` from the dispatcher (`NO_TRACKED_IDLE`, `BELOW_MINIMUM`, `ABOVE_PATH_CREDIT`);
