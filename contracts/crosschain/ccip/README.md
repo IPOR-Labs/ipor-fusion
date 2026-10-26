@@ -976,6 +976,15 @@ user operations. Operational rule for the attester pair: submit propose + approv
 (`[CROSSCHAIN]`) back-to-back in one block through a private submission channel, keep the attestation cadence well
 below `BALANCE_STALENESS_MAX`, and rely on deposit/withdraw fees where remote yield is lumpy.
 
+**A delivery that realizes a transport fee opens the same window (IL-8596, IL-9221).** A supply settlement that
+credits less than was sent (`SettledCreditShortfall` on the transfer's first receipt; on a later receipt of a
+force-resolved transfer the event only reports the fee, or a late credit that raises NAV) and a recall that finishes
+with `received` below `debitedSD` (`ReturnFinalized` or `LateReturnFinalized`) lower the executor's NAV, but the
+executor does not refresh the vault's CROSSCHAIN cache. These deliveries are not under the attester pair's control (a
+CCIP message can be executed manually by any account once it is committed), so the rule to submit propose, approve and
+refresh back-to-back in one block does not cover them. After such an event, refresh the CROSSCHAIN market
+(`updateMarketsBalances([CROSSCHAIN])`) before relying on the share price; the gap is the fee of one transfer.
+
 The CCIP executor never bumped the accounting epoch on an outbound send, so a pending proposal already survived it;
 the Stargate executor now matches (TP-M-44 / IL-8622, see the Stargate README).
 

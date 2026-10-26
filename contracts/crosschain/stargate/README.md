@@ -451,6 +451,16 @@ user operations. Operational rule for the attester pair: submit propose + approv
 (`[CROSSCHAIN]`) back-to-back in one block through a private submission channel, keep the attestation cadence well
 below `STALENESS_MAX`, and rely on deposit/withdraw fees where remote yield is lumpy.
 
+**A delivery that realizes a transport fee opens the same window (IL-8596, IL-9221).** A `TRANSFER_SETTLED` that
+credits less than was sent (`TransferSettledInbound` with `creditedSD` below `sentSD`) and a `RETURN_STARTED` that
+debits more from `settled` than it books back (`debitedSD` above `inFlightCreditSD` in `ReturnMetadataApplied` when
+the metadata arrives first, or above the `idleCreditSD` of the `ReturnFinalized` emitted in the same transaction when
+the compose arrived first) lower the executor's NAV, but the executor does not refresh the vault's CROSSCHAIN cache.
+These deliveries are not under the attester pair's control (a verified LayerZero message and its compose can be
+executed by any account), so the rule to submit propose, approve and refresh back-to-back in one block does not cover
+them. After such an event, refresh the CROSSCHAIN market (`updateMarketsBalances([CROSSCHAIN])`) before relying on the
+share price; the gap is the fee of one transfer.
+
 ### Outbound send and rejected recall keep a pending proposal (TP-M-44 / IL-8622)
 
 An outbound `sendAssetToDispatcher` and a `RETURN_REJECTED` no longer bump the chain's accounting epoch, so a pending
