@@ -160,6 +160,27 @@ version that can still be delivered minus one, never past a retained value-movin
    (`ChainUnblockedByApproval`; the latch `frontierRepairPending` is consumed there). A settled force-set
    also clears both the block and the latch.
 
+    Exception (IL-9192): until the force-set is executed, do not approve the latch-clearing attestation while the chain
+    has an open recall record whose `RETURN_STARTED` the repair skipped. This includes a recall cancelled by
+    `cancelStaleReturnRequest` whose compose has not arrived yet or has already reserved its amount in
+    `pendingArrivalReserve`. Before the compose lands `pendingTransferCount`, `activeReturnRequest` and the
+    cancelled-recall clock can all be zero (the cancel released the slot and the repair reset the clock). A compose that
+    lands later re-arms a slot, or with no free slot raises the no-clock block and clears the latch. So check the
+    records, not the counters. `returnRecords` and `activeReturnRequest` have no getter: rebuild each record from its
+    events by (`chainId`, `requestId`), starting from `ReturnRequested`.
+    An honest attestation at the repaired frontier removes the sent amount from `settled`, while the amount received
+    sits in the reserve (which `computeNavSD` does not count) or has not arrived. The approval lifts the block and NAV
+    stays understated by the received amount `A`. With the old `settled` = `S` inside the anchor band the approval
+    passes only if `A <= bigChangeBps * S` (relative check) and `S - A >= 0.8 * anchorPrincipal` (anchor band), so the
+    understatement is at most the smaller of `bigChangeBps * S` and `S - 0.8 * anchorPrincipal`; a larger recall makes
+    the honest approval revert. It lasts until the rescue, or until the record's staleness clock closes NAV
+    (`NavTransferStale`); a cancelled recall before its compose has no clock. Fee-free example: `settled = S - A` and
+    NAV is lower by `A`; the bridge-fee difference is described in "Compose-first return" below. The guard of "Lost
+    TRANSFER_SETTLED" below reads `outboundInFlight` only, so it does not catch this. Exit: keep the vault paused until
+    the force-set executes. With the compose already in the reserve use the rescue pair from "Lost recall metadata";
+    with the compose not yet arrived wait for it first (see there). The contract does not enforce this rule; it is
+    procedural.
+
    The repair arms `frontierRepairPending` only when it owns the block: the chain was not blocked before, or was
    blocked only by an earlier repair (IL-8620). A repair run over a foreign block (breaker reject, no-slot return
    block, drop) leaves the latch off, so an ordinary approval cannot lift that older block; its exit stays the
@@ -177,13 +198,23 @@ does not open the lane. Use this order:
 1. `ADVANCE_STATE_FRONTIER` to the lost `RETURN_STARTED` version (= lowest still-deliverable version - 1, rule
    above), and wait for `FRONTIER_REPAIR_DELAY`.
 2. Let the retained later packets replay in version order.
-3. Read the dispatcher's balance at the new frontier, then schedule `DROP_RETURN_METADATA_INCLUDED` for the
-   recall together with
+3. Read the dispatcher's balance at the new frontier. Once the compose has arrived (`ReturnComposeReserved`; with the
+   compose missing see the paragraph below), schedule `DROP_RETURN_METADATA_INCLUDED` for the recall together with
    `scheduleForceSetSettledBalance(chainId, value, observedStateVersion, observedRemoteTimestamp, false)`, where
    `observedStateVersion` is the new `acknowledgedRemoteStateVersion` and `value` already excludes the
-   recall's debit. Execute both after `RESCUE_DELAY`.
+   recall's debit. After `RESCUE_DELAY` execute the drop first, then the force-set: a drop executed after the force-set
+   blocks the chain again and clears the latch, so a second timelocked force-set would be needed (IL-9192).
 4. No separate attestation is needed: the force-set clears `chainBlocked` and `frontierRepairPending`.
    Idle is credited with the compose amount, the reserve is released and the chain prices again.
+
+Between the repair and the executed force-set, approve no attestation on that chain (IL-9192): the honest figure
+already excludes the recall's debit, so an approval lifts the block with NAV understated by the amount received from
+the recall (step 6 of "Frontier repair (Stargate)"). The pair moves the reserve to idle only when the compose has
+already arrived (`ReturnComposeReserved`), so schedule it only then. On a record with no leg at all
+`DROP_RETURN_METADATA_INCLUDED` finalizes the record without any credit, and a compose that arrives later is ignored and
+stays untracked surplus. So while the compose is missing keep the vault paused and wait for it, then run the pair, the
+drop first. If delivery is abandoned, the same pair closes the record and the late compose is recovered by the delayed
+generic rescue (`ASSET.transfer`, see "Choosing DROP_FROM_NAV"); the pair does not settle it by itself.
 
 Pinned by `CrosschainRecallSafetyTest` (`testShouldRecoverLostReturnMetadataByAdvancingThenComposeFirstRescue`,
 `testShouldApplyRetainedReturnStartedWhenFrontierAdvancedToJustBelowIt`,
@@ -210,8 +241,13 @@ contains the delivered `A` and writes `settled = S + A`: NAV = `S + 2A` (measure
 
 The repair itself is allowed (it is the only exit from a stuck frontier). Instead `approveBalance` reverts
 `FrontierRepairBlockedByOpenTransfers(chainId, outboundInFlight)` while `frontierRepairPending(chainId)` is `true`
-and `outboundInFlight(chainId) != 0`. The guard reads `outboundInFlight`, not the pending-slot count, because recall
-records are legitimately open during the lost-recall-metadata repair above and are not the cause. Procedure:
+and `outboundInFlight(chainId) != 0`. The guard reads `outboundInFlight`, not the pending-slot count, because a recall
+record can stay open legitimately under an armed latch: a `RETURN_STARTED` retained above the frontier replays in
+order after the repair and the ordinary approval is then the valid exit
+(`testShouldApplyRetainedReturnStartedWhenFrontierAdvancedToJustBelowIt`). A cancelled recall holds no slot, so a count
+guard would block that valid approval and still miss the lost-metadata case, where an attestation understates NAV by
+the amount received from the recall (the mirror of `S + 2A`). The procedure forbids that approval (step 6 of "Frontier
+repair (Stargate)"); the guard does not (IL-9192). Procedure:
 
 1. Run the frontier repair as above. The chain is blocked and the latch is armed.
 2. If the lost message was a different one and the transfer's `TRANSFER_SETTLED` is merely retained, let it replay in
