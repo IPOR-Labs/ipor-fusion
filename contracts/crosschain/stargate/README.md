@@ -1200,6 +1200,25 @@ The per-chain ceiling is shared by executor sends and the CREATE_DISPATCHER tick
 
 Ops note: call `setMaxNativeFee` on every factory for every registered chain it answers on. A Verify-script assertion that every registered path has a non-zero ceiling is recommended (not implemented here).
 
+**Dispatcher native funding (IL-8642, IL-9100, IL-9202).** A dispatcher pays for its own replies from its own native
+balance: the `TRANSFER_SETTLED` receipt, the command ACK and NACK, the `RETURN_STARTED` and `RETURN_REJECTED` messages
+that answer a recall, and the Stargate token send (with its compose on the executor) that carries a recall's assets
+back. The factory's `maxNativeFee` does not bound these sends: `StargateNativeFeeCapLib` caps only the factory itself
+and the apps that the factory lists in `isExecutor`, and the factory records only executors there. The sends carry no
+caller options, so each costs the LayerZero price of the gas in the path's enforced options (for the token send, the
+pool's `quoteSend` on the dispatcher's compose enforced options), and a price spike is paid in full. Fund every
+dispatcher on its own chain (it accepts native transfers through `receive()` from any account) and set an alert on its
+native balance.
+
+A send the balance cannot pay reverts `InsufficientNativeBudget`, and what that undoes depends on the message. For a
+recall request, a command, a retry or a cancel, the whole inbound handling reverts: the dispatcher's bookkeeping and
+the business action roll back, and LayerZero keeps the packet until it is retried after a top-up (a command's receipt
+budget is also checked before its business action runs). A supply compose is different: the bridged tokens already sit
+at the dispatcher when the compose runs, and only its bookkeeping rolls back (`trackedIdle`, `stateVersion`,
+`transferSettled`), together with the `TRANSFER_SETTLED` receipt, which is sent last. Until the compose is retried
+after a top-up, those tokens stay outside the tracked idle balance and the executor still counts the transfer as in
+flight.
+
 ## Factory ownership and creator permission
 
 The factory constructor emits the initial `CreatorAllowanceUpdated(owner, true)` and `CreationRestrictionUpdated(true)`, so an event-built history of creators starts from the correct state.
