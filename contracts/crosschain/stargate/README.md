@@ -171,15 +171,15 @@ version that can still be delivered minus one, never past a retained value-movin
     An honest attestation at the repaired frontier removes the sent amount from `settled`, while the amount received
     sits in the reserve (which `computeNavSD` does not count) or has not arrived. The approval lifts the block and NAV
     stays understated by the received amount `A`. With the old `settled` = `S` inside the anchor band the approval
-    passes only if `A <= bigChangeBps * S` (relative check) and `S - A >= 0.8 * anchorPrincipal` (anchor band), so the
-    understatement is at most the smaller of `bigChangeBps * S` and `S - 0.8 * anchorPrincipal`; a larger recall makes
-    the honest approval revert. It lasts until the rescue, or until the record's staleness clock closes NAV
-    (`NavTransferStale`); a cancelled recall before its compose has no clock. Fee-free example: `settled = S - A` and
-    NAV is lower by `A`; the bridge-fee difference is described in "Compose-first return" below. The guard of "Lost
-    TRANSFER_SETTLED" below reads `outboundInFlight` only, so it does not catch this. Exit: keep the vault paused until
-    the force-set executes. With the compose already in the reserve use the rescue pair from "Lost recall metadata";
-    with the compose not yet arrived wait for it first (see there). The contract does not enforce this rule; it is
-    procedural.
+    passes only if `A <= S * bigChangeBps / 10_000` (relative check) and `S - A >= 0.8 * anchorPrincipal` (anchor band),
+    so the understatement is at most the smaller of `S * bigChangeBps / 10_000` and `S - 0.8 * anchorPrincipal`; a
+    larger recall makes the honest approval revert. It lasts until the rescue, or until the record's staleness clock
+    closes NAV (`NavTransferStale`); a cancelled recall before its compose has no clock. Fee-free example:
+    `settled = S - A` and NAV is lower by `A`; the bridge-fee difference is described in "Compose-first return" below.
+    The guard of "Lost TRANSFER_SETTLED" below reads `outboundInFlight` only, so it does not catch this. Exit: keep the
+    vault paused until the force-set executes. With the compose already in the reserve use the rescue pair from "Lost
+    recall metadata"; with the compose not yet arrived wait for it first (see there). The contract does not enforce this
+    rule; it is procedural.
 
    The repair arms `frontierRepairPending` only when it owns the block: the chain was not blocked before, or was
    blocked only by an earlier repair (IL-8620). A repair run over a foreign block (breaker reject, no-slot return
