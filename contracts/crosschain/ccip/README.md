@@ -954,7 +954,10 @@ pre-hook change only when the proposal is approved and the CROSSCHAIN market is 
 after the proposal and before the approval pays the old share price and captures part of the attested remote yield
 once approve and refresh land (and the converse for an exit ahead of a negative proposal). This is inherent to a
 cached, discretely attested NAV and is bounded to one attestation step (at most `BALANCE_STALENESS_MAX` of yield,
-further capped by the per-approval relative limiter and the anchor band). The window does not end at approve:
+further capped by the anchor band and, only while `settled` is non-zero and inside that band, by the
+per-approval relative limiter; from a zero `settled` with a residual anchor (IL-8606) or from below the band
+(IL-8737 / IL-8792) the band alone caps the step, so one public proposal can show a step up to the band edge
+(IL-9213)). The window does not end at approve:
 `approveBalance` never calls the vault, so until the CROSSCHAIN market is next
 refreshed (`updateMarketsBalances([CROSSCHAIN])`, an `execute` through a crosschain fuse or `UpdateBalancesPreHook`)
 deposits, mints, withdrawals and redeems are still priced at the old cache (a withdrawal refreshes only the markets it
