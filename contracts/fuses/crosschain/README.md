@@ -52,5 +52,11 @@ The fuses do not police the consequences of governance grants and revokes. Examp
 - Granting an executor whose `MANAGER()` is another vault is rejected by the fuses; granting an executor of the wrong
   transport is rejected by the supply and command fuses.
 - Granting a `REMOTE_VAULT` lets the command fuses target that remote vault; review each grant.
+- Grant each executor once, encoded with `CrosschainSubstrateLib.executorSubstrate()` (chainId field zero). `balanceOf`
+  counts every `EXECUTOR` entry separately. Several entries that decode to the same address (an exact repeat, or a
+  canonical entry plus a non-canonical alias with a non-zero chainId field) make that executor's NAV count twice or
+  more. A single non-canonical entry does not cause double counting. Such entries also inflate the executor count that
+  selects the recovery path (`getBalanceUnchecked()` instead of the cache). Only FUSE_MANAGER (`grantMarketSubstrates`)
+  can do this, and nothing checks it on-chain (IL-8290, IL-9193).
 
 See the transport READMEs for the full list of limitations and runbooks.

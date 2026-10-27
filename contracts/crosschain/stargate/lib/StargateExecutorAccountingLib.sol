@@ -358,6 +358,7 @@ library StargateExecutorAccountingLib {
 
     /// @dev Record a return (recall) request awaiting metadata + delivery compose and return the encoded
     ///      RETURN_ASSETS_REQUEST envelope for the executor to send on the recall lane.
+    ///      Refuses a zero accounted bound (`ZeroAccountedReturn`) before the floor check.
     function buildReturnRequest(
         StargateExecutorState storage self,
         uint256 chainId_,
@@ -373,6 +374,10 @@ library StargateExecutorAccountingLib {
         if (activeRequestId != bytes32(0)) {
             revert CrosschainErrors.ActiveReturnRequestExists(chainId_, activeRequestId);
         }
+        // Nothing is accounted on the chain, so the recall could never move value, but it would arm a staleness
+        // slot (and, once cancelled, the cancelled-recall clock). Refuse it before any record or send (mirrors
+        // CcipExecutorTransferLib.openReturn, IL-9222).
+        if (maxAccountedSD_ == 0) revert CrosschainErrors.ZeroAccountedReturn(chainId_);
         // A floor above the accounted bound can never be satisfied regardless of remote idle: refuse the
         // request before it leaves the source chain (mirrors CcipCrosschainExecutor, IL-8119).
         if (minReturnSD_ > maxAccountedSD_) {
