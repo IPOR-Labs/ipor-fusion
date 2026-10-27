@@ -194,8 +194,12 @@ enum ReturnRejectReason {
 /// @title CrosschainConstants
 /// @notice Codec version, hard caps, timelocks / windows and command gas budgets shared across the crosschain
 ///         contracts.
-/// @dev Caps bound every collection an on-chain path iterates or a remote party can grow. Exceeding a cap reverts
-///      BEFORE any iteration or storage growth. The factories' `executorsOf` registry is not capped: it is an
+/// @dev Where a cap applies, exceeding it reverts BEFORE any iteration or storage growth. Not every list that an
+///      on-chain path iterates is capped. The CCIP executor's `dispatcherChainIds` has no cap:
+///      `MAX_DISPATCHER_CHAINS` is enforced only when a chain is registered on a Stargate executor. The CCIP list
+///      is append-only and gets one entry per chain on which the factory acknowledged a dispatcher, that is, per
+///      chain the factory owner routed (timelocked) and the executor's MANAGER asked for. `getBalance` and
+///      `getBalanceUnchecked` iterate it. The factories' `executorsOf` registry is not capped either: it is an
 ///      append-only list meant for off-chain reads that no on-chain path iterates. All numeric limits are
 ///      POC-tuned and intentionally small.
 library CrosschainConstants {
@@ -206,7 +210,9 @@ library CrosschainConstants {
     /// @dev Not referenced by the code: the factory's dispatcher compose option passes index 0 literally.
     uint16 internal constant COMPOSE_INDEX = 0;
 
-    /// @notice Maximum number of remote chains a single executor may register a dispatcher on.
+    /// @notice Maximum number of remote chains a single Stargate executor may register a dispatcher on.
+    /// @dev Enforced only by the Stargate executor's `registerChain` (`DispatcherChainsCapReached`). The CCIP
+    ///      executor does NOT enforce it: its `dispatcherChainIds` list grows with every acknowledged dispatcher.
     uint256 internal constant MAX_DISPATCHER_CHAINS = 32;
 
     /// @notice Maximum size of a dispatcher deposit allowlist.

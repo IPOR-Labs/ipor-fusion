@@ -12,20 +12,14 @@ import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.
 /// @notice IL-8538: the Stargate factory constructor floors `configDelay_` at `MIN_CONFIG_DELAY`, so a
 ///         deployment with a short (or zero) configuration timelock is rejected instead of silently
 ///         shipping a factory whose asset/path configuration can be changed almost instantly.
-/// @dev Requires the oversized real factory. Under the mandated `--code-size-limit 60000` the deploy probe
-///      cannot tell a size-limit failure from the floor revert, so the suite skips there (see
-///      `FactoryTestBase`); run at `--code-size-limit 200000` for full coverage.
+/// @dev Requires the real factory; a failed deploy in `setUp` makes the suite red (no try/catch, no skip).
 contract FactoryConfigDelayFloorTest is FactoryTestBase {
     function setUp() public {
         vm.chainId(LOCAL_CHAIN);
         endpoint = new MockLzEndpoint();
-        // Probe: a floor-compliant deployment must succeed when the size limit allows the factory.
-        try this.deployFactoryExt(CrosschainConstants.MIN_CONFIG_DELAY) returns (address f) {
-            factory = ICrosschainFactory(f);
-            factoryReady = true;
-        } catch {
-            factoryReady = false;
-        }
+        // A floor-compliant deployment must succeed; a failure here reverts setUp.
+        factory = ICrosschainFactory(this.deployFactoryExt(CrosschainConstants.MIN_CONFIG_DELAY));
+        factoryReady = true;
     }
 
     function testShouldRejectConfigDelayOneSecondBelowFloor() public requiresFactory {

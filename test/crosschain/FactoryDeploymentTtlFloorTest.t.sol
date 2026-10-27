@@ -16,8 +16,8 @@ import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.
 /// @notice Drives the REAL `StargateCrosschainFactory` with a test-only executor creation code
 ///         (`MockTtlExecutor`) whose `DEPLOYMENT_TTL()` is caller-chosen and unbounded, so the factory's own
 ///         floor at `requestDispatcher` can be exercised without weakening the canonical
-///         `StargateCrosschainExecutor` constructor bound (IL-8049). Requires the oversized factory; skips
-///         under the mandated `--code-size-limit 60000`, runs at `--code-size-limit 200000` (IL-8069).
+///         `StargateCrosschainExecutor` constructor bound (IL-8049). The factory deploys under the default
+///         settings; a failed deploy reverts `setUp` and turns the suite red, it never skips.
 /// @dev Deliberately does NOT call `FactoryTestBase._factorySetUp`: that helper latches the canonical
 ///      executor creation code, which cannot construct with a TTL below `MIN_DEPLOYMENT_TTL`. `setUp` below
 ///      replicates the same scaffolding with `MockTtlExecutor` as the latched executor code instead.
@@ -31,25 +31,20 @@ contract FactoryDeploymentTtlFloorTest is FactoryTestBase {
         usdc = new MockERC20("USD Coin", "USDC", 6);
         pool = new MockStargatePool(address(usdc), 6);
 
-        try this.deployFactoryExt(CrosschainConstants.MIN_CONFIG_DELAY) returns (address f) {
-            factory = ICrosschainFactory(f);
-            factory.configureCreationCodes(
-                type(MockTtlExecutor).creationCode,
-                type(StargateCrosschainDispatcher).creationCode
-            );
-            factoryReady = true;
-        } catch {
-            factoryReady = false;
-        }
-        if (factoryReady) {
-            _enableUsdc();
-            factory.schedulePathConfig(REMOTE_CHAIN, REMOTE_EID, _factoryPathOptions(REMOTE_EID));
-            _warpConfigDelay();
-            factory.executePathConfig(REMOTE_CHAIN);
-            vm.deal(address(factory), 100 ether);
-            // IL-8565: the factory's own sends are capped by `maxNativeFee`; admit the mock's fee.
-            StargateCrosschainFactory(payable(address(factory))).setMaxNativeFee(REMOTE_CHAIN, type(uint256).max);
-        }
+        factory = ICrosschainFactory(this.deployFactoryExt(CrosschainConstants.MIN_CONFIG_DELAY));
+        factory.configureCreationCodes(
+            type(MockTtlExecutor).creationCode,
+            type(StargateCrosschainDispatcher).creationCode
+        );
+        factoryReady = true;
+
+        _enableUsdc();
+        factory.schedulePathConfig(REMOTE_CHAIN, REMOTE_EID, _factoryPathOptions(REMOTE_EID));
+        _warpConfigDelay();
+        factory.executePathConfig(REMOTE_CHAIN);
+        vm.deal(address(factory), 100 ether);
+        // IL-8565: the factory's own sends are capped by `maxNativeFee`; admit the mock's fee.
+        StargateCrosschainFactory(payable(address(factory))).setMaxNativeFee(REMOTE_CHAIN, type(uint256).max);
     }
 
     function _paramsWithTtl(uint256 deploymentTtl_) internal view returns (ExecutorInitParams memory) {

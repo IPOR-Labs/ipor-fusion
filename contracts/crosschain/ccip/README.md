@@ -546,6 +546,16 @@ accepts a four-word payload, because the old three-word decode ignores trailing 
 ceiling, so dispatchers must be upgraded no later than the fuses and executors. The `SharesRequested` event gained a
 `feeShares` field, so its topic changed and indexers must be updated.
 
+**A repeated `REQUEST_SHARES` pays the request fee again (IL-8603, IL-9209).** The remote WithdrawManager replaces the
+stored request on every call and takes `shares * getRequestFee() / 1e18` out of the dispatcher's vault shares, so a
+second request on the same vault is charged on its whole new amount. `maxFeeShares` is counted in shares of the remote
+vault: set it to `shares * getRequestFee() / 1e18` plus a margin. Value that fee in assets (`convertToAssets` of the
+remote vault) together with the fees of any further requests made before the next attestation, and keep the total
+inside the `bigChangeBps` step of `settled`. The hub still carries the old value until the next attestation is
+approved, and while `settled` is non-zero and inside the anchor band a lower honest attestation beyond that step
+reverts `BigChangeExceeded`; the way out is the timelocked force-set. From a zero `settled` or from below the band the
+relative limit does not apply (see "Pricing window between propose and approve").
+
 ## Observability: unpriced tracked vaults (IL-8602)
 
 The valuation behind `observation()` and every response (`TRANSFER_SETTLED`, `RETURN_TRANSFER`, `COMMAND_ACK`,
@@ -668,6 +678,12 @@ cached market value only when the executor's `getBalance()` reverts with one of 
 Out-of-gas, `Panic`, `Error(string)` and any other revert are rethrown with their original data (an out-of-gas
 reaches the vault as `FailedInnerCall`). A future fail-closed error that is not in this list blocks recovery
 batches until the fuse is updated, which is the fail-safe direction.
+
+The executor `ASSET` must be an exact-transfer token (no fee-on-transfer, no rebasing). The claim correction
+(`addRecoveredUsd`) uses the net amount the vault measured, while the executor debits the gross amount; the two are
+equal only when the transfer is exact. The asset is owner-configured (`scheduleAsset` / `executeAsset`, timelocked,
+then frozen); nothing on-chain checks that it transfers exactly. Fee-on-transfer and rebasing tokens must not be configured
+(standard CCIP token pools do not carry them) (IL-9133).
 
 Cached-NAV fallback with several executors (TP-M-33, IL-8611). The balance fuse used to serve the recovery fallback
 only when exactly one executor was granted to the market, because the cached value is one market-wide aggregate that
@@ -897,6 +913,12 @@ around the residual (`AttestationOutsideAnchorBand`), not by the relative limite
 iff `anchorPrincipal != 0` and inside the band; with no anchor the rule is unchanged (`UnanchoredAttestation`). A
 zero-to-zero approval stays allowed and leaves the residual anchor in place. A residual at or below
 `ATTESTATION_ZERO_DUST_SD` still zeroes the anchor (and is cleared with a zero attestation).
+A later authenticated `RETURN_TRANSFER` that arrives when `settled` is already zero (for example the return of a
+second recall opened after the first was cancelled) debits nothing, but it recomputes the anchor from the reported
+balance: `min(remoteBalance, anchorPrincipal)` when `remoteBalance` is above `ATTESTATION_ZERO_DUST_SD`, otherwise 0.
+On this path the anchor only decreases (IL-9134). A stale balance (a return queued behind a skipped response, or a
+return with a version at or below the frontier after `ADVANCE_FRONTIER`) can lower the anchor below the real
+residual; the exit is `FORCE_SET_SETTLED`.
 
 The residual is NOT recallable until it is attested (recall bounds use `settled`), so the order of operations matters.
 Attest the residual before re-supplying: a credit that lands before the attestation caps the anchor at the credited
@@ -904,9 +926,22 @@ amount (`min(R + D, netPrincipal = D)`, see the anchor credit cap above), which 
 (covered by `testCreditBeforeResidualAttestationShouldCapTheAnchorAtTheCredit`). The first attestation from the zero
 baseline is bounded only by the anchor band, the relative limiter being skipped at a zero baseline, so a single step can
 move `settled` from 0 to 1.2 R. The residual anchor is capped at the pre-debit anchor: an honest residual (yield since
-the last attestation) never exceeds it, so a reported figure above it cannot raise the anchor, which stays
-non-increasing under debits. Until the residual is attested NAV excludes it (it understates, never overstates), and a
-zero attestation is allowed, so a lost residual needs no special exit; `rejectBalanceAndBlock` plus the timelocked
+the last attestation) never exceeds it, so an inflated reported figure cannot RAISE the anchor, which stays
+non-increasing under debits. The cap does not stop such a figure from KEEPING the whole pre-recall anchor at
+`settled == 0` although almost nothing is left remotely (IL-9191). Example trigger: a tracked remote vault whose
+`convertToAssets` can be moved on a spot input, priced during a recall delivery that anyone can execute. From that zero
+baseline a single attestation can reach 1.2 times the kept anchor. After the manipulation is undone an honest
+observation shows the true residual, which lies below 0.8 times the kept anchor, so an honest positive approval reverts
+`AttestationOutsideAnchorBand` and an honest pair can only approve 0. A zero-to-zero approval leaves the kept anchor in
+place until a re-supply credit, a lower later return or a force-set changes it, so pricing the true residual needs the
+force-set. Booking the phantom value needs an attester pair approving a figure no honest observation shows (attester
+collusion as in FP-H-01 / IL-8554, but up to 1.2 times the kept anchor rather than +-20% of value the vault sent). The
+allowlisting rule in "Remote vault allowlisting rules" (IL-9191) is an operator rule, not an on-chain check; it is meant
+to keep such vaults out. The cap on the residual anchor is covered by
+`testReportedResidualAbovePreDebitAnchorShouldBeCappedAtThePreDebitAnchor` (`ResidualAnchorAfterFullRecallTest`).
+Until the residual is attested NAV excludes it (it understates, never overstates), and a
+zero attestation is allowed (it does not clear the kept anchor), so a lost residual needs no special exit;
+`rejectBalanceAndBlock` plus the timelocked
 `FORCE_SET_SETTLED` is only needed to price a residual that has fallen out of the band.
 
 Deployment note: `applyReturnDebit`'s signature changed, so the executor must be linked to the new
@@ -919,14 +954,46 @@ pre-hook change only when the proposal is approved and the CROSSCHAIN market is 
 after the proposal and before the approval pays the old share price and captures part of the attested remote yield
 once approve and refresh land (and the converse for an exit ahead of a negative proposal). This is inherent to a
 cached, discretely attested NAV and is bounded to one attestation step (at most `BALANCE_STALENESS_MAX` of yield,
-further capped by the per-approval relative limiter and the anchor band). Accepted by design: no hook blocks
+further capped by the anchor band and, only while `settled` is non-zero and inside that band, by the
+per-approval relative limiter; from a zero `settled` with a residual anchor (IL-8606) or from below the band
+(IL-8737 / IL-8792) the band alone caps the step, so one public proposal can show a step up to the band edge
+(IL-9213)). The window does not end at approve:
+`approveBalance` never calls the vault, so until the CROSSCHAIN market is next
+refreshed (`updateMarketsBalances([CROSSCHAIN])`, an `execute` through a crosschain fuse or `UpdateBalancesPreHook`)
+deposits, mints, withdrawals and redeems are still priced at the old cache (a withdrawal refreshes only the markets it
+pulls from, and the crosschain supply fuses are not instant-withdraw fuses). If that refresh is late or reverts (for
+example `AssetDistributionProtectionLib.checkLimits` in `PlasmaVault._updateMarketsBalances` when the CROSSCHAIN market
+crosses its limit), successive attestations spaced by `MIN_UPDATE_INTERVAL` accumulate until `settled` reaches the
+anchor band edge (`ATTESTATION_ANCHOR_BAND_BPS`, +-20% of the anchor; the gap to the cached value can reach the band
+width), not just one step. A late transfer settlement after `DROP_FROM_NAV` (IL-8619) opens the same window in one
+step: it adds the whole recovered amount (`min(received, sent)`) to `settled` and to the anchor, so neither the
+relative limiter nor the band bounds it (unless a later latch-clearing approval or force-set already priced that
+settlement, in which case it is skipped). Keep the side that profits from the stale price paused until the refresh
+succeeds: deposits/mints after a positive step, withdrawals/redeems after a negative one (or pause the vault)
+(IL-9190). Accepted by design: no hook blocks
 share-price operations while a proposal is pending, because it would only narrow the window and would fail-close
 user operations. Operational rule for the attester pair: submit propose + approve + `updateMarketsBalances`
 (`[CROSSCHAIN]`) back-to-back in one block through a private submission channel, keep the attestation cadence well
 below `BALANCE_STALENESS_MAX`, and rely on deposit/withdraw fees where remote yield is lumpy.
 
+**A delivery that realizes a transport fee opens the same window (IL-8596, IL-9221).** A supply settlement that
+credits less than was sent (`SettledCreditShortfall` on the transfer's first receipt; on a later receipt of a
+force-resolved transfer the event only reports the fee, or a late credit that raises NAV) and a recall that finishes
+with `received` below `debitedSD` (`ReturnFinalized` or `LateReturnFinalized`) lower the executor's NAV, but the
+executor does not refresh the vault's CROSSCHAIN cache. These deliveries are not under the attester pair's control (a
+CCIP message can be executed manually by any account once it is committed), so the rule to submit propose, approve and
+refresh back-to-back in one block does not cover them. After such an event, refresh the CROSSCHAIN market
+(`updateMarketsBalances([CROSSCHAIN])`) before relying on the share price; the gap is the fee of one transfer.
+
 The CCIP executor never bumped the accounting epoch on an outbound send, so a pending proposal already survived it;
 the Stargate executor now matches (TP-M-44 / IL-8622, see the Stargate README).
+
+**Commands do not void a pending proposal (IL-8582, IL-9208).** A command (`DEPOSIT`, `REDEEM`, `REQUEST_SHARES`,
+`REDEEM_FROM_REQUEST` or `UPDATE_VAULTS`) changes the dispatcher's remote state without bumping its `stateVersion`,
+and on this transport it does not bump the executor's accounting epoch either, not even when its `COMMAND_ACK`
+arrives: the ACK only records the balance evidence it carries. A proposal observed before the command therefore stays
+approvable after it, until it expires or goes stale. Rule for the attester pair: do not approve an observation that is
+older than a value-moving command that has been sent, and attest again after the command's ACK.
 
 ### Approval freshness window and monotonic observation clock (IL-8631 / TP-L-03, IL-8648 / TP-L-20)
 
@@ -1181,6 +1248,10 @@ checklist when the queue is not empty:
      kept clock is later cleared by the cancelled recalls' answers (an expired request comes back `EXPIRED` in the
      same generation) or by `FORCE_SET_SETTLED`, whose guard is then bounded because the blocked chain refuses new
      recalls. Executed after `refusedUntil` the advance resets the clock as before.
+   Before executing a skip, check the token-bearing returns queued behind the dropped response: each carries the
+   `remoteBalance` encoded when it was queued, lower by the dropped amount. If one of them will empty `settled`,
+   or will land while `settled` is already zero (IL-9134 then lowers the anchor to its stale balance), approve the
+   residual before it lands, or plan `FORCE_SET_SETTLED` (or a credit followed by an attestation) (IL-9146).
    Skip-valve exit ORDER: skip -> cancel -> `ADVANCE_FRONTIER` -> approve. The skip drops the answer, so nothing
    resolves the cancelled recall's clock: for the advance to clear it, it must be executed after `refusedUntil`
    (`createdAt + TRANSFER_STALENESS_MAX + 15 minutes` of the newest cancelled recall). With a long
@@ -1331,8 +1402,23 @@ lets the transfer succeed and the tokens are frozen at `ADMIN` (IL-8807). Either
 **No exit fee on allowlisted vaults (IL-8607).** The dispatcher values remote shares with `convertToAssets`, which
 ERC-4626 permits to exclude exit/withdraw fees, so an attested position can be priced above what a redeem returns.
 Allowlist only remote vaults that charge no exit or withdraw fee, or make the attesters report net-of-fee value.
-`convertToAssets` is kept for consistency with core Fusion's `Erc4626BalanceFuse`; the overstatement is bounded by
-the vault's exit fee.
+`convertToAssets` is kept for consistency with core Fusion's `Erc4626BalanceFuse`.
+For a `PlasmaVault` child, `convertToAssets` is gross of the unrealized management fee, which `redeem` realizes first.
+The correction is `previewRedeem(balanceOf(dispatcher))` (it prices the pending management fee since IL-8343) or
+subtracting the dispatcher's share of `getUnrealizedManagementFee()`. Neither covers a pending performance fee above
+the high-water mark or the value change after the child's markets are refreshed (`PlasmaVault.previewRedeem`
+NatSpec), so both remain an approximation, not a full net valuation. Attesters take these risks into account (for
+example by refreshing the markets and subtracting the pending performance fee); when the difference exceeds the
+band, the existing exit remains (IL-9158).
+
+**Atomically manipulable price reads (IL-9191).** The recall delivery reads each tracked vault with `convertToAssets`
+and reports tracked idle plus those values as the authenticated post-debit balance, which can become the residual
+anchor (see "Anchor credit cap and band limitation"). This is an operator rule; nothing on-chain checks it. Allowlist
+only remote vaults whose `convertToAssets` cannot be moved and moved back within one block (in one transaction or in a
+bundle around the delivery, for example through a spot-price input), because the recall delivery can be executed by
+anyone and so the caller controls the block state around the read. For a vault that can be moved this way an inflated
+read can keep the whole pre-recall anchor open at `settled == 0`, from where one attestation can reach 1.2 times that
+anchor.
 
 **Withdraw-manager discovery reads the legacy slot too (IL-8608).** `plasmaVaultWithdrawManager()` runs inside the
 remote vault through `UniversalReader.read` and returns the manager with the legacy fallback

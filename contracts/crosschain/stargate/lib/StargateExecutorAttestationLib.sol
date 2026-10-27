@@ -216,7 +216,8 @@ library StargateExecutorAttestationLib {
             //
             // The baseline is the ANCHOR, not the bucket (IL-8606 / TP-M-28): a full recall of a bucket whose
             // remote side kept earning leaves a dispatcher-authenticated residual above the dust bound, and
-            // `_applyReturnDebit` then keeps the anchor at that residual while `settled` is 0. From such a
+            // `_applyReturnDebit` then keeps the anchor at that residual while `settled` is 0 (a later
+            // authenticated return at `settled == 0` may lower it, IL-9163). From such a
             // state a positive attestation is bounded by the anchor band alone (the relative check is
             // meaningless at a zero baseline), so the residual can be priced without the timelocked
             // force-set. With no anchor the zero-baseline rule above is unchanged.

@@ -232,14 +232,59 @@ contract StargateNoClockReturnBlockTest is CrosschainTestBase {
         executor.getBalanceUnchecked();
     }
 
-    /// @notice N3(b): a second counted record cannot coexist on one chain (one active return request per chain), so
-    ///         the count never exceeds 1 and the block lifts when that single record closes.
+    /// @notice N3(b): while the first unclocked record is open the chain refuses a new return request (the block
+    ///         refuses new requests); the count is not capped at 1 because cancelled recalls leave records behind
+    ///         (see the two-record test below).
     function testSecondReturnRequestRefusedWhileUnclockedRecordOpen() public {
         _composeFirstNoClock();
         vm.prank(manager);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.ChainBlocked.selector, REMOTE_CHAIN));
         executor.requestAssetsFromDispatcher(REMOTE_CHAIN, 10e6, 0, "");
         assertEq(executor.noClockReturnCount(REMOTE_CHAIN), 1, "still one counted record");
+    }
+
+    /// @notice IL-9165: two cancelled recalls whose late compose legs find no staleness slot are both unclocked;
+    ///         the count reaches 2 and the block lifts only when the SECOND record finalizes.
+    function testShouldLiftNoClockBlockOnlyWhenBothUnclockedRecordsFinalize() public {
+        bytes32 recallA;
+        bytes32 recallB;
+        (recallA, , ) = _requestAssets(40e6, 0);
+        vm.warp(block.timestamp + TRANSFER_STALENESS_MAX + 1);
+        executor.cancelStaleReturnRequest(REMOTE_CHAIN);
+        (recallB, , ) = _requestAssets(20e6, 0);
+        vm.warp(block.timestamp + TRANSFER_STALENESS_MAX + 1);
+        executor.cancelStaleReturnRequest(REMOTE_CHAIN);
+
+        bytes32[16] memory ids;
+        bytes32[16] memory guids;
+        for (uint256 i; i < 16; ++i) {
+            (ids[i], guids[i], ) = _sendAsset(1e6, 0);
+        }
+        assertEq(executor.pendingTransferCount(REMOTE_CHAIN), 16, "pool full");
+
+        bytes32 guidB = keccak256("RGUID-B");
+        usdc.mint(address(executor), 60e6);
+        _deliverReturnCompose(recallA, RGUID, 40e6);
+        _deliverReturnCompose(recallB, guidB, 20e6);
+        assertEq(executor.noClockReturnCount(REMOTE_CHAIN), 2, "both records counted");
+        assertTrue(executor.chainBlocked(REMOTE_CHAIN), "blocked");
+        _settleAll(ids, guids);
+
+        // First finalization: count 1, the block stays and NAV still reverts.
+        _deliverReturnStarted(recallA, RGUID, 40e6, 40e6, 18);
+        assertEq(executor.noClockReturnCount(REMOTE_CHAIN), 1, "one record left");
+        assertTrue(executor.chainBlocked(REMOTE_CHAIN), "still blocked after the first finalization");
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.ChainBlocked.selector, REMOTE_CHAIN));
+        executor.getBalance();
+
+        // Second finalization: count 0, the block is lifted and NAV prices again.
+        vm.expectEmit(false, false, false, true, address(executor));
+        emit IStargateExecutorLibraryAbi.NoClockReturnBlockLifted(REMOTE_CHAIN);
+        _deliverReturnStarted(recallB, guidB, 20e6, 20e6, 19);
+        assertEq(executor.noClockReturnCount(REMOTE_CHAIN), 0, "count released");
+        assertFalse(executor.chainBlocked(REMOTE_CHAIN), "block lifted by the last record");
+        _approveFresh(56e6, 19);
+        assertEq(executor.getBalance(), 116e6, "NAV open again");
     }
 
     /// @notice N3(c): DROP_FROM_NAV on a metadata-first no-clock record closes it through `_finalizeReturn`,

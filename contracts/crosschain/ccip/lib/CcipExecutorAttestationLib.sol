@@ -275,7 +275,8 @@ library CcipExecutorAttestationLib {
             //
             // The baseline is the ANCHOR, not the bucket (IL-8606 / TP-M-28): a full recall of a bucket
             // whose remote side kept earning leaves a dispatcher-authenticated residual above the dust
-            // bound, and `applyReturnDebit` then keeps the anchor at that residual while `settled` is 0.
+            // bound, and `applyReturnDebit` then keeps the anchor at that residual while `settled` is 0
+            // (a later authenticated return at `settled == 0` may lower it, IL-9134).
             // From such a state a positive attestation is bounded by the anchor band alone (the relative
             // check is meaningless at a zero baseline), so the residual can be priced without the
             // timelocked force-set. With no anchor the zero-baseline rule above is unchanged.
@@ -548,7 +549,13 @@ library CcipExecutorAttestationLib {
     ///      clear. The debit is bounded by `min(maxAccounted_, settled)` (alarm on any excess).
     ///      Same rule as Stargate's `_applyReturnDebit`. Inbound handler: clamp, never revert.
     ///      `remoteBalanceSD_` is the dispatcher's authenticated post-debit balance carried by the
-    ///      `RETURN_TRANSFER`; it only matters when the debit empties the bucket (see "Residual anchor" below).
+    ///      `RETURN_TRANSFER`; it only matters when the debit empties the bucket or the bucket is already
+    ///      empty (see "Residual anchor" below).
+    ///      Residual anchor: (1) a debit that empties the bucket keeps a non-dust `remoteBalanceSD_` as the
+    ///      anchor (IL-8606). (2) A later authenticated return at `settled == 0` (for example a second recall
+    ///      opened after the first one was cancelled) recomputes the anchor from the reported balance, only
+    ///      downwards and to zero at or below dust, so a stale residual cannot anchor a phantom attestation
+    ///      (IL-9134).
     ///      The pro-rata anchor debit assumes the recalled amount holds principal and unrecognised P&L in the
     ///      bucket's proportions. The dispatcher pays a recall out of `trackedIdle` only, so a return shorter
     ///      than the attested bucket leaves a residue that still carries the whole unrecognised remote loss;
@@ -614,6 +621,18 @@ library CcipExecutorAttestationLib {
             }
             self.anchorPrincipal[chainId_] = remaining;
             emit AttestationAnchorUpdated(chainId_, remaining);
+        } else if (settled == 0 && sentSD_ != 0) {
+            // Later return at `settled == 0` (IL-9134): a return authenticated after the bucket was already
+            // emptied (e.g. a second recall opened after the first one was cancelled) has nothing to debit,
+            // but its `remoteBalanceSD_` is still the dispatcher's authenticated post-debit balance. Follow
+            // it: the anchor becomes that balance (zero when at or below dust), capped at the current anchor
+            // so it only ever moves down.
+            uint256 principalAtZero = self.anchorPrincipal[chainId_];
+            uint256 anchorAtZero = remoteBalanceSD_ > CrosschainConstants.ATTESTATION_ZERO_DUST_SD
+                ? (remoteBalanceSD_ < principalAtZero ? remoteBalanceSD_ : principalAtZero)
+                : 0;
+            self.anchorPrincipal[chainId_] = anchorAtZero;
+            emit AttestationAnchorUpdated(chainId_, anchorAtZero);
         }
         // Net principal (IL-8578 / TP-H-02): debited by the amount the dispatcher declared it sent back
         // (`sentSD_`, authenticated by the transport), floored at zero, NOT by the settled delta. The

@@ -14,11 +14,9 @@ import {MockStargatePool} from "./mocks/MockStargatePool.sol";
 import {MockERC20} from "../test_helpers/MockERC20.sol";
 
 /// @title FactoryTestBase
-/// @notice Shared scaffolding for the two suites that need the REAL `StargateCrosschainFactory`. The factory is
-///         intentionally oversized (~110,772 B runtime — it embeds both the executor and dispatcher creation
-///         code for CREATE3), which is ABOVE the mandated `--code-size-limit 60000` bypass. To keep that
-///         mandated run green, the factory deploy is probed under try/catch: if it fails the size limit these
-///         suites SKIP; run them at `--code-size-limit 130000` for full coverage (reported to the integrator).
+/// @notice Shared scaffolding for the suites that need the REAL `StargateCrosschainFactory`. The factory runtime
+///         is below the EIP-170 limit (about 24 KB), so it deploys under the default settings. A failed deploy
+///         is NOT swallowed: `setUp` reverts and the suite goes red, it never skips.
 abstract contract FactoryTestBase is Test {
     using OptionsBuilder for bytes;
 
@@ -27,6 +25,9 @@ abstract contract FactoryTestBase is Test {
     MockStargatePool internal pool;
     ICrosschainFactory internal factory;
     bool internal factoryReady;
+
+    /// @dev Raised by `requiresFactory` when `setUp` did not deploy the factory.
+    error FactoryNotDeployed();
 
     address internal admin = address(0xADADAD);
     address internal guardian = address(0x6A6A6A);
@@ -46,29 +47,23 @@ abstract contract FactoryTestBase is Test {
         usdc = new MockERC20("USD Coin", "USDC", 6);
         pool = new MockStargatePool(address(usdc), 6);
 
-        try this.deployFactoryExt(configDelay_) returns (address f) {
-            factory = ICrosschainFactory(f);
-            factory.configureCreationCodes(
-                type(StargateCrosschainExecutor).creationCode, type(StargateCrosschainDispatcher).creationCode
-            );
-            factoryReady = true;
-        } catch {
-            factoryReady = false; // factory exceeds the active code-size limit; suites skip.
-        }
+        factory = ICrosschainFactory(this.deployFactoryExt(configDelay_));
+        factory.configureCreationCodes(
+            type(StargateCrosschainExecutor).creationCode,
+            type(StargateCrosschainDispatcher).creationCode
+        );
+        factoryReady = true;
     }
 
-    /// @dev External so a size-limit revert from `deployCode` is catchable (keeps the 60000 run green).
+    /// @dev External so tests can `expectRevert` on constructor reverts; a failed deploy reverts the caller.
     function deployFactoryExt(uint256 configDelay_) external returns (address) {
         bytes memory args = abi.encode(address(endpoint), address(this), admin, guardian, uint256(3 days), configDelay_);
         return vm.deployCode("StargateCrosschainFactory.sol:StargateCrosschainFactory", args);
     }
 
-    /// @dev Skips the calling test when the oversized factory could not be deployed under the active limit.
+    /// @dev Guard for tests that need the factory: never skips; reverts if `setUp` did not deploy it.
     modifier requiresFactory() {
-        if (!factoryReady) {
-            vm.skip(true);
-            return;
-        }
+        if (!factoryReady) revert FactoryNotDeployed();
         _;
     }
 

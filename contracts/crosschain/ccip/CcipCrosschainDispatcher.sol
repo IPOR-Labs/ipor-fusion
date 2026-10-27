@@ -907,9 +907,11 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///      response the executor still counts them in `settledRemoteBalance` (whose only subtraction is on
     ///      a delivered `RETURN_TRANSFER` receipt, `CcipExecutorAttestationLib.applyReturnDebit`) — so
     ///      `accountedBalance()` / `observation()` and the rescue floor (`trackedIdle + queuedTokenAmount`) are unchanged
-    ///      (IL-8064); the balance carried by later responses rises by the dropped amount, because since IL-8768 it
-    ///      excludes only what is still queued (the executor still counts those tokens in `settledRemoteBalance`). The executor's recall record for that
-    ///      response stays open: cancel it there (`cancelPendingReturn`, MANAGER-gated via
+    ///      (IL-8064); the balance carried by responses queued AFTER the drop rises by the dropped amount, because
+    ///      since IL-8768 it excludes only what is still queued (the executor still counts those tokens in
+    ///      `settledRemoteBalance`). Token-bearing responses already queued behind the dropped one keep the balance
+    ///      encoded when they were queued, which is lower by the dropped amount (IL-9146). The executor's recall
+    ///      record for that response stays open: cancel it there (`cancelPendingReturn`, MANAGER-gated via
     ///      `CcipCrosschainCommandFuse`'s `CANCEL_RETURN`, or the permissionless `cancelStalePendingReturn`
     ///      once stale) and re-issue the recall. The cancelled recall's staleness clock (IL-8590) is cleared
     ///      by a late return, a `RETURN_REJECTED`, `FORCE_SET_SETTLED` or the `ADVANCE_FRONTIER` that repairs

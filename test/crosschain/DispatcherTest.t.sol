@@ -416,9 +416,25 @@ contract DispatcherTest is Test {
             OutboundTransfer({transferId: keccak256("t1")})
         );
         bytes memory composeMsg = LzComposeBuilder.build(address(dispatcher), EXECUTOR_EID, 100e6, envelope);
-        vm.expectRevert(); // InsufficientNativeBudget bubbles; the whole compose reverts atomically
+        uint256 fee = endpoint.messagingFee();
+        uint64 versionBefore = dispatcher.stateVersion();
+        uint256 sentBefore = endpoint.sentCount();
+
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.InsufficientNativeBudget.selector, 0, fee));
         endpoint.deliverCompose(address(dispatcher), address(pool), GUID, composeMsg);
         assertEq(dispatcher.trackedIdle(), 0, "accounting not partially settled");
+        assertFalse(dispatcher.transferSettled(keccak256("t1")), "transfer not marked settled");
+        assertEq(dispatcher.stateVersion(), versionBefore, "state version unchanged");
+        assertEq(endpoint.sentCount(), sentBefore, "no settlement receipt sent");
+
+        // Once funded, the identical compose settles exactly once.
+        vm.deal(address(dispatcher), fee);
+        endpoint.deliverCompose(address(dispatcher), address(pool), GUID, composeMsg);
+        assertEq(dispatcher.trackedIdle(), 100e6, "tracked idle credited once funded");
+        assertTrue(dispatcher.transferSettled(keccak256("t1")), "transfer settled once funded");
+        assertEq(dispatcher.stateVersion(), versionBefore + 1, "state version bumped once");
+        assertEq(endpoint.sentCount(), sentBefore + 1, "one settlement receipt sent");
+        assertEq(uint8(_lastSentType()), uint8(MsgType.TRANSFER_SETTLED), "settlement receipt sent");
     }
 
     // ---------------------------------------------------------------------

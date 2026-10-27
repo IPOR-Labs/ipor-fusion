@@ -146,9 +146,10 @@ contract LateSettlementFrontierTest is CrosschainTestBase {
         assertEq(executor.acknowledgedRemoteStateVersion(REMOTE_CHAIN), 2, "lane alive after a duplicate");
     }
 
-    /// @notice A settlement naming a record that belongs to a different chain must still be rejected,
-    ///         and must never be able to move this chain's frontier. The check moved above the
-    ///         frontier advance as part of the fix, so pin it.
+    /// @notice A settlement naming a record that does not exist must still be rejected with
+    ///         `TransferNotFound`, and must never be able to move this chain's frontier. The check sits above
+    ///         the frontier advance as part of the fix, so pin it. The different-chain rejection
+    ///         (`WrongSourceChain`) is pinned separately in `StargateTransferSettledIdentityTest`.
     function testSettlementForAnUnknownRecordStillReverts() public {
         _readyDispatcher();
         vm.expectRevert(
