@@ -90,6 +90,10 @@ interface ICcipCrosschainExecutor {
         external
         returns (bytes32);
 
+    /// @notice Records a proposal for a chain's remote balance (balance proposer only).
+    /// @param balance_ The observed remote balance in LOCAL decimals of the executor's asset; the executor floors
+    ///        it to shared decimals before recording it. The dispatcher's `observation().accountedBalance` is in
+    ///        SHARED decimals: multiply it by the executor's `DECIMAL_CONVERSION_RATE` before proposing it.
     function proposeBalance(
         uint256 chainId_,
         uint256 balance_,

@@ -70,6 +70,7 @@ import {IporMath} from "../../../contracts/libraries/math/IporMath.sol";
 import {TransientStorageSetterFuse} from "../../test_helpers/TransientStorageSetterFuse.sol";
 import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.sol";
 import {UniversalTokenSwapperSubstrateLib} from "../../../contracts/fuses/universal_token_swapper/UniversalTokenSwapperSubstrateLib.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 contract MockDex {
     function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut) public {
@@ -182,7 +183,7 @@ contract EbisuZapperTest is Test {
         priceOracle.setAssetsPricesSources(assets, priceFeeds);
 
         // create plasma vault in a single step
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         plasmaVault.proxyInitialize(
             PlasmaVaultInitData(
                 "TEST sUSDe PLASMA VAULT",

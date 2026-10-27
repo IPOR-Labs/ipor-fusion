@@ -27,6 +27,7 @@ import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 interface IGAUGE {
     function rewards(uint256 index) external view returns (address);
@@ -90,7 +91,7 @@ contract RamsesClaimFuseTest is Test {
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
         // plasma vault
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

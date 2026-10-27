@@ -23,6 +23,7 @@ import {RoleLib, UsersToRoles} from "test/RoleLib.sol";
 import {FeeConfigHelper} from "test/test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigurator} from "test/utils/PlasmaVaultConfigurator.sol";
 import {MutableValuePriceFeed} from "test/managers/MutableValuePriceFeed.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @dev Simple mintable ERC20 with configurable decimals (stand-in for USDC / USDT).
 contract NetDeltaMockToken is ERC20 {
@@ -131,7 +132,7 @@ contract UniversalTokenSwapperNetDeltaTest is Test {
 
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
 
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

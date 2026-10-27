@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
@@ -94,7 +95,7 @@ contract PlasmaVaultNonceTest is Test {
             plasmaVaultVotesPlugin: address(votesPlugin)
         });
 
-        vault = new PlasmaVault();
+        vault = PlasmaVaultCloneLib.newPlasmaVault();
         vault.proxyInitialize(initData);
 
         vm.stopPrank();
@@ -756,7 +757,7 @@ contract PlasmaVaultNonceTest is Test {
             plasmaVaultVotesPlugin: address(0)  // No votes plugin
         });
 
-        PlasmaVault vault = new PlasmaVault();
+        PlasmaVault vault = PlasmaVaultCloneLib.newPlasmaVault();
         vault.proxyInitialize(initData);
         vm.stopPrank();
 

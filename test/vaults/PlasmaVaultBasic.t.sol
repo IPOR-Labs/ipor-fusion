@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PlasmaVault, FuseAction, MarketBalanceFuseConfig, MarketSubstratesConfig, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
@@ -1027,7 +1028,7 @@ contract PlasmaVaultBasicTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses,
         address[] memory fuses
     ) public returns (PlasmaVault) {
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,

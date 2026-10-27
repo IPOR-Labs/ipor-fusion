@@ -205,6 +205,10 @@ contract CrosschainBalanceFuse is IMarketBalanceFuse {
                 balanceInExecutorAsset * price, IERC20Metadata(executorAsset).decimals() + priceDecimals
             );
         }
+        // The market has been valued: close the recovery accumulator so a refresh that persists the same
+        // numeric value cannot leave a spent correction applicable to a later batch (IL-9114). No-op, and
+        // write-free, when no recovery fuse armed the accumulator in this transaction.
+        CrosschainRecoveryLib.consumeRecoveredUsd(MARKET_ID);
     }
 
     /// @dev True when `reason_` starts with one of the executors' fail-closed `getBalance()` selectors.
@@ -246,9 +250,12 @@ contract CrosschainBalanceFuse is IMarketBalanceFuse {
     ///      The correction applies ONLY while the cache still contains the recovered value. Transient
     ///      storage lives for the whole transaction, but this cache is re-persisted at the end of every
     ///      `execute()` batch, so a later batch in the same transaction reads a cache from which the
-    ///      recovery has already been removed. `isRecoveredUsdApplicable` detects exactly that — the
-    ///      accumulator is ignored unless it was rebased against the cache being read now — which stops
-    ///      the same recovery from being subtracted once per batch and persisted as an understated NAV.
+    ///      recovery has already been removed. Every valuation of the market (this function and the live
+    ///      path of `balanceOf`) consumes the accumulator via `consumeRecoveredUsd`, and
+    ///      `isRecoveredUsdApplicable` additionally ignores an accumulator that was not rebased against the
+    ///      cache being read now. Together they stop the same recovery from being subtracted once per batch
+    ///      and persisted as an understated NAV, including when a live refresh persisted the same number
+    ///      (IL-9114).
     ///
     ///      Price bases (IL-8597, by design): the minuend re-prices the cache, built from the executor asset's price
     ///      at the last successful refresh, with the CURRENT underlying price, while the subtrahend was computed from
@@ -260,7 +267,7 @@ contract CrosschainBalanceFuse is IMarketBalanceFuse {
     ///      staleness. If the correction exceeds the cached value the market is valued at zero and
     ///      `CrosschainRecoveredUsdClamped` is emitted (IL-8598); an exact full recovery also yields zero but emits
     ///      nothing.
-    function _cachedBalanceValueUsd(address priceOracleMiddleware_) private returns (uint256) {
+    function _cachedBalanceValueUsd(address priceOracleMiddleware_) private returns (uint256 valueUsd) {
         if (priceOracleMiddleware_ == address(0)) revert CrosschainBalanceFuseInvalidPriceOracleMiddleware();
         address underlying = IERC4626(address(this)).asset();
         (uint256 price, uint256 priceDecimals) =
@@ -269,14 +276,17 @@ contract CrosschainBalanceFuse is IMarketBalanceFuse {
             PlasmaVaultLib.getTotalAssetsInMarket(MARKET_ID) * price,
             IERC20Metadata(underlying).decimals() + priceDecimals
         );
-        if (!CrosschainRecoveryLib.isRecoveredUsdApplicable(MARKET_ID)) {
-            return cachedUsd;
+        valueUsd = cachedUsd;
+        if (CrosschainRecoveryLib.isRecoveredUsdApplicable(MARKET_ID)) {
+            uint256 recoveredUsd = CrosschainRecoveryLib.recoveredUsd(MARKET_ID);
+            if (recoveredUsd > cachedUsd) {
+                emit CrosschainRecoveredUsdClamped(MARKET_ID, cachedUsd, recoveredUsd);
+                valueUsd = 0;
+            } else {
+                valueUsd = cachedUsd - recoveredUsd;
+            }
         }
-        uint256 recoveredUsd = CrosschainRecoveryLib.recoveredUsd(MARKET_ID);
-        if (recoveredUsd > cachedUsd) {
-            emit CrosschainRecoveredUsdClamped(MARKET_ID, cachedUsd, recoveredUsd);
-            return 0;
-        }
-        return cachedUsd - recoveredUsd;
+        // The accumulator is spent once the persisted value excludes it (IL-9114).
+        CrosschainRecoveryLib.consumeRecoveredUsd(MARKET_ID);
     }
 }

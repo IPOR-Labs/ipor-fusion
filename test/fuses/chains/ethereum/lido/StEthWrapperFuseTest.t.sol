@@ -24,6 +24,7 @@ import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInit
 import {FeeConfigHelper} from "../../../../test_helpers/FeeConfigHelper.sol";
 import {PlasmaVaultConfigurator} from "../../../../utils/PlasmaVaultConfigurator.sol";
 import {IWstETH} from "./IWstETH.sol";
+import {PlasmaVaultCloneLib} from "../../../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @title StEthWrapperFuseTest
 /// @notice Tests for StEthWrapperFuse
@@ -63,7 +64,7 @@ contract StEthWrapperFuseTest is Test {
 
         // plasma vault
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

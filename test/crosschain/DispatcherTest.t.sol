@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {IOAppCore} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppCore.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import {EnforcedOptionParam} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppOptionsType3.sol";
@@ -415,9 +416,25 @@ contract DispatcherTest is Test {
             OutboundTransfer({transferId: keccak256("t1")})
         );
         bytes memory composeMsg = LzComposeBuilder.build(address(dispatcher), EXECUTOR_EID, 100e6, envelope);
-        vm.expectRevert(); // InsufficientNativeBudget bubbles; the whole compose reverts atomically
+        uint256 fee = endpoint.messagingFee();
+        uint64 versionBefore = dispatcher.stateVersion();
+        uint256 sentBefore = endpoint.sentCount();
+
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.InsufficientNativeBudget.selector, 0, fee));
         endpoint.deliverCompose(address(dispatcher), address(pool), GUID, composeMsg);
         assertEq(dispatcher.trackedIdle(), 0, "accounting not partially settled");
+        assertFalse(dispatcher.transferSettled(keccak256("t1")), "transfer not marked settled");
+        assertEq(dispatcher.stateVersion(), versionBefore, "state version unchanged");
+        assertEq(endpoint.sentCount(), sentBefore, "no settlement receipt sent");
+
+        // Once funded, the identical compose settles exactly once.
+        vm.deal(address(dispatcher), fee);
+        endpoint.deliverCompose(address(dispatcher), address(pool), GUID, composeMsg);
+        assertEq(dispatcher.trackedIdle(), 100e6, "tracked idle credited once funded");
+        assertTrue(dispatcher.transferSettled(keccak256("t1")), "transfer settled once funded");
+        assertEq(dispatcher.stateVersion(), versionBefore + 1, "state version bumped once");
+        assertEq(endpoint.sentCount(), sentBefore + 1, "one settlement receipt sent");
+        assertEq(uint8(_lastSentType()), uint8(MsgType.TRANSFER_SETTLED), "settlement receipt sent");
     }
 
     // ---------------------------------------------------------------------
@@ -1091,11 +1108,52 @@ contract DispatcherTest is Test {
         assertEq(uint8(dispatcher.commandStatus(keccak256("dep"))), uint8(CommandStatus.FAILED), "future epoch NACKed");
     }
 
-    function testShouldEnforceExecutorChainBindingOnHappyPath() public {
-        // The dispatcher accepts messages only from its single executor chain/EID; delivery on the
-        // registered peer resolves srcChainId == EXECUTOR_CHAIN_ID (the base maps EID -> chain).
+    function testShouldBindDispatcherToTheSingleExecutorChain() public {
+        // The dispatcher is bound to a single executor chain/EID; delivery on the registered peer is accepted.
         _allowVault(address(vault));
         assertEq(dispatcher.EXECUTOR_CHAIN_ID(), EXECUTOR_CHAIN, "bound to the single executor chain");
+    }
+
+    function testShouldRejectDeliveryFromUnregisteredEid() public {
+        // The real source-chain guard is the vendored OAppReceiver peer check: an EID with no registered peer
+        // reverts NoPeer before any dispatcher logic runs.
+        address[] memory vaults = new address[](1);
+        vaults[0] = address(vault);
+        bytes memory envelope = CrosschainMessages.encodeUpdateVaults(
+            UpdateVaults({
+                commandId: keccak256("uv"),
+                sequence: 0,
+                newConfigEpoch: 1,
+                minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                vaults: vaults
+            })
+        );
+        vm.expectRevert(abi.encodeWithSelector(IOAppCore.NoPeer.selector, uint32(30999)));
+        endpoint.deliverLz(address(dispatcher), 30999, _peer(), GUID, envelope);
+        assertEq(dispatcher.commandConfigEpoch(), 0, "config epoch unchanged");
+        assertFalse(dispatcher.isAllowedVault(address(vault)), "allowlist unchanged");
+    }
+
+    function testShouldRejectDeliveryFromWrongSenderOnExecutorEid() public {
+        // On the registered executor EID, a sender other than the registered peer reverts OnlyPeer.
+        address stranger = address(0xBAD1);
+        address[] memory vaults = new address[](1);
+        vaults[0] = address(vault);
+        bytes memory envelope = CrosschainMessages.encodeUpdateVaults(
+            UpdateVaults({
+                commandId: keccak256("uv"),
+                sequence: 0,
+                newConfigEpoch: 1,
+                minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                vaults: vaults
+            })
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(IOAppCore.OnlyPeer.selector, EXECUTOR_EID, bytes32(uint256(uint160(stranger))))
+        );
+        endpoint.deliverLz(address(dispatcher), EXECUTOR_EID, bytes32(uint256(uint160(stranger))), GUID, envelope);
+        assertEq(dispatcher.commandConfigEpoch(), 0, "config epoch unchanged");
+        assertFalse(dispatcher.isAllowedVault(address(vault)), "allowlist unchanged");
     }
 
     // ---------------------------------------------------------------------
@@ -1545,5 +1603,46 @@ contract DispatcherTest is Test {
 
         _command(keccak256("req"), 2, uint8(BusinessAction.REQUEST_SHARES), req);
         assertEq(uint8(dispatcher.commandStatus(keccak256("req"))), uint8(CommandStatus.FAILED), "NACKed");
+    }
+
+    function testShouldRejectDirectRunBusinessSelfFromStrangerForCommand() public {
+        // runBusinessSelf is self-call only; a stranger must not run a business command (here a DEPOSIT of idle).
+        _allowVault(address(vault));
+        _compose(keccak256("t1"), 100e6);
+        uint64 epochBefore = dispatcher.commandConfigEpoch();
+        Command memory c = Command({
+            commandId: keccak256("dep"),
+            sequence: 1,
+            commandConfigEpoch: epochBefore,
+            action: uint8(BusinessAction.DEPOSIT),
+            minExecutionGas: DEFAULT_COMMAND_BUDGET,
+            actionData: CrosschainMessages.encodeDepositAction(address(vault), 50e6, 0)
+        });
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.OnlySelf.selector, address(this)));
+        dispatcher.runBusinessSelf(c.commandId, uint8(MsgType.COMMAND), abi.encode(c));
+        assertEq(dispatcher.trackedIdle(), 100e6, "tracked idle untouched");
+        assertEq(dispatcher.commandConfigEpoch(), epochBefore, "config epoch unchanged");
+    }
+
+    function testShouldRejectDirectRunBusinessSelfFromStrangerForUpdateVaults() public {
+        // Without the guard a stranger could push UPDATE_VAULTS (epoch + 1) with a vault under their control.
+        _allowVault(address(vault));
+        _compose(keccak256("t1"), 100e6);
+        uint64 epochBefore = dispatcher.commandConfigEpoch();
+        address[] memory vaults = new address[](1);
+        vaults[0] = address(0xBAD2);
+        UpdateVaults memory uv = UpdateVaults({
+            commandId: keccak256("uv2"),
+            sequence: 1,
+            newConfigEpoch: epochBefore + 1,
+            minExecutionGas: DEFAULT_COMMAND_BUDGET,
+            vaults: vaults
+        });
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.OnlySelf.selector, address(this)));
+        dispatcher.runBusinessSelf(uv.commandId, uint8(MsgType.UPDATE_VAULTS), abi.encode(uv));
+        assertEq(dispatcher.commandConfigEpoch(), epochBefore, "config epoch unchanged");
+        assertEq(dispatcher.trackedIdle(), 100e6, "tracked idle untouched");
+        assertTrue(dispatcher.isAllowedVault(address(vault)), "allowlist unchanged");
+        assertFalse(dispatcher.isAllowedVault(address(0xBAD2)), "stranger vault not allowed");
     }
 }

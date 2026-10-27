@@ -647,6 +647,70 @@ contract CcipFactoryTest is Test {
         factory.syncCcipRoutePolicy(executorAddress, remoteChain);
     }
 
+    /// @notice IL-9045: the dispatcher constructor refuses a fee token equal to its bridged asset.
+    /// @dev Negative: constructor guard removed -> the dispatcher deploys -> no revert -> fails.
+    function testShouldRejectDispatcherConstructorWhenAssetIsFeeToken() public {
+        CcipRouteConfig memory route = _appRoute(_factoryRoute(), address(factory));
+        route.feeToken = address(token);
+
+        vm.expectRevert(CcipCrosschainDispatcher.AssetCannotPayCcipFees.selector);
+        new CcipCrosschainDispatcher(
+            address(router),
+            address(factory),
+            address(token),
+            ASSET_ID,
+            6,
+            8453,
+            route,
+            address(0xA11),
+            address(0xB22),
+            3 days
+        );
+    }
+
+    /// @notice IL-9045: a factory policy sync must not move a registered dispatcher's fee token to its asset.
+    /// @dev Negative: `syncRoutePolicy` guard removed -> the dispatcher accepts the asset as fee token -> fails.
+    function testShouldRejectDispatcherPolicySyncWhenTrackedAssetIsFeeToken() public {
+        uint256 remoteChain = 8453;
+        CcipRouteConfig memory factoryRoute = _factoryRoute();
+        _setFactoryRoute(remoteChain, factoryRoute);
+        router.setAutoDeliver(false);
+
+        bytes32 deploymentSalt = keccak256(abi.encode(address(this), bytes32("disp-fee"), uint8(7)));
+        address dispatcherAddress = factory.computeExecutorAddress(address(this), bytes32("disp-fee"));
+        CcipCrosschainFactory.DeploymentTicket memory ticket = CcipCrosschainFactory.DeploymentTicket({
+            salt: deploymentSalt,
+            executor: dispatcherAddress,
+            srcChainId: remoteChain,
+            dstChainId: block.chainid,
+            assetId: ASSET_ID,
+            sharedDecimals: 6,
+            vaults: new address[](0),
+            rescueAdmin: address(0xA11),
+            rescueGuardian: address(0xB22),
+            rescueDelay: 3 days
+        });
+        vm.prank(address(router));
+        factory.ccipReceive(
+            CcipClient.Any2EVMMessage({
+                messageId: keccak256("deploy-dispatcher-fee"),
+                sourceChainSelector: factoryRoute.chainSelector,
+                sender: abi.encode(address(factory)),
+                data: CcipMessages.encode(CcipMsgType.CREATE_DISPATCHER, abi.encode(ticket, _expiry())),
+                destTokenAmounts: new CcipClient.EVMTokenAmount[](0)
+            })
+        );
+        assertTrue(factory.isDispatcher(dispatcherAddress));
+
+        factoryRoute.feeToken = address(token);
+        _setFactoryRoute(remoteChain, factoryRoute);
+
+        vm.expectRevert(CcipCrosschainDispatcher.AssetCannotPayCcipFees.selector);
+        factory.syncCcipRoutePolicy(dispatcherAddress, remoteChain);
+
+        assertEq(CcipCrosschainDispatcher(payable(dispatcherAddress)).ccipRoute(remoteChain).feeToken, address(0));
+    }
+
     function testShouldRejectDirectExecutorPolicyUpdateOutsideFactory() public {
         uint256 remoteChain = 8453;
         CcipRouteConfig memory factoryRoute = _factoryRoute();

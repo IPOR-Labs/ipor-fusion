@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import "forge-std/Test.sol";
 import {PlasmaVault, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
@@ -64,7 +65,7 @@ contract PlasmaVaultVotesPluginTest is Test {
         votesPlugin = new PlasmaVaultVotesPlugin();
 
         vm.startPrank(ATOMIST);
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         plasmaVault.proxyInitialize(
             PlasmaVaultInitData(
                 "Test Vault",
@@ -245,7 +246,7 @@ contract PlasmaVaultVotesPluginTest is Test {
     function testVotesPluginNotEnabledReverts() public {
         // Deploy vault without votes plugin
         vm.startPrank(ATOMIST);
-        PlasmaVault vaultNoVotes = new PlasmaVault();
+        PlasmaVault vaultNoVotes = PlasmaVaultCloneLib.newPlasmaVault();
         vaultNoVotes.proxyInitialize(
             PlasmaVaultInitData(
                 "No Votes Vault",

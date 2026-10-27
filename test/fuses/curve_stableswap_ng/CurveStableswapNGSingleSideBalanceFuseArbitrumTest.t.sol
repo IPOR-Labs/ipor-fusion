@@ -32,6 +32,7 @@ import {PlasmaVaultBase} from "../../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @notice Minimal Curve StableswapNG swap interface, used only by the IL-7950 round-trip
 /// regression tests below to drive a swap against the pool. Not part of the fuses' production
@@ -121,7 +122,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
@@ -249,7 +250,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         uint256 amount = 100 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
@@ -368,7 +369,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         uint256 amount = 1_000 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault_ = new PlasmaVault();
+        PlasmaVault plasmaVault_ = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault_).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",
@@ -453,7 +454,7 @@ contract CurveStableswapNGSingleSideBalanceFuseTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
         uint256 amount = 1_000 * 10 ** ERC20(USDM).decimals();
 
-        PlasmaVault plasmaVault_ = new PlasmaVault();
+        PlasmaVault plasmaVault_ = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault_).proxyInitialize(
             PlasmaVaultInitData(
                 "Plasma Vault",

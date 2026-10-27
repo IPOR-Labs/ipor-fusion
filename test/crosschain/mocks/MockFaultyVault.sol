@@ -44,9 +44,17 @@ contract MockFaultyVault is MockRemoteVault {
         burnsGas = burnsGas_;
     }
 
+    /// @dev IL-9178: `convertToAssets` returns 4 bytes (shorter than a word) while `balanceOf` keeps working. Mutually
+    ///      exclusive with `setConvertReturnsMax`; the last call wins.
+    function setConvertShortReturn(bool convertShortReturn_) external {
+        convertShortReturn = convertShortReturn_;
+        convertReturnsMax = convertShortReturn_;
+    }
+
     /// @dev `convertToAssets` returns type(uint256).max (above the dispatcher's uint128 bound).
     function setConvertReturnsMax(bool convertReturnsMax_) external {
         convertReturnsMax = convertReturnsMax_;
+        convertShortReturn = false;
     }
 
     /// @dev IL-8784 redeem faults: revert with a custom error, burn all forwarded gas, succeed with empty returndata,
@@ -67,6 +75,10 @@ contract MockFaultyVault is MockRemoteVault {
 
     /// @dev True while `redeem` runs, so the OpenZeppelin `maxRedeem` self-check inside it ignores `maxRedeemReverts`.
     bool private _redeeming;
+
+    /// @dev IL-9178: declared last on purpose. The earlier flags fill one storage slot exactly; a flag inserted among
+    ///      them would spill one into a new slot and shift the exact gas constants of `VaultRemovalSweepTest`.
+    bool private convertShortReturn;
 
     function maxRedeem(address owner_) public view override returns (uint256) {
         if (maxRedeemReverts && !_redeeming) revert("maxRedeem broken");
@@ -126,7 +138,17 @@ contract MockFaultyVault is MockRemoteVault {
     function convertToAssets(uint256 shares_) public view override returns (uint256) {
         _burn();
         if (convertReverts) revert("convertToAssets broken");
-        if (convertReturnsMax) return type(uint256).max;
+        // The short-return mode rides on the `convertReturnsMax` branch so the healthy path costs the same gas
+        // (the removal-sweep ACK-edge tests measure it exactly).
+        if (convertReturnsMax) {
+            if (convertShortReturn) {
+                assembly {
+                    mstore(0, 0x01)
+                    return(0, 4)
+                }
+            }
+            return type(uint256).max;
+        }
         return super.convertToAssets(shares_);
     }
 }

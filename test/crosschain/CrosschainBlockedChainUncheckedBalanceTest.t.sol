@@ -6,6 +6,7 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {PlasmaVault, PlasmaVaultInitData, FeeConfig} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {PlasmaVaultGovernance} from "../../contracts/vaults/PlasmaVaultGovernance.sol";
 import {IPlasmaVault, FuseAction} from "../../contracts/interfaces/IPlasmaVault.sol";
 import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
@@ -392,7 +393,7 @@ contract CrosschainBlockedChainUncheckedBalanceTest is CrosschainTestBase {
 
         address plasmaVaultBase = vm.deployCode("PlasmaVaultBase.sol:PlasmaVaultBase");
         address feeFactory = vm.deployCode("FeeManagerFactory.sol:FeeManagerFactory");
-        vault = PlasmaVault(vm.deployCode("PlasmaVault.sol:PlasmaVault"));
+        vault = PlasmaVaultCloneLib.clone(vm.deployCode("PlasmaVault.sol:PlasmaVault"));
 
         vm.startPrank(ATOMIST);
         vault.proxyInitialize(

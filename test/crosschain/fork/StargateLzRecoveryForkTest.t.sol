@@ -17,6 +17,9 @@ import {StargateForkBase} from "./StargateForkBase.sol";
 contract StargateLzRecoveryForkTest is StargateForkBase {
     bytes32 internal constant NIL_PAYLOAD_HASH = bytes32(type(uint256).max);
 
+    /// @dev LayerZero EndpointV2 `Errors.LZ_PathNotVerifiable()`; the library source is not vendored.
+    bytes4 private constant LZ_PATH_NOT_VERIFIABLE = bytes4(keccak256("LZ_PathNotVerifiable()"));
+
     uint128 internal constant UNDER_FLOOR_GAS = 200_000;
 
     function setUp() public {
@@ -86,7 +89,7 @@ contract StargateLzRecoveryForkTest is StargateForkBase {
         assertEq(ENDPOINT.lazyInboundNonce(APP, ETHEREUM_EID, bytes32(uint256(uint160(APP)))), nonce, "skipped");
         (address receiveLib,) = ENDPOINT.getReceiveLibrary(APP, ETHEREUM_EID);
         vm.prank(receiveLib);
-        vm.expectRevert(); // the skipped nonce can no longer be verified
+        vm.expectRevert(LZ_PATH_NOT_VERIFIABLE); // the skipped nonce can no longer be verified
         ENDPOINT.verify(packet.origin, APP, keccak256(abi.encodePacked(packet.guid, packet.message)));
     }
 

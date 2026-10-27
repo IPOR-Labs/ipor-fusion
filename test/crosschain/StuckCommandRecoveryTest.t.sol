@@ -2,7 +2,12 @@
 pragma solidity 0.8.30;
 
 import {StargateTwoSidedBase} from "./StargateTwoSidedBase.sol";
-import {CommandStatus, ResolveOutcome} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
+import {
+    CommandStatus,
+    ResolveOutcome,
+    CrosschainConstants
+} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
+import {CrosschainMessages} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
 
 /// @title StuckCommandRecoveryTest
@@ -225,25 +230,45 @@ contract StuckCommandRecoveryTest is StargateTwoSidedBase {
     }
 
     /// @notice The rescue is a terminal exit, not a manager tool: timelocked and admin-only.
+    /// @dev The command is expired BEFORE the schedule, so `CommandNotExpired` cannot be the reason an early execute
+    ///      reverts: only the `RESCUE_DELAY` timelock can be.
     function testShouldTimelockAndGateTheAbandonRescue() public {
         _readyWithCapital();
-        _commandWithUndeliveredAck();
+        (bytes32 commandId, ) = _commandWithUndeliveredAck();
         bytes32 id = bytes32(REMOTE_CHAIN);
 
+        vm.warp(CrosschainMessages.commandDeadline(commandId) + CrosschainConstants.COMMAND_EXPIRY_MARGIN + 1);
+
         vm.prank(manager);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.UnauthorizedRescueAdmin.selector, manager));
         executor.scheduleForceResolveTransfer(id, ResolveOutcome.ABANDON_COMMAND_SEQUENCE_CONSUMED);
 
+        uint256 t0 = block.timestamp;
         vm.prank(admin);
         uint256 rescueId = executor.scheduleForceResolveTransfer(id, ResolveOutcome.ABANDON_COMMAND_SEQUENCE_CONSUMED);
+        uint256 executableAt = t0 + RESCUE_DELAY;
 
         vm.prank(admin);
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(CrosschainErrors.RescueTimelockNotElapsed.selector, rescueId, t0, executableAt)
+        );
+        executor.executeForceResolveTransfer(rescueId, id, ResolveOutcome.ABANDON_COMMAND_SEQUENCE_CONSUMED);
+
+        vm.warp(executableAt - 1);
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CrosschainErrors.RescueTimelockNotElapsed.selector,
+                rescueId,
+                executableAt - 1,
+                executableAt
+            )
+        );
         executor.executeForceResolveTransfer(rescueId, id, ResolveOutcome.ABANDON_COMMAND_SEQUENCE_CONSUMED);
 
         assertTrue(_commandSlotActive(), "slot untouched before the delay elapses");
 
-        vm.warp(block.timestamp + RESCUE_DELAY);
+        vm.warp(executableAt);
         vm.prank(admin);
         executor.executeForceResolveTransfer(rescueId, id, ResolveOutcome.ABANDON_COMMAND_SEQUENCE_CONSUMED);
         assertFalse(_commandSlotActive(), "freed after the delay");

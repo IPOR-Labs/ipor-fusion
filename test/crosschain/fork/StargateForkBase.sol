@@ -80,10 +80,13 @@ abstract contract StargateForkBase is Test {
     // Deployment gas budgets (the values production configures)
     // ---------------------------------------------------------------------
 
-    /// @dev Executor command lane, msgType 1 (the deploy repo's `RegisterRemoteChains.s.sol` registers 2,000,000 and must be raised to at
-    ///      least `COMMAND_LANE_MIN_RECEIVE_GAS`; 4M here) and the
-    ///      dispatcher's msgType 1 back to the executor (`StargateCrosschainFactory` DISPATCHER_RECEIVE_GAS).
+    /// @dev Executor command lane, msgType 1: the deploy repo's `RegisterRemoteChains.s.sol` registers 2,000,000 and must be
+    ///      raised to at least `COMMAND_LANE_MIN_RECEIVE_GAS`; 4M here. It budgets commands delivered to the dispatcher only.
     uint128 internal constant COMMAND_LANE_GAS = 4_000_000;
+    /// @dev Dispatcher -> executor receipts (ACK, NACK, TRANSFER_SETTLED, RETURN_REJECTED, RETURN_STARTED), msgType 1.
+    ///      Mirrors the private `StargateCrosschainFactory.DISPATCHER_RECEIVE_GAS` that `_deployDispatcher` registers; it is
+    ///      separate from the command lane and is pinned against the real factory by `StargateFactoryDispatcherReceiptGasTest`.
+    uint128 internal constant DISPATCHER_RECEIVE_GAS = 2_000_000;
     /// @dev The lane the apps are deployed / registered with; defaults to `COMMAND_LANE_GAS`, the pre-check pin test varies it.
     uint128 internal laneGas = COMMAND_LANE_GAS;
     /// @dev Dispatcher -> executor return leg, msgType 2 (`StargateCrosschainFactory` RETURN_ASSET_*_GAS).
@@ -206,13 +209,13 @@ abstract contract StargateForkBase is Test {
         vm.deal(APP, 10 ether);
     }
 
-    /// @dev The enforced options `StargateCrosschainFactory._deployDispatcher` gives a dispatcher.
+    /// @dev The enforced options `StargateCrosschainFactory._deployDispatcher` gives a dispatcher (receipts at `DISPATCHER_RECEIVE_GAS`).
     function _dispatcherEnforcedOptions() internal view returns (bytes memory) {
         EnforcedOptionParam[] memory options = new EnforcedOptionParam[](2);
         options[0] = EnforcedOptionParam({
             eid: ETHEREUM_EID,
             msgType: 1,
-            options: OptionsBuilder.newOptions().addExecutorLzReceiveOption(laneGas, 0)
+            options: OptionsBuilder.newOptions().addExecutorLzReceiveOption(DISPATCHER_RECEIVE_GAS, 0)
         });
         options[1] = EnforcedOptionParam({
             eid: ETHEREUM_EID,
@@ -260,7 +263,7 @@ abstract contract StargateForkBase is Test {
         Packet memory ack = _takePacket(APP);
 
         vm.selectFork(ethereumFork);
-        ackGas = _deliver(ack, laneGas);
+        ackGas = _deliver(ack, DISPATCHER_RECEIVE_GAS);
         vm.recordLogs(); // drop the executor-side logs
     }
 

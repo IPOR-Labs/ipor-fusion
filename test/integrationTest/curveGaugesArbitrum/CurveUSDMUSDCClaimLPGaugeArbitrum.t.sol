@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -667,7 +668,7 @@ contract CurveUSDMUSDCClaimLPGaugeArbitrum is Test {
 
     function _createPlasmaVault() private {
         withdrawManager = address(new WithdrawManager(address(instances.accessManager)));
-        instances.plasmaVault = new PlasmaVault();
+        instances.plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(instances.plasmaVault).proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "PLASMA VAULT",

@@ -36,25 +36,52 @@ interface ICcipFactoryRouteFuse {
     function registerExecutorRoute(address executor_, uint256 chainId_, CcipRouteConfig calldata route_) external;
 }
 
+/// @notice Manager-operation discriminator for `CcipCrosschainCommandFuse.enter`.
+/// @dev The executor's `MANAGER` is the PlasmaVault, so every manager-only executor operation is reachable only
+///      through this fuse. This enum selects which one to forward. Which `CcipCommandFuseEnterData` fields each
+///      value reads is listed on that struct.
 enum CcipCommandType {
-    UNDEFINED,
-    REGISTER_ROUTE,
-    CREATE_DISPATCHER,
+    UNDEFINED, // 0 - invalid, reverts CcipCommandFuseUnsupportedCommand
+    REGISTER_ROUTE, // 1 - factory.registerExecutorRoute(executor, chainId, route)
+    CREATE_DISPATCHER, // 2 - factory.requestDispatcher(executor, chainId, plasmaVaults, maxFee)
+    // 3 - executor.updateVaults(chainId, plasmaVaults, vaultsAllowed, vaultsReplace, maxFee, feeToken, gasLimit)
     UPDATE_VAULTS,
-    SEND_COMMAND,
+    SEND_COMMAND, // 4 - executor.sendCommandToDispatcher(chainId, command, maxFee, feeToken, gasLimit)
+    // 5 - executor.requestRemoteBalance(chainId, maxFee, feeToken, gasLimit); recovery-marked
     REFRESH_BALANCE,
-    CANCEL_RETURN,
-    RETRY_COMMAND,
+    CANCEL_RETURN, // 6 - executor.cancelPendingReturn(chainId); recovery-marked
+    RETRY_COMMAND, // 7 - executor.retryCommand(chainId, command.commandId, maxFee, feeToken, gasLimit)
+    // 8 - executor.cancelCommand(chainId, command.commandId, maxFee, feeToken, gasLimit); recovery-marked
     CANCEL_COMMAND,
-    CANCEL_DEPLOYMENT
+    CANCEL_DEPLOYMENT // 9 - factory.cancelExpiredDeployment(executor, chainId)
 }
 
+/// @notice Tagged-union enter data for the CCIP command fuse. Only the fields relevant to `commandType` are read;
+///         the rest are ignored.
+/// @dev Field map by command type:
+///      - `executor`: every type (must be a granted EXECUTOR substrate, MANAGER = this vault, transport CCIP).
+///      - `chainId`: every type; the route being registered (REGISTER_ROUTE) or the destination chain the operation
+///        addresses.
+///      - `route`: REGISTER_ROUTE only.
+///      - `plasmaVaults`: CREATE_DISPATCHER and UPDATE_VAULTS; every entry must be granted as a REMOTE_VAULT
+///        substrate for `chainId` (an UPDATE_VAULTS removal is not checked).
+///      - `vaultsAllowed`, `vaultsReplace`: UPDATE_VAULTS only.
+///      - `command`: SEND_COMMAND (the whole envelope); RETRY_COMMAND and CANCEL_COMMAND read only
+///        `command.commandId`.
+///      - `maxFee`: every type that sends a CCIP message (CREATE_DISPATCHER, UPDATE_VAULTS, SEND_COMMAND,
+///        REFRESH_BALANCE, RETRY_COMMAND, CANCEL_COMMAND), in units of `feeToken`; `feeToken` and `gasLimit` are
+///        read by the same types except CREATE_DISPATCHER (the factory sends with the route's fee token and the
+///        factory's `dispatcherDeploymentGasLimit`, else the route `messageGasLimit`, exempt from the route gas
+///        policy).
+///      - none of the extra fields: CANCEL_RETURN and CANCEL_DEPLOYMENT read only `executor` and `chainId`.
 struct CcipCommandFuseEnterData {
     CcipCommandType commandType;
     address executor;
     uint256 chainId;
     CcipRouteConfig route;
     address[] plasmaVaults;
+    /// @dev UPDATE_VAULTS only. True = add `plasmaVaults` to the remote allowlist, false = remove them (or, with
+    ///      `vaultsReplace`, see below).
     bool vaultsAllowed;
     /// @dev When true the remote allowlist is replaced by `plasmaVaults` instead of being
     ///      amended in place, matching the Stargate `UPDATE_PLASMA_VAULTS` semantics.
@@ -68,18 +95,26 @@ struct CcipCommandFuseEnterData {
     ///      The Stargate command fuse differs only in who converts: its `amount` and `minAssets` are already
     ///      shared decimals and forwarded verbatim. On the wire both transports carry shared decimals and both
     ///      dispatchers apply `_toLD` to `minAssets` (IL-8609).
-    ///      `command.minExecutionGas` (IL-8625) is CHECK-ONLY on CCIP: 0 = none; non-zero must not exceed the budget the
-    ///      executor derives from the route's gas limit (reverts `CommandBudgetAboveLane`) nor `MAX_COMMAND_EXECUTION_GAS`
-    ///      (`CommandBudgetAboveMax`), and the derived budget, never the requested value, is stamped. It cannot buy more
-    ///      gas than the route policy delivers; that needs a timelocked policy raise. RETRY_COMMAND and CANCEL_COMMAND
-    ///      ignore it (a retry re-runs the stored budget).
+    ///      `command.minExecutionGas` (IL-8625) is CHECK-ONLY on CCIP: 0 = none; non-zero must not exceed the budget
+    ///      the executor derives from the route's gas limit (reverts `CommandBudgetAboveLane`) nor
+    ///      `MAX_COMMAND_EXECUTION_GAS` (`CommandBudgetAboveMax`), and the derived budget, never the requested value,
+    ///      is stamped. It cannot buy more gas than the route policy delivers; that needs a timelocked policy raise.
+    ///      RETRY_COMMAND and CANCEL_COMMAND ignore it (a retry re-runs the stored budget).
     Command command;
+    /// @dev Ceiling on the CCIP router fee, in units of `feeToken` (the fee token's smallest unit, wei for native).
+    ///      Must not exceed the route's `maxFee`.
     uint256 maxFee;
+    /// @dev Fee token; must equal the route's `feeToken`. `address(0)` = native currency paid from the executor's
+    ///      balance.
     address feeToken;
     /// @dev 0 = route policy; above policy is clamped; below policy reverts (`CcipGasLimitBelowRoutePolicy`).
     uint256 gasLimit;
 }
 
+/// @title CcipCrosschainCommandFuse
+/// @notice Stateless fuse (delegatecall from PlasmaVault) exposing every manager-only CcipCrosschainExecutor
+///         operation, plus the factory calls that the executor's MANAGER (the vault) must make. Because the
+///         executor's MANAGER is the immutable PlasmaVault, these operations are unreachable except through this fuse.
 /// @dev `UPDATE_VAULTS` that can add a vault (`vaultsAllowed` with a non-empty list; an empty replace-all only
 ///      removes vaults and stays allowed) and `SEND_COMMAND` with a DEPOSIT action revert
 ///      `CommandFuseChainBlocked` while the executor has circuit-broken the destination chain (IL-8580):
@@ -114,6 +149,10 @@ struct CcipCommandFuseEnterData {
 ///      a vault. A removed vault is swept best effort and always untracked, so a failed sweep drops the residual shares
 ///      out of NAV until the vault is allowlisted again; alert on the dispatcher's `TrackedVaultSweepResidual` event.
 ///      On tight lanes send ONE removal per UPDATE_VAULTS and adds in a separate command.
+/// @dev Runs in the PlasmaVault storage context. MUST NOT declare storage variables; only `immutable`.
+///      The Stargate twin is `StargateCrosschainCommandFuse`; it emits the same `CrosschainCommandFuseEnter` event.
+///      The chain-blocked, recovery and removal rules are described above on this contract.
+/// @author IPOR Labs
 contract CcipCrosschainCommandFuse is IFuseCommon {
     /// @notice Emitted after a manager operation is forwarded to the executor.
     /// @dev Same signature as the Stargate command fuse's event, so one topic0 covers both transports.
@@ -124,14 +163,19 @@ contract CcipCrosschainCommandFuse is IFuseCommon {
     /// @param chainId The target/destination chainId of the operation.
     event CrosschainCommandFuseEnter(address version, address executor, uint8 commandType, uint256 chainId);
 
+    /// @notice Thrown when the executor's immutable MANAGER is not this PlasmaVault.
     error CcipCommandFuseExecutorManagerMismatch(address executor, address manager);
+    /// @notice Thrown when the granted executor does not report the CHAINLINK_CCIP transport.
     error CcipCommandFuseWrongTransport(address executor);
+    /// @notice Thrown for `UNDEFINED` or any command type outside the enum.
     error CcipCommandFuseUnsupportedCommand(uint8 commandType);
     /// @notice A fresh DEPOSIT or an allowlist-adding (non-empty) UPDATE_VAULTS, or a retry of a DEPOSIT or of any
     ///         UPDATE_VAULTS, targeted a chain the executor has blocked.
     error CommandFuseChainBlocked(address executor, uint256 chainId);
 
+    /// @notice The address of this fuse contract version.
     address public immutable VERSION;
+    /// @notice The market id the fuse operates on (the CROSSCHAIN market).
     uint256 public immutable MARKET_ID;
 
     constructor(uint256 marketId_) {
@@ -139,6 +183,10 @@ contract CcipCrosschainCommandFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
+    /// @notice Forwards one manager operation, selected by `data_.commandType`, to the executor or its factory.
+    /// @dev Validates the executor first (granted EXECUTOR, MANAGER = this vault, CCIP transport). Reverts
+    ///      `CcipCommandFuseUnsupportedCommand` for `UNDEFINED`. Emits `CrosschainCommandFuseEnter` on success.
+    /// @param data_ The tagged-union command data; see `CcipCommandFuseEnterData` for the fields each type reads.
     function enter(CcipCommandFuseEnterData calldata data_) external {
         _validate(data_.executor);
         if (data_.commandType == CcipCommandType.REGISTER_ROUTE) {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
+import {PlasmaVaultCloneLib} from "../../../test_helpers/PlasmaVaultCloneLib.sol";
 
 import {Test} from "forge-std/Test.sol";
 
@@ -93,7 +94,7 @@ contract ExternalStateRealVaultExecuteTest is Test {
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
         vm.startPrank(atomist);
-        vault = new PlasmaVault();
+        vault = PlasmaVaultCloneLib.newPlasmaVault();
         vault.proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "ExternalState Plasma Vault",

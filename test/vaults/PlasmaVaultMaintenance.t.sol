@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {Test} from "forge-std/Test.sol";
 import {
     PlasmaVault,
@@ -82,7 +83,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -121,7 +122,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -168,7 +169,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -205,7 +206,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -242,7 +243,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -276,7 +277,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -312,7 +313,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -359,7 +360,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -403,7 +404,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -446,7 +447,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -492,7 +493,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -534,7 +535,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",
@@ -2804,7 +2805,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,
@@ -3089,7 +3090,7 @@ contract PlasmaVaultMaintenanceTest is Test {
         MarketBalanceFuseConfig[] memory balanceFuses,
         address withdrawManager
     ) private returns (PlasmaVault plasmaVault) {
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 assetName,

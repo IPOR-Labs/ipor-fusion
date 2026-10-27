@@ -32,10 +32,13 @@ library CrosschainRecoveryLib {
     ///      would otherwise subtract the first batch's recovery from every later batch too, understating
     ///      NAV and persisting the understated value (audit R-07 / stale_accounting_double_subtraction).
     ///
-    ///      The persisted cache is therefore the batch boundary: whenever it differs from the snapshot
-    ///      taken when the accumulator was last rebased, a NAV refresh has happened in between and the
-    ///      accumulator is reset. Within one batch the cache does not move, so several recovery fuses in
-    ///      the same batch keep accumulating as intended.
+    ///      The batch boundary is the balance fuse's valuation of the market (`consumeRecoveredUsd`): once it
+    ///      has valued the market, the accumulator and its snapshot are cleared, so the next recovery fuse
+    ///      always rebases. A refresh that persists the SAME numeric value as before (for example live NAV
+    ///      equal to the old cache after a claim) cannot be told apart by comparing cache values alone, which
+    ///      is why equality of the snapshot is only a second check (IL-9114). Until the balance fuse values the
+    ///      market (at the end of the batch, or mid-batch through `UpdateMarketsBalancesFuse`), several recovery
+    ///      fuses keep accumulating as intended.
     /// @param marketId_ The CROSSCHAIN market whose cached value the balance fuse will correct.
     /// @param executor_ The executor this recovery action drives. The marker is scoped to it, so a
     ///        recovery on one transport cannot suppress a sibling executor's fail-closed revert.
@@ -82,8 +85,10 @@ library CrosschainRecoveryLib {
 
     /// @notice True when `recoveredUsd()` still describes value missing from the CURRENT persisted cache.
     /// @dev False once a NAV refresh has persisted a cache that already excludes the recovered value, and
-    ///      false when no recovery fuse has rebased the accumulator in this transaction. In both cases the
-    ///      cached market value must be used as-is; subtracting a spent accumulator understates NAV.
+    ///      false when no recovery fuse has rebased the accumulator in this transaction or the balance fuse
+    ///      has consumed it (`consumeRecoveredUsd`). The snapshot comparison alone cannot see a refresh that
+    ///      wrote the same number, so the consumption is the primary batch boundary (IL-9114). In all of these
+    ///      cases the cached market value must be used as-is; subtracting a spent accumulator understates NAV.
     /// @param marketId_ The CROSSCHAIN market whose cached value is being corrected.
     function isRecoveredUsdApplicable(uint256 marketId_) internal view returns (bool) {
         bytes32 snapshotSlot = _marketSlot(_CACHE_SNAPSHOT_SLOT, marketId_);
@@ -132,6 +137,29 @@ library CrosschainRecoveryLib {
         uint256 updated = current + valueUsd_;
         assembly {
             tstore(slot, updated)
+        }
+    }
+
+    /// @notice Close the recovery accumulator of market `marketId_` once the balance fuse has valued the market.
+    /// @dev The balance fuse calls this after every valuation of the market (live sum or cached fallback).
+    ///      The value a recovery fuse moved out is either already absent from the live sum or has just been
+    ///      subtracted from the cache, and the result is persisted by the surrounding batch, so the accumulator
+    ///      must not be applied again. Clearing the snapshot makes the next `markRecovery` always rebase, even
+    ///      when the persisted cache value is numerically unchanged (IL-9114). When nothing armed the
+    ///      accumulator in this transaction the snapshot is zero and the function writes nothing, so ordinary
+    ///      read-only NAV calls (for example `UniversalReader.read` under `staticcall`) stay write-free.
+    /// @param marketId_ The CROSSCHAIN market whose accumulator is closed.
+    function consumeRecoveredUsd(uint256 marketId_) internal {
+        bytes32 snapshotSlot = _marketSlot(_CACHE_SNAPSHOT_SLOT, marketId_);
+        uint256 storedSnapshot;
+        assembly {
+            storedSnapshot := tload(snapshotSlot)
+        }
+        if (storedSnapshot == 0) return;
+        bytes32 recoveredSlot = _marketSlot(_RECOVERED_USD_SLOT, marketId_);
+        assembly {
+            tstore(snapshotSlot, 0)
+            tstore(recoveredSlot, 0)
         }
     }
 

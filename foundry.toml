@@ -37,16 +37,16 @@ ffi = true
 # scripts must use FOUNDRY_PROFILE=crosschain_deploy so that creation-code hashes
 # and CREATE3 outputs are identical on all three mainnets.
 libraries = [
-    "contracts/crosschain/stargate/lib/StargateExecutorAccountingLib.sol:StargateExecutorAccountingLib:0x1bEa14792F3ebA23fa63b84E954c93d6eF901b04",
+    "contracts/crosschain/stargate/lib/StargateExecutorAccountingLib.sol:StargateExecutorAccountingLib:0xe2e34f54791D0e39ba2b74536C6969DC8b856CAF",
     "contracts/crosschain/stargate/lib/StargateExecutorAttestationLib.sol:StargateExecutorAttestationLib:0xd3b89E73A9e75b68b6FAdb7Bc1150A2660DC690d",
     "contracts/crosschain/stargate/lib/StargateExecutorDeploymentLib.sol:StargateExecutorDeploymentLib:0x11b710DEB2A6a1d702789ffdfe968193F48559EF",
     "contracts/crosschain/stargate/lib/StargateLzSendLib.sol:StargateLzSendLib:0x47f52bbcf20AbC6FC6D4AaCc7C59Bd310c63652D",
     "contracts/crosschain/lib/RescueLogicLib.sol:RescueLogicLib:0xC6F2F07bB9961bdFA11fe3C618F257bDF29EC22b",
     "contracts/crosschain/stargate/lib/StargateAssetSendLib.sol:StargateAssetSendLib:0x5C746de4cE706F31533C3E18D22c6c5e28435125",
     "contracts/crosschain/ccip/lib/CcipDecimalsLib.sol:CcipDecimalsLib:0xeffC518316b1dCdbA8501EdB6A13ac04BF06B11a",
-    "contracts/crosschain/ccip/lib/CcipExecutorAttestationLib.sol:CcipExecutorAttestationLib:0xA59998Bff1eCddD9d715A9A1Da6753FB5ab11605",
+    "contracts/crosschain/ccip/lib/CcipExecutorAttestationLib.sol:CcipExecutorAttestationLib:0x114c0519801a953D912AC7EeC57A4b256bD6d8A5",
     "contracts/crosschain/ccip/lib/CcipExecutorCommandLib.sol:CcipExecutorCommandLib:0x9e3dA1D08aDBe5474D8DeAa6b20165632Bd9b349",
-    "contracts/crosschain/ccip/lib/CcipExecutorTransferLib.sol:CcipExecutorTransferLib:0xC55c215e9a83c934658feA8eAC915f70606faCf9",
+    "contracts/crosschain/ccip/lib/CcipExecutorTransferLib.sol:CcipExecutorTransferLib:0x7500756d1570B4063d7412A92968e63Ab1B44D74",
     "contracts/crosschain/ccip/lib/CcipRouteLib.sol:CcipRouteLib:0x77f9C82967621e8dDc0D7E55806A75D59c12D528",
     "contracts/crosschain/ccip/lib/CcipSendLib.sol:CcipSendLib:0x61fbe9Cc575f44A75fbFf5eBcC4597D229D1eF9b",
     "contracts/crosschain/lib/CrosschainVaultActionLib.sol:CrosschainVaultActionLib:0x40374659dC3312e0D6e49eDAbCb02f7c48F1c125",

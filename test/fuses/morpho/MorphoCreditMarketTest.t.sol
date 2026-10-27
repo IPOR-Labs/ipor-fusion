@@ -29,6 +29,7 @@ import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {IWETH9} from "./IWETH9.sol";
 import {IstETH} from "./IstETH.sol";
 import {IWstETH} from "./IWstETH.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 contract MorphoCreditMarketTest is Test {
     address private constant _W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -66,7 +67,7 @@ contract MorphoCreditMarketTest is Test {
         address withdrawManager = address(new WithdrawManager(accessManager));
         // plasma vault
         vm.startPrank(_ATOMIST);
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

@@ -25,6 +25,7 @@ import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
 import {OdosSwapperFuse, OdosSwapperEnterData} from "../../../contracts/fuses/odos/OdosSwapperFuse.sol";
 import {OdosSwapExecutor} from "../../../contracts/fuses/odos/OdosSwapExecutor.sol";
 import {OdosSubstrateLib, OdosSubstrateType} from "../../../contracts/fuses/odos/OdosSubstrateLib.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @title OdosSwapperFuseTest
 /// @notice Fork integration tests for OdosSwapperFuse on Arbitrum.
@@ -102,7 +103,7 @@ contract OdosSwapperFuseTest is Test {
         _withdrawManager = address(new WithdrawManager(_accessManager));
 
         // Deploy plasma vault
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST ODOS PLASMA VAULT",

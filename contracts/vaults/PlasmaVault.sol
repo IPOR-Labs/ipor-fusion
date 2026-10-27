@@ -290,6 +290,12 @@ contract PlasmaVault is
         return PlasmaVaultStorageLib.getPlasmaVaultVotesPlugin();
     }
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    /// @notice Locks the implementation: only clones (FusionFactory → PlasmaVaultFactory.clone) can be initialized (IL-8979).
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initializes the PlasmaVault with initialization data (for cloning)
     /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
     /// @dev This method is called after cloning to initialize the contract
@@ -1305,7 +1311,7 @@ contract PlasmaVault is
 
     /// @notice Private method containing the common initialization logic
     /// @param initData_ Initialization parameters encapsulated in PlasmaVaultInitData struct
-    /// @dev This method is used by both constructor and proxyInitialize to avoid code duplication
+    /// @dev Common initialization logic of `proxyInitialize`
     function _initializeVault(PlasmaVaultInitData memory initData_) private {
         super.__ERC20_init(initData_.assetName, initData_.assetSymbol);
         super.__ERC4626_init(IERC20(initData_.underlyingToken));

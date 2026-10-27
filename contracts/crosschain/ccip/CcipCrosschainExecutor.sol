@@ -53,17 +53,6 @@ contract CcipCrosschainExecutor is
         uint256 transferStalenessMax;
     }
 
-    struct BalanceProposal {
-        uint256 chainId;
-        uint256 balance;
-        uint64 stateVersion;
-        uint64 remoteBlock;
-        uint64 remoteTimestamp;
-        uint64 expiry;
-        uint64 accountingEpoch;
-        uint8 status;
-    }
-
     error InvalidDecimals(uint8 localDecimals, uint8 sharedDecimals);
     /// @notice `localDecimals - sharedDecimals` exceeds 18 (conversion rate would exceed 1e18).
     error DecimalsGapTooLarge(uint8 localDecimals, uint8 sharedDecimals);
@@ -128,20 +117,41 @@ contract CcipCrosschainExecutor is
     uint8 public immutable SHARED_DECIMALS;
     uint256 public immutable DECIMAL_CONVERSION_RATE;
 
+    /// @notice Tokens held by the executor that the manager can still send or claim, in SHARED decimals. Not
+    ///         local asset decimals: on a pair with `LOCAL_DECIMALS > SHARED_DECIMALS` this is
+    ///         `DECIMAL_CONVERSION_RATE` times smaller than the token balance it stands for. `getBalance()` returns
+    ///         the converted total.
     uint256 public idleLedger;
+    /// @notice Value the executor books as placed on and held by the remote dispatcher of a chain, in SHARED
+    ///         decimals. Moved by settled transfers, recalls, attested balances and rescues.
     mapping(uint256 => uint256) public settledRemoteBalance;
+    /// @notice Tokens sent to a chain's dispatcher whose settlement has not arrived yet, in SHARED decimals.
     mapping(uint256 => uint256) public outboundInFlight;
+    /// @notice True once the factory has acknowledged that the chain's dispatcher is deployed and ready.
     mapping(uint256 => bool) public hasDispatcher;
     mapping(bytes32 => Outbound) private outboundTransfers;
     mapping(bytes32 => PendingReturn) private pendingReturns;
+    /// @notice Operation id of the chain's recall (return) in flight, or zero when there is none.
     mapping(uint256 => bytes32) public activeReturn;
+    /// @notice Oldest `createdAt` among the chain's pending outbound transfers, or zero when
+    ///         none is pending. Anchor of the `TRANSFER_STALENESS_MAX` gate.
     mapping(uint256 => uint64) public oldestPendingAt;
     mapping(uint256 => uint64[16]) private _pendingCreatedAt;
+    /// @notice Number of the chain's pending outbound transfers (at most 16).
     mapping(uint256 => uint8) public pendingTransferCount;
+    /// @notice The chain's acknowledged remote state version: the dispatcher `stateVersion` up to which every
+    ///         value-moving response has been applied (or skipped by an `ADVANCE_FRONTIER` rescue).
     mapping(uint256 => uint64) public lastRemoteStateVersion;
     CcipExecutorCommandState private _commandState;
+    /// @notice Chains whose dispatcher is ready, in the order they became ready; `getBalance()` sums over them.
     uint256[] public dispatcherChainIds;
     uint256 private _nonce;
+    /// @notice True while the chain is blocked: raised by `rejectBalanceAndBlock` and by an `ADVANCE_FRONTIER`
+    ///         repair; lifted by either `FORCE_SET_SETTLED` kind, or by the approval that consumes an
+    ///         `ADVANCE_FRONTIER` repair latch (`frontierRepairPending`). A block raised by `rejectBalanceAndBlock`
+    ///         is lifted only by a force-set. A blocked chain refuses new recalls (`requestAssetsFromDispatcher`),
+    ///         not sends. `getBalance()` reverts `ChainBlocked` for it while its settled plus outbound total is
+    ///         non-zero, so a send to an empty blocked chain makes NAV revert.
     mapping(uint256 => bool) public chainBlocked;
     /// @dev Belongs to the block `ADVANCE_FRONTIER` armed it with: consumed by the approval or force-set
     ///      that lifts that block, discarded by every other site that raises `chainBlocked` (reject). A
@@ -179,8 +189,16 @@ contract CcipCrosschainExecutor is
     /// @notice Emitted by `claimAsset` with the amount sent to the MANAGER, in local asset decimals.
     /// @dev Mirrors the Stargate executor's event (same signature, so one topic0 covers both transports).
     event AssetClaimed(address manager, uint256 amount);
+    /// @notice Emitted when `sendAssetToDispatcher` hands tokens to the transport.
+    /// @param amount The sent amount in SHARED decimals (the booked amount; `AssetClaimed` is in local decimals).
     event AssetSent(uint256 chainId, bytes32 operationId, bytes32 messageId, uint256 amount);
+    /// @notice Emitted when the dispatcher confirms an outbound transfer.
+    /// @param received The amount credited to `settledRemoteBalance` in SHARED decimals, as booked (not the
+    ///        amount sent; a shortfall is reported by `SettledCreditShortfall`).
     event AssetSettled(uint256 chainId, bytes32 operationId, uint256 received);
+    /// @notice Emitted when a recall is sent to the dispatcher.
+    /// @param amount NOT the requested amount: the accounted bound `maxAccounted = min(requestedSD, settled)` in
+    ///        SHARED decimals, i.e. the request clamped to the chain's settled balance.
     event ReturnRequested(uint256 chainId, bytes32 operationId, uint256 amount);
     /// @notice A recall finished. `sentSD` is the amount the dispatcher declared, `received` the amount
     ///         credited to idle and `debitedSD` the amount actually debited from `settled` (equal to `sentSD`
@@ -303,19 +321,26 @@ contract CcipCrosschainExecutor is
         TRANSFER_STALENESS_MAX = safety_.transferStalenessMax;
     }
 
+    /// @notice The transport this executor uses: always `CHAINLINK_CCIP`.
     function transportKind() external pure returns (CrosschainTransportKind) {
         return CrosschainTransportKind.CHAINLINK_CCIP;
     }
 
+    /// @notice Revision of this executor's external interface, `7` for this release. Off-chain tooling and
+    ///         integrators read it to tell which executor surface they are talking to (`ICrosschainExecutorMetadata`;
+    ///         the Stargate executor does not implement it). It is a constant: nothing in the contract reads it.
     function executorInterfaceVersion() external pure returns (uint32) {
         return 7;
     }
 
+    /// @notice Registers the CCIP route to `chainId_` (factory only). The fee token must not be the vault asset.
     function registerRoute(uint256 chainId_, CcipRouteConfig calldata route_) external onlyFactory {
         if (route_.feeToken == _asset()) revert AssetCannotPayCcipFees();
         _registerCcipRoute(chainId_, route_);
     }
 
+    /// @notice Updates the route's fee token, gas limits and flags, and maximum fee (factory only). The fee
+    ///         token must not be the vault asset.
     function syncRoutePolicy(
         uint256 chainId_,
         address feeToken_,
@@ -326,12 +351,14 @@ contract CcipCrosschainExecutor is
         _updateCcipRoutePolicy(chainId_, feeToken_, gasLimitsAndFlags_, maxFee_);
     }
 
+    /// @notice Marks the chain's dispatcher ready once the factory has configured its allowlist (factory only).
     function markDispatcherReady(uint256 chainId_) external onlyFactory {
         // Factory configures the initial allowlist before acknowledging readiness. Body (chain list, ready flag,
         // command-lane epoch, `DispatcherReady`) lives in the linked library for EIP-170 headroom.
         _commandState.markDispatcherReady(hasDispatcher, dispatcherChainIds, chainId_);
     }
 
+    /// @notice Whether the chain's dispatcher has been marked ready (`hasDispatcher`).
     function isDispatcherReady(uint256 chainId_) external view returns (bool) {
         return hasDispatcher[chainId_];
     }
@@ -707,6 +734,11 @@ contract CcipCrosschainExecutor is
         CcipExecutorTransferLib.payOut(_asset(), MANAGER, _toLD(claimSD));
     }
 
+    /// @param balance_ The observed remote balance in LOCAL decimals of the executor's asset; it is floored to
+    ///        shared decimals before it is recorded (`BalanceProposed` reports the floored value). The dispatcher's
+    ///        `observation().accountedBalance` is in SHARED decimals: multiply it by this executor's
+    ///        `DECIMAL_CONVERSION_RATE` (read it on the executor chain; the dispatcher's getter of the same name
+    ///        differs when the two chains' local decimals differ) before proposing it.
     /// @param trackedPositionSetHash_ The remote dispatcher's `trackedPositionSetHash()` at observation
     ///        time. Persisted and emitted so the approver — a role distinct from the proposer — has an
     ///        on-chain handle for the position set the number was read against, exactly as the Stargate
@@ -798,7 +830,10 @@ contract CcipCrosschainExecutor is
     ///        approval with a NEWER observation than the committed one landed during the delay, the unchecked kind
     ///        may move the NAV freshness clock backwards on purpose; the kind is inside the commitment):
     ///        `(observedStateVersion << 192) | (observedRemoteTimestamp << 128) | newSettledLD` — the new settled
-    ///        balance in local ASSET decimals in the low 128 bits, in bits 128..191 the remote (dispatcher chain)
+    ///        balance in local ASSET decimals in the low 128 bits (it must be a multiple of
+    ///        the executor's `DECIMAL_CONVERSION_RATE`, else schedule reverts `AmountHasDust`, IL-9025: pack
+    ///        `observation().accountedBalance * <executor>.DECIMAL_CONVERSION_RATE()`), in bits 128..191
+    ///        the remote (dispatcher chain)
     ///        timestamp at which it was read (IL-8646 / TP-L-18: execute stamps it as the NAV freshness clock
     ///        instead of the execute time; schedule reverts `ObservationStale` unless
     ///        `block.timestamp - BALANCE_STALENESS_MAX <= timestamp <= block.timestamp` and non-zero; IL-8604 R1:
@@ -808,7 +843,9 @@ contract CcipCrosschainExecutor is
     ///        value-moving response during the delay voids the rescue by version), and in the
     ///        upper 64 bits the dispatcher
     ///        `stateVersion` (`CcipCrosschainDispatcher.stateVersion`) at which that balance was read. Tooling
-    ///        must assert `newSettledLD < 2^128` before packing: a larger balance would OR into the timestamp
+    ///        must assert `newSettledLD < 2^128` and `newSettledLD % DECIMAL_CONVERSION_RATE == 0`
+    ///        (the executor's rate) before
+    ///        packing: a larger balance would OR into the timestamp
     ///        bits and be truncated silently if it still passed the freshness check (unreachable in practice, the
     ///        dispatcher caps priced assets at uint128); guardians decode all three fields from the schedule
     ///        calldata. Execute
@@ -843,7 +880,13 @@ contract CcipCrosschainExecutor is
         if (kind_ == CcipChainRescue.FORCE_SET_SETTLED || kind_ == CcipChainRescue.FORCE_SET_SETTLED_UNCHECKED) {
             // Schedule-time gates of the packed argument (frontier version, fresh observation time, after the
             // last value-moving receipt); body in the linked library for EIP-170 headroom.
-            _attestationState.checkForceSetSchedule(lastRemoteStateVersion, chainId_, arg_, _balanceStalenessMax());
+            _attestationState.checkForceSetSchedule(
+                lastRemoteStateVersion,
+                chainId_,
+                arg_,
+                _balanceStalenessMax(),
+                _rate()
+            );
         }
         if (kind_ == CcipChainRescue.REALIGN_COMMAND_LANE && uint64(arg_ >> 192) == 0) {
             revert RealignExpectedEpochZero(chainId_);
@@ -981,6 +1024,11 @@ contract CcipCrosschainExecutor is
         );
     }
 
+    /// @notice Total value this executor accounts for: idle tokens plus, for every ready chain, the settled and
+    ///         in-flight balances, in LOCAL asset decimals.
+    /// @dev Fail-closed per chain: reverts `ChainBlocked`, `TransferStale` or `ObservationStale` where a chain's
+    ///      books cannot be trusted. Use `getBalanceUnchecked()` for the books without the staleness gates.
+    /// @return total The total in local asset decimals (the raw ledgers are in shared decimals).
     function getBalance() external view returns (uint256 total) {
         total = idleLedger;
         for (uint256 i; i < dispatcherChainIds.length; ++i) {
@@ -1006,6 +1054,10 @@ contract CcipCrosschainExecutor is
         );
     }
 
+    /// @notice The per-chain term of `getBalance()` for `chainId_` (settled plus in-flight), in LOCAL asset
+    ///         decimals; idle tokens are not included. CCIP: fail-closed like the per-chain term of `getBalance()` (`ChainBlocked` /
+    ///         `TransferStale` / `ObservationStale`); Stargate: a raw sum of the three booked buckets with no
+    ///         gates; never use it to price anything.
     function getBalanceByChain(uint256 chainId_) external view returns (uint256) {
         return _toLD(_balanceByChain(chainId_));
     }

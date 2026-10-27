@@ -50,6 +50,19 @@ library StargateLzSendLib {
     /// @param nativeFee Native fee paid.
     event LzMessageSent(uint256 dstChainId, uint16 optionType, bytes32 guid, uint256 nativeFee);
 
+    /// @notice Quotes and sends one LayerZero message to this contract's own address on the destination chain,
+    ///         paying the fee from this contract's native balance.
+    /// @dev Order: quote, then the native fee ceiling (`StargateNativeFeeCapLib.enforce`; the ceiling applies only
+    ///      to executors and the factory, dispatchers are not capped), then the budget check, then the endpoint send.
+    ///      Reverts `InsufficientNativeBudget` when the balance is below the quoted fee.
+    /// @param endpoint_ The LayerZero endpoint.
+    /// @param dstChainId_ Destination chain id; the key of the fee ceiling.
+    /// @param dstEid_ Destination LayerZero endpoint id.
+    /// @param payload_ The message payload (envelope bytes).
+    /// @param msgType_ The enforced-options key the send is reported under in `LzMessageSent`; it plays no other
+    ///        role here, the options come from `options_`.
+    /// @param options_ The full LayerZero options for the send.
+    /// @return receipt The endpoint's messaging receipt (guid, nonce, fee).
     function send(
         ILayerZeroEndpointV2 endpoint_,
         uint256 dstChainId_,

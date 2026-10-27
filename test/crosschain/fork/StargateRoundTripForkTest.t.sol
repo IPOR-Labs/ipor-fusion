@@ -36,7 +36,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         assertEq(executor.acknowledgedRemoteStateVersion(ARBITRUM_CHAIN_ID), remoteVersion);
 
         _assertGasFits("dispatcher lzReceive UPDATE_VAULTS (initial, empty)", updateVaultsGas, COMMAND_LANE_GAS);
-        _assertGasFits("executor lzReceive ACK (UPDATE_VAULTS)", ackGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive ACK (UPDATE_VAULTS)", ackGas, DISPATCHER_RECEIVE_GAS);
     }
 
     /// @notice Full lifecycle over the real transports: bridge USDC out through the real Stargate pool and
@@ -58,7 +58,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
             "Stargate token lzReceive on Arbitrum (executor -> dispatcher leg)", poolReceiveGas, ASSET_SEND_RECEIVE_GAS
         );
         _assertGasFits("dispatcher lzCompose OUTBOUND_TRANSFER", composeGas, ASSET_SEND_COMPOSE_GAS);
-        _assertGasFits("executor lzReceive TRANSFER_SETTLED", settledGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive TRANSFER_SETTLED", settledGas, DISPATCHER_RECEIVE_GAS);
 
         // 2. Allowlist the real vault, deposit, redeem.
         address[] memory vaults = new address[](1);
@@ -69,7 +69,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         executor.updatePlasmaVaults(ARBITRUM_CHAIN_ID, vaults);
         (uint256 updateGas, uint256 updateAckGas) = _relayCommand();
         _assertGasFits("dispatcher lzReceive UPDATE_VAULTS (1 vault)", updateGas, COMMAND_LANE_GAS);
-        _assertGasFits("executor lzReceive ACK (UPDATE_VAULTS)", updateAckGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive ACK (UPDATE_VAULTS)", updateAckGas, DISPATCHER_RECEIVE_GAS);
 
         _sendBusinessCommand(
             BusinessAction.DEPOSIT, CrosschainMessages.encodeDepositAction(ARBITRUM_FLUID_USDC, DEPOSIT_AMOUNT, 1)
@@ -80,7 +80,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         assertGt(shares, 0, "real ERC-4626 shares minted to the dispatcher");
         assertEq(dispatcher.trackedIdle(), receivedSD - DEPOSIT_AMOUNT, "idle debited by the measured spend");
         _assertGasFits("dispatcher lzReceive COMMAND DEPOSIT (Fluid fUSDC)", depositGas, COMMAND_LANE_GAS);
-        _assertGasFits("executor lzReceive ACK (DEPOSIT)", depositAckGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive ACK (DEPOSIT)", depositAckGas, DISPATCHER_RECEIVE_GAS);
 
         _sendBusinessCommand(
             BusinessAction.REDEEM, CrosschainMessages.encodeRedeemAction(ARBITRUM_FLUID_USDC, shares, 1)
@@ -91,7 +91,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         uint256 idleAfterRedeem = dispatcher.trackedIdle();
         assertGe(idleAfterRedeem + 1, receivedSD - 1, "redeem returned the deposit (up to vault rounding)");
         _assertGasFits("dispatcher lzReceive COMMAND REDEEM (Fluid fUSDC)", redeemGas, COMMAND_LANE_GAS);
-        _assertGasFits("executor lzReceive ACK (REDEEM)", redeemAckGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive ACK (REDEEM)", redeemAckGas, DISPATCHER_RECEIVE_GAS);
 
         // 3. Recall with the floor at the full amount: the real pool charges a fee, so the dispatcher must reject
         //    cleanly (IL-8452) instead of reverting inside sendToken.
@@ -118,9 +118,9 @@ contract StargateRoundTripForkTest is StargateForkBase {
         _assertGasFits("dispatcher lzReceive RETURN_ASSETS_REQUEST (rejected)", rejectGas, COMMAND_LANE_GAS);
 
         vm.selectFork(ethereumFork);
-        uint256 rejectedGas = _deliver(rejection, COMMAND_LANE_GAS);
+        uint256 rejectedGas = _deliver(rejection, DISPATCHER_RECEIVE_GAS);
         assertEq(executor.pendingTransferCount(ARBITRUM_CHAIN_ID), 0, "rejection released the recall slot");
-        _assertGasFits("executor lzReceive RETURN_REJECTED", rejectedGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive RETURN_REJECTED", rejectedGas, DISPATCHER_RECEIVE_GAS);
 
         // 4. Recall with the floor at the real quoted credit: sent through the real pool.
         vm.selectFork(arbitrumFork);
@@ -138,12 +138,12 @@ contract StargateRoundTripForkTest is StargateForkBase {
         _assertGasFits("dispatcher lzReceive RETURN_ASSETS_REQUEST (real pool send)", returnGas, COMMAND_LANE_GAS);
 
         vm.selectFork(ethereumFork);
-        uint256 startedGas = _deliver(returnStarted, COMMAND_LANE_GAS);
+        uint256 startedGas = _deliver(returnStarted, DISPATCHER_RECEIVE_GAS);
         (uint256 returnPoolGas, uint256 returnComposeGas) =
             _deliverTokenAndCompose(returnToken, RETURN_ASSET_RECEIVE_GAS, RETURN_ASSET_COMPOSE_GAS);
         assertEq(executor.idleLedger(), credit, "returned credit is claimable idle on the executor");
         assertEq(IERC20(ETHEREUM_USDC).balanceOf(APP), credit, "real USDC delivered by the Ethereum pool");
-        _assertGasFits("executor lzReceive RETURN_STARTED", startedGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive RETURN_STARTED", startedGas, DISPATCHER_RECEIVE_GAS);
         _assertGasFits("Stargate token lzReceive on Ethereum (return leg)", returnPoolGas, RETURN_ASSET_RECEIVE_GAS);
         _assertGasFits("executor lzCompose return delivery", returnComposeGas, RETURN_ASSET_COMPOSE_GAS);
     }
@@ -171,7 +171,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         (,,, CommandStatus status, bytes32 commandId,,) = executor.activeCommand(ARBITRUM_CHAIN_ID);
         assertEq(uint8(status), uint8(CommandStatus.FAILED), "executor saw the NACK");
         _assertGasFits("dispatcher lzReceive COMMAND DEPOSIT (fails -> NACK)", failGas, COMMAND_LANE_GAS);
-        _assertGasFits("executor lzReceive NACK", nackGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive NACK", nackGas, DISPATCHER_RECEIVE_GAS);
 
         vm.recordLogs();
         vm.prank(manager);
@@ -180,7 +180,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         vm.selectFork(arbitrumFork);
         assertEq(uint8(dispatcher.commandStatus(commandId)), uint8(CommandStatus.FAILED), "retry failed again");
         _assertGasFits("dispatcher lzReceive RETRY_COMMAND (fails -> NACK)", retryGas, COMMAND_LANE_GAS);
-        _assertGasFits("executor lzReceive NACK (retry)", retryNackGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive NACK (retry)", retryNackGas, DISPATCHER_RECEIVE_GAS);
 
         vm.selectFork(ethereumFork);
         vm.recordLogs();
@@ -193,7 +193,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         (bool active,,,,,,) = executor.activeCommand(ARBITRUM_CHAIN_ID);
         assertFalse(active, "cancel ACK freed the command slot");
         _assertGasFits("dispatcher lzReceive CANCEL_COMMAND", cancelGas, COMMAND_LANE_GAS);
-        _assertGasFits("executor lzReceive ACK (cancel)", cancelAckGas, COMMAND_LANE_GAS);
+        _assertGasFits("executor lzReceive ACK (cancel)", cancelAckGas, DISPATCHER_RECEIVE_GAS);
     }
 
     // ---------------------------------------------------------------------
@@ -218,7 +218,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         Packet memory settled = _takePacket(APP);
 
         vm.selectFork(ethereumFork);
-        settledGas = _deliver(settled, COMMAND_LANE_GAS);
+        settledGas = _deliver(settled, DISPATCHER_RECEIVE_GAS);
     }
 
     /// @dev Manager sends a business command on the Ethereum fork; logs are recorded for `_relayCommand`.
@@ -246,7 +246,7 @@ contract StargateRoundTripForkTest is StargateForkBase {
         dispatcherGas = _deliver(command, COMMAND_LANE_GAS);
         Packet memory receipt = _takePacket(APP);
         vm.selectFork(ethereumFork);
-        executorGas = _deliver(receipt, COMMAND_LANE_GAS);
+        executorGas = _deliver(receipt, DISPATCHER_RECEIVE_GAS);
     }
 
     function _quoteCredit(address pool_, uint32 dstEid_, uint256 amount_) internal view returns (uint256) {

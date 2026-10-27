@@ -41,6 +41,17 @@ library StargateExecutorDeploymentLib {
     event DispatcherReady(uint256 dstChainId, uint256 requestId);
     event DispatcherRequestResolved(uint256 requestId, uint8 status);
 
+    /// @dev Files a dispatcher deployment request for `params_.dstChainId` with the factory and records it as
+    ///      `PENDING`, remembering the vaults to wire once the dispatcher is ready. `immutableParamsHash` binds
+    ///      admin, guardian, rescue delay, source and destination chains and the asset id, so the factory and the
+    ///      later ACK can be checked against the same parameters. Sets the chain's pending pointer and emits
+    ///      `DispatcherRequested`.
+    /// @param pendingRequestByChain_ Pending request id per destination chain.
+    /// @param requests_ Deployment request records by id.
+    /// @param factory_ The crosschain factory that deploys the dispatcher.
+    /// @param params_ The request parameters (destination chain, asset, admin, guardian, rescue delay, source chain).
+    /// @param vaults_ The vaults to activate once the dispatcher is deployed.
+    /// @return requestId The factory-assigned request id.
     function request(
         mapping(uint256 chainId => uint256 requestId) storage pendingRequestByChain_,
         mapping(uint256 requestId => DeploymentRequestRecord record) storage requests_,
@@ -75,6 +86,20 @@ library StargateExecutorDeploymentLib {
         emit DispatcherRequested(params_.dstChainId, requestId);
     }
 
+    /// @dev Records the dispatcher deployed for `requestId_` as ready (`DEPLOYED`) and returns the vaults saved at
+    ///      request time. The request must be `PENDING` for `dstChainId_` and the reported dispatcher must be the
+    ///      executor's same-address twin (`DispatcherAddressMismatch` otherwise). Late ACK (IL-8649): a
+    ///      `CANCELLED` request is promoted by a late factory ACK only while nothing else decided the chain, i.e.
+    ///      no newer request is pending and no dispatcher is recorded yet; otherwise the ACK stays rejected with
+    ///      `DeploymentRequestInvalid`. A late promotion leaves the chain's pending pointer untouched.
+    /// @param pendingRequestByChain_ Pending request id per destination chain.
+    /// @param requests_ Deployment request records by id.
+    /// @param hasDispatcher_ Whether a dispatcher is already recorded per chain.
+    /// @param dispatcherChainIds_ Chains with a recorded dispatcher.
+    /// @param requestId_ The request being acknowledged.
+    /// @param dstChainId_ The destination chain the dispatcher was deployed on.
+    /// @param dispatcher_ The deployed dispatcher address reported by the factory.
+    /// @return vaults The vaults saved with the request.
     function markReady(
         mapping(uint256 chainId => uint256 requestId) storage pendingRequestByChain_,
         mapping(uint256 requestId => DeploymentRequestRecord record) storage requests_,
@@ -105,6 +130,13 @@ library StargateExecutorDeploymentLib {
         emit DispatcherReady(dstChainId_, requestId_);
     }
 
+    /// @dev Closes a `PENDING` request with the terminal `status_` (the executor passes `FAILED` or `CANCELLED`)
+    ///      and clears the chain's pending pointer; any other state reverts `DeploymentRequestInvalid`. A request
+    ///      closed as `CANCELLED` can still be promoted later by a late ACK in `markReady` (IL-8649).
+    /// @param pendingRequestByChain_ Pending request id per destination chain.
+    /// @param requests_ Deployment request records by id.
+    /// @param requestId_ The request being closed.
+    /// @param status_ The terminal status to record.
     function resolve(
         mapping(uint256 chainId => uint256 requestId) storage pendingRequestByChain_,
         mapping(uint256 requestId => DeploymentRequestRecord record) storage requests_,

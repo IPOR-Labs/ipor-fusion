@@ -3,7 +3,9 @@ pragma solidity 0.8.30;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import {CcipDecimalsLib} from "./CcipDecimalsLib.sol";
 import {CrosschainConstants} from "../../lib/CrosschainConstants.sol";
+import {CrosschainErrors} from "../../lib/CrosschainErrors.sol";
 
 struct CcipBalanceProposal {
     uint256 chainId;
@@ -147,6 +149,10 @@ library CcipExecutorAttestationLib {
     ///         proposal supersedes it).
     event ProposalInvalidated(uint256 chainId, uint256 proposalId, uint64 newEpoch);
 
+    /// @dev Records a new balance proposal for `chainId_` and supersedes the chain's active one. Reverts
+    ///      `ProposalExpired(0)` when `expiry_` is not in the future, and `ProposalApprovalWindowTooShort`
+    ///      (`CrosschainErrors`, the same error as the Stargate executor) when it leaves less than
+    ///      `MIN_PROPOSAL_APPROVAL_WINDOW` for the approver to act (IL-9023).
     function propose(
         CcipAttestationState storage self,
         mapping(uint256 => uint64) storage versions_,
@@ -168,8 +174,18 @@ library CcipExecutorAttestationLib {
             block.timestamp - remoteTimestamp_ > stalenessMax_
         ) revert ObservationStale(chainId_);
         _requireObservedAfterReceipt(self, chainId_, remoteTimestamp_);
-        if (expiry_ <= block.timestamp || expiry_ - block.timestamp < CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW)
-            revert ProposalExpired(0);
+        if (expiry_ <= block.timestamp) revert ProposalExpired(0);
+        {
+            // Scoped: a function-level local would push `propose` over the stack limit (no `via_ir`).
+            uint256 window = expiry_ - block.timestamp;
+            if (window < CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW) {
+                revert CrosschainErrors.ProposalApprovalWindowTooShort(
+                    chainId_,
+                    window,
+                    CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW
+                );
+            }
+        }
         // A newer proposal replaces the active one: mark the old one SUPERSEDED and tell monitors (IL-8472).
         uint256 oldId = self.activeProposalId[chainId_];
         if (oldId != 0 && self.proposals[oldId].status == PROPOSAL_PENDING) {
@@ -259,7 +275,8 @@ library CcipExecutorAttestationLib {
             //
             // The baseline is the ANCHOR, not the bucket (IL-8606 / TP-M-28): a full recall of a bucket
             // whose remote side kept earning leaves a dispatcher-authenticated residual above the dust
-            // bound, and `applyReturnDebit` then keeps the anchor at that residual while `settled` is 0.
+            // bound, and `applyReturnDebit` then keeps the anchor at that residual while `settled` is 0
+            // (a later authenticated return at `settled == 0` may lower it, IL-9134).
             // From such a state a positive attestation is bounded by the anchor band alone (the relative
             // check is meaningless at a zero baseline), so the residual can be priced without the
             // timelocked force-set. With no anchor the zero-baseline rule above is unchanged.
@@ -490,13 +507,17 @@ library CcipExecutorAttestationLib {
 
     /// @dev Schedule-time gates of a `FORCE_SET_SETTLED` / `FORCE_SET_SETTLED_UNCHECKED` argument
     ///      `(observedStateVersion << 192) | (observedRemoteTimestamp << 128) | newSettledLD`. Body of the
-    ///      executor's `scheduleChainRescue` branch, moved here for EIP-170 headroom.
+    ///      executor's `scheduleChainRescue` branch, moved here for EIP-170 headroom. `rate_` is the executor's
+    ///      `DECIMAL_CONVERSION_RATE`: the low 128 bits are a balance in local asset decimals and must be a
+    ///      multiple of it, else the schedule reverts `CcipDecimalsLib.AmountHasDust` (IL-9025). Without the
+    ///      check a dusty value would only fail at execute, after `RESCUE_DELAY` had been spent.
     function checkForceSetSchedule(
         CcipAttestationState storage self,
         mapping(uint256 => uint64) storage lastRemoteStateVersion_,
         uint256 chainId_,
         uint256 arg_,
-        uint256 balanceStalenessMax_
+        uint256 balanceStalenessMax_,
+        uint256 rate_
     ) public view {
         // The observation must already be at the frontier: one behind it can never match at execute, and one
         // above it could only match after a queued response (e.g. a `RETURN_TRANSFER` the observation
@@ -515,6 +536,9 @@ library CcipExecutorAttestationLib {
         // RETURN_TRANSFER was flushed shares its version yet still counts the returned tokens.
         uint64 receiptAt = self.lastValueMovingReceiptAt[chainId_];
         if (observedAt <= receiptAt) revert ObservationPredatesValueMovingReceipt(chainId_, observedAt, receiptAt);
+        // IL-9025: the settled balance is booked in shared decimals, so the local-decimals value must convert
+        // exactly (same rule as `CcipDecimalsLib.toSDExact`, inline so the library gains no link reference).
+        if (uint128(arg_) % rate_ != 0) revert CcipDecimalsLib.AmountHasDust(uint128(arg_));
     }
 
     /// @dev Body of the executor's `RETURN_TRANSFER` debit (moved here so the debit and the accounting
@@ -525,7 +549,13 @@ library CcipExecutorAttestationLib {
     ///      clear. The debit is bounded by `min(maxAccounted_, settled)` (alarm on any excess).
     ///      Same rule as Stargate's `_applyReturnDebit`. Inbound handler: clamp, never revert.
     ///      `remoteBalanceSD_` is the dispatcher's authenticated post-debit balance carried by the
-    ///      `RETURN_TRANSFER`; it only matters when the debit empties the bucket (see "Residual anchor" below).
+    ///      `RETURN_TRANSFER`; it only matters when the debit empties the bucket or the bucket is already
+    ///      empty (see "Residual anchor" below).
+    ///      Residual anchor: (1) a debit that empties the bucket keeps a non-dust `remoteBalanceSD_` as the
+    ///      anchor (IL-8606). (2) A later authenticated return at `settled == 0` (for example a second recall
+    ///      opened after the first one was cancelled) recomputes the anchor from the reported balance, only
+    ///      downwards and to zero at or below dust, so a stale residual cannot anchor a phantom attestation
+    ///      (IL-9134).
     ///      The pro-rata anchor debit assumes the recalled amount holds principal and unrecognised P&L in the
     ///      bucket's proportions. The dispatcher pays a recall out of `trackedIdle` only, so a return shorter
     ///      than the attested bucket leaves a residue that still carries the whole unrecognised remote loss;
@@ -591,6 +621,18 @@ library CcipExecutorAttestationLib {
             }
             self.anchorPrincipal[chainId_] = remaining;
             emit AttestationAnchorUpdated(chainId_, remaining);
+        } else if (settled == 0 && sentSD_ != 0) {
+            // Later return at `settled == 0` (IL-9134): a return authenticated after the bucket was already
+            // emptied (e.g. a second recall opened after the first one was cancelled) has nothing to debit,
+            // but its `remoteBalanceSD_` is still the dispatcher's authenticated post-debit balance. Follow
+            // it: the anchor becomes that balance (zero when at or below dust), capped at the current anchor
+            // so it only ever moves down.
+            uint256 principalAtZero = self.anchorPrincipal[chainId_];
+            uint256 anchorAtZero = remoteBalanceSD_ > CrosschainConstants.ATTESTATION_ZERO_DUST_SD
+                ? (remoteBalanceSD_ < principalAtZero ? remoteBalanceSD_ : principalAtZero)
+                : 0;
+            self.anchorPrincipal[chainId_] = anchorAtZero;
+            emit AttestationAnchorUpdated(chainId_, anchorAtZero);
         }
         // Net principal (IL-8578 / TP-H-02): debited by the amount the dispatcher declared it sent back
         // (`sentSD_`, authenticated by the transport), floored at zero, NOT by the settled delta. The

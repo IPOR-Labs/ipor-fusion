@@ -24,6 +24,7 @@ import {DolomiteBalanceFuse} from "../../../contracts/fuses/dolomite/DolomiteBal
 import {DolomiteFuseLib, DolomiteSubstrate} from "../../../contracts/fuses/dolomite/DolomiteFuseLib.sol";
 import {IDolomiteMargin} from "../../../contracts/fuses/dolomite/ext/IDolomiteMargin.sol";
 import {IDolomiteAccountRegistry} from "../../../contracts/fuses/dolomite/ext/IDolomiteAccountRegistry.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @title DolomiteExtendedTest
 /// @notice Extended integration tests for Dolomite fuses on Arbitrum fork using real PlasmaVault
@@ -284,7 +285,7 @@ contract DolomiteExtendedTest is Test {
 
         FeeConfig memory feeConfig = FeeConfigHelper.createZeroFeeConfig();
 
-        plasmaVault = address(new PlasmaVault());
+        plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "Dolomite Extended Test Vault",

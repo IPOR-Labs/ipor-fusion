@@ -145,6 +145,19 @@ contract CcipExecutorCommandLibTest is Test {
         h.requireFailed(CHAIN, id, false); // retry refused
     }
 
+    function testShouldIgnoreARepeatNackForAnAlreadyFailedCommand() public {
+        (bytes32 id, uint64 seq) = h.build(CHAIN, false, 1);
+
+        ReceiptIgnoreReason first = h.fail(CHAIN, id, seq);
+        assertEq(uint8(first), uint8(ReceiptIgnoreReason.NONE), "first NACK applied");
+        assertEq(uint8(h.status(id)), uint8(CommandStatus.FAILED), "FAILED after first NACK");
+
+        // A duplicate NACK for the same id and sequence reaches the FAILED branch and is absorbed.
+        ReceiptIgnoreReason second = h.fail(CHAIN, id, seq);
+        assertEq(uint8(second), uint8(ReceiptIgnoreReason.ALREADY_RESOLVED), "repeat NACK ignored");
+        assertEq(uint8(h.status(id)), uint8(CommandStatus.FAILED), "status stays FAILED");
+    }
+
     function testShouldStillAllowAnOrdinaryRetry() public {
         (bytes32 id,) = _failedConfigCommand();
 

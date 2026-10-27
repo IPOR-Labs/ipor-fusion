@@ -459,6 +459,12 @@ library CrosschainErrors {
     /// @param maxAccountedSD The accounted upper bound, shared decimals.
     error InvalidMinimumReturn(uint256 minReturnSD, uint256 maxAccountedSD);
 
+    /// @notice Thrown when a recall is requested on a chain with nothing settled, so its accounted upper bound
+    ///         `min(amount, settled)` is zero and it could never move value (mirrors
+    ///         `CcipCrosschainExecutor.ZeroAccountedReturn`, IL-9222).
+    /// @param chainId The remote chain of the refused recall.
+    error ZeroAccountedReturn(uint256 chainId);
+
     /// @notice Thrown when force-set is attempted while unresolved value-moving records exist.
     error PendingTransfersExist(uint256 chainId, uint256 count);
 
@@ -488,12 +494,14 @@ library CrosschainErrors {
     error ProposalNotActive(uint256 proposalId);
 
     /// @notice Thrown when approving an expired proposal, or when proposing one whose `expiry` is not in the
-    ///         future (CCIP: or leaves less than `MIN_PROPOSAL_APPROVAL_WINDOW`); then `proposalId` is 0.
+    ///         future; then `proposalId` is 0. A future `expiry` that leaves too little time reverts
+    ///         `ProposalApprovalWindowTooShort` instead.
     /// @param proposalId The referenced proposal id.
     error ProposalExpired(uint256 proposalId);
 
-    /// @notice Thrown when a proposal's `expiry` does not leave a minimum meaningful approval window
-    ///         (`MIN_PROPOSAL_APPROVAL_WINDOW`) for the approver to act. A near-immediate expiry (e.g.
+    /// @notice Thrown by both transports (Stargate and CCIP executors) when a proposal's `expiry` does not leave
+    ///         a minimum meaningful approval window (`MIN_PROPOSAL_APPROVAL_WINDOW`) for the approver to act. A
+    ///         near-immediate expiry (e.g.
     ///         `block.timestamp + 1`) would let a proposer emit proposals that are practically impossible
     ///         to approve within a normal multisig/keeper cycle (audit V2-02).
     /// @param chainId The chain referenced.
@@ -668,9 +676,9 @@ library CrosschainErrors {
     /// @param receiver The offending receiver.
     error ReceiverMustBeSelf(address receiver);
 
-    /// @notice Thrown when a REQUEST_SHARES command asks for more shares than the dispatcher holds in the vault
-    ///         (the dispatcher keeps no copy of the request; the WithdrawManager bounds REDEEM_FROM_REQUEST).
-    ///         Stargate dispatcher only; the CCIP dispatcher reverts `MinimumNotMet(balance, shares)` there.
+    /// @notice Thrown by both dispatchers (the CCIP dispatcher since IL-9047) when a REQUEST_SHARES command asks
+    ///         for more shares than the dispatcher holds in the vault (the dispatcher keeps no copy of the
+    ///         request; the WithdrawManager bounds REDEEM_FROM_REQUEST).
     /// @param have The dispatcher's share balance in the vault.
     /// @param want The requested shares.
     error RequestSharesUnavailable(uint256 have, uint256 want);

@@ -937,7 +937,7 @@ contract FuseTest is Test {
     function testShouldBlockNewRemoteSupplyWhenNavBlocked() public {
         usdc.mint(address(vault), 10e6);
         executor.setBalanceReverts(true);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(MockExecutor.NavSettledStale.selector, uint256(1)));
         vault.enterSupply(
             StargateCrosschainSupplyFuseEnterData({
                 executor: address(executor),

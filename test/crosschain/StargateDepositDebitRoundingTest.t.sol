@@ -103,6 +103,11 @@ contract StargateDepositDebitRoundingTest is Test {
         assertEq(token.balanceOf(address(dispatcher)), 50e18 + 1, "vault pulled 1 wei less than requested");
         // Floor would debit 49_999_999 SD and leave 50_000_001 SD (50.000001e18 LD) against 50e18 + 1 held.
         assertEq(dispatcher.trackedIdle(), 50e6, "debit rounded up to a whole shared unit");
+        assertEq(
+            token.allowance(address(dispatcher), address(vault)),
+            0,
+            "unused vault allowance reset after partial pull"
+        );
         assertLe(
             dispatcher.trackedIdle() * CONVERSION_RATE,
             token.balanceOf(address(dispatcher)),

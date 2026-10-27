@@ -357,17 +357,21 @@ library IporFusionMarkets {
     uint256 public constant SPOL_UNSTAKE = 424_243;
 
     /// @dev Crosschain market - a PlasmaVault deploys capital into PlasmaVaults on remote chains via a
-    ///      fuse-driven Stargate V2 (LayerZero V2) crosschain layer.
+    ///      fuse-driven crosschain layer. Two transports are supported: Stargate V2 (LayerZero V2) and
+    ///      Chainlink CCIP.
     /// @dev Substrate type: typed bytes32 via `CrosschainSubstrateLib`
     /// @dev Substrate values:
-    ///      - EXECUTOR: the `StargateCrosschainExecutor` address(es) the fuses are allowed to drive; the
-    ///        executor's `MANAGER()` must equal the PlasmaVault (asserted in fuse `enter`). Remote
-    ///        PlasmaVault whitelisting lives on the destination `StargateCrosschainDispatcher`, not here.
-    /// @dev Balance fuse: `CrosschainBalanceFuse` reads `executor.getBalance()` (tracked idle +
-    ///      settled remote balance + outbound-in-flight + return-in-flight, in ASSET decimals) and
-    ///      converts to USD-WAD via `IPriceOracleMiddleware`, mirroring `AsyncActionBalanceFuse`.
+    ///      - EXECUTOR: the crosschain executor address(es) (Stargate or CCIP) the fuses are allowed to drive
+    ///        and value; the executor's `MANAGER()` must equal the PlasmaVault (asserted in the fuses).
+    ///      - REMOTE_VAULT: a (chainId, remote PlasmaVault) pair; the command fuses validate command targets
+    ///        and dispatcher allowlist updates against it. The allowlist is also enforced on the destination
+    ///        dispatcher.
+    /// @dev Balance fuse: `CrosschainBalanceFuse` reads `executor.getBalance()` for each granted EXECUTOR
+    ///      (in that executor's ASSET decimals) and converts it to USD-WAD via `IPriceOracleMiddleware`,
+    ///      mirroring `AsyncActionBalanceFuse`.
     /// @dev A crosschain NAV validation pre-hook (staleness / blocked-chain fail-closed) gates the
     ///      source PlasmaVault's share-price-sensitive selectors, mirroring `RWAPausePreHook`.
+    /// @dev Fuse family overview: contracts/fuses/crosschain/README.md
     uint256 public constant CROSSCHAIN = 54;
 
     /// @dev HyperCore positions and actions through the HyperEVM CoreWriter and read precompiles.

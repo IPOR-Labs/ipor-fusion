@@ -19,6 +19,16 @@ import {StargateNativeFeeCapLib} from "./StargateNativeFeeCapLib.sol";
 library StargateAssetSendLib {
     using SafeERC20 for IERC20;
 
+    /// @notice Parameters of one taxi send.
+    /// @param pool The Stargate pool (or OFT) that sends `asset`.
+    /// @param asset The ERC-20 sent; approved to `pool` only for the duration of the send.
+    /// @param dstChainId Destination chain id; the key of the native fee ceiling (`StargateNativeFeeCapLib`).
+    /// @param dstEid Destination LayerZero endpoint id.
+    /// @param amountLD Amount to send, in local decimals.
+    /// @param minAmountLD Slippage floor, in local decimals.
+    /// @param composeMsg The compose payload delivered with the asset.
+    /// @param options Combined options: the path's enforced options plus the caller's. The recipient is not a
+    ///        parameter: it is always `address(this)` on the destination chain.
     struct SendAssetParams {
         IStargate pool;
         address asset;
@@ -30,8 +40,23 @@ library StargateAssetSendLib {
         bytes options;
     }
 
+    /// @notice Emitted by the library for every completed send; same fields as `StargateOAppBase.AssetSent`.
+    /// @param dstChainId Destination chain id.
+    /// @param guid The Stargate/LayerZero message guid.
+    /// @param amountSentLD The amount debited on the source, in local decimals.
+    /// @param amountReceivedLD The amount the pool expects to credit on the destination, in local decimals.
     event AssetSent(uint256 dstChainId, bytes32 guid, uint256 amountSentLD, uint256 amountReceivedLD);
 
+    /// @notice Sends `params_.amountLD` of the asset through the Stargate pool in taxi mode with a compose payload,
+    ///         paying the fee from this contract's native balance.
+    /// @dev Quotes the send, enforces the factory's native fee ceiling for executors (`StargateNativeFeeCapLib`),
+    ///      checks the native budget, then sets a scoped approval around the send and resets it to zero.
+    ///      Reverts if the pool would credit less than `minAmountLD` or the path has too little credit; the
+    ///      skipping variant is `sendAssetUnlessShortCredit`.
+    /// @param params_ The send parameters; see `SendAssetParams`.
+    /// @return guid The Stargate/LayerZero message guid.
+    /// @return amountSentLD The amount debited on the source, in local decimals.
+    /// @return amountReceivedLD The amount the pool expects to credit on the destination, in local decimals.
     function sendAsset(SendAssetParams memory params_)
         public
         returns (bytes32 guid, uint256 amountSentLD, uint256 amountReceivedLD)

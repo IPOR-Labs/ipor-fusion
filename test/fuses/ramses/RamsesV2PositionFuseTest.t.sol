@@ -42,6 +42,7 @@ import {TypeConversionLib} from "../../../contracts/libraries/TypeConversionLib.
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {WithdrawManager} from "../../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../../utils/PlasmaVaultConfigurator.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 contract RamsesV2PositionFuseTest is Test {
     using SafeERC20 for ERC20;
@@ -87,7 +88,7 @@ contract RamsesV2PositionFuseTest is Test {
 
         _withdrawManager = address(new WithdrawManager(address(_accessManager)));
         // plasma vault
-        _plasmaVault = address(new PlasmaVault());
+        _plasmaVault = address(PlasmaVaultCloneLib.newPlasmaVault());
         PlasmaVault(_plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "TEST PLASMA VAULT",

@@ -11,6 +11,7 @@ import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager
 import {DataForInitialization} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 import {FeeAccount} from "../../contracts/managers/fee/FeeAccount.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
+import {PlasmaVaultCloneLib} from "./PlasmaVaultCloneLib.sol";
 import {PlasmaVaultAddress} from "../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 struct DeployMinimalPlasmaVaultParams {
@@ -50,7 +51,7 @@ library PlasmaVaultHelper {
             plasmaVaultVotesPlugin: address(0)
         });
 
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(initData);
     }
 
@@ -78,7 +79,7 @@ library PlasmaVaultHelper {
             plasmaVaultVotesPlugin: address(0)
         });
 
-        plasmaVault = new PlasmaVault();
+        plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(initData);
     }
 

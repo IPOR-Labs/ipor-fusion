@@ -10,6 +10,7 @@ import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusio
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PriceOracleMiddleware} from "../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {PlasmaVault, PlasmaVaultInitData} from "../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../RoleLib.sol";
@@ -45,7 +46,7 @@ contract PlasmaVaultLibStaleEntriesTest is Test {
         IporFusionAccessManager accessManager = createAccessManager(usersToRoles, 0);
         address withdrawManager = address(new WithdrawManager(address(accessManager)));
 
-        PlasmaVault plasmaVault = new PlasmaVault();
+        PlasmaVault plasmaVault = PlasmaVaultCloneLib.newPlasmaVault();
         PlasmaVault(plasmaVault).proxyInitialize(
             PlasmaVaultInitData(
                 "IPOR Fusion DAI",

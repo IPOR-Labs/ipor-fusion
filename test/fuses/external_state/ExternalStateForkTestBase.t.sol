@@ -33,6 +33,7 @@ import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
 import {RoleLib, UsersToRoles} from "../../RoleLib.sol";
 import {MutableValuePriceFeed} from "../../managers/MutableValuePriceFeed.sol";
 import {ExternalStateTestConstants, ExternalStateSlotHelpers} from "../../unitTest/fuses/external_state/ExternalStateTestHelpers.sol";
+import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 /// @title ExternalStateForkTestBase
 /// @notice Shared fork-test fixture for the ExternalState fuse family, running against a REAL `PlasmaVault`.
@@ -178,7 +179,7 @@ abstract contract ExternalStateForkTestBase is Test {
         address withdrawManager = address(new WithdrawManager(address(access)));
 
         vm.startPrank(atomist);
-        vault = new PlasmaVault();
+        vault = PlasmaVaultCloneLib.newPlasmaVault();
         vault.proxyInitialize(
             PlasmaVaultInitData({
                 assetName: "ExternalState Fork Plasma Vault",

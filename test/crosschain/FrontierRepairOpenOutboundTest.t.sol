@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {Vm} from "forge-std/Vm.sol";
 import {CrosschainTestBase} from "./CrosschainTestBase.sol";
 import {CcipCrosschainExecutor} from "../../contracts/crosschain/ccip/CcipCrosschainExecutor.sol";
+import {CcipAppBase} from "../../contracts/crosschain/ccip/base/CcipAppBase.sol";
 import {CcipExecutorFixture} from "./CcipExecutorFixture.sol";
 import {BalanceObservation} from "../../contracts/crosschain/interfaces/ICrosschainExecutor.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
@@ -430,6 +431,19 @@ contract CcipFrontierRepairOpenOutboundTest is CcipExecutorFixture {
         router.deliverHeld(settleIndex_);
     }
 
+    /// @dev The `messageId` of the (single) `CcipMessageReceived` the executor emitted since `vm.recordLogs()`.
+    function _executorReceivedMessageId() internal returns (bytes32 messageId) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 found;
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter == address(executor) && logs[i].topics[0] == CcipAppBase.CcipMessageReceived.selector) {
+                (messageId, , ) = abi.decode(logs[i].data, (bytes32, uint256, address));
+                ++found;
+            }
+        }
+        assertEq(found, 1, "exactly one executor receipt");
+    }
+
     /// @dev (a)+(b) no attestation in between: credited once by min(received, amount); NAV == true balance.
     function testLateSettleAfterDropFromNavWithoutAttestationIsCreditedOnce() public {
         uint256 settleIndex = _openRetainedOutbound();
@@ -438,12 +452,15 @@ contract CcipFrontierRepairOpenOutboundTest is CcipExecutorFixture {
         _advance(f + 1);
         uint256 before = executor.settledRemoteBalance(REMOTE_CHAIN);
 
+        vm.recordLogs();
         _lateSettle(settleIndex);
+        bytes32 messageId = _executorReceivedMessageId();
         assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), before + 10e18, "credited once");
         assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), dispatcher.accountedBalance(), "settled == true balance");
+        assertTrue(executor.processedCcipMessage(messageId), "first delivery marked processed");
 
-        // duplicate delivery of the same settlement is a no-op
-        vm.expectRevert();
+        // a duplicate delivery of the same message id reverts on the replay guard and changes nothing
+        vm.expectRevert(abi.encodeWithSelector(CcipAppBase.CcipMessageAlreadyProcessed.selector, messageId));
         router.deliverHeld(settleIndex);
         assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), dispatcher.accountedBalance());
     }

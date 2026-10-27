@@ -636,7 +636,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
 
     /// @notice A deterministic rejection delivered with too little gas must not be answered with a NACK: the
     ///         receive reverts (retryable) when the attempt burned most of its gas or leaves < NACK_MIN_GAS.
-    function testShouldRevertInsufficientGasForNackInsteadOfFalseNack() public {
+    function testShouldRevertInsufficientGasForDeploymentNackInsteadOfFalseNack() public {
         CcipCrosschainFactory.DeploymentTicket memory ticket = _ticketWith(
             bytes32("low-gas"),
             keccak256("DAI"),
@@ -648,7 +648,16 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         uint256 held = router.heldCount();
         (bool ok, bytes memory ret) = _receiveWithGas(ticket, LOW_GAS);
         assertFalse(ok, "receive reverts");
-        assertEq(bytes4(ret), CcipCrosschainFactory.InsufficientGasForNack.selector, "custom error");
+        assertEq(ret.length, 36, "selector plus one word");
+        assertEq(bytes4(ret), CcipCrosschainFactory.InsufficientGasForDeploymentNack.selector, "custom error");
+        bytes memory args = new bytes(32);
+        for (uint256 i; i < 32; ++i) {
+            args[i] = ret[i + 4];
+        }
+        uint256 gasLeft = abi.decode(args, (uint256));
+        // The call got LOW_GAS = NACK_MIN_GAS, so `gasleft() < NACK_MIN_GAS` holds at the revert.
+        assertGt(gasLeft, 0, "gasLeft reported");
+        assertLt(gasLeft, LOW_GAS, "gasLeft below NACK_MIN_GAS");
         assertEq(router.heldCount(), held, "no NACK sent");
         assertFalse(factory.consumedTicket(hash), "nothing consumed");
 
