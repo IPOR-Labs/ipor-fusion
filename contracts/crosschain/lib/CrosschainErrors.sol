@@ -459,6 +459,12 @@ library CrosschainErrors {
     /// @param maxAccountedSD The accounted upper bound, shared decimals.
     error InvalidMinimumReturn(uint256 minReturnSD, uint256 maxAccountedSD);
 
+    /// @notice Thrown when a recall is requested on a chain with nothing settled, so its accounted upper bound
+    ///         `min(amount, settled)` is zero and it could never move value (mirrors
+    ///         `CcipCrosschainExecutor.ZeroAccountedReturn`, IL-9222).
+    /// @param chainId The remote chain of the refused recall.
+    error ZeroAccountedReturn(uint256 chainId);
+
     /// @notice Thrown when force-set is attempted while unresolved value-moving records exist.
     error PendingTransfersExist(uint256 chainId, uint256 count);
 

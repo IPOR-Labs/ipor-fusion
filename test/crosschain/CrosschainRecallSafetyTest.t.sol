@@ -381,15 +381,91 @@ contract CrosschainRecallSafetyTest is CrosschainTestBase {
         assertEq(executor.pendingTransferCount(REMOTE_CHAIN), 0, "no record created on the refused request");
     }
 
-    /// @notice IL-8119 T7b: the guard also fires when nothing is settled yet (`maxAccountedSD == 0`),
-    ///         where pre-fix the request would have round-tripped into a `NO_TRACKED_IDLE` rejection later.
+    /// @notice IL-8119 T7b + IL-9222: with nothing settled (`maxAccountedSD == 0`) the zero accounted bound is
+    ///         refused before the floor check, in the CCIP order, so a positive floor reports
+    ///         `ZeroAccountedReturn` and not `InvalidMinimumReturn`.
     function testShouldRejectAnyPositiveFloorWhenNothingIsSettled() public {
         _readyDispatcher(); // settledRemoteBalance == 0
 
         vm.prank(manager);
-        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.InvalidMinimumReturn.selector, 1e6, 0));
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.ZeroAccountedReturn.selector, REMOTE_CHAIN));
         executor.requestAssetsFromDispatcher(REMOTE_CHAIN, 40e6, 1e6, "");
         assertEq(executor.pendingTransferCount(REMOTE_CHAIN), 0, "no record created on the refused request");
+    }
+
+    /// @notice IL-9222 A: a recall on a chain with nothing settled is refused with `ZeroAccountedReturn` before
+    ///         any record, staleness slot or LayerZero send exists, so neither the slot nor the cancelled-recall
+    ///         clock can be armed by it.
+    function testShouldRejectZeroAccountedRecallWhenNothingIsSettled() public {
+        _readyDispatcher();
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 0, "nothing settled");
+        uint256 sentBefore = endpoint.sentCount();
+
+        vm.prank(manager);
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.ZeroAccountedReturn.selector, REMOTE_CHAIN));
+        executor.requestAssetsFromDispatcher(REMOTE_CHAIN, 40e6, 0, "");
+
+        assertEq(executor.pendingTransferCount(REMOTE_CHAIN), 0, "no staleness slot armed");
+        assertEq(executor.inFlightSince(REMOTE_CHAIN), 0, "no in-flight clock");
+        assertEq(endpoint.sentCount(), sentBefore, "nothing sent");
+
+        vm.warp(block.timestamp + TRANSFER_STALENESS_MAX + 1);
+        executor.getBalance();
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.NoActiveReturnRequest.selector, REMOTE_CHAIN));
+        executor.cancelStaleReturnRequest(REMOTE_CHAIN);
+    }
+
+    /// @notice IL-9222 B: after a full recall drained `settled` to zero, the next recall is refused with
+    ///         `ZeroAccountedReturn` the same way.
+    function testShouldRejectZeroAccountedRecallAfterAFullRecall() public {
+        _readyDispatcher();
+        _settle100();
+        (bytes32 requestId, , ) = _requestAssets(100e6, 0);
+        _deliverReturnStarted(requestId, RGUID, 100e6, 100e6, 2);
+        usdc.mint(address(executor), 100e6);
+        _deliverReturnCompose(requestId, RGUID, 100e6);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 0, "full recall drained settled");
+        assertEq(executor.pendingTransferCount(REMOTE_CHAIN), 0, "recall finalized, no active slot");
+
+        vm.prank(manager);
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.ZeroAccountedReturn.selector, REMOTE_CHAIN));
+        executor.requestAssetsFromDispatcher(REMOTE_CHAIN, 10e6, 0, "");
+    }
+
+    /// @notice IL-9222 ordering pin: with a recall awaiting its compose and `settled == 0` (order (a)
+    ///         `RETURN_STARTED` drained it), a second recall reports `ActiveReturnRequestExists`, not
+    ///         `ZeroAccountedReturn`, as in CCIP `openReturn`.
+    function testShouldReportActiveRecallBeforeZeroAccountedBound() public {
+        _readyDispatcher();
+        _settle100();
+        (bytes32 requestId, , ) = _requestAssets(100e6, 0);
+        _deliverReturnStarted(requestId, RGUID, 100e6, 100e6, 2);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 0, "settled drained, compose pending");
+        assertEq(executor.pendingTransferCount(REMOTE_CHAIN), 1, "recall still active");
+        assertEq(executor.returnInFlight(REMOTE_CHAIN), 100e6, "return in flight");
+
+        vm.prank(manager);
+        vm.expectRevert(
+            abi.encodeWithSelector(CrosschainErrors.ActiveReturnRequestExists.selector, REMOTE_CHAIN, requestId)
+        );
+        executor.requestAssetsFromDispatcher(REMOTE_CHAIN, 10e6, 0, "");
+    }
+
+    /// @notice IL-9222 C: the guard is `== 0`, not a wider bound: with a single settled unit (1 SD) a recall is
+    ///         accepted with `maxAccountedSD == 1`, a record and one LayerZero send.
+    function testShouldAcceptRecallBoundedByOneSettledUnit() public {
+        _readyDispatcher();
+        (bytes32 transferId, bytes32 guid, ) = _sendAsset(1, 0);
+        _deliverTransferSettled(transferId, guid, 1, 1);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 1, "one unit settled");
+        uint256 sentBefore = endpoint.sentCount();
+
+        (, uint256 amountSD, uint256 maxAccountedSD) = _requestAssets(40e6, 0);
+
+        assertEq(amountSD, 40e6, "requested amount");
+        assertEq(maxAccountedSD, 1, "bounded by the single settled unit");
+        assertEq(executor.pendingTransferCount(REMOTE_CHAIN), 1, "record armed");
+        assertEq(endpoint.sentCount(), sentBefore + 1, "one LayerZero send");
     }
 
     /// @dev Schedules and executes `ADVANCE_STATE_FRONTIER` to `newVersion_` (`id` packs `(chainId << 64) |

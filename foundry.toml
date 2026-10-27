@@ -37,7 +37,7 @@ ffi = true
 # scripts must use FOUNDRY_PROFILE=crosschain_deploy so that creation-code hashes
 # and CREATE3 outputs are identical on all three mainnets.
 libraries = [
-    "contracts/crosschain/stargate/lib/StargateExecutorAccountingLib.sol:StargateExecutorAccountingLib:0x8c0c5b026709899817447B98AF68956454C33638",
+    "contracts/crosschain/stargate/lib/StargateExecutorAccountingLib.sol:StargateExecutorAccountingLib:0xe2e34f54791D0e39ba2b74536C6969DC8b856CAF",
     "contracts/crosschain/stargate/lib/StargateExecutorAttestationLib.sol:StargateExecutorAttestationLib:0xd3b89E73A9e75b68b6FAdb7Bc1150A2660DC690d",
     "contracts/crosschain/stargate/lib/StargateExecutorDeploymentLib.sol:StargateExecutorDeploymentLib:0x11b710DEB2A6a1d702789ffdfe968193F48559EF",
     "contracts/crosschain/stargate/lib/StargateLzSendLib.sol:StargateLzSendLib:0x47f52bbcf20AbC6FC6D4AaCc7C59Bd310c63652D",

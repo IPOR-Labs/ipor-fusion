@@ -3,7 +3,10 @@
 ## Recall cancellation
 
 Each chain has a single recall slot. `requestAssetsFromDispatcher` takes it and arms the record's
-transfer-staleness slot at the same time. The slot is released in three ways:
+transfer-staleness slot at the same time. A recall whose accounted bound `min(amount, settled)` is zero, because
+nothing is settled on the chain, is refused with `ZeroAccountedReturn(chainId)` before any record is written or
+anything is sent, as on CCIP: it could not move value, but it would arm the staleness slot and, once cancelled, the
+cancelled-recall clock (IL-9222). The recall slot is released in three ways:
 
 - by the recall finishing normally (compose plus `RETURN_STARTED`), or by an authenticated
   `RETURN_REJECTED` from the dispatcher (`NO_TRACKED_IDLE`, `BELOW_MINIMUM`, `ABOVE_PATH_CREDIT`);
@@ -430,7 +433,10 @@ pre-hook change only when the proposal is approved and the CROSSCHAIN market is 
 after the proposal and before the approval pays the old share price and captures part of the attested remote yield
 once approve and refresh land (and the converse for an exit ahead of a negative proposal). This is inherent to a
 cached, discretely attested NAV and is bounded to one attestation step (at most `STALENESS_MAX` of yield,
-further capped by the per-approval relative limiter and the anchor band). The window does not end at approve:
+further capped by the anchor band and, only while `settled` is non-zero and inside that band, by the
+per-approval relative limiter; from a zero `settled` with a residual anchor (IL-8606) or from below the band
+(IL-8737 / IL-8792) the band alone caps the step, so one public proposal can show a step up to the band edge
+(IL-9213)). The window does not end at approve:
 `approveBalance` never calls the vault, so until the CROSSCHAIN market is next
 refreshed (`updateMarketsBalances([CROSSCHAIN])`, an `execute` through a crosschain fuse or `UpdateBalancesPreHook`)
 deposits, mints, withdrawals and redeems are still priced at the old cache (a withdrawal refreshes only the markets it
@@ -448,6 +454,16 @@ user operations. Operational rule for the attester pair: submit propose + approv
 (`[CROSSCHAIN]`) back-to-back in one block through a private submission channel, keep the attestation cadence well
 below `STALENESS_MAX`, and rely on deposit/withdraw fees where remote yield is lumpy.
 
+**A delivery that realizes a transport fee opens the same window (IL-8596, IL-9221).** A `TRANSFER_SETTLED` that
+credits less than was sent (`TransferSettledInbound` with `creditedSD` below `sentSD`) and a `RETURN_STARTED` that
+debits more from `settled` than it books back (`debitedSD` above `inFlightCreditSD` in `ReturnMetadataApplied` when
+the metadata arrives first, or above the `idleCreditSD` of the `ReturnFinalized` emitted in the same transaction when
+the compose arrived first) lower the executor's NAV, but the executor does not refresh the vault's CROSSCHAIN cache.
+These deliveries are not under the attester pair's control (a verified LayerZero message and its compose can be
+executed by any account), so the rule to submit propose, approve and refresh back-to-back in one block does not cover
+them. After such an event, refresh the CROSSCHAIN market (`updateMarketsBalances([CROSSCHAIN])`) before relying on the
+share price; the gap is the fee of one transfer.
+
 ### Outbound send and rejected recall keep a pending proposal (TP-M-44 / IL-8622)
 
 An outbound `sendAssetToDispatcher` and a `RETURN_REJECTED` no longer bump the chain's accounting epoch, so a pending
@@ -463,6 +479,15 @@ Consequence: the ALPHA role can no longer void a pending proposal with a cheap o
 `approveBalance` and drive `computeNavSD` into `NavSettledStale`. Under the frontier-repair latch an outbound still in
 flight blocks the latch-clearing approval (`FrontierRepairBlockedByOpenTransfers`, IL-8614) until it settles or is
 force-resolved.
+
+**Sending a command does not void a pending proposal (IL-8563, IL-9208).** A command (`DEPOSIT`, `REDEEM`,
+`REQUEST_SHARES`, `REDEEM_FROM_REQUEST` or `UPDATE_VAULTS`) changes the dispatcher's remote state without bumping its
+`stateVersion`, and sending it does not bump the executor's accounting epoch. The epoch moves only when the command's
+receipt is applied (a `SUCCEEDED` or `CANCELLED` ACK, including one adopted late, or the release of a failed command
+by an `EXPIRED` receipt) or when the command is abandoned through the timelocked `ABANDON_COMMAND_*` rescue. A
+proposal observed before the command therefore stays approvable from the moment the command is sent until that receipt
+arrives. Rule for the attester pair: do not approve an observation that is older than a value-moving command that has
+been sent, and attest again after the command's ACK.
 
 ### Approval freshness window and monotonic observation clock (IL-8631 / TP-L-03, IL-8648 / TP-L-20)
 
@@ -816,6 +841,16 @@ decoding changed. Upgrade order matters in the fail-open direction: a dispatcher
 accepts a four-word payload, because the old three-word decode ignores trailing bytes, and silently drops the
 ceiling, so dispatchers must be upgraded no later than the fuses and executors. The `SharesRequested` event gained a
 `feeShares` field, so its topic changed and indexers must be updated.
+
+**A repeated `REQUEST_SHARES` pays the request fee again (IL-8603, IL-9209).** The remote WithdrawManager replaces the
+stored request on every call and takes `shares * getRequestFee() / 1e18` out of the dispatcher's vault shares, so a
+second request on the same vault is charged on its whole new amount. `maxFeeShares` is counted in shares of the remote
+vault: set it to `shares * getRequestFee() / 1e18` plus a margin. Value that fee in assets (`convertToAssets` of the
+remote vault) together with the fees of any further requests made before the next attestation, and keep the total
+inside the `bigChangeBps` step of `settled`. The hub still carries the old value until the next attestation is
+approved, and while `settled` is non-zero and inside the anchor band a lower honest attestation beyond that step
+reverts `BigChangeExceeded`; the way out is the timelocked force-set. From a zero `settled` or from below the band the
+relative limit does not apply (see "Pricing window between propose and approve").
 
 ### Tracked vault left with zero shares (TP-L-16 / IL-8644)
 
@@ -1199,6 +1234,25 @@ The factory pays the LayerZero fee of every CREATE_DISPATCHER ticket, and of its
 The per-chain ceiling is shared by executor sends and the CREATE_DISPATCHER ticket, which runs with 8M destination gas, so toward L1 the ceiling must be sized for the ticket quote (at 0.01 ETH the ticket fits only below ~1.2 gwei L1 gas). If the quote exceeds the ceiling, `createDispatcher` reverts synchronously and no attempt is consumed.
 
 Ops note: call `setMaxNativeFee` on every factory for every registered chain it answers on. A Verify-script assertion that every registered path has a non-zero ceiling is recommended (not implemented here).
+
+**Dispatcher native funding (IL-8642, IL-9100, IL-9202).** A dispatcher pays for its own replies from its own native
+balance: the `TRANSFER_SETTLED` receipt, the command ACK and NACK, the `RETURN_STARTED` and `RETURN_REJECTED` messages
+that answer a recall, and the Stargate token send (with its compose on the executor) that carries a recall's assets
+back. The factory's `maxNativeFee` does not bound these sends: `StargateNativeFeeCapLib` caps only the factory itself
+and the apps that the factory lists in `isExecutor`, and the factory records only executors there. The sends carry no
+caller options, so each costs the LayerZero price of the gas in the path's enforced options (for the token send, the
+pool's `quoteSend` on the dispatcher's compose enforced options), and a price spike is paid in full. Fund every
+dispatcher on its own chain (it accepts native transfers through `receive()` from any account) and set an alert on its
+native balance.
+
+A send the balance cannot pay reverts `InsufficientNativeBudget`, and what that undoes depends on the message. For a
+recall request, a command, a retry or a cancel, the whole inbound handling reverts: the dispatcher's bookkeeping and
+the business action roll back, and LayerZero keeps the packet until it is retried after a top-up (a command's receipt
+budget is also checked before its business action runs). A supply compose is different: the bridged tokens already sit
+at the dispatcher when the compose runs, and only its bookkeeping rolls back (`trackedIdle`, `stateVersion`,
+`transferSettled`), together with the `TRANSFER_SETTLED` receipt, which is sent last. Until the compose is retried
+after a top-up, those tokens stay outside the tracked idle balance and the executor still counts the transfer as in
+flight.
 
 ## Factory ownership and creator permission
 

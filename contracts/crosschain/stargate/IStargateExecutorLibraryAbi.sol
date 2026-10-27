@@ -106,4 +106,5 @@ interface IStargateExecutorLibraryAbi {
     error UnexpectedValueDelta(int256 valueDeltaSD);
     error VaultsCapReached(uint256 max);
     error WrongSourceChain(uint256 expected, uint256 got);
+    error ZeroAccountedReturn(uint256 chainId);
 }
