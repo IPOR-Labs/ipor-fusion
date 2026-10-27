@@ -546,6 +546,16 @@ accepts a four-word payload, because the old three-word decode ignores trailing 
 ceiling, so dispatchers must be upgraded no later than the fuses and executors. The `SharesRequested` event gained a
 `feeShares` field, so its topic changed and indexers must be updated.
 
+**A repeated `REQUEST_SHARES` pays the request fee again (IL-8603, IL-9209).** The remote WithdrawManager replaces the
+stored request on every call and takes `shares * getRequestFee() / 1e18` out of the dispatcher's vault shares, so a
+second request on the same vault is charged on its whole new amount. `maxFeeShares` is counted in shares of the remote
+vault: set it to `shares * getRequestFee() / 1e18` plus a margin. Value that fee in assets (`convertToAssets` of the
+remote vault) together with the fees of any further requests made before the next attestation, and keep the total
+inside the `bigChangeBps` step of `settled`. The hub still carries the old value until the next attestation is
+approved, and while `settled` is non-zero and inside the anchor band a lower honest attestation beyond that step
+reverts `BigChangeExceeded`; the way out is the timelocked force-set. From a zero `settled` or from below the band the
+relative limit does not apply (see "Pricing window between propose and approve").
+
 ## Observability: unpriced tracked vaults (IL-8602)
 
 The valuation behind `observation()` and every response (`TRANSFER_SETTLED`, `RETURN_TRANSFER`, `COMMAND_ACK`,
@@ -944,7 +954,10 @@ pre-hook change only when the proposal is approved and the CROSSCHAIN market is 
 after the proposal and before the approval pays the old share price and captures part of the attested remote yield
 once approve and refresh land (and the converse for an exit ahead of a negative proposal). This is inherent to a
 cached, discretely attested NAV and is bounded to one attestation step (at most `BALANCE_STALENESS_MAX` of yield,
-further capped by the per-approval relative limiter and the anchor band). The window does not end at approve:
+further capped by the anchor band and, only while `settled` is non-zero and inside that band, by the
+per-approval relative limiter; from a zero `settled` with a residual anchor (IL-8606) or from below the band
+(IL-8737 / IL-8792) the band alone caps the step, so one public proposal can show a step up to the band edge
+(IL-9213)). The window does not end at approve:
 `approveBalance` never calls the vault, so until the CROSSCHAIN market is next
 refreshed (`updateMarketsBalances([CROSSCHAIN])`, an `execute` through a crosschain fuse or `UpdateBalancesPreHook`)
 deposits, mints, withdrawals and redeems are still priced at the old cache (a withdrawal refreshes only the markets it
@@ -963,8 +976,24 @@ user operations. Operational rule for the attester pair: submit propose + approv
 (`[CROSSCHAIN]`) back-to-back in one block through a private submission channel, keep the attestation cadence well
 below `BALANCE_STALENESS_MAX`, and rely on deposit/withdraw fees where remote yield is lumpy.
 
+**A delivery that realizes a transport fee opens the same window (IL-8596, IL-9221).** A supply settlement that
+credits less than was sent (`SettledCreditShortfall` on the transfer's first receipt; on a later receipt of a
+force-resolved transfer the event only reports the fee, or a late credit that raises NAV) and a recall that finishes
+with `received` below `debitedSD` (`ReturnFinalized` or `LateReturnFinalized`) lower the executor's NAV, but the
+executor does not refresh the vault's CROSSCHAIN cache. These deliveries are not under the attester pair's control (a
+CCIP message can be executed manually by any account once it is committed), so the rule to submit propose, approve and
+refresh back-to-back in one block does not cover them. After such an event, refresh the CROSSCHAIN market
+(`updateMarketsBalances([CROSSCHAIN])`) before relying on the share price; the gap is the fee of one transfer.
+
 The CCIP executor never bumped the accounting epoch on an outbound send, so a pending proposal already survived it;
 the Stargate executor now matches (TP-M-44 / IL-8622, see the Stargate README).
+
+**Commands do not void a pending proposal (IL-8582, IL-9208).** A command (`DEPOSIT`, `REDEEM`, `REQUEST_SHARES`,
+`REDEEM_FROM_REQUEST` or `UPDATE_VAULTS`) changes the dispatcher's remote state without bumping its `stateVersion`,
+and on this transport it does not bump the executor's accounting epoch either, not even when its `COMMAND_ACK`
+arrives: the ACK only records the balance evidence it carries. A proposal observed before the command therefore stays
+approvable after it, until it expires or goes stale. Rule for the attester pair: do not approve an observation that is
+older than a value-moving command that has been sent, and attest again after the command's ACK.
 
 ### Approval freshness window and monotonic observation clock (IL-8631 / TP-L-03, IL-8648 / TP-L-20)
 
