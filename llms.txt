@@ -1,0 +1,73 @@
+# IPOR Fusion smart contracts
+
+> Solidity contracts (Foundry) for IPOR Fusion: ERC-4626 Plasma Vaults that allocate assets into external DeFi protocols through stateless adapter contracts called fuses, under role-based access control. ABIs and deployed addresses live in the IPOR-Labs/ipor-abi repository; user and integrator docs live at https://ipor.io/docs/llms.txt.
+
+Start with AGENTS.md: setup, build/test/lint commands, required RPC env vars, conventions, the fuse checklist and the hard rules. Paths below are relative to the repository root.
+
+## Start here
+
+- [AGENTS.md](AGENTS.md): Operating guide for agents: directory map, commands, env vars, fork vs mock tests, conventions, fuse checklist, hard rules.
+- [Architecture map](ARCHITECTURE.md): Components, call flows (execute, deposit/withdraw, share price), storage and upgrade model.
+- [README.md](README.md): Installation and testing basics.
+
+## Architecture
+
+- [PlasmaVault internals](contracts/vaults/README.md): Fallback router, PlasmaVaultBase, plugins, ERC-7201 storage layout.
+- [PlasmaVault.sol](contracts/vaults/PlasmaVault.sol): ERC-4626 core, `execute`, `updateMarketsBalances`, `totalAssets`, withdrawals.
+- [PlasmaVaultGovernance.sol](contracts/vaults/PlasmaVaultGovernance.sol): Atomist configuration: fuses, balance fuses, substrates, dependency graphs, oracle, fees, limits.
+- [PlasmaVaultStorageLib.sol](contracts/libraries/PlasmaVaultStorageLib.sol): ERC-7201 storage slots for vault state.
+- [FusionFactory.sol](contracts/factory/FusionFactory.sol): Creates a full vault stack in one call.
+- [Architecture overview (docs)](https://ipor.io/docs/build-on-fusion/architecture-overview/general.md): Concepts: vaults, fuses, Atomists, Alphas.
+
+## Roles and access
+
+- [Roles.sol](contracts/libraries/Roles.sol): Every role ID with who manages it and what it allows.
+- [IporFusionAccessManager.sol](contracts/managers/access/IporFusionAccessManager.sol): Role checks, execution delays, guardian cancel/pause, redemption delay.
+- [Access Management (docs)](https://ipor.io/docs/build-on-fusion/atomists/vault-configuration-step-by-step/access-management.md): Granting, revoking and time-locking roles.
+- [Vault governance best practices (docs)](https://ipor.io/docs/build-on-fusion/atomists/vault-configuration-step-by-step/vault-governance-and-depositor-led-security-best-practices.md): Role hierarchy and execution delays.
+
+## Fuse development
+
+- [IFuse.sol](contracts/fuses/IFuse.sol), [IFuseCommon.sol](contracts/fuses/IFuseCommon.sol), [IMarketBalanceFuse.sol](contracts/fuses/IMarketBalanceFuse.sol), [IFuseInstantWithdraw.sol](contracts/fuses/IFuseInstantWithdraw.sol): Fuse interfaces.
+- [Erc4626SupplyFuse.sol](contracts/fuses/erc4626/Erc4626SupplyFuse.sol): Reference action fuse (enter, exit, transient variants, instant withdraw).
+- [Erc4626BalanceFuse.sol](contracts/fuses/erc4626/Erc4626BalanceFuse.sol): Reference balance fuse (USD, 18 decimals, via price oracle middleware).
+- [IporFusionMarkets.sol](contracts/libraries/IporFusionMarkets.sol): Market ID registry; new markets get a new constant here.
+- [PlasmaVaultConfigLib.sol](contracts/libraries/PlasmaVaultConfigLib.sol): Substrate grant checks used by fuses.
+- [Aave V4 fuses README](contracts/fuses/aave_v4/README.md): Example of a complete per-protocol README; the non-fork tests in test/fuses/aave_v4/ run without RPC.
+- [Developing a Fuse (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/developing-a-fuse.md): Anatomy of an action fuse and its balance fuse.
+- [Integrating a New Market (docs)](https://ipor.io/docs/build-on-fusion/integrating-a-new-market.md): Market components, coding standard, security requirements, whitelist review.
+- [FuseWhitelist.sol](contracts/fuses/whitelist/FuseWhitelist.sol): On-chain registry of reviewed fuses.
+
+## Share price and accounting
+
+- [General share price calculation rules (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/general-share-price-calculation-rules.md): How share price is computed and what can move it.
+- [Balance Fuses (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/balance-fuses.md): What a balance fuse tracks.
+- [PlasmaVaultMarketsLib.sol](contracts/vaults/lib/PlasmaVaultMarketsLib.sol): Market balance updates and dependency graphs.
+- [PlasmaVaultFeesLib.sol](contracts/vaults/lib/PlasmaVaultFeesLib.sol): Performance and management fee math.
+- [PriceOracleMiddleware.sol](contracts/price_oracle/PriceOracleMiddleware.sol): USD asset prices.
+- [Price Oracle Middleware (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/price-oracle-middleware.md): Adding or overriding a feed.
+- [WithdrawManager.sol](contracts/managers/withdraw/WithdrawManager.sol): Scheduled withdrawals, request and withdraw fees.
+
+## Audits and security
+
+- [Security and Audits (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/security-and-audits.md): Internal QA and the list of third-party audits with reports.
+- [Security Requirements for new markets (docs)](https://ipor.io/docs/build-on-fusion/integrating-a-new-market/security-requirements.md): What IPOR requires from fuse code.
+- [Common Errors (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/common-errors.md): Revert selectors and the role table.
+
+## ABIs and addresses
+
+- [IPOR-Labs/ipor-abi](https://github.com/IPOR-Labs/ipor-abi): ABIs and deployed contract addresses per chain.
+- [Addresses (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/addresses.md): FusionFactory proxy addresses per chain.
+- [IPlasmaVaultAbi.sol](contracts/interfaces/IPlasmaVaultAbi.sol): Full vault interface in one file (IERC4626 + IPlasmaVault + IPlasmaVaultGovernance + IAccessManaged), the ABI surface integrators call.
+
+## Optional
+
+- [Crosschain CCIP transport](contracts/crosschain/ccip/README.md): CCIP executor, dispatcher, factory and linked libraries.
+- [Crosschain Stargate transport](contracts/crosschain/stargate/README.md): Stargate/LayerZero recall, cancellation and accounting rules.
+- [Vendored dependencies](contracts/vendor/README.md): Pinned upstream code, local modifications and checksum verification.
+- [SafeHarborRegistrar](contracts/safe-harbor/README.md): Per-vault opt-in to the SEAL Safe Harbor agreement.
+
+- [Per-protocol fuse READMEs](contracts/fuses/): One README.md per protocol folder where available.
+- [Pre-hooks](contracts/handlers/pre_hooks/): Checks that run before vault methods.
+- [Callback handlers](contracts/handlers/callbacks/): Flash-loan callbacks for Morpho and Euler.
+- [Smart Contracts reference (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/smart-contracts.md): DeepWiki-hosted architecture reference.
