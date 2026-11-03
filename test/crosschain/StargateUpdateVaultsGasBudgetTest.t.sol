@@ -17,9 +17,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///      endpoint adds a small constant (< 10k) on top of what the production endpoint spends before `lzReceive`.
 ///      `UPDATE_VAULTS` never prices vaults (no `TrackedVaultPricingLib` read), so the IL-8602 per-vault 200k read cap
 ///      does not apply to it; the ACK carries no valuation either (a `CommandAck` of fixed size).
+/// @dev Measured on forge 1.9.0: fresh 32 about 3.15M, replace 32 -> 32 about 3.25M, remove 32 -> 0 about 0.79M. Forge >= 1.9.0
+///      measures the cold EXTCODESIZE correctly (earlier versions under-measured it after `vm.cool` by 2,500 gas per vault).
 contract StargateUpdateVaultsGasBudgetTest is StargateTwoSidedBase {
     /// @dev The reference command-lane receive option the deployment guidance recommends (IL-8617).
-    uint256 internal constant RECOMMENDED_OPTION_GAS = 4_000_000;
+    uint256 internal constant RECOMMENDED_OPTION_GAS = 4_250_000;
     /// @dev The previous reference option; the max-size update does not fit it.
     uint256 internal constant LEGACY_OPTION_GAS = 2_000_000;
 
