@@ -317,11 +317,15 @@ cUSDCv3 `0xc3d688B66703497DAA19211EEdff47f25384cdc3`, base token USDC, `baseBorr
 
 | Fuse | Address |
 |---|---|
-| `CompoundV3SupplyFuse` (market 2) | `0x00A220F09C1CF5f549C98Fa37C837aed54aBA26c` |
-| `CompoundV3ClaimFuse` | `0x2B98080341D9469d8beAbf2db037dE8897c232cD` |
-| `CompoundV3BalanceFuse` (market 2, legacy) | `0x7070d0A706Bf79A1e6d12706b9a429b9D8099C8b` |
-| `CompoundV3BorrowFuse` (market 2) | not deployed yet |
-| `CompoundV3WithPriceOracleMiddlewareBalanceFuse` (market 2) | not deployed yet |
+| `CompoundV3SupplyFuse` (market 2) | `0x46DfC76C2673462c1ceecFAf3061Ac354e371e98` |
+| `CompoundV3BorrowFuse` (market 2) | `0xbe3468E35D8EBA45418F9dDAc7145aD500fd0F7F` |
+| `CompoundV3WithPriceOracleMiddlewareBalanceFuse` (market 2) | `0xEdDB6d8CfA366eEFeB587FE493035d0837563914` |
+| `CompoundV3ClaimFuse` | `0xe4374aEc1F73edc2AD5c9c9E7091143B0Af4a378` |
+| `CompoundV3SupplyFuse` (market 2, legacy, deprecated in the fuse whitelist) | `0x00A220F09C1CF5f549C98Fa37C837aed54aBA26c` |
+| `CompoundV3BalanceFuse` (market 2, legacy, priced by Comet) | `0x7070d0A706Bf79A1e6d12706b9a429b9D8099C8b` |
+| `CompoundV3ClaimFuse` (older claim fuse, still whitelisted) | `0x2B98080341D9469d8beAbf2db037dE8897c232cD` |
+
+Fuse addresses as of 2026-11-03; the canonical list is the IPOR address registry ([ipor-abi](https://github.com/IPOR-Labs/ipor-abi)).
 
 ## Tests
 
