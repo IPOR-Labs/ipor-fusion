@@ -1452,9 +1452,14 @@ contract StargateVaultRemovalCommittedLaneTest is Test {
     /// @dev Measured on forge 1.8.5, 2026-10-20, IL-8839 T61. Adversarial delivery: the command is stamped for the
     ///      2.5M lane, the delivery gas is cut to the smallest value (1k steps) that still ACKs. Margin to 2.5M is
     ///      about 98k gas (4 percent); the per kept vault marginal cost is (EDGE_31 - EDGE_0) / 31, about 9.9k.
-    uint256 internal constant EDGE_GAS_31_KEPT = 2_402_000;
-    /// @dev Measured on forge 1.8.5, 2026-10-20, IL-8839 T61 (same method, 0 kept vaults).
-    uint256 internal constant EDGE_GAS_0_KEPT = 2_095_000;
+    ///      The edge depends on the forge version: `vm.cool` does not make an EXTCODESIZE access cold on forge 1.8.x
+    ///      (it costs the warm 100 there) but does on 1.9+ (the real EIP-2929 2,600), so the same removal needs 3,000 gas
+    ///      more on 1.9 (2,405,000, measured 2026-11-03). Both are pinned as a band, the real chain pays the upper value.
+    uint256 internal constant EDGE_GAS_31_KEPT_MIN = 2_402_000;
+    uint256 internal constant EDGE_GAS_31_KEPT_MAX = 2_405_000;
+    /// @dev Measured on forge 1.8.5, 2026-10-20, IL-8839 T61 (same method, 0 kept vaults); band for the same reason.
+    uint256 internal constant EDGE_GAS_0_KEPT_MIN = 2_095_000;
+    uint256 internal constant EDGE_GAS_0_KEPT_MAX = 2_100_000;
 
     uint256 internal constant DISPATCHER_CHAIN = 42161;
     uint256 internal constant EXECUTOR_CHAIN = 1;
@@ -1732,8 +1737,10 @@ contract StargateVaultRemovalCommittedLaneTest is Test {
         emit log_named_uint("EDGE: smallest delivery gas the dispatcher accepts (31 kept)", accept31);
         emit log_named_uint("EDGE: per kept vault marginal gas, (edge31 - edge0) / 31", (edge31 - edge0) / EMPTIES);
 
-        assertEq(edge31, EDGE_GAS_31_KEPT, "ACK edge with 31 kept");
-        assertEq(edge0, EDGE_GAS_0_KEPT, "ACK edge with 0 kept");
+        assertGe(edge31, EDGE_GAS_31_KEPT_MIN, "ACK edge with 31 kept (lower bound)");
+        assertLe(edge31, EDGE_GAS_31_KEPT_MAX, "ACK edge with 31 kept (upper bound)");
+        assertGe(edge0, EDGE_GAS_0_KEPT_MIN, "ACK edge with 0 kept (lower bound)");
+        assertLe(edge0, EDGE_GAS_0_KEPT_MAX, "ACK edge with 0 kept (upper bound)");
         assertLt(edge31, MIN_LANE, "31 kept fit the minimum lane");
         assertEq(k, K_AT_MIN_LANE, "K at the minimum lane");
         assertEq(l31, LANE_FOR_31_KEPT, "lane for 31 kept vaults");
@@ -1755,7 +1762,7 @@ contract StargateVaultRemovalCommittedLaneTest is Test {
     ///      accepted, runs out of gas inside the self-call and is NACKed (FAILED); everything rolls back and `vault`
     ///      stays allowlisted and tracked.
     function testShouldNackABurnedRemovalDeliveredJustBelowTheAckEdge() public {
-        (bytes32 id, bool delivered) = _attempt(EMPTIES, MIN_LANE, EDGE_GAS_31_KEPT - 1_000);
+        (bytes32 id, bool delivered) = _attempt(EMPTIES, MIN_LANE, _ackEdge(EMPTIES, MIN_LANE) - 1_000);
         assertTrue(delivered, "accepted by the dispatcher");
         assertEq(uint8(dispatcher.commandStatus(id)), uint8(CommandStatus.FAILED), "NACKed");
         assertTrue(dispatcher.isAllowedVault(address(vault)), "rolled back: still allowlisted");
@@ -1767,7 +1774,7 @@ contract StargateVaultRemovalCommittedLaneTest is Test {
         uint64 epochBefore = dispatcher.commandConfigEpoch();
         vm.expectEmit(false, false, false, true, address(dispatcher));
         emit TrackedVaultSweepResidual(address(vault), 50e6, 5, bytes4(0), true);
-        (bytes32 id, bool delivered) = _attempt(EMPTIES, MIN_LANE, EDGE_GAS_31_KEPT);
+        (bytes32 id, bool delivered) = _attempt(EMPTIES, MIN_LANE, _ackEdge(EMPTIES, MIN_LANE));
         assertTrue(delivered, "delivered");
         _assertBurnedRemovalAcked(id, epochBefore);
     }

@@ -807,7 +807,7 @@ reason 4, so a 1-wei donation cannot make a removal expensive. The sweep never r
 `redeem` gets `min(VAULT_SWEEP_GAS, gasleft() - VAULT_SWEEP_RESERVE_GAS)`; if that is below the full cap and the call fails
 the residual reason is 5, and later removals in the same command get what the earlier ones left (each keeps a 300,000
 reserve). A removal of k vaults with real positions fits fully when the lane gives about 0.4M + the sum of the sweeps +
-0.3M per vault (the 14M lane fits about 5 to 6 worst-case removals; split bigger updates into several replaces). The no-revert guarantee holds for ONE removal per command. On Stargate every read and write of the re-track pass runs BEFORE the sweeps (IL-8839), so after a gas-limited sweep only the removal's own bookkeeping remains, whatever the size of the allowlist; a second removal in the same command can still fail its reads after the first sweep burned its forward, which is a safe NACK that rolls everything back (a NACK means "split it"). The update itself must still fit the command budget (see "UPDATE_VAULTS gas budget"): measured on committed state, the 2,500,000 minimum lane carries one burned-sweep removal with all 31 kept vaults with about 98k (4%) of margin (the ACK edge is 2,402,000 of delivery gas, about 9.9k per kept vault; pinned by `StargateVaultRemovalCommittedLaneTest`), so the full 32-vault allowlist works on the minimum lane but with a thin margin. Because the re-track pass runs first, each vault it newly tracks (a donated or residual position) costs about 50k of writes before the sweep, so a removal combined with many new re-tracks in the same command on the minimum lane can NACK; that is a safe rollback, retry it with `retryCommandWithBudget` or split it. The Stargate lane is
+0.3M per vault (the 14M lane fits about 5 to 6 worst-case removals; split bigger updates into several replaces). The no-revert guarantee holds for ONE removal per command. On Stargate every read and write of the re-track pass runs BEFORE the sweeps (IL-8839), so after a gas-limited sweep only the removal's own bookkeeping remains, whatever the size of the allowlist; a second removal in the same command can still fail its reads after the first sweep burned its forward, which is a safe NACK that rolls everything back (a NACK means "split it"). The update itself must still fit the command budget (see "UPDATE_VAULTS gas budget"): measured on committed state, the 2,500,000 minimum lane carries one burned-sweep removal with all 31 kept vaults with about 95k (4%) of margin (the ACK edge is 2,402,000 to 2,405,000 of delivery gas, depending on the forge version, about 9.9k per kept vault; pinned by `StargateVaultRemovalCommittedLaneTest`), so the full 32-vault allowlist works on the minimum lane but with a thin margin. Because the re-track pass runs first, each vault it newly tracks (a donated or residual position) costs about 50k of writes before the sweep, so a removal combined with many new re-tracks in the same command on the minimum lane can NACK; that is a safe rollback, retry it with `retryCommandWithBudget` or split it. The Stargate lane is
 sized per message (a fresh send can carry more gas), unlike CCIP, where a RETRY is clamped to the route gas limit.
 Note the 2,000,000 cap is a safety bound, not a promise: it was calibrated on redeems served from idle cash (a cold 100k to 200k USDC Prime position is still swept fine on a 3M lane), and a
 position allocated into markets can need more (a cold 100k USDC position of the Ethereum TESS USDC Optimiser: 3.11M uncapped), in which
@@ -972,16 +972,16 @@ the dispatcher `lzReceive` with every touched account cooled (`StargateUpdateVau
 
 | Update                              | Dispatcher `lzReceive` gas |
 | ----------------------------------- | -------------------------- |
-| fresh, N = 0                        | 626,237                    |
-| fresh, N = 1                        | 733,283                    |
-| fresh, N = 8                        | 1,259,862                  |
-| fresh, N = 16                       | 1,861,677                  |
-| fresh, N = 24                       | 2,463,505                  |
-| fresh, N = 32 (the maximum)         | 3,065,376                  |
-| replace, 32 -> 32 different vaults  | 3,172,016                  |
-| remove, 32 -> 0                     | 789,192                    |
+| fresh, N = 0                        | 628,271                    |
+| fresh, N = 1                        | 737,658                    |
+| fresh, N = 8                        | 1,280,660                  |
+| fresh, N = 16                       | 1,901,247                  |
+| fresh, N = 24                       | 2,521,848                  |
+| fresh, N = 32 (the maximum)         | 3,142,494                  |
+| replace, 32 -> 32 different vaults  | 3,249,134                  |
+| remove, 32 -> 0                     | 791,226                    |
 
-Cost is about 76k gas per fresh vault on top of about 0.63M fixed (IL-8784 added about 7k per vault: 2.81M -> 3.07M at 32, measured by the budget test; these figures are for vaults without shares and exclude any sweep, which adds up to `VAULT_SWEEP_GAS` plus overhead per removed vault). The executor-side ACK receive is about 67k. The ACK
+Cost is about 78k gas per fresh vault on top of about 0.63M fixed (IL-8784 added about 7k per vault: 2.81M -> 3.07M at 32, 3.14M with the cold EXTCODESIZE of forge 1.9, measured by the budget test, which needs forge >= 1.9.0: earlier versions under-measured a cold code-size access after `vm.cool` by 2,500 gas per vault; these figures are for vaults without shares and exclude any sweep, which adds up to `VAULT_SWEEP_GAS` plus overhead per removed vault). The executor-side ACK receive is about 67k. The ACK
 carries no valuation (`CommandAck` is fixed size) and `UPDATE_VAULTS` never prices vaults, but since IL-8784 it does read
 `balanceOf` of every allowlisted vault it does not track (and `decimals()` / `convertToAssets` for a removed vault's
 dust check), each on the IL-8602 `TrackedVaultPricingLib.VAULT_READ_GAS` cap (200,000 per read, about 208k pre-check);
@@ -990,11 +990,11 @@ matters for the same lane's
 `RETURN_ASSETS_REQUEST` and balance paths, which are sized separately (see "Recall gas headroom" above).
 
 Recommended reference command-lane receive option (the `addExecutorLzReceiveOption(gas, 0)` blob passed to
-`registerChain`): 4,000,000 gas (about 30% headroom over the 3.07M fresh maximum and 26% over the 3.17M replace; `COMMAND_LANE_MAX_RECEIVE_GAS` is 10M so it
+`registerChain`): 4,250,000 gas (about 35% headroom over the 3.15M fresh maximum and 31% over the 3.25M replace; `COMMAND_LANE_MAX_RECEIVE_GAS` is 10M so it
 is accepted). `MAX_ALLOWED_VAULTS` stays 32. The test pins the N = 32 cost (fresh, replace and removal) at no more than
-80% of that option, so a future handler change that eats the headroom fails CI. The 3.07M fresh maximum above is total handler gas and
-already contains the pre-check work (about 1.06M for a 32-vault payload); under the IL-8625 budget a 4M lane leaves the
-business call about 2.10M after the pre-call allowance and the catch reserve, and the largest fresh install executes at
+80% of that option (3.4M), so a future handler change that eats the headroom fails CI. The 3.15M fresh maximum above is total handler gas and
+already contains the pre-check work (about 1.06M for a 32-vault payload); under the IL-8625 budget a 4.25M lane leaves the
+business call about 2.35M after the pre-call allowance and the catch reserve, and the largest fresh install executes at
 the lane's gas (`StargatePreCheckPinTest`). The lane minimum is 2,500,000 (2,000,000 is no longer registrable), where a
 32-vault install reaches the check but its business call is short of gas and NACKs: operators on a small lane keep the
 allowlist small. An update that does not fit is a FAILED + NACK, recovered with a fresh send or a retry carrying a raised
@@ -1002,8 +1002,8 @@ budget (the lane cannot change). Because
 `UPDATE_VAULTS` replaces the whole list and every message pays the fixed part plus the per-vault part for the full new
 list, splitting growth into several messages does not lower the cost of the final one: with a smaller option the
 allowlist itself has to stay below the size that option supports (the manager can always shrink it, a 32 -> 0 removal
-costs about 0.79M). The 32 -> 32 replace (3,172,016) sits at 79.3% of the 80% CI pin (3.2M of the 4M option), about
-28k gas of margin: a handler change adding more than that fails `StargateUpdateVaultsGasBudgetTest`.
+costs about 0.79M). The 32 -> 32 replace (3,249,134) sits at 95.6% of the 80% CI pin (3.4M of the 4.25M option), about
+151k gas of margin: a handler change adding more than that fails `StargateUpdateVaultsGasBudgetTest`.
 
 ## Command gas budget and out-of-gas handling (TP-M-47 / IL-8625, TP-L-13 / IL-8641 closed by the catch reserve)
 
