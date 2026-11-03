@@ -58,7 +58,7 @@ Start with AGENTS.md: setup, build/test/lint commands, required RPC env vars, co
 
 - [IPOR-Labs/ipor-abi](https://github.com/IPOR-Labs/ipor-abi): ABIs and deployed contract addresses per chain.
 - [Addresses (docs)](https://ipor.io/docs/build-on-fusion/developer-guide/addresses.md): FusionFactory proxy addresses per chain.
-- [IPlasmaVaultAbi.sol](contracts/interfaces/IPlasmaVaultAbi.sol): Full vault interface in one file (IERC4626 + IPlasmaVault + IPlasmaVaultGovernance + IAccessManaged), the ABI surface integrators call.
+- [IPlasmaVaultAbi.sol](contracts/interfaces/IPlasmaVaultAbi.sol): Main vault interface in one file (IERC4626 + IPlasmaVault + IPlasmaVaultGovernance + IAccessManaged). Permit and votes functions served through PlasmaVaultBase are not included.
 
 ## Optional
 

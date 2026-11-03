@@ -37,7 +37,7 @@ forge build
 To run smart contract tests, you need to set up a `.env` file with the required environment variables.
 
 ### Environment Variables
-An example `.env` file is in [.env.example](./.env.example). Copy this file to `.env` and fill in the required values.
+Fork tests read RPC URLs from a `.env` file. The required variables are listed in [AGENTS.md](./AGENTS.md#environment-variables).
 
 - `ETHEREUM_PROVIDER_URL` - Ethereum provider URL
 - `ARBITRUM_PROVIDER_URL` - Arbitrum provider URL

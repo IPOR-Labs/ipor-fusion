@@ -98,7 +98,7 @@ Use **archive** RPC endpoints. Fork tests pin historical blocks.
   `vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), <block>)` in `setUp()` (directly or through a base
   contract such as `AaveV4ForkTestBase`) and run against real protocol state at a pinned block. Without the
   matching env var they fail in `setUp`. Many are named `*ForkTest.t.sol`.
-- **Mock tests** (about 320 files) need no RPC. They deploy the fuse plus mocks (for example
+- **Mock tests** (about 300 files) need no RPC. They deploy the fuse plus mocks (for example
   `test/fuses/PlasmaVaultMock.sol`, `test/test_helpers/MockErc4626.sol`). Good first targets: the non-fork files
   in `test/fuses/aave_v4/`, `test/fuses/transient_storage/`, `test/libraries/`.
 
@@ -110,7 +110,8 @@ grep -rL -e createSelectFork -e createFork --include='*.t.sol' test
 
 ## Coding conventions
 
-- Compiler: `pragma solidity 0.8.30;` (exact, no caret). EVM `cancun` (`arbitrum` profile uses `paris`).
+- Compiler: `pragma solidity 0.8.30;` (exact, no caret). EVM `cancun` in every profile, including `arbitrum`
+  (byte-identical CREATE2/CREATE3 artifacts across chains depend on it).
 - License header: `// SPDX-License-Identifier: BUSL-1.1` for `contracts/`. Tests usually use `UNLICENSED`.
 - Imports: named imports with relative paths (`import {IFuseCommon} from "../IFuseCommon.sol";`). Remappings live
   in `foundry.toml`.
@@ -118,6 +119,9 @@ grep -rL -e createSelectFork -e createFork --include='*.t.sol' test
   (`MARKET_ID`, `VERSION`). Fuse structs are `<Fuse>EnterData` / `<Fuse>ExitData`.
 - Errors: custom errors prefixed with the contract name (`Erc4626SupplyFuseUnsupportedVault`). No revert strings.
 - Events: emit on every state-changing action, include `VERSION` (the fuse address) as the first argument.
+  No `indexed` event parameters.
+- One contract per file; interfaces in their own files.
+- No `via_ir`. If a contract exceeds the EIP-170 size limit, fix it in code, not with compiler flags.
 - NatSpec on every public/external function and struct field.
 - Formatting: Prettier with `prettier-plugin-solidity` (`.prettierrc.js`). Lint: solhint (`.solhint.json`).
 - Tests: `contract <Name>Test is Test`, test names `testShould...` / `testShouldRevertWhen...`, bodies split with
@@ -133,13 +137,16 @@ Full guide: [Developing a Fuse](https://ipor.io/docs/build-on-fusion/developer-g
    existing value. If the market depends on another market's balance (for example swaps change
    `ERC20_VAULT_BALANCE`), say so in the NatSpec comment.
 2. **Action fuse.** Implements `IFuseCommon` (`MARKET_ID()`), with `enter(<X>EnterData)` and `exit(<X>ExitData)`.
-   Set `VERSION = address(this)` and `MARKET_ID` as immutables in the constructor.
+   Set `VERSION = address(this)` and `MARKET_ID` as immutables in the constructor, and revert when
+   `marketId_ == 0` (the reference fuses predate this rule and do not check it).
 3. **Stateless.** The vault calls fuses with `delegatecall`, so fuse code runs in the vault's storage.
    Only immutables and constants. No storage variables. If you need storage, use an ERC-7201 namespaced library.
 4. **Substrate checks.** Every `enter`/`exit` checks that the target asset/vault/pool is granted for `MARKET_ID`
    (`PlasmaVaultConfigLib.isSubstrateAsAssetGranted` or a typed `*SubstrateLib`). Revert if not.
 5. **Limits on every action.** Cap amounts to the available balance, add slippage guards (`minSharesOut`,
-   `maxSharesBurned`, …), use `forceApprove` and leave no allowance behind.
+   `maxSharesBurned`, …), use `forceApprove` and leave no allowance behind
+   (reset with `forceApprove(target, 0)` after the call, as `AguaSupplyFuse` does; the reference `Erc4626SupplyFuse`
+   does not).
 6. **Optional variants.** `enterTransient()`/`exitTransient()` (read inputs, write outputs via
    `TransientStorageLib`), and `instantWithdraw(bytes32[] params)` (`IFuseInstantWithdraw`, `params[0]` is the amount
    in underlying; wrap the external call in try/catch and emit a `*ExitFailed` event instead of reverting, so one
@@ -149,21 +156,25 @@ Full guide: [Developing a Fuse](https://ipor.io/docs/build-on-fusion/developer-g
    wrong value: revert on negative balances or missing prices.
 8. **Tests.** Add `test/fuses/<protocol>/`. Cover enter, exit, substrate rejection, slippage reverts, the balance
    fuse, and instant withdraw if implemented. Fork tests pin a block; mock tests use `PlasmaVaultMock`.
-9. **README.** Add `contracts/fuses/<protocol>/README.md` with the sections the other fuse READMEs use: Overview,
-   Market Structure, Architecture, Balance Calculation, Substrate Configuration, Price Oracle Setup, Security
-   Considerations.
+9. **README.** Add `contracts/fuses/<protocol>/README.md`. Use `contracts/fuses/aave_v4/README.md` as the model
+   and cover at least: overview, market structure, key components and operations, balance calculation, substrate
+   configuration, price oracle setup, security considerations and tests.
 10. **Gate.** `forge build`, the new tests, `npm run solhint:all` and `npm run prettier:all` all pass.
 
-On-chain, a new fuse is used by a vault only after it is listed in the `FuseWhitelist` registry
-(`contracts/fuses/whitelist/`) and the Atomist adds it with `addFuses` / `addBalanceFuse` and grants substrates.
+A vault uses a new fuse only after the Atomist adds it with `addFuses` / `addBalanceFuse` and grants substrates.
+Reviewed fuses are also listed in the `FuseWhitelist` registry (`contracts/fuses/whitelist/`), which tooling and
+Atomists use to pick approved fuses. The vault does not check this registry on-chain.
 
 ## Hard rules
 
-- **Never change the storage layout of upgradeable or cloned contracts.** Vaults and managers are clones/proxies
-  using ERC-7201 namespaced storage (`PlasmaVaultStorageLib`, `*StorageLib.sol`). Do not rename namespace strings,
+- **Never change the storage layout of upgradeable or cloned contracts.** Vaults and most managers are
+  clones/proxies using ERC-7201 namespaced storage (`PlasmaVaultStorageLib`, `*StorageLib.sol`).
+  `IporFusionAccessManager` is the exception: it uses OpenZeppelin `AccessManager`'s sequential slots plus its own
+  field after them, so never add or reorder its state variables. Do not rename namespace strings,
   reorder or remove struct fields, or change slot constants. Add new fields only at the end of a struct or in a new
   namespace. `test/libraries/FusionStorageSlotsTest.t.sol` and `PlasmaVaultStorageLibSlotTest.t.sol` must stay green.
-  UUPS contracts (`PriceOracleMiddleware`, `FuseWhitelist`, `FusionFactory`, wrapped-vault and price-feed factories)
+  UUPS contracts (`PriceOracleMiddleware`, `PriceOracleMiddlewareWithRoles`, `FuseWhitelist`, `FusionFactory`,
+  wrapped-vault and price-feed factories)
   follow the same rule.
 - **Never add storage variables to a fuse.** See the checklist, step 3.
 - **Never change existing role IDs (`Roles.sol`) or market IDs (`IporFusionMarkets.sol`).** Deployed vaults
@@ -175,17 +186,24 @@ On-chain, a new fuse is used by a vault only after it is listed in the `FuseWhit
 - **Never edit vendored code.** `contracts/vendor/` is upstream code pinned by `CHECKSUMS.sha256`; `verify.sh`
   fails on any change. Changes there need an explicit ticket and an updated manifest.
 - **Crosschain linked libraries are pinned.** The `crosschain_deploy` profile in `foundry.toml` fixes the address
-  of each crosschain library. Changing a library means re-pinning it and re-linking its hosts (see
+  of the crosschain libraries listed in it (not every crosschain library is listed; check the profile). Changing a
+  pinned library means re-pinning it and re-linking its hosts (see
   `contracts/crosschain/ccip/README.md`).
 - **Treat fund-moving roles as critical.** Code paths reachable by these roles need extra review and tests:
     - `ALPHA_ROLE` (200): `PlasmaVault.execute` runs fuses with full vault context.
     - `FUSE_MANAGER_ROLE` (300): adds fuses and grants substrates, which decides where funds can go.
+    - `PRE_HOOKS_MANAGER_ROLE` (301): installs pre-hook contracts that the vault runs with `delegatecall`.
     - `PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE` (1200): sets prices, which sets the share price.
     - `ATOMIST_ROLE` (100), `OWNER_ROLE` (1), `ADMIN_ROLE` (0): grant all of the above.
     - `CLAIM_REWARDS_ROLE` (600), `TRANSFER_REWARDS_ROLE` (700), `CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE` (900),
-      `UPDATE_MARKETS_BALANCES_ROLE` (1000).
-- **Do not weaken access control.** Every external state-changing function on vaults and managers is
-  `restricted` (OpenZeppelin `AccessManager`). Do not remove the modifier or add unrestricted entry points.
+      `UPDATE_MARKETS_BALANCES_ROLE` (1000),
+      `WITHDRAW_MANAGER_REQUEST_FEE_ROLE` (901), `WITHDRAW_MANAGER_WITHDRAW_FEE_ROLE` (902): fees up to 100 %.
+- **Do not weaken access control.** Privileged configuration and operation entry points on vaults and managers
+  are `restricted` (OpenZeppelin `AccessManager`). Do not remove the modifier or add new unrestricted privileged
+  entry points. Accepted exceptions that are protected another way: public user flows
+  (`WithdrawManager.requestShares`, `FeeManager` harvest functions), initializers (`proxyInitialize`, `initializer`),
+  self-calls (`PlasmaVault.executeInternal`), `ContextManager` target or signature checks, and `PlasmaVaultPauser`
+  (`Ownable2Step` plus a per-vault whitelist). Do not report these as defects or add `restricted` to them.
 - **Share price must not move silently.** Any change to `totalAssets`, balance fuses, fees or the oracle must keep
   the rules in [General share price calculation rules](https://ipor.io/docs/build-on-fusion/developer-guide/general-share-price-calculation-rules.md).
 
