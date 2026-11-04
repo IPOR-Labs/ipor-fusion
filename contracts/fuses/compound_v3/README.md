@@ -18,11 +18,11 @@ interest and cannot be borrowed by others. Two Compound V3 facts drive the desig
   borrowing limit automatically, so no collateral fuse exists.
 
 Collateralisation and liquidation are enforced by Comet using **Comet's own price feeds**. NAV in Fusion is
-computed with the vault's `PriceOracleMiddleware` (see *Balance Calculation*).
+computed with the vault's `PriceOracleMiddleware` (see _Balance Calculation_).
 
 Market ID 57 (`IporFusionMarkets.COMPOUND_V3_INSTITUTIONAL_USDC`) applies the same two fuses to the Compound
-Institutional USDC market (ciUSDCv3). On that market this integration is limited to USDC supply and withdraw
-(see *Market Structure* and *Substrate Configuration*).
+Institutional USDC market (ciUSDCv3), with the same rules as market ID 2 for supply, borrow, repay and the NAV
+(see _Market Structure_ and _Substrate Configuration_). Rewards are claimed from the market's own `CometRewards`.
 
 ## Market Structure
 
@@ -34,25 +34,34 @@ Borrowing (IL-8270) is implemented and verified for:
 
 - **Market ID 2** (`IporFusionMarkets.COMPOUND_V3_USDC`) — cUSDCv3 on Ethereum
   (`0xc3d688B66703497DAA19211EEdff47f25384cdc3`), base token USDC; collateral cbBTC, WETH, wstETH, WBTC
+- **Market ID 57** (`IporFusionMarkets.COMPOUND_V3_INSTITUTIONAL_USDC`) — ciUSDCv3, see below
 
 Market ID 57 (`IporFusionMarkets.COMPOUND_V3_INSTITUTIONAL_USDC`) — ciUSDCv3 on Ethereum
 (`0x207158a267CBD2598BB3d611D8CBdEE2709F2F8C`), implementation `InstitutionalComet` (a subclass of `CometWithExtendedAssetList`), base token USDC;
-collateral WETH, wstETH, cbBTC, WBTC. `CompoundV3SupplyFuse` and `CompoundV3WithPriceOracleMiddlewareBalanceFuse`
-are deployed again with market ID 57 and this Comet; no fuse code changes. Scope:
+collateral WETH, wstETH, cbBTC, WBTC. `CompoundV3SupplyFuse`, `CompoundV3BorrowFuse` and
+`CompoundV3WithPriceOracleMiddlewareBalanceFuse` are deployed again with market ID 57 and this Comet, and
+`CompoundV3ClaimFuse` is deployed for the market's rewards contract; no fuse code changes. Scope:
 
-- USDC supply and withdraw only. Borrowing on market 57 is not verified and is out of scope.
-- No COMP rewards are configured for market 57.
+- USDC supply and withdraw, and borrow and repay of USDC against the listed collateral, with the same rules as
+  market ID 2: collateral substrates for the supply fuse and the balance fuse, the USDC substrate as the borrow
+  gate, and a balance fuse that nets the debt. Borrowing on market 57 is verified by a fork test (see _Tests_).
+- Rewards: ciUSDCv3 does **not** use the cUSDCv3 rewards contract. Its own `CometRewards` is
+  `0x561e8E1E7EB56f558922C198A3C228545093f32d` (its governor is the same 3-of-4 Safe as the Comet's; not the cUSDCv3 rewards contract `0x1B0e765F6224C21223AeA2af16c1C46E38885a40`), and the
+  claim fuse for market 57 is bound to it. At the time of writing (2026-11-04) `rewardConfig(ciUSDCv3)` on that
+  contract is empty (no reward token, rescale factor 0), so **no COMP or other rewards are configured for market
+  57 today** and a claim through the rewards claim manager reverts until Compound configures a reward token. The governor can configure rewards later without any change to
+  the fuse.
 
 ## Key Components
 
-| Contract | Purpose |
-|---|---|
-| `CompoundV3SupplyFuse` | supply / withdraw collateral and base token (`COMET.supply` / `COMET.withdraw`); `instantWithdraw` path |
-| `CompoundV3BorrowFuse` | `enter` = borrow the base token, `exit` = repay the base token (capped at outstanding debt) |
-| `CompoundV3ClaimFuse` (`contracts/rewards_fuses/compound/`) | claim COMP rewards |
-| `CompoundV3BalanceFuse` | **legacy** NAV fuse priced with Comet feeds — kept unchanged for existing non-borrowing vaults |
-| `CompoundV3WithPriceOracleMiddlewareBalanceFuse` | NAV: `Σ position × middleware price − borrowBalanceOf × middleware price(base)`, in USD (WAD) — **required for borrowing vaults** |
-| `ext/IComet` | subset of the Comet interface |
+| Contract                                                    | Purpose                                                                                                                           |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `CompoundV3SupplyFuse`                                      | supply / withdraw collateral and base token (`COMET.supply` / `COMET.withdraw`); `instantWithdraw` path                           |
+| `CompoundV3BorrowFuse`                                      | `enter` = borrow the base token, `exit` = repay the base token (capped at outstanding debt)                                       |
+| `CompoundV3ClaimFuse` (`contracts/rewards_fuses/compound/`) | claim COMP rewards                                                                                                                |
+| `CompoundV3BalanceFuse`                                     | **legacy** NAV fuse priced with Comet feeds — kept unchanged for existing non-borrowing vaults                                    |
+| `CompoundV3WithPriceOracleMiddlewareBalanceFuse`            | NAV: `Σ position × middleware price − borrowBalanceOf × middleware price(base)`, in USD (WAD) — **required for borrowing vaults** |
+| `ext/IComet`                                                | subset of the Comet interface                                                                                                     |
 
 All fuses are stateless (immutables only), run via `delegatecall` from `PlasmaVault.execute` and act for the
 vault itself — tokens are always supplied from and withdrawn / borrowed to the vault address.
@@ -66,13 +75,13 @@ No Compound-specific substrate encoding exists; the Comet is fixed by the fuse i
 
 Required substrates of market ID 2 for a borrowing vault (Ethereum):
 
-| Substrate | Address | Needed by |
-|---|---|---|
+| Substrate   | Address                                      | Needed by                                                                                                                       |
+| ----------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | USDC (base) | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | borrow fuse gate (`enter` and `exit`); supply fuse for base supply; balance fuse (adds base supply, which is 0 while borrowing) |
-| cbBTC | `0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf` | supply fuse (collateral in / out), balance fuse (valuation) |
-| WETH | `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2` | same |
-| wstETH | `0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0` | same |
-| WBTC | `0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599` | same |
+| cbBTC       | `0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf` | supply fuse (collateral in / out), balance fuse (valuation)                                                                     |
+| WETH        | `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2` | same                                                                                                                            |
+| wstETH      | `0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0` | same                                                                                                                            |
+| WBTC        | `0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599` | same                                                                                                                            |
 
 Permission model:
 
@@ -105,16 +114,23 @@ collateral-underlying vault USDC plus the other collaterals.
 
 ### Market ID 57 (ciUSDCv3)
 
-Only the base token is needed:
+A supply-only vault needs only the base token; a borrowing vault also grants the collateral it uses:
 
-| Substrate | Address | Needed by |
-|---|---|---|
-| USDC (base) | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | supply fuse (base supply / withdraw gate); balance fuse (valuation of the base supply) |
+| Substrate   | Address                                      | Needed by                                                                                                                     |
+| ----------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| USDC (base) | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | borrow fuse gate (`enter` and `exit`); supply fuse (base supply / withdraw gate); balance fuse (valuation of the base supply) |
+| WETH        | `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2` | supply fuse (collateral in / out), balance fuse (valuation)                                                                   |
+| wstETH      | `0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0` | same                                                                                                                          |
+| cbBTC       | `0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf` | same                                                                                                                          |
+| WBTC        | `0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599` | same                                                                                                                          |
+
+Grant only the collaterals the vault actually uses. The borrowed USDC and idle collateral are accounted for with
+the `ERC20_VAULT_BALANCE` market and the dependency `COMPOUND_V3_INSTITUTIONAL_USDC → ERC20_VAULT_BALANCE`, as
+for market ID 2.
 
 - The balance fuse is `CompoundV3WithPriceOracleMiddlewareBalanceFuse`. The vault's price oracle middleware prices
   USDC with the Chainlink USDC/USD feed `0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6`, the same feed Comet uses as
   its base feed. Any base debt is netted outside the substrate loop, whatever substrates are granted.
-- Collateral substrates (WETH, wstETH, cbBTC, WBTC) are not part of this configuration.
 - **Idle USDC.** `PlasmaVault.totalAssets` counts idle balance only of the vault underlying. In a vault whose
   underlying is not USDC, USDC withdrawn from ciUSDCv3 drops out of NAV unless USDC is granted as an
   `ERC20_VAULT_BALANCE` substrate (`Erc20BalanceFuse`) and the balance dependency
@@ -126,8 +142,14 @@ Only the base token is needed:
 ### Supply (`CompoundV3SupplyFuse`)
 
 ```solidity
-struct CompoundV3SupplyFuseEnterData { address asset; uint256 amount; }
-struct CompoundV3SupplyFuseExitData  { address asset; uint256 amount; }
+struct CompoundV3SupplyFuseEnterData {
+    address asset;
+    uint256 amount;
+}
+struct CompoundV3SupplyFuseExitData {
+    address asset;
+    uint256 amount;
+}
 ```
 
 - **Enter**: `COMET.supply(asset, amount)` — collateral for non-base assets, base supply for the base token.
@@ -135,7 +157,7 @@ struct CompoundV3SupplyFuseExitData  { address asset; uint256 amount; }
   `min(amount, collateralBalanceOf(vault, asset))` for collateral. Withdrawing collateral that would break
   collateralisation reverts `NotCollateralized()` in Comet.
 - **Instant withdraw** params: `[0] amount` (in vault-underlying units, set by the vault), `[1] asset`; Comet
-  failures are caught and reported with `CompoundV3SupplyFuseExitFailed`. See *Instant Withdrawal Configuration*.
+  failures are caught and reported with `CompoundV3SupplyFuseExitFailed`. See _Instant Withdrawal Configuration_.
 - ABI: `enter((address,uint256))`, `exit((address,uint256))`. Transient inputs `0 asset, 1 amount`;
   outputs `[asset, market, amount]`.
 
@@ -145,8 +167,12 @@ Compound V3 can only lend its base token, so the borrow fuse takes **no asset pa
 always `COMPOUND_BASE_TOKEN`:
 
 ```solidity
-struct CompoundV3BorrowFuseEnterData { uint256 amount; } // base token to borrow
-struct CompoundV3BorrowFuseExitData  { uint256 amount; } // base token to repay; >= debt => full repay
+struct CompoundV3BorrowFuseEnterData {
+    uint256 amount;
+} // base token to borrow
+struct CompoundV3BorrowFuseExitData {
+    uint256 amount;
+} // base token to repay; >= debt => full repay
 ```
 
 **Enter (borrow)**
@@ -247,9 +273,9 @@ It does net the debt, but it is unsuitable for borrowing vaults:
 2. **`BadAsset` brick.** It calls `COMET.getAssetInfoByAddress(asset)` for every non-base substrate; an asset
    not listed on the Comet reverts `BadAsset()` and blocks every balance refresh of the market. The new fuse
    only calls `collateralBalanceOf`, which returns 0 for unlisted assets.
-3. **Negative net value reverts** — kept in the new fuse as well (see *Risks*); flooring at 0 would hide debt.
+3. **Negative net value reverts** — kept in the new fuse as well (see _Risks_); flooring at 0 would hide debt.
 4. **Config sensitivity** — revoking a collateral substrate with open debt removes the collateral but keeps the
-   debt in both fuses (see *Risks*).
+   debt in both fuses (see _Risks_).
 
 Existing vaults that do not borrow can keep `CompoundV3BalanceFuse`; the legacy fuse is not modified.
 
@@ -283,7 +309,7 @@ A market has exactly one balance fuse.
   (about 84 %, about 3.38M USDC of cash at Ethereum block 26,340,464) a `COMET.withdraw` can fail. The fuse catches
   the failure and emits `CompoundV3SupplyFuseExitFailed`; the redemption then has to be served from other sources,
   so size expectations for instant withdrawal accordingly. The same happens while lenders' withdrawals are paused
-  on the Comet (`isLendersWithdrawPaused()`, see *Risks*).
+  on the Comet (`isLendersWithdrawPaused()`, see _Risks_).
 
 ## Price Oracle Setup
 
@@ -294,19 +320,19 @@ results also revert inside the middleware — in both cases every balance refres
 Sources on the shared Ethereum middleware proxy `0xB7018C15279E0f5990613cc00A91b6032066f2f7`, at the time of
 writing (Ethereum block 25,982,679):
 
-| Asset | Middleware source |
-|---|---|
-| USDC | `0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6` (Chainlink USDC/USD — same feed as Comet's base feed) |
-| WETH | `0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419` (Chainlink ETH/USD) |
-| wstETH | `0x4329e2178D41D058Cf2808c11436A9e83BC5D8b0` |
-| WBTC | `0x106f9537Dd66423E6674e85CA187B43055B59fe9` |
-| cbBTC | no explicit source → Chainlink Feed Registry fallback (`0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf`) |
+| Asset  | Middleware source                                                                                    |
+| ------ | ---------------------------------------------------------------------------------------------------- |
+| USDC   | `0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6` (Chainlink USDC/USD — same feed as Comet's base feed)   |
+| WETH   | `0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419` (Chainlink ETH/USD)                                     |
+| wstETH | `0x4329e2178D41D058Cf2808c11436A9e83BC5D8b0`                                                         |
+| WBTC   | `0x106f9537Dd66423E6674e85CA187B43055B59fe9`                                                         |
+| cbBTC  | no explicit source → Chainlink Feed Registry fallback (`0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf`) |
 
 Comet uses its own feeds for the borrowing limit and liquidation; they are not guaranteed to match the
 middleware (e.g. Comet's cbBTC feed differs from the one the Feed Registry resolves).
 
-For market 57 only USDC has to be priced, through the Chainlink USDC/USD feed `0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6`
-(the same feed Comet uses as its base feed).
+For market 57 USDC has to be priced through the Chainlink USDC/USD feed `0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6`
+(the same feed Comet uses as its base feed), plus every collateral the vault holds on that market.
 
 ## Risks
 
@@ -328,7 +354,7 @@ following are documented risks, not enforced invariants.
 - **Debt below `baseBorrowMin`.** A partial repay may leave debt below 100 USDC; further borrows must bring the
   total debt back to at least `baseBorrowMin`.
 - **Instant withdrawal config.** Configure `CompoundV3SupplyFuse` for instant withdrawal only when its asset
-  equals the vault underlying (see *Instant Withdrawal Configuration*); while the account has base debt a USDC
+  equals the vault underlying (see _Instant Withdrawal Configuration_); while the account has base debt a USDC
   entry no-ops.
 - **Substrate revocation with open debt.** Revoking a collateral substrate drops that collateral from NAV while
   the debt stays → NAV understated or a negative-net revert. Withdraw collateral / repay before revoking.
@@ -354,8 +380,9 @@ following are documented risks, not enforced invariants.
   `pauseBaseSupply(bool)`); `extendedPauseFlags()` returns them as a bitmap. Both setters are callable by the
   governor or by the pause guardian. The lender withdraw path and the base supply path check only these flags, not
   the legacy `isWithdrawPaused()` / `isSupplyPaused()`, which stay `false` in such a pause. Effects: while lenders'
-  withdrawals are paused, `exit` reverts and an instant withdraw emits `CompoundV3SupplyFuseExitFailed`, with
-  borrowing still open; while base supply is paused, `enter` reverts. Monitor the extended flags, not only the
+  withdrawals are paused, `exit` reverts and an instant withdraw emits `CompoundV3SupplyFuseExitFailed`, while
+  **borrowing stays open** (a lenders-withdraw pause does not stop `CompoundV3BorrowFuse.enter`, verified by a
+  fork test); while base supply is paused, supply `enter` reverts. Monitor the extended flags, not only the
   legacy ones.
 
 ## Mainnet Reference (Ethereum)
@@ -365,21 +392,21 @@ following are documented risks, not enforced invariants.
 cUSDCv3 `0xc3d688B66703497DAA19211EEdff47f25384cdc3`, base token USDC, `baseBorrowMin` = 100 USDC.
 
 | Collateral | borrowCF | liquidateCF | supplyCap |
-|---|---|---|---|
-| WBTC | 0.80 | 0.85 | 10,000 |
-| WETH | 0.825 | 0.88 | 500,000 |
-| wstETH | 0.82 | 0.86 | 75,000 |
-| cbBTC | 0.80 | 0.85 | 900 |
+| ---------- | -------- | ----------- | --------- |
+| WBTC       | 0.80     | 0.85        | 10,000    |
+| WETH       | 0.825    | 0.88        | 500,000   |
+| wstETH     | 0.82     | 0.86        | 75,000    |
+| cbBTC      | 0.80     | 0.85        | 900       |
 
-| Fuse | Address |
-|---|---|
-| `CompoundV3SupplyFuse` (market 2) | `0x46DfC76C2673462c1ceecFAf3061Ac354e371e98` |
-| `CompoundV3BorrowFuse` (market 2) | `0xbe3468E35D8EBA45418F9dDAc7145aD500fd0F7F` |
-| `CompoundV3WithPriceOracleMiddlewareBalanceFuse` (market 2) | `0xEdDB6d8CfA366eEFeB587FE493035d0837563914` |
-| `CompoundV3ClaimFuse` | `0xe4374aEc1F73edc2AD5c9c9E7091143B0Af4a378` |
+| Fuse                                                                        | Address                                      |
+| --------------------------------------------------------------------------- | -------------------------------------------- |
+| `CompoundV3SupplyFuse` (market 2)                                           | `0x46DfC76C2673462c1ceecFAf3061Ac354e371e98` |
+| `CompoundV3BorrowFuse` (market 2)                                           | `0xbe3468E35D8EBA45418F9dDAc7145aD500fd0F7F` |
+| `CompoundV3WithPriceOracleMiddlewareBalanceFuse` (market 2)                 | `0xEdDB6d8CfA366eEFeB587FE493035d0837563914` |
+| `CompoundV3ClaimFuse`                                                       | `0xe4374aEc1F73edc2AD5c9c9E7091143B0Af4a378` |
 | `CompoundV3SupplyFuse` (market 2, legacy, deprecated in the fuse whitelist) | `0x00A220F09C1CF5f549C98Fa37C837aed54aBA26c` |
-| `CompoundV3BalanceFuse` (market 2, legacy, priced by Comet) | `0x7070d0A706Bf79A1e6d12706b9a429b9D8099C8b` |
-| `CompoundV3ClaimFuse` (older claim fuse, still whitelisted) | `0x2B98080341D9469d8beAbf2db037dE8897c232cD` |
+| `CompoundV3BalanceFuse` (market 2, legacy, priced by Comet)                 | `0x7070d0A706Bf79A1e6d12706b9a429b9D8099C8b` |
+| `CompoundV3ClaimFuse` (older claim fuse, still whitelisted)                 | `0x2B98080341D9469d8beAbf2db037dE8897c232cD` |
 
 Fuse addresses as of 2026-11-03; the canonical list is the IPOR address registry ([ipor-abi](https://github.com/IPOR-Labs/ipor-abi)).
 
@@ -389,11 +416,19 @@ ciUSDCv3 `0x207158a267CBD2598BB3d611D8CBdEE2709F2F8C`, implementation `Instituti
 Fork tests for this market use Ethereum block 26,340,464.
 
 | Fuse | Address |
-|---|---|
-| `CompoundV3SupplyFuse` (market 57) | pending deployment (IL-9500); ipor-abi key `SupplyFuseCompoundV3InstitutionalUsdc` |
-| `CompoundV3WithPriceOracleMiddlewareBalanceFuse` (market 57) | pending deployment (IL-9500); ipor-abi key `BalanceFuseCompoundV3WithPriceOracleMiddlewareInstitutionalUsdc` |
+| ---- | ------- |
 
-Look the deployed addresses up in [ipor-abi](https://github.com/IPOR-Labs/ipor-abi) by the keys above.
+The fuses for market 57 are deployed on Ethereum. Look the addresses up in
+[ipor-abi](https://github.com/IPOR-Labs/ipor-abi) by these keys:
+
+| Contract                                                                | ipor-abi key                                                      |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| ciUSDCv3 Comet                                                          | `CompoundV3CometInstitutionalUsdc`                                |
+| `CompoundV3SupplyFuse` (market 57)                                      | `SupplyFuseCompoundV3InstitutionalUsdc`                           |
+| `CompoundV3WithPriceOracleMiddlewareBalanceFuse` (market 57)            | `BalanceFuseCompoundV3WithPriceOracleMiddlewareInstitutionalUsdc` |
+| `CompoundV3BorrowFuse` (market 57)                                      | `BorrowFuseCompoundV3InstitutionalUsdc`                           |
+| `CompoundV3ClaimFuse` (market 57, bound to the market's `CometRewards`) | `ClaimRewardsFuseCompoundV3InstitutionalUsdc`                     |
+| ciUSDCv3 `CometRewards`                                                 | `CompoundV3CometInstitutionalUsdcRewards`                         |
 
 ## Tests
 
@@ -407,3 +442,6 @@ no mocks:
   (cbBTC, WETH, wstETH, WBTC), balance fuse override, idle-USDC redemption
 - `test/integrationTest/compoundV3Ethereum/CompoundV3InstitutionalUsdcEthereum.t.sol` — market 57 (ciUSDCv3) USDC
   supply and withdraw on Ethereum fork block 26,340,464
+- `test/integrationTest/compoundV3Ethereum/CompoundV3InstitutionalUsdcBorrowEthereum.t.sol` — market 57 (ciUSDCv3)
+  borrow, repay and collateral withdraw with the NAV checked at each step, borrow above the collateral factor,
+  borrow without the USDC substrate, and borrowing while lenders' withdrawals are paused (same fork block)
