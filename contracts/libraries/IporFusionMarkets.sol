@@ -398,6 +398,15 @@ library IporFusionMarkets {
     /// @dev The vault account is its own HyperCore address; encode helpers live in HyperCoreSubstrateLib.
     uint256 public constant HYPERCORE = 55;
 
+    /// @dev Compound V3 Institutional USDC market (ciUSDCv3) on Ethereum, Comet 0x207158a267CBD2598BB3d611D8CBdEE2709F2F8C
+    ///      (CometWithExtendedAssetList), base token USDC; collateral WETH, wstETH, cbBTC, WBTC. A separate Comet from
+    ///      COMPOUND_V3_USDC (cUSDCv3), so the Compound V3 fuses are deployed again with this market ID.
+    /// @dev Substrates: asset addresses as bytes32 (PlasmaVaultConfigLib), as for COMPOUND_V3_USDC.
+    /// @dev Fuses: CompoundV3SupplyFuse and CompoundV3WithPriceOracleMiddlewareBalanceFuse. No COMP rewards are configured.
+    /// @dev Governance differs from cUSDCv3: the governor is a Safe and the ProxyAdmin is owned by a Safe, with no
+    ///      timelock; see contracts/fuses/compound_v3/README.md.
+    uint256 public constant COMPOUND_V3_INSTITUTIONAL_USDC = 57;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
