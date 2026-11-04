@@ -67,6 +67,37 @@ use instruction from https://pre-commit.com/
 - `pip install pre-commit`
 - `pre-commit install`
 
+
+## Fuse documentation
+
+Each fuse family ships its own guide covering markets, substrates, enter/exit
+behaviour and known limitations:
+
+- [CCIP crosschain command fuses](contracts/crosschain/ccip/README.md)
+- [Stargate crosschain transport](contracts/crosschain/stargate/README.md)
+- [Aave V4](contracts/fuses/aave_v4/README.md)
+- [Aerodrome](contracts/fuses/aerodrome/README.md)
+- [Agua](contracts/fuses/agua/README.md)
+- [Async action](contracts/fuses/async_action/README.md)
+- [Balancer](contracts/fuses/balancer/README.md)
+- [LitePSM (Ethereum)](contracts/fuses/chains/ethereum/litepsm/README.md)
+- [Compound V3](contracts/fuses/compound_v3/README.md)
+- [Crosschain framework](contracts/fuses/crosschain/README.md)
+- [Dolomite](contracts/fuses/dolomite/README.md)
+- [Ebisu](contracts/fuses/ebisu/README.md)
+- [Enso routing](contracts/fuses/enso/README.md)
+- [ERC4626 supply and balance](contracts/fuses/erc4626/README.md)
+- [Euler](contracts/fuses/euler/README.md)
+- [External state operations](contracts/fuses/external_state/README.md)
+- [HyperCore](contracts/fuses/hypercore/README.md)
+- [Liquity](contracts/fuses/liquity/README.md)
+- [Midas](contracts/fuses/midas/README.md)
+- [Napier](contracts/fuses/napier/README.md)
+- [Odos routing](contracts/fuses/odos/README.md)
+- [Silo V2](contracts/fuses/silo_v2/README.md)
+- [StakeDAO V2](contracts/fuses/stake_dao_v2/README.md)
+- [Term Finance](contracts/fuses/term_finance/README.md)
+
 ## Workflows
 
 This repository includes several GitHub Actions workflows located in `.github/workflows/`:
