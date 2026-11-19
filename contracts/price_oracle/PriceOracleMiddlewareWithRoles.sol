@@ -5,12 +5,14 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import {IPMarket} from "@pendle/core-v2/contracts/interfaces/IPMarket.sol";
+import {IStandardizedYield} from "@pendle/core-v2/contracts/interfaces/IStandardizedYield.sol";
 import {IPPrincipalToken} from "@pendle/core-v2/contracts/interfaces/IPPrincipalToken.sol";
 
 import {IporMath} from "../libraries/math/IporMath.sol";
 import {IporFusionAccessControl} from "./IporFusionAccessControl.sol";
 import {IPriceOracleMiddleware} from "./IPriceOracleMiddleware.sol";
 import {PriceOracleMiddlewareStorageLib} from "./PriceOracleMiddlewareStorageLib.sol";
+import {IPendleMarketFactory, IPendleMarketWithFactory} from "./ext/IPendleMarketFactory.sol";
 import {IPriceFeed} from "./price_feed/IPriceFeed.sol";
 import {PtPriceFeed} from "./price_feed/PtPriceFeed.sol";
 
@@ -30,12 +32,27 @@ import {PtPriceFeed} from "./price_feed/PtPriceFeed.sol";
 /// @dev - Grant role: grantRole(ROLE, address) - only DEFAULT_ADMIN_ROLE can call
 /// @dev - Revoke role: revokeRole(ROLE, address) - only DEFAULT_ADMIN_ROLE can call
 /// @dev - Check role: hasRole(ROLE, address) - returns true if address has the role
+/// @dev Custom price feeds are read with latestRoundData() and only price > 0 is validated: there is no freshness check
+/// @dev (updatedAt against a max age) and no round completeness check (answeredInRound against roundId).
+/// @dev This applies to custom and direct Chainlink-style feeds. Accepted risk: a stalled feed is used as returned.
+/// @dev ChainlinkGuardedPriceFeed (contracts/price_oracle/price_feed/ChainlinkGuardedPriceFeed.sol) can be used as the
+/// @dev source to add freshness and deviation checks only. It reverts when updatedAt == 0, when updatedAt is in the
+/// @dev future, or when the answer is older than MAX_STALE_PERIOD (at most 7 days), and it compares the answer with
+/// @dev the mean of the previous rounds (MAX_DEVIATION). Feeds are deployed through
+/// @dev ChainlinkGuardedPriceFeedFactory.
+/// @dev It does NOT check the L2 sequencer uptime feed and does NOT check answeredInRound against roundId: that
+/// @dev field is deprecated in OCR aggregators, so the check is skipped on purpose. Sequencer status and round
+/// @dev completeness are not validated anywhere in the price path.
 contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradeable {
     using SafeCast for int256;
 
     /// @notice Emitted when a new PT price feed is deployed
     /// @param ptPriceFeed Address of the newly deployed PT price feed
     event NewPtPriceFeedDeployedEvent(address indexed ptPriceFeed);
+
+    /// @notice Thrown when a Pendle market is not a valid market of a trusted Pendle market factory
+    /// @param market The rejected market address
+    error InvalidPendleMarket(address market);
 
     /// @dev Quote currency address representing USD (Chainlink standard)
     /// @notice This is the standard Chainlink USD address used for price feeds
@@ -141,7 +158,34 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
         }
     }
 
+    /// @notice Adds or removes trusted Pendle market factories
+    /// @param factories_ Pendle market factory addresses
+    /// @param allowed_ True to trust the factories, false to stop trusting them
+    /// @dev Only callable by addresses with the SET_ASSETS_PRICES_SOURCES role
+    /// @dev UPGRADE NOTE: the set is empty after an upgrade and an empty set rejects every market, so
+    /// @dev createAndAddPtTokenPriceFeed stays unusable until the factories of the chain are registered
+    /// @dev (register them in the same Safe batch as the upgrade). Existing price sources are not affected.
+    /// @custom:access SET_ASSETS_PRICES_SOURCES
+    function setPendleMarketFactories(
+        address[] calldata factories_,
+        bool allowed_
+    ) external onlyRole(SET_ASSETS_PRICES_SOURCES) {
+        if (factories_.length == 0) {
+            revert IPriceOracleMiddleware.EmptyArrayNotSupported();
+        }
+        for (uint256 i; i < factories_.length; ++i) {
+            PriceOracleMiddlewareStorageLib.setPendleMarketFactory(factories_[i], allowed_);
+        }
+    }
+
+    /// @notice Returns the trusted Pendle market factories
+    function getPendleMarketFactories() external view returns (address[] memory) {
+        return PriceOracleMiddlewareStorageLib.getPendleMarketFactories();
+    }
+
     /// @notice Adds a new Pendle Principal Token (PT) to the price oracle system
+    /// @dev The market must be a valid market of a trusted Pendle market factory (see setPendleMarketFactories)
+    /// @dev and its readTokens() must be consistent (PT.SY() == SY); otherwise reverts with InvalidPendleMarket
     /// @dev Creates and configures a new PtPriceFeed contract for the PT token
     /// @dev Validates the initial price against expected price with 1% tolerance
     /// @dev Only callable by addresses with the ADD_PT_TOKEN_PRICE role
@@ -176,6 +220,8 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
             revert IPriceOracleMiddleware.InvalidExpectedPrice();
         }
 
+        _validatePendleMarket(pendleMarket_);
+
         ptPriceFeed = new PtPriceFeed(pendleOracle_, pendleMarket_, twapWindow_, address(this), usePendleOracleMethod_);
 
         (, int256 price, , , ) = ptPriceFeed.latestRoundData();
@@ -203,6 +249,27 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
         emit NewPtPriceFeedDeployedEvent(address(ptPriceFeed));
     }
 
+    /// @dev Reverts with InvalidPendleMarket unless the market was deployed by a trusted factory and its PT belongs to its SY
+    function _validatePendleMarket(address market_) private view {
+        // low-level call: a target without code (or without factory()) must map to InvalidPendleMarket, not a bare revert
+        (bool ok, bytes memory data) = market_.staticcall(abi.encodeCall(IPendleMarketWithFactory.factory, ()));
+        if (!ok || data.length != 32) {
+            revert InvalidPendleMarket(market_);
+        }
+        address factory = abi.decode(data, (address));
+        if (!PriceOracleMiddlewareStorageLib.isPendleMarketFactory(factory)) {
+            revert InvalidPendleMarket(market_);
+        }
+        (ok, data) = factory.staticcall(abi.encodeCall(IPendleMarketFactory.isValidMarket, (market_)));
+        if (!ok || data.length != 32 || !abi.decode(data, (bool))) {
+            revert InvalidPendleMarket(market_);
+        }
+        (IStandardizedYield sy, IPPrincipalToken pt, ) = IPMarket(market_).readTokens();
+        if (pt.SY() != address(sy)) {
+            revert InvalidPendleMarket(market_);
+        }
+    }
+
     /// @notice Internal function to get asset price from either custom feed or Chainlink
     /// @param asset_ The address of the asset to price
     /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
@@ -216,6 +283,12 @@ contract PriceOracleMiddlewareWithRoles is IporFusionAccessControl, UUPSUpgradea
     /// @dev - no custom price feed is set and CHAINLINK_FEED_REGISTRY is address(0)
     /// @dev - asset is not supported in Chainlink Registry when using it as fallback
     /// @dev - Chainlink Registry call fails
+    /// @dev Custom feed branch: only price > 0 is validated; updatedAt and answeredInRound are not checked
+    /// @dev (no freshness or round completeness validation). ChainlinkGuardedPriceFeed
+    /// @dev (contracts/price_oracle/price_feed/ChainlinkGuardedPriceFeed.sol) as the source adds freshness and
+    /// @dev deviation checks only; it checks neither the L2 sequencer nor answeredInRound (see the contract NatSpec).
+    /// @dev The Chainlink Feed Registry branch ignores updatedAt and answeredInRound in the same way.
+    /// @dev Accepted risk, no logic change.
     function _getAssetPrice(address asset_) private view returns (uint256 assetPrice, uint256 decimals) {
         if (asset_ == address(0)) {
             revert IPriceOracleMiddleware.UnsupportedAsset();

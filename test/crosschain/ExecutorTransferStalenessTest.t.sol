@@ -20,8 +20,11 @@ import {MockERC20} from "../test_helpers/MockERC20.sol";
 ///         transfer gate is the binding constraint (with a fresh approved settled bucket), letting the tests
 ///         isolate the record-based gate from the settled-freshness gate.
 contract ExecutorTransferStalenessTest is CrosschainTestBase {
-    /// @dev Shorter than STALENESS_MAX (1h) so the transfer gate binds while settled is still fresh.
-    uint256 internal constant SHORT_TRANSFER = 30 minutes;
+    /// @dev IL-9663: the transfer window cannot go below `MIN_TRANSFER_STALENESS_WINDOW` (1h), so this is the
+    ///      smallest accepted value. The settled-observation window is widened to `SETTLED_WINDOW` so that the
+    ///      transfer window stays the shorter one and its gate binds while the settled bucket is still fresh.
+    uint256 internal constant SHORT_TRANSFER = 1 hours;
+    uint256 internal constant SETTLED_WINDOW = 2 hours;
 
     function setUp() public {
         // Mirror `_baseSetUp` but with a short transfer-staleness window.
@@ -36,6 +39,7 @@ contract ExecutorTransferStalenessTest is CrosschainTestBase {
 
         ExecutorInitParams memory p = _params();
         p.transferStalenessMax = SHORT_TRANSFER;
+        p.stalenessMax = SETTLED_WINDOW;
         executor = _deployExecutor(address(factory), p);
         vm.deal(address(executor), 100 ether);
     }

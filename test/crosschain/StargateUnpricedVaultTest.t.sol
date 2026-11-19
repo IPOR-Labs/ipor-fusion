@@ -14,7 +14,8 @@ import {
     Command,
     UpdateVaults,
     OutboundTransfer,
-    ReturnAssetsRequest
+    ReturnAssetsRequest,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
 import {RescueModule} from "../../contracts/crosschain/lib/RescueModule.sol";
@@ -93,7 +94,14 @@ contract StargateUnpricedVaultTest is Test {
         vaults[1] = address(vaultB);
         _deliver(
             CrosschainMessages.encodeUpdateVaults(
-                UpdateVaults({commandId: keccak256("uv"), sequence: 0, newConfigEpoch: 1, minExecutionGas: DEFAULT_COMMAND_BUDGET, vaults: vaults})
+                UpdateVaults({
+                    commandId: keccak256("uv"),
+                    sequence: 0,
+                    newConfigEpoch: 1,
+                    minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                    vaults: vaults,
+                    floors: new SweepFloor[](0)
+                })
             )
         );
         _compose(keccak256("t1"), 100e6);

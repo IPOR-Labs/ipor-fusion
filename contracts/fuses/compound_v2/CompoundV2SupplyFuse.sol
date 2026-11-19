@@ -171,6 +171,16 @@ contract CompoundV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 balance = CErc20(cToken).balanceOfUnderlying(address(this));
         uint256 amountToWithdraw = data_.amount > balance ? balance : data_.amount;
 
+        /// @dev Instant withdraw path only: Compound V2 cannot redeem more than the cToken cash, so cap the request
+        ///      at the cash. A partly liquid market then pays what it has and the next instant withdraw fuse pays the
+        ///      rest. The ALPHA exit stays uncapped. The read is outside the try block (fail closed).
+        if (catchExceptions_ && amountToWithdraw > 0) {
+            uint256 cash = CErc20(cToken).getCash();
+            if (cash < amountToWithdraw) {
+                amountToWithdraw = cash;
+            }
+        }
+
         if (amountToWithdraw == 0) {
             return (data_.asset, cToken, 0);
         }

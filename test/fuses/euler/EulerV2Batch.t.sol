@@ -22,6 +22,7 @@ import {EmptyFuse} from "./EmptyFuse.sol";
 import {ZeroBalanceFuse} from "../../../contracts/fuses/ZeroBalanceFuse.sol";
 import {CallbackData} from "../../../contracts/libraries/CallbackHandlerLib.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract EulerV2Batch is Test {
     address public constant EULER_V2_EVC = 0x0C9a3dd6b8F28529d72d7f9cE918D493519EE383;
@@ -84,7 +85,7 @@ contract EulerV2Batch is Test {
         );
         vm.stopPrank();
 
-        CallbackHandlerEuler callbackHandler = new CallbackHandlerEuler();
+        CallbackHandlerEuler callbackHandler = new CallbackHandlerEuler(EULER_V2_EVC);
         vm.startPrank(FUSE_MANAGER);
         PlasmaVaultGovernance(plasmaVault).updateCallbackHandler(
             address(callbackHandler),
@@ -95,8 +96,8 @@ contract EulerV2Batch is Test {
     }
 
     function testShouldPassExampleFromEulerDocs() public {
-        // TODO: Implement test with proper batch items
         EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](5);
+        uint256 vaultUsdcBefore = ERC20(USDC).balanceOf(plasmaVault);
 
         address[] memory assetsForApprovals = new address[](1);
         assetsForApprovals[0] = USDC;
@@ -144,7 +145,6 @@ contract EulerV2Batch is Test {
             abi.encodeWithSelector(IBorrowing.repay.selector, 1_000_000e6, plasmaVault)
         );
 
-        //todo add more batch items
         batchItems[4] = EulerV2BatchItem(
             EULER_VAULT,
             bytes1(0x00),
@@ -155,6 +155,46 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
+        PlasmaVault(plasmaVault).execute(enterCalls);
+        vm.stopPrank();
+
+        // The flash-borrowed amount was repaid in full, the controller was released and no approval is left behind
+        assertEq(IBorrowing(EULER_VAULT).debtOf(plasmaVault), 0, "debt should be fully repaid");
+        assertEq(ERC20(USDC).balanceOf(plasmaVault), vaultUsdcBefore, "USDC balance of the vault should be unchanged");
+        assertEq(
+            ERC20(USDC).allowance(plasmaVault, EULER_VAULT),
+            0,
+            "allowance of the Euler vault should be reset to zero"
+        );
+        assertFalse(
+            IEVC(EULER_V2_EVC).isControllerEnabled(plasmaVault, EULER_VAULT),
+            "controller should be disabled after the batch"
+        );
+    }
+
+    /// @dev The substrate grants only sub-account 0x00, so `disableController` on sub-account 0x01 has no entry
+    function testShouldRevertWithDisableControllerWithoutSubstrateEntry() public {
+        EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
+        batchItems[0] = EulerV2BatchItem(
+            EULER_VAULT,
+            bytes1(0x01),
+            abi.encodeWithSelector(IVault.disableController.selector)
+        );
+
+        address[] memory assetsForApprovals = new address[](0);
+        address[] memory eulerVaultsForApprovals = new address[](0);
+
+        EulerV2BatchFuseData memory batchData = EulerV2BatchFuseData(
+            batchItems,
+            assetsForApprovals,
+            eulerVaultsForApprovals
+        );
+
+        FuseAction[] memory enterCalls = new FuseAction[](1);
+        enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
+
+        vm.startPrank(ALPHA);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseInvalidVaultPermissions.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -180,7 +220,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.ZeroAddress.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseZeroAddress.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -201,7 +241,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.EmptyBatchItems.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseEmptyBatchItems.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -230,7 +270,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.ArrayLengthMismatch.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseArrayLengthMismatch.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -256,7 +296,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.UnsupportedOperation.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseUnsupportedOperation.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -264,9 +304,9 @@ contract EulerV2Batch is Test {
     function testShouldRevertWithInvalidPlasmaVaultCallback() public {
         EulerV2BatchItem[] memory batchItems = new EulerV2BatchItem[](1);
         batchItems[0] = EulerV2BatchItem(
-            address(fuse), // This should be plasmaVault for callback
+            plasmaVault, // The callback target is the Plasma Vault, so the callback validation runs
             bytes1(0x00),
-            abi.encodeWithSelector(bytes4(0x12345678), "invalid data") // Invalid callback selector
+            abi.encodeWithSelector(bytes4(0x12345678), "invalid data") // Not the onEulerFlashLoan selector
         );
 
         address[] memory assetsForApprovals = new address[](0);
@@ -282,7 +322,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.UnsupportedOperation.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseUnsupportedOperation.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -308,7 +348,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.UnsupportedOperation.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseUnsupportedOperation.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -334,7 +374,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.EulerVaultInvalidPermissions.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseInvalidVaultPermissions.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -360,7 +400,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.EulerVaultInvalidPermissions.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseInvalidVaultPermissions.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -386,7 +426,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.EulerVaultInvalidPermissions.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseInvalidVaultPermissions.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -412,7 +452,7 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.EulerVaultInvalidPermissions.selector);
+        vm.expectRevert(EulerV2BatchFuse.EulerV2BatchFuseInvalidVaultPermissions.selector);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -438,7 +478,13 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.EVCInvalidCollateral.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2BatchFuse.EulerV2BatchFuseInvalidController.selector,
+                address(0x1234),
+                EULER_VAULT
+            )
+        );
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }
@@ -464,7 +510,13 @@ contract EulerV2Batch is Test {
         enterCalls[0] = FuseAction(address(fuse), abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData));
 
         vm.startPrank(ALPHA);
-        vm.expectRevert(EulerV2BatchFuse.EVCInvalidCollateral.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2BatchFuse.EulerV2BatchFuseInvalidController.selector,
+                plasmaVault,
+                address(0x1234)
+            )
+        );
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
     }

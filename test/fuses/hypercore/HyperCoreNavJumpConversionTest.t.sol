@@ -73,8 +73,10 @@ contract HyperCoreNavJumpConversionTest is Test {
         _oracle.setAssetPriceWithDecimals(_usdcEvmAsset, 1e8, 8); // Core USDC = 1 USD
 
         _harness.setOracle(address(_oracle));
-        bytes32[] memory substrates = new bytes32[](1);
+        bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, _usdcEvmAsset);
+        // IL-9597: the floor must be granted explicitly; 0 = purely relative breaker.
+        substrates[1] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.NavJumpFloorUsd6, 0);
         _harness.grant(substrates);
         _core.setCoreUserExists(address(_harness), true);
         _harness.setStored(STORED); // 500e18 underlying * 2 USD = 1000e18 USD WAD

@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {ICrosschainFactory, DeploymentRequest} from "../../interfaces/ICrosschainFactory.sol";
 import {DeploymentStatus, CrosschainConstants} from "../../lib/CrosschainConstants.sol";
 import {CrosschainErrors} from "../../lib/CrosschainErrors.sol";
+import {IStargateExecutorImmutables} from "../../interfaces/IStargateExecutorImmutables.sol";
 import {StargateLzSendLib} from "./StargateLzSendLib.sol";
 
 struct DeploymentRequestRecord {
@@ -15,14 +16,16 @@ struct DeploymentRequestRecord {
 /// @notice Linked dispatcher-deployment bookkeeping and `registerChain` validation for `StargateCrosschainExecutor`.
 library StargateExecutorDeploymentLib {
     /// @notice Lowest executor `lzReceive` gas accepted for the command lane (IL-8625): the smallest lane that still
-    ///         yields a `COMMAND_EXECUTION_MIN_GAS` budget for the largest payload, a 32-vault UPDATE_VAULTS (39 stored
-    ///         words): `laneGasFor(1,000,000, 39 words)` = about 2.47M with `COMMAND_PRE_CALL_BASE` 500,000, 24,000 per
-    ///         word and the endpoint's lane / 64 hop loss, rounded up (pinned by the constants test). The executor stamps
+    ///         yields a `COMMAND_EXECUTION_MIN_GAS` budget for the largest payload, a 32-vault UPDATE_VAULTS (41 stored
+    ///         words, including the two words of the empty sweep-floor list; at 2.6M a 32-vault update still fits one floor
+    ///         entry): `laneGasFor(1,000,000, 41 words)` = about 2.52M with
+    ///         `COMMAND_PRE_CALL_BASE` 500,000, 24,000 per word and the endpoint's lane / 64 hop loss, rounded up (the
+    ///         minimum is set to 2,600,000 for headroom; pinned by the constants test). The executor stamps
     ///         every command with `CrosschainMessages.commandGasBudget(lane gas, words, true)` and refuses a budget below the
     ///         floor, so a smaller lane is refused at registration (2,000,000 is no longer registrable). This is only the
     ///         protocol minimum: the lane must be sized to the heaviest allowed action (see the README), or topped up per
     ///         command.
-    uint128 internal constant COMMAND_LANE_MIN_RECEIVE_GAS = 2_500_000;
+    uint128 internal constant COMMAND_LANE_MIN_RECEIVE_GAS = 2_600_000;
 
     /// @notice Highest executor `lzReceive` gas accepted for the command lane, well above the 4,000,000
     ///         reference option recommended by IL-8617 and far below any unpayable amount.
@@ -84,6 +87,40 @@ library StargateExecutorDeploymentLib {
         record.vaults = vaults_;
         pendingRequestByChain_[params_.dstChainId] = requestId;
         emit DispatcherRequested(params_.dstChainId, requestId);
+    }
+
+    /// @dev Same as `request`, but reads the asset id, admin, rescue guardian, rescue delay and local chain id from the
+    ///      calling executor (`address(this)` under delegatecall) instead of taking them as arguments, so the host does
+    ///      not have to materialise the `RequestParams` struct from its immutables (EIP-170 size round, IL-9720). The
+    ///      values, the immutable-params hash, the factory call order and the emitted event are identical to `request`.
+    /// @param pendingRequestByChain_ Pending request id per destination chain.
+    /// @param requests_ Deployment request records by id.
+    /// @param factory_ The crosschain factory that deploys the dispatcher.
+    /// @param dstChainId_ The destination chain of the dispatcher.
+    /// @param vaults_ The vaults to activate once the dispatcher is deployed.
+    /// @return requestId The factory-assigned request id.
+    function requestFromSelf(
+        mapping(uint256 chainId => uint256 requestId) storage pendingRequestByChain_,
+        mapping(uint256 requestId => DeploymentRequestRecord record) storage requests_,
+        ICrosschainFactory factory_,
+        uint256 dstChainId_,
+        address[] calldata vaults_
+    ) public returns (uint256 requestId) {
+        IStargateExecutorImmutables self_ = IStargateExecutorImmutables(address(this));
+        requestId = request(
+            pendingRequestByChain_,
+            requests_,
+            factory_,
+            RequestParams({
+                assetId: self_.ASSET_ID(),
+                admin: self_.ADMIN(),
+                guardian: self_.RESCUE_GUARDIAN(),
+                rescueDelay: self_.RESCUE_DELAY(),
+                srcChainId: self_.LOCAL_CHAIN_ID(),
+                dstChainId: dstChainId_
+            }),
+            vaults_
+        );
     }
 
     /// @dev Records the dispatcher deployed for `requestId_` as ready (`DEPLOYED`) and returns the vaults saved at

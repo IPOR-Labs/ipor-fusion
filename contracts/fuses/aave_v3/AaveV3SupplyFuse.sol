@@ -67,6 +67,9 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param amount The amount of the asset withdrawn
     event AaveV3SupplyFuseExitFailed(address version, address asset, uint256 amount);
 
+    /// @dev Bit of the reserve configuration that marks virtual accounting (Aave >= 3.1)
+    uint256 private constant VIRTUAL_ACC_ACTIVE_BIT = 252;
+
     /// @notice Thrown when the asset is not supported by the fuse
     /// @param action The action being performed (enter/exit)
     /// @param asset The address of the asset
@@ -211,11 +214,33 @@ contract AaveV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         uint256 finalAmount = IporMath.min(ERC20(aTokenAddress).balanceOf(address(this)), data_.amount);
 
+        /// @dev Instant withdraw path only: Aave pays a withdrawal in full or not at all, so cap the request at the
+        ///      reserve's free liquidity. A partly liquid reserve then pays what it has and the next instant withdraw
+        ///      fuse pays the rest. The ALPHA exit stays uncapped (above the liquidity it reverts).
+        if (catchExceptions_ && finalAmount > 0) {
+            finalAmount = IporMath.min(finalAmount, _availableLiquidity(data_.asset, aTokenAddress));
+        }
+
         if (finalAmount == 0) {
             return (data_.asset, 0);
         }
 
         return _performWithdraw(data_.asset, finalAmount, catchExceptions_);
+    }
+
+    /// @notice Free liquidity of the reserve: the underlying held by the aToken and, where virtual accounting is
+    ///         active (Aave >= 3.1), the reserve's virtual balance, whichever is lower
+    /// @dev Pools without virtual accounting (Aave 3.0 and its forks) keep bit 252 of the configuration at 0, so the
+    ///      virtual balance getter, which they do not have, is never called
+    /// @param asset_ The address of the underlying asset of the reserve
+    /// @param aToken_ The address of the aToken of the reserve
+    /// @return liquidity The amount of the underlying asset the pool can pay out now
+    function _availableLiquidity(address asset_, address aToken_) private view returns (uint256 liquidity) {
+        liquidity = ERC20(asset_).balanceOf(aToken_);
+        IPool aavePool = IPool(IPoolAddressesProvider(AAVE_V3_POOL_ADDRESSES_PROVIDER).getPool());
+        if (((aavePool.getConfiguration(asset_) >> VIRTUAL_ACC_ACTIVE_BIT) & 1) == 1) {
+            liquidity = IporMath.min(liquidity, aavePool.getVirtualUnderlyingBalance(asset_));
+        }
     }
 
     /// @notice Performs the actual withdrawal from Aave V3 protocol

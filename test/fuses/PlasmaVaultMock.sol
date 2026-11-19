@@ -178,7 +178,7 @@ contract PlasmaVaultMock {
     }
 
     function exitErc4626Supply(Erc4626SupplyFuseExitData memory data) external {
-        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256,uint256))", data));
+        address(fuse).functionDelegateCall(abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", data));
     }
 
     function exitMorphoSupply(MorphoSupplyFuseExitData memory data) external {

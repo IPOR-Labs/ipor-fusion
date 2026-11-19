@@ -118,6 +118,32 @@ library FusionFactoryLib {
         return fusionAddresses;
     }
 
+    /// @notice Same as `clone`, but reverts unless the DAO fee package at `daoFeePackageIndex_` equals `expectedFeePackage_`
+    /// @dev IL-9646: pins the fee package the caller read, so replacing the packages array before the transaction cannot
+    /// change the immutable fees or the fee recipient of the new vault
+    function cloneWithExpectedFees(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_,
+        bool withAdmin_,
+        uint256 daoFeePackageIndex_,
+        FusionFactoryStorageLib.FeePackage memory expectedFeePackage_
+    ) public returns (FusionFactoryLogicLib.FusionInstance memory) {
+        FusionFactoryLogicLib._validateExpectedDaoFeePackage(daoFeePackageIndex_, expectedFeePackage_);
+        return
+            clone(
+                assetName_,
+                assetSymbol_,
+                underlyingToken_,
+                redemptionDelayInSeconds_,
+                owner_,
+                withAdmin_,
+                daoFeePackageIndex_
+            );
+    }
+
     function _initializeCommonFields(
         FusionFactoryLogicLib.FusionInstance memory fusionAddresses,
         string memory assetName_,

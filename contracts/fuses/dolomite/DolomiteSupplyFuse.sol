@@ -186,7 +186,7 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     /// @notice Performs instant withdrawal with exception handling
-    /// @param params_ Parameters: [0]=amount, [1]=asset, [2]=subAccountId (optional), [3]=isolationModeMarketId (optional, must be 0; non-zero reverts), [4]=minAmountOut (optional)
+    /// @param params_ Parameters: [0]=amount, [1]=asset, [2]=subAccountId (optional), [3]=isolationModeMarketId (optional, must be 0; non-zero reverts), [4]=minAmountOut (optional; on this path an entry that cannot meet it is skipped, not reverted)
     function instantWithdraw(bytes32[] calldata params_) external override {
         uint256 amount = uint256(params_[0]);
         address asset = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
@@ -202,7 +202,7 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         bool catchExceptions_
     ) internal returns (address asset, uint256 amount) {
         if (data_.amount == 0) {
-            if (data_.minAmountOut > 0) {
+            if (data_.minAmountOut > 0 && !catchExceptions_) {
                 revert DolomiteSupplyFuseWithdrawAmountTooSmall(0, data_.minAmountOut);
             }
             return (data_.asset, 0);
@@ -229,7 +229,7 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         );
 
         if (!balance.sign || balance.value == 0) {
-            if (data_.minAmountOut > 0) {
+            if (data_.minAmountOut > 0 && !catchExceptions_) {
                 revert DolomiteSupplyFuseWithdrawAmountTooSmall(0, data_.minAmountOut);
             }
             return (data_.asset, 0);
@@ -237,8 +237,19 @@ contract DolomiteSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         uint256 finalAmount = IporMath.min(balance.value, data_.amount);
 
+        /// @dev Instant withdraw path only: DolomiteMargin pays out only the tokens it holds for the market, so cap
+        ///      the request at that free liquidity (read outside the try, fail closed). When the capped amount cannot
+        ///      meet word 4 (minAmountOut) the entry is skipped without a call, an event or a revert, so the router
+        ///      can serve the rest from the next entry. The ALPHA exit stays uncapped and keeps its reverts.
+        if (catchExceptions_ && finalAmount > 0) {
+            finalAmount = IporMath.min(finalAmount, ERC20(data_.asset).balanceOf(DOLOMITE_MARGIN));
+            if (finalAmount < data_.minAmountOut) {
+                return (data_.asset, 0);
+            }
+        }
+
         if (finalAmount == 0) {
-            if (data_.minAmountOut > 0) {
+            if (data_.minAmountOut > 0 && !catchExceptions_) {
                 revert DolomiteSupplyFuseWithdrawAmountTooSmall(0, data_.minAmountOut);
             }
             return (data_.asset, 0);

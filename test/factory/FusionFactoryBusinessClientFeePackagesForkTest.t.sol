@@ -14,6 +14,7 @@ import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.
 import {PlasmaVault} from "../../contracts/vaults/PlasmaVault.sol";
 import {PlasmaVaultBase} from "../../contracts/vaults/PlasmaVaultBase.sol";
 import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
+import {IporFusionAccessManager} from "../../contracts/managers/access/IporFusionAccessManager.sol";
 
 /// @title Fork Integration Tests for Business Client Fee Packages
 /// @notice Tests business client fee packages on Ethereum mainnet fork
@@ -80,12 +81,15 @@ contract FusionFactoryBusinessClientFeePackagesForkTest is Test {
         FusionFactoryStorageLib.BaseAddresses memory existingBases = existingFactory.getBaseAddresses();
         uint256 version = existingFactory.getFusionFactoryVersion();
         address newPlasmaVaultCoreBase = address(new PlasmaVault());
+        // IL-9634 (D-060): the on-chain access manager base predates setRedemptionDelayExemption, which the factory now
+        // calls on every clone, so the fork tests deploy a fresh base
+        address newAccessManagerBase = address(new IporFusionAccessManager(owner, 0));
 
         vm.prank(owner);
         fusionFactory.updateBaseAddresses(
             version,
             newPlasmaVaultCoreBase,
-            existingBases.accessManagerBase,
+            newAccessManagerBase,
             existingBases.priceManagerBase,
             existingBases.withdrawManagerBase,
             existingBases.rewardsManagerBase,

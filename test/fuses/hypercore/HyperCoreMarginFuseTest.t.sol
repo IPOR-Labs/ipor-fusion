@@ -16,6 +16,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
@@ -178,7 +179,7 @@ contract HyperCoreMarginFuseTest is Test {
         substrates[0] = HyperCoreSubstrateLib.encodeConfig(
             HyperCoreSubstrateLib.ConfigKey.MaxUsdClassTransferUsd6, uint240(100_000e6)
         );
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(HyperCoreMarginFuse.HyperCoreMarginFuseUsdcNotGranted.selector);
         _execute(1e6, true);
@@ -191,7 +192,7 @@ contract HyperCoreMarginFuseTest is Test {
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(
             HyperCoreSubstrateLib.ConfigKey.MaxUsdClassTransferUsd6, uint240(100_000e6)
         );
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(HyperCoreMarginFuse.HyperCoreMarginFuseUsdcTokenMismatch.selector);
         _execute(1e6, true);
@@ -228,7 +229,7 @@ contract HyperCoreMarginFuseTest is Test {
         vm.prank(TestAddresses.FUSE_MANAGER);
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(HyperCoreLib.USDC_TOKEN, address(usdc));
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(HyperCoreMarginFuse.HyperCoreMarginFuseCapUnset.selector);
         _execute(1e6, true);
@@ -283,7 +284,7 @@ contract HyperCoreMarginFuseTest is Test {
             HyperCoreSubstrateLib.ConfigKey.MaxUsdClassTransferUsd6, uint240(100_000e6)
         );
         substrates[2] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, 0);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         core.setWithdrawable(address(vault), 500e6);
 
         vm.expectRevert(
@@ -458,7 +459,7 @@ contract HyperCoreMarginFuseTest is Test {
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(
             HyperCoreSubstrateLib.ConfigKey.MaxUsdClassTransferUsd6, uint240(capUsd6_)
         );
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _execute(uint64 usd6_, bool toPerp_) private {

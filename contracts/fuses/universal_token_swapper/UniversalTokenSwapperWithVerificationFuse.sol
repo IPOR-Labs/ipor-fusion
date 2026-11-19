@@ -59,6 +59,12 @@ struct SwapResult {
 
 /// @title This contract is designed to execute every swap operation and check the slippage on any DEX.
 /// @notice Allows executing swaps with verification of slippage and allowed substrates
+/// @dev Share-price views during a swap (IL-9743): when a granted target is a router or an aggregator, the pools, hooks and
+///      tokens on the path come with the calldata of each call, and a path that nobody reviewed runs third-party code in the
+///      middle of the vault's `execute`. The reentrancy guard then blocks the vault's `deposit`, `mint`, `withdraw`, `redeem`
+///      and `execute`, but not its share-price views, which can stay too low or too high until the final balance refresh of
+///      the batch. See
+///      "Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)" in contracts/vaults/README.md.
 /// @author IPOR Labs
 contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
     using SafeERC20 for ERC20;
@@ -96,18 +102,20 @@ contract UniversalTokenSwapperWithVerificationFuse is IFuseCommon {
     /// @param executor_ The address of the swap executor; must be a SwapExecutorEth from this build, whose execute()
     ///        returns (tokenInReturned, tokenOutReturned). An older shared executor makes every enter revert on
     ///        decoding the return data.
-    /// @param slippageReverse_ The reverse slippage tolerance
-    constructor(uint256 marketId_, address executor_, uint256 slippageReverse_) {
+    /// @param slippageWad_ The slippage tolerance in WAD (1e16 = 1%); stored as
+    ///        SLIPPAGE_REVERSE = 1e18 - slippageWad_. 1e18 disables the USD slippage check;
+    ///        values above 1e18 revert.
+    constructor(uint256 marketId_, address executor_, uint256 slippageWad_) {
         if (executor_ == address(0)) {
             revert UniversalTokenSwapperFuseInvalidExecutorAddress();
         }
         VERSION = address(this);
         MARKET_ID = marketId_;
         EXECUTOR = payable(executor_);
-        if (slippageReverse_ > 1e18) {
+        if (slippageWad_ > 1e18) {
             revert UniversalTokenSwapperFuseSlippageFail();
         }
-        SLIPPAGE_REVERSE = 1e18 - slippageReverse_;
+        SLIPPAGE_REVERSE = 1e18 - slippageWad_;
     }
 
     /// @notice Enters the swap operation

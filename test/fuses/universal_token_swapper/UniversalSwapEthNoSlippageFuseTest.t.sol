@@ -902,7 +902,8 @@ contract UniversalSwapEthNoSlippageFuseTest is Test {
         marketConfigs_ = new MarketSubstratesConfig[](1);
 
         // NoSlippage fuse uses isSubstrateAsAssetGranted which expects plain address-encoded substrates
-        bytes32[] memory universalSwapSubstrates = new bytes32[](16);
+        // IL-9642: grants reject duplicates, so the fixture keeps a single bytes32(0) entry.
+        bytes32[] memory universalSwapSubstrates = new bytes32[](14);
         universalSwapSubstrates[0] = bytes32(uint256(uint160(USDC)));
         universalSwapSubstrates[1] = bytes32(uint256(uint160(USDT)));
         universalSwapSubstrates[2] = bytes32(uint256(uint160(DAI)));
@@ -917,8 +918,6 @@ contract UniversalSwapEthNoSlippageFuseTest is Test {
         universalSwapSubstrates[11] = bytes32(uint256(uint160(FRAX_ETHER_MINTER_V2_ADDRESS)));
         universalSwapSubstrates[12] = bytes32(uint256(uint160(ROCKET_DEPOSIT_POOL_ADDRESS)));
         universalSwapSubstrates[13] = bytes32(0);
-        universalSwapSubstrates[14] = bytes32(0);
-        universalSwapSubstrates[15] = bytes32(0);
 
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, universalSwapSubstrates);
     }

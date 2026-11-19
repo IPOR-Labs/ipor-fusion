@@ -20,6 +20,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 import {HyperCorePendingReader} from "../../../contracts/fuses/hypercore/HyperCorePendingReader.sol";
 import {UniversalReader, ReadResult} from "../../../contracts/universal_reader/UniversalReader.sol";
@@ -87,6 +88,7 @@ contract HyperCorePendingReaderTest is Test {
     uint256 private constant MARKET_ID = 55;
     uint32 private constant PERP_ASSET = 0;
     address private constant L1_BLOCK_NUMBER_PRECOMPILE = address(0x809);
+    bytes32 private constant PENDING_SLOT = 0xff3841d45e92b4b113213ebf16e5e18527d87d1b739008d460c4a8565edaf200;
 
     HyperCoreMockState private core;
     MockCoreWriter private coreWriter;
@@ -153,7 +155,7 @@ contract HyperCorePendingReaderTest is Test {
         vm.prank(TestAddresses.FUSE_MANAGER);
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(HyperCoreLib.USDC_TOKEN, address(usdc));
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         usdc.mint(address(vault), 1_000_000e6);
     }
@@ -174,6 +176,51 @@ contract HyperCorePendingReaderTest is Test {
         assertEq(result.currentTimestamp, uint64(block.timestamp));
 
         assertFalse(_readIsPending());
+    }
+
+    // ------------------------------------------------------------------
+    // IL-9529: rewards-manager binding fields (PendingAction slots 9-12)
+    // ------------------------------------------------------------------
+
+    /// @dev The six appended fields are zero for an ordinary record and decode from slots 9 (address @ byte 8 and
+    ///      uint32 @ byte 28, next to `lastOrderL1Block` @ byte 0), 10, 11 and 12 (two uint128); the scalars after them
+    ///      keep their meaning.
+    function testPendingStateExposesRewardsEffectFields() public {
+        _executeDeposit(1_000e6);
+        HyperCorePendingReader.PendingStateResult memory plain = _readPendingState();
+        assertEq(plain.state.effectRewardsManager, address(0), "deposit record is not bound");
+        assertEq(plain.state.effectRewardsUpdateBalanceTimestamp, 0);
+        assertEq(plain.state.expectedRewardsRawSum, 0);
+        assertEq(plain.state.expectedRewardsVestedSum, 0);
+        assertEq(plain.state.effectRewardsTransferredTokens, 0);
+        assertEq(plain.state.effectRewardsLastUpdateBalance, 0);
+        assertTrue(plain.actionPending);
+
+        address rewardsManager = makeAddr("rewardsManager");
+        bytes32 base = PENDING_SLOT;
+        vm.store(
+            address(vault),
+            bytes32(uint256(base) + 9),
+            bytes32((uint256(1_699_999_999) << 224) | (uint256(uint160(rewardsManager)) << 64) | 77)
+        );
+        vm.store(address(vault), bytes32(uint256(base) + 10), bytes32(uint256(123_456_789)));
+        vm.store(address(vault), bytes32(uint256(base) + 11), bytes32(uint256(987_654_321)));
+        vm.store(address(vault), bytes32(uint256(base) + 12), bytes32((uint256(555_555) << 128) | uint256(444_444)));
+
+        HyperCorePendingReader.PendingStateResult memory result = _readPendingState();
+        assertEq(result.state.effectRewardsManager, rewardsManager);
+        assertEq(result.state.effectRewardsUpdateBalanceTimestamp, 1_699_999_999, "shares slot 9 with the manager");
+        assertEq(result.state.expectedRewardsRawSum, 123_456_789);
+        assertEq(result.state.expectedRewardsVestedSum, 987_654_321);
+        assertEq(result.state.effectRewardsTransferredTokens, 444_444, "slot 12 low half");
+        assertEq(result.state.effectRewardsLastUpdateBalance, 555_555, "slot 12 high half");
+        assertEq(result.state.lastOrderL1Block, 77, "shares slot 9 with the manager, undisturbed");
+        assertEq(result.state.actionNonce, 1, "earlier fields unchanged");
+        assertTrue(result.actionPending, "scalars after the new fields still decode");
+        assertFalse(result.actionSettled);
+        assertTrue(result.l1BlockAvailable);
+        assertEq(result.currentL1Block, 100);
+        assertEq(result.currentTimestamp, uint64(block.timestamp));
     }
 
     // ------------------------------------------------------------------
@@ -315,7 +362,7 @@ contract HyperCorePendingReaderTest is Test {
         vm.prank(TestAddresses.FUSE_MANAGER);
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodePerpMarket(PERP_ASSET, 10_000, false);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _executeOrder() private {

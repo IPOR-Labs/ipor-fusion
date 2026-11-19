@@ -8,17 +8,24 @@ import {CcipAppBase} from "./base/CcipAppBase.sol";
 import {CcipClient} from "./interfaces/CcipClient.sol";
 import {CcipRouteConfig, ICcipCrosschainExecutor} from "./interfaces/ICcipCrosschain.sol";
 import {CcipMessages, CcipMsgType} from "./lib/CcipMessages.sol";
-import {Command} from "../lib/CrosschainMessages.sol";
+import {Command, SweepFloor} from "../lib/CrosschainMessages.sol";
 import {CrosschainTransportKind} from "../common/CrosschainTransportTypes.sol";
 import {ICrosschainExecutorMetadata} from "../common/ICrosschainExecutorMetadata.sol";
 import {RescueModule} from "../lib/RescueModule.sol";
 import {ICcipExecutorLibraryAbi} from "./ICcipExecutorLibraryAbi.sol";
 import {CrosschainConstants, CommandStatus, CcipChainRescue} from "../lib/CrosschainConstants.sol";
+import {CrosschainErrors} from "../lib/CrosschainErrors.sol";
 import {CcipExecutorCommandLib, CcipExecutorCommandState, ReceiptIgnoreReason} from "./lib/CcipExecutorCommandLib.sol";
 import {CcipExecutorAttestationLib, CcipAttestationState} from "./lib/CcipExecutorAttestationLib.sol";
 import {CcipDecimalsLib} from "./lib/CcipDecimalsLib.sol";
 import {CcipSendLib} from "./lib/CcipSendLib.sol";
-import {CcipExecutorTransferLib, Outbound, PendingReturn, ReturnStatus} from "./lib/CcipExecutorTransferLib.sol";
+import {
+    CancelledRecallQueue,
+    CcipExecutorTransferLib,
+    Outbound,
+    PendingReturn,
+    ReturnStatus
+} from "./lib/CcipExecutorTransferLib.sol";
 
 contract CcipCrosschainExecutor is
     CcipAppBase,
@@ -45,12 +52,16 @@ contract CcipCrosschainExecutor is
         uint256 rescueDelay;
         /// Bounded to `[MIN_PROPOSAL_APPROVAL_WINDOW, MAX_STALENESS_WINDOW]` at construction (IL-8058).
         uint256 balanceStalenessMax;
-        /// Bounded to `[1, ATTESTATION_ANCHOR_BAND_BPS]` at construction (IL-8058).
+        /// Bounded to `[1, anchorBandBps]` at construction (IL-8058, IL-9720).
         uint256 bigChangeBps;
-        /// Bounded to `[1, balanceStalenessMax)` at construction (IL-8058).
+        /// Bounded to `[1, balanceStalenessMax - MIN_PROPOSAL_APPROVAL_WINDOW]` at construction (IL-8058, IL-9664).
         uint256 minUpdateInterval;
-        /// Bounded to `[1, MAX_STALENESS_WINDOW]` at construction (IL-8058).
+        /// Bounded to `[MIN_TRANSFER_STALENESS_WINDOW, MAX_STALENESS_WINDOW]` at construction (IL-8058, IL-9663).
         uint256 transferStalenessMax;
+        /// Anchor band in basis points around `anchorPrincipal` within which an attested balance must stay (IL-9720);
+        /// bounded to `[bigChangeBps, MAX_ATTESTATION_ANCHOR_BAND_BPS]` at construction, immutable afterwards. 2_000
+        /// is the reference band for an unlevered leg; a levered leg needs a wider band (see the README).
+        uint256 anchorBandBps;
     }
 
     error InvalidDecimals(uint8 localDecimals, uint8 sharedDecimals);
@@ -169,8 +180,9 @@ contract CcipCrosschainExecutor is
     ///         guard's `refusedUntil` (`_resetCancelledRecall`); before it the force-set reverts and the advance
     ///         keeps the clock. A new recall may open meanwhile.
     mapping(uint256 => uint32) public cancelledRecallCount;
-    /// @notice Oldest `createdAt` among those recalls: the staleness anchor `balanceByChain` keeps enforcing
-    ///         while the count is nonzero (IL-8590). It is not re-anchored when only some of them resolve.
+    /// @notice Oldest `createdAt` among those recalls still unresolved: the staleness anchor `balanceByChain` keeps
+    ///         enforcing while the count is nonzero (IL-8590). When the oldest one resolves it moves to the next
+    ///         unresolved one (IL-9595, `_cancelledRecallQueue`); never past an unresolved recall.
     mapping(uint256 => uint64) public cancelledRecallPendingAt;
     /// @notice Per-chain reset generation of the cancelled-recall clock, bumped whenever `FORCE_SET_SETTLED` or
     ///         `ADVANCE_FRONTIER` resets that clock (IL-8590). An answer to a recall cancelled in an older generation
@@ -295,7 +307,11 @@ contract CcipCrosschainExecutor is
         // the other, so raising `bigChangeBps` past the band cannot tighten the from-anchor case and only widens
         // what the relative gate admits elsewhere. Capping it at the band keeps the two bounds ordered on every
         // path.
-        if (safety_.bigChangeBps == 0 || safety_.bigChangeBps > CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS) {
+        if (
+            safety_.bigChangeBps == 0 ||
+            safety_.bigChangeBps > safety_.anchorBandBps ||
+            safety_.anchorBandBps > CrosschainConstants.MAX_ATTESTATION_ANCHOR_BAND_BPS
+        ) {
             revert InvalidSafetyConfig();
         }
         // Windows above the ceiling make the fail-closed staleness gates in
@@ -304,13 +320,27 @@ contract CcipCrosschainExecutor is
             safety_.balanceStalenessMax > CrosschainConstants.MAX_STALENESS_WINDOW ||
             safety_.transferStalenessMax > CrosschainConstants.MAX_STALENESS_WINDOW
         ) revert InvalidSafetyConfig();
+        // The same immutable value stamps every `RETURN_REQUEST` deadline; below the slowest two-leg recall it
+        // yields recalls that always expire (IL-9663).
+        if (safety_.transferStalenessMax < CrosschainConstants.MIN_TRANSFER_STALENESS_WINDOW) {
+            revert CrosschainErrors.TransferStalenessBelowMinimum(
+                safety_.transferStalenessMax,
+                CrosschainConstants.MIN_TRANSFER_STALENESS_WINDOW
+            );
+        }
         // A zero cadence interval lets the attester pair approve repeatedly inside one transaction. An interval
         // at or above the freshness window collides the cadence gate (`<` against `lastApprovalAt`) with the
         // freshness gate (`>` against `lastApprovedObservedAt`): strictly above it, every pair of approvals on
         // a non-zero bucket is separated by an `ObservationStale` gap; exactly at it, the next approval lands
         // inside the window only when the observation timestamp equals the approval block timestamp. The value
-        // is immutable, so the endpoint is rejected too.
-        if (safety_.minUpdateInterval == 0 || safety_.minUpdateInterval >= safety_.balanceStalenessMax) {
+        // is immutable, so the endpoint is rejected too. IL-9664: an observation is approvable only while its age is
+        // at most `balanceStalenessMax - minUpdateInterval`, so that difference must leave at least the documented
+        // `MIN_PROPOSAL_APPROVAL_WINDOW`; a smaller gap would make the immutable configuration unapprovable in practice.
+        if (
+            safety_.minUpdateInterval == 0 ||
+            safety_.minUpdateInterval >= safety_.balanceStalenessMax ||
+            safety_.balanceStalenessMax - safety_.minUpdateInterval < CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW
+        ) {
             revert InvalidSafetyConfig();
         }
         BALANCE_PROPOSER = safety_.balanceProposer;
@@ -319,6 +349,7 @@ contract CcipCrosschainExecutor is
         BIG_CHANGE_BPS = safety_.bigChangeBps;
         MIN_UPDATE_INTERVAL = safety_.minUpdateInterval;
         TRANSFER_STALENESS_MAX = safety_.transferStalenessMax;
+        _attestationState.anchorBandBps = safety_.anchorBandBps;
     }
 
     /// @notice The transport this executor uses: always `CHAINLINK_CCIP`.
@@ -326,11 +357,14 @@ contract CcipCrosschainExecutor is
         return CrosschainTransportKind.CHAINLINK_CCIP;
     }
 
-    /// @notice Revision of this executor's external interface, `7` for this release. Off-chain tooling and
+    /// @notice Revision of this executor's external interface, `9` for this release (`8` on the previous release, which
+    ///         added `updateVaultsWithSweepFloors` and moved the wire to `CcipMessages.VERSION` 4 and
+    ///         `CrosschainConstants.CODEC_VERSION` 5, IL-9629; this release adds the `anchorBandBps` constructor field
+    ///         and the `attestationAnchorBandBps()` view, IL-9720). Off-chain tooling and
     ///         integrators read it to tell which executor surface they are talking to (`ICrosschainExecutorMetadata`;
     ///         the Stargate executor does not implement it). It is a constant: nothing in the contract reads it.
     function executorInterfaceVersion() external pure returns (uint32) {
-        return 7;
+        return 9;
     }
 
     /// @notice Registers the CCIP route to `chainId_` (factory only). The fee token must not be the vault asset.
@@ -406,24 +440,25 @@ contract CcipCrosschainExecutor is
         if (amount_ == 0) revert InvalidAmount();
         if (minDelivered_ > amount_) revert InvalidMinDelivered(minDelivered_, amount_);
         uint256 amountSD = _toSDExact(amount_);
-        uint256 tracked = idleLedger;
-        uint256 balance = IERC20(_asset()).balanceOf(address(this));
-        uint256 trackedLD = _toLD(tracked);
-        if (balance < trackedLD + amount_) revert InsufficientFreshFunds(balance, trackedLD, amount_);
+        {
+            uint256 tracked = idleLedger;
+            uint256 balance = IERC20(_asset()).balanceOf(address(this));
+            uint256 trackedLD = _toLD(tracked);
+            if (balance < trackedLD + amount_) revert InsufficientFreshFunds(balance, trackedLD, amount_);
+        }
         bytes32 operationId = keccak256(abi.encode(address(this), dstChainId_, ++_nonce));
-        uint8 slot = _armStaleness(dstChainId_);
-        outboundTransfers[operationId] = Outbound({
-            chainId: dstChainId_,
-            amount: amountSD,
-            createdAt: uint64(block.timestamp),
-            settled: false,
-            forceResolved: false,
-            remoteCreditAccounted: false,
-            stalenessSlot: slot,
-            resolveRepairSeq: 0,
-            minDeliveredSD: _toSDExact(minDelivered_)
-        });
-        outboundInFlight[dstChainId_] += amountSD;
+        CcipExecutorTransferLib.openOutbound(
+            outboundTransfers,
+            outboundInFlight,
+            _pendingCreatedAt,
+            pendingTransferCount,
+            oldestPendingAt,
+            dstChainId_,
+            operationId,
+            amountSD,
+            minDelivered_,
+            _rate()
+        );
         (messageId, ) = _sendCcip(
             dstChainId_,
             CcipMessages.encode(CcipMsgType.OUTBOUND_TRANSFER, abi.encode(operationId)),
@@ -551,12 +586,13 @@ contract CcipCrosschainExecutor is
     /// @param replace_ When true the remote allowlist is REPLACED by `vaults_` (the Stargate
     ///        `UPDATE_VAULTS` semantics); when false the call adds or removes just the listed vaults.
     ///        Every vault that leaves the allowlist (removal or replacement) is swept on the dispatcher
-    ///        (best-effort capped `redeem` of its whole position into idle; dust is skipped) and ALWAYS untracked
+    ///        (best-effort capped `redeem` of its whole position into idle; dust is skipped) and untracked
     ///        (IL-8784). A position the sweep could not redeem stays on the dispatcher OUTSIDE NAV until the
     ///        vault is allowlisted again, so ALPHA must redeem or recall it to zero BEFORE removing the vault. A
     ///        sweep `redeem` gets `min(VAULT_SWEEP_GAS, gasleft() - reserve)` and never reverts for
     ///        lack of gas (D-065); a CCIP RETRY cannot add gas, so a position needing more than the lane leaves ends
-    ///        as a reported residual.
+    ///        as a reported residual. This entry sends no sweep floor (IL-9629): see `updateVaultsWithSweepFloors`.
+    ///        A vault retained below a floor by an earlier command is left as it is.
     /// @param gasLimit_ Destination gas limit: 0 = route policy; above policy is clamped; below policy reverts.
     function updateVaults(
         uint256 dstChainId_,
@@ -568,10 +604,57 @@ contract CcipCrosschainExecutor is
         uint256 gasLimit_
     ) external onlyManager returns (bytes32 messageId) {
         _requireReady(dstChainId_);
-        // Shape validation lives in the linked library purely for EIP-170 headroom; the errors are still
-        // declared here so the executor's ABI is unchanged.
-        CcipExecutorCommandLib.validateVaultShape(vaults_);
-        bytes memory extra = abi.encode(vaults_, allowed_, replace_);
+        // Shape validation and the encoding live in the linked library purely for EIP-170 headroom; the errors are
+        // still declared here so the executor's ABI is unchanged.
+        messageId = _sendVaultUpdate(
+            dstChainId_,
+            CcipExecutorCommandLib.encodeVaultUpdate(vaults_, allowed_, replace_, new SweepFloor[](0), _rate()),
+            maxFee_,
+            feeToken_,
+            gasLimit_
+        );
+    }
+
+    /// @notice `updateVaults` with per-vault floors for the sweep of the vaults that leave the allowlist (IL-9629).
+    /// @dev Same as `updateVaults`, plus `floors_`: a vault with a non-zero floor is redeemed only when the measured
+    ///      ASSET received reaches it; otherwise nothing is redeemed and the vault, off the allowlist, STAYS TRACKED
+    ///      (its position keeps counting in NAV) and ALPHA exits it with a REDEEM. The same holds when the floored
+    ///      redeem reverts with error data and burns nothing (IL-9694 D-002). Such a retained vault is swept again
+    ///      only by a later command whose `floors_` names it (`minAssets` 0 = forced removal at any price, D-028); a
+    ///      command carrying floors runs the sweep pass even when it only adds vaults. A vault without an entry is
+    ///      swept without a floor, as by `updateVaults`. At most `MAX_TRACKED_POSITION_VAULTS` entries, no zero or
+    ///      duplicate vault (`TooManyVaults`, `InvalidVaultAddress`, `DuplicateVault`).
+    /// @param floors_ The sweep floors; `minAssets` in LOCAL ASSET decimals, converted to shared decimals exactly
+    ///        (`AmountHasDust` on sub-precision dust), like REDEEM `minAssets`.
+    /// @param gasLimit_ Destination gas limit: 0 = route policy; above policy is clamped; below policy reverts.
+    function updateVaultsWithSweepFloors(
+        uint256 dstChainId_,
+        address[] calldata vaults_,
+        bool allowed_,
+        bool replace_,
+        SweepFloor[] calldata floors_,
+        uint256 maxFee_,
+        address feeToken_,
+        uint256 gasLimit_
+    ) external onlyManager returns (bytes32 messageId) {
+        _requireReady(dstChainId_);
+        messageId = _sendVaultUpdate(
+            dstChainId_,
+            CcipExecutorCommandLib.encodeVaultUpdate(vaults_, allowed_, replace_, floors_, _rate()),
+            maxFee_,
+            feeToken_,
+            gasLimit_
+        );
+    }
+
+    /// @dev Builds and sends the UPDATE_VAULTS carrying `extra_` (`CcipExecutorCommandLib.encodeVaultUpdate`).
+    function _sendVaultUpdate(
+        uint256 dstChainId_,
+        bytes memory extra,
+        uint256 maxFee_,
+        address feeToken_,
+        uint256 gasLimit_
+    ) private returns (bytes32 messageId) {
         Command memory command = _buildCommand(
             CcipExecutorCommandLib.BuildParams({
                 executor: address(this),
@@ -1100,11 +1183,17 @@ contract CcipCrosschainExecutor is
             _acceptRemoteStateVersion(srcChainId_, remoteBalance, stateVersion);
             if (reason != bytes32(0)) return _ignore(srcChainId_, messageType, reason);
         } else if (messageType == CcipMsgType.RETURN_TRANSFER) {
-            (bytes32 operationId, uint256 sentSD, uint256 remoteBalance, uint64 stateVersion) = abi.decode(
-                data,
-                (bytes32, uint256, uint256, uint64)
-            );
-            _acceptRemoteStateVersion(srcChainId_, remoteBalance, stateVersion);
+            bytes32 operationId;
+            uint256 sentSD;
+            uint256 remoteBalance;
+            {
+                uint64 stateVersion;
+                (operationId, sentSD, remoteBalance, stateVersion) = abi.decode(
+                    data,
+                    (bytes32, uint256, uint256, uint64)
+                );
+                _acceptRemoteStateVersion(srcChainId_, remoteBalance, stateVersion);
+            }
             // A standard CCIP 2.0 pool fee plus decimal downscaling can deliver a ZERO amount for a positive
             // send; an absent or zero token entry is a valid finalization with `received == 0` (IL-8635), not an
             // ignore that would leave the recall open. Any other token shape is still ignored.
@@ -1116,20 +1205,14 @@ contract CcipCrosschainExecutor is
                 }
                 received = _toSDFloor(message_.destTokenAmounts[0].amount);
             }
-            PendingReturn storage pending = pendingReturns[operationId];
-            ReturnStatus status = pending.status;
-            if (pending.createdAt == 0 || (status != ReturnStatus.REQUESTED && status != ReturnStatus.CANCELLED)) {
-                return _ignore(srcChainId_, messageType, "unknown");
-            }
-            if (pending.chainId != srcChainId_) return _ignore(srcChainId_, messageType, "chain");
-            // The tokens are already home. Refusing them would not undo the transfer — it would strand
-            // them and kill the lane — so a shortfall against the requested floor is credited and loudly
-            // surfaced instead of reverted (audit H-2). The authoritative pre-send bound stays on the
-            // dispatcher, which rejects the recall before any value moves.
-            if (received < pending.minReturn) {
-                emit ReturnBelowMinimumCredited(srcChainId_, operationId, received, pending.minReturn);
-            }
-            pending.status = ReturnStatus.FINALIZED;
+            (bytes32 ignoreReason, ReturnStatus status, uint256 maxAccounted) = CcipExecutorTransferLib.closeReturn(
+                pendingReturns,
+                srcChainId_,
+                operationId,
+                ReturnStatus.FINALIZED,
+                received
+            );
+            if (ignoreReason != bytes32(0)) return _ignore(srcChainId_, messageType, ignoreReason);
             // Debit body (+ the accounting anchor pro-rata reduction, IL-7967) lives in the attestation
             // lib so the executor spends no extra bytes on it. `settled` is debited by the dispatcher-declared
             // `sentSD`, not by `received`: the transport fee is a realized loss, not phantom settled value
@@ -1139,7 +1222,7 @@ contract CcipCrosschainExecutor is
                 srcChainId_,
                 operationId,
                 sentSD,
-                pending.maxAccounted,
+                maxAccounted,
                 remoteBalance
             );
             idleLedger += received;
@@ -1154,13 +1237,14 @@ contract CcipCrosschainExecutor is
         } else if (messageType == CcipMsgType.RETURN_REJECTED) {
             if (message_.destTokenAmounts.length != 0) return _ignore(srcChainId_, messageType, "token");
             (bytes32 operationId, uint8 reason) = abi.decode(data, (bytes32, uint8));
-            PendingReturn storage pending = pendingReturns[operationId];
-            ReturnStatus status = pending.status;
-            if (pending.createdAt == 0 || (status != ReturnStatus.REQUESTED && status != ReturnStatus.CANCELLED)) {
-                return _ignore(srcChainId_, messageType, "unknown");
-            }
-            if (pending.chainId != srcChainId_) return _ignore(srcChainId_, messageType, "chain");
-            pending.status = ReturnStatus.REJECTED;
+            (bytes32 ignoreReason, ReturnStatus status, ) = CcipExecutorTransferLib.closeReturn(
+                pendingReturns,
+                srcChainId_,
+                operationId,
+                ReturnStatus.REJECTED,
+                0
+            );
+            if (ignoreReason != bytes32(0)) return _ignore(srcChainId_, messageType, ignoreReason);
             if (activeReturn[srcChainId_] == operationId) delete activeReturn[srcChainId_];
             _resolveCancelledReturn(srcChainId_, operationId, status);
             emit ReturnRejected(srcChainId_, operationId, reason);
@@ -1208,15 +1292,21 @@ contract CcipCrosschainExecutor is
     }
 
     /// @dev A cancelled recall (`status_` read before the terminal write) resolved: drop one from the chain's
-    ///      cancelled count and clear the clock with the last one (IL-8590). No-op for a recall cancelled before
-    ///      the last clock reset (`FORCE_SET_SETTLED` or `ADVANCE_FRONTIER`, older generation).
+    ///      cancelled count, re-anchor the clock on the oldest recall still unresolved (IL-9595) and clear it with
+    ///      the last one (IL-8590). No-op for a recall cancelled before the last clock reset (`FORCE_SET_SETTLED` or
+    ///      `ADVANCE_FRONTIER`, older generation). A recall that was never cancelled skips the library call.
     function _resolveCancelledReturn(uint256 chainId_, bytes32 operationId_, ReturnStatus status_) private {
-        uint32 count = cancelledRecallCount[chainId_];
-        if (status_ != ReturnStatus.CANCELLED || count == 0) return;
-        // An answer to a recall cancelled before the last reset must not touch the newer clock.
-        if (cancelledRecallGenerationOf[operationId_] != cancelledRecallGeneration[chainId_]) return;
-        cancelledRecallCount[chainId_] = count - 1;
-        if (count == 1) delete cancelledRecallPendingAt[chainId_];
+        if (status_ != ReturnStatus.CANCELLED) return;
+        CcipExecutorTransferLib.resolveCancelledRecall(
+            cancelledRecallCount,
+            cancelledRecallPendingAt,
+            cancelledRecallGeneration,
+            cancelledRecallGenerationOf,
+            _cancelledRecallQueue,
+            pendingReturns,
+            chainId_,
+            operationId_
+        );
     }
 
     /// @dev Drop the chain's cancelled-recall clock and start a new generation (IL-8590). While a cancelled recall
@@ -1232,6 +1322,7 @@ contract CcipCrosschainExecutor is
             cancelledRecallPendingAt,
             cancelledRecallLatestAt,
             cancelledRecallGeneration,
+            _cancelledRecallQueue,
             chainId_,
             _transferStalenessMax(),
             strict_
@@ -1277,10 +1368,6 @@ contract CcipCrosschainExecutor is
         if (!hasDispatcher[chainId_]) revert DispatcherNotReady(chainId_);
     }
 
-    function _armStaleness(uint256 chainId_) private returns (uint8 slot_) {
-        return CcipExecutorTransferLib.armStaleness(_pendingCreatedAt, pendingTransferCount, oldestPendingAt, chainId_);
-    }
-
     function _disarmStaleness(uint256 chainId_, uint8 slot_) private {
         CcipExecutorTransferLib.disarmStaleness(
             _pendingCreatedAt,
@@ -1319,6 +1406,12 @@ contract CcipCrosschainExecutor is
     /// @notice The per-chain accounting anchor `approveBalance` bounds attestations against (IL-7967).
     function attestationAnchorPrincipal(uint256 chainId_) external view returns (uint256) {
         return _attestationState.anchorPrincipal[chainId_];
+    }
+
+    /// @notice The attestation anchor band in basis points this executor was constructed with (IL-9720): the
+    ///         half-width, relative to `attestationAnchorPrincipal`, within which an attested balance must stay.
+    function attestationAnchorBandBps() external view returns (uint256) {
+        return _attestationState.anchorBandBps;
     }
 
     /// @notice The per-chain net principal that caps anchor credits (IL-8578 / TP-H-02).
@@ -1366,6 +1459,7 @@ contract CcipCrosschainExecutor is
             cancelledRecallGeneration,
             cancelledRecallGenerationOf,
             cancelledRecallLatestAt,
+            _cancelledRecallQueue,
             chainId_,
             stalenessMax_,
             requireStale_
@@ -1415,4 +1509,7 @@ contract CcipCrosschainExecutor is
     /// @dev IL-8625: stored-word count of each command's payload (the dispatcher's pre-check work scales with it), read
     ///      by `requireRetryGas`. Declared LAST so no existing executor slot moves.
     mapping(bytes32 commandId => uint32 words) private _commandPayloadWords;
+    /// @dev IL-9595: FIFO of each chain's cancelled recalls in the current reset generation; its first unresolved
+    ///      entry anchors `cancelledRecallPendingAt`. Declared after `_commandPayloadWords` so no existing slot moves.
+    CancelledRecallQueue private _cancelledRecallQueue;
 }

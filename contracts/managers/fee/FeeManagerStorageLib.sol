@@ -14,6 +14,9 @@ struct DaoFeeRecipientDataStorage {
 // Add new event with just the new recipient
 event IporDaoFeeRecipientAddressChanged(address indexed newRecipient);
 
+/// @notice Emitted when the high-water mark is stored
+/// @dev `highWaterMark` is assets per 10 ** decimals() vault shares multiplied by FeeManager.HIGH_WATER_MARK_SCALE
+///      (1e12) on a FeeManager built with IL-9601, asset units per 10 ** decimals() shares on earlier ones
 event HighWaterMarkPerformanceFeeUpdated(uint128 highWaterMark);
 event HighWaterMarkPerformanceFeeUpdateIntervalUpdated(uint32 updateInterval);
 event DepositFeeUpdated(uint256 fee);
@@ -42,7 +45,9 @@ struct FeeRecipientDataStorage {
 ///      ensuring fees are only charged on new profits above the previous HWM.
 ///      - `highWaterMark`: The share price (assets per share) right after the last crystallized performance fee,
 ///         or the current rate when set by initialize, the owner reset, interval lowering or a zero-share crystallization,
-///         used as a reference for performance fee accrual (IL-8744: post-mint, not the pre-mint rate). Expressed in asset units per 1 unit of share (10**shareDecimals).
+///         used as a reference for performance fee accrual (IL-8744: post-mint, not the pre-mint rate).
+///         Expressed in assets per 10**shareDecimals shares multiplied by FeeManager.HIGH_WATER_MARK_SCALE (1e12,
+///         IL-9601); before IL-9601 in asset units per 10**shareDecimals shares.
 ///      - `lastUpdate`: The timestamp (in seconds) of the last HWM update. Used to enforce update intervals and prevent fee gaming.
 ///      - `updateInterval`: The minimum interval (in seconds) required between HWM updates.
 ///         Prevents frequent updates that could allow manipulation of performance fee calculations.
@@ -65,6 +70,11 @@ struct DepositFeeStorage {
 /// @dev Implements diamond storage pattern for fee management including performance, management, and DAO fees
 library FeeManagerStorageLib {
     using SafeCast for uint256;
+
+    /// @notice Scale of the performance fee share rate and of the stored high-water mark (IL-9601)
+    /// @dev The vault passes assets per 10 ** decimals() shares multiplied by this scale and the HWM is stored in the
+    ///      same unit. Shared by FeeManager (public HIGH_WATER_MARK_SCALE) and PlasmaVaultFeesLib.
+    uint256 internal constant HIGH_WATER_MARK_SCALE = 1e12;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.fee.manager.dao.fee.recipient.data.storage")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant DAO_FEE_RECIPIENT_DATA_SLOT =
@@ -132,8 +142,9 @@ library FeeManagerStorageLib {
         return _totalPerformanceFeeStorage().value;
     }
 
-    /// @notice Gets the high water mark performance fee percentage for the plasma vault
-    /// @return High water mark performance fee percentage with 2 decimals (10000 = 100%, 100 = 1%)
+    /// @notice Gets the high water mark data of the plasma vault
+    /// @return The HWM (assets per 10**shareDecimals shares times FeeManager.HIGH_WATER_MARK_SCALE, IL-9601), the last
+    ///         update timestamp and the update interval
     function getPlasmaVaultHighWaterMarkPerformanceFee()
         internal
         view
@@ -143,7 +154,8 @@ library FeeManagerStorageLib {
     }
 
     /// @notice Updates the high water mark (HWM) value and records the current timestamp as the last update time
-    /// @param highWaterMark_ The new high water mark value (exchange rate with asset decimals precision)
+    /// @param highWaterMark_ The new high water mark value (assets per 10**shareDecimals shares times
+    ///        FeeManager.HIGH_WATER_MARK_SCALE, IL-9601)
     function updateHighWaterMarkPerformanceFee(uint128 highWaterMark_) internal {
         HighWaterMarkPerformanceFeeStorage storage $ = _highWaterMarkPerformanceFeeStorage();
         $.highWaterMark = highWaterMark_;

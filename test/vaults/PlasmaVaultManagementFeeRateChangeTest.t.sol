@@ -78,7 +78,7 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
         uint256 unrealizedBefore = plasmaVault.getUnrealizedManagementFee();
         assertEq(unrealizedBefore, _accrual(TOTAL_ASSETS, 365 days, 100), "old accrual is 1% for a year");
 
-        _setRecipientFee(400);
+        _configureVaultFeeDirectly(500);
 
         assertEq(
             plasmaVault.getUnrealizedManagementFee(),
@@ -98,7 +98,7 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
 
     function testShouldChargeEachPeriodAtItsOwnRate_whenRateRaised() public {
         vm.warp(block.timestamp + 365 days);
-        _setRecipientFee(400);
+        _configureVaultFeeDirectly(500);
         vm.warp(block.timestamp + 30 days);
 
         assertEq(
@@ -117,7 +117,7 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
         uint256 feeSharesControl = plasmaVault.balanceOf(managementFeeAccount);
         vm.revertToState(snap);
 
-        _setRecipientFees(new RecipientFee[](0));
+        _configureVaultFeeDirectly(DAO_FEE);
 
         uint256 oldAccrual = _accrual(TOTAL_ASSETS, 180 days, 500);
         assertEq(plasmaVault.getUnrealizedManagementFee(), oldAccrual, "old 5% accrual kept as pending");
@@ -128,11 +128,13 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
 
         assertGt(plasmaVault.balanceOf(managementFeeAccount), 0, "old accrual minted");
         assertApproxEqAbs(plasmaVault.balanceOf(managementFeeAccount), feeSharesControl, 2, "minted at the old 5%");
-        assertApproxEqAbs(
+        /// @dev IL-8870: the fee shares are priced as virtual shares before the mint, so they are worth the accrued
+        ///      fee F up to rounding (was 3% for the fee account's own dilution)
+        assertApproxEqRel(
             plasmaVault.convertToAssets(plasmaVault.balanceOf(managementFeeAccount)),
             oldAccrual,
-            (oldAccrual * 3) / 100,
-            "fee account holds the old accrual (net of its own dilution)"
+            1e12,
+            "fee account holds the old accrual"
         );
     }
 
@@ -191,10 +193,10 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
 
     function testShouldAddNothing_whenRateChangedTwiceInOneBlock() public {
         vm.warp(block.timestamp + 365 days);
-        _setRecipientFee(400);
+        _configureVaultFeeDirectly(500);
         uint256 afterFirst = plasmaVault.getUnrealizedManagementFee();
 
-        _setRecipientFee(200);
+        _configureVaultFeeDirectly(300);
 
         assertEq(plasmaVault.getUnrealizedManagementFee(), afterFirst, "second change adds nothing");
         assertEq(afterFirst, _accrual(TOTAL_ASSETS, 365 days, 100), "only the first period accrued");
@@ -222,7 +224,8 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
         PlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(managementFeeAccount, 300);
     }
 
-    /// @dev IL-8842 A1: total set to 0 -> the old-period shares wait in the fee account (harvest returns early)
+    /// @dev IL-8842 A1: total set to 0 -> shares waiting in the fee account stay there (harvest returns early).
+    ///      IL-9431: the fee is realized before the change and the waiting shares are seeded explicitly afterwards.
     function testShouldKeepOldPeriodSharesInFeeAccount_whenTotalSetToZero() public {
         _deployVault(0);
         _fund(user, USER_DEPOSIT);
@@ -231,21 +234,19 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
         _setRecipientFee(400);
         vm.warp(block.timestamp + 20 days);
 
-        _setRecipientFees(new RecipientFee[](0));
-
-        uint256 accrual = _accrual(USER_DEPOSIT, 20 days, 400);
-        assertEq(plasmaVault.getUnrealizedManagementFee(), accrual, "old period pending");
-
         _deposit(other, 1e6);
+        _setRecipientFees(new RecipientFee[](0));
+        uint256 curatorBefore = plasmaVault.balanceOf(curatorRecipient);
+        assertEq(plasmaVault.getUnrealizedManagementFee(), 0, "realized before the change");
 
-        uint256 feeAccountShares = plasmaVault.balanceOf(managementFeeAccount);
-        assertGt(feeAccountShares, 0, "old period minted to the fee account");
-        assertApproxEqRel(plasmaVault.convertToAssets(feeAccountShares), accrual, 1e16, "worth the accrual");
+        uint256 feeAccountBefore = plasmaVault.balanceOf(managementFeeAccount);
+        uint256 feeAccountShares = _seedFeeAccountShares(1_000e6);
+        assertEq(feeAccountShares, feeAccountBefore + 1_000e6, "seeded shares are waiting in the fee account");
 
         feeManager.harvestManagementFee();
 
         assertEq(plasmaVault.balanceOf(managementFeeAccount), feeAccountShares, "harvest at total 0 keeps the shares");
-        assertEq(plasmaVault.balanceOf(curatorRecipient), 0, "old recipient gets nothing");
+        assertEq(plasmaVault.balanceOf(curatorRecipient), curatorBefore, "old recipient gets nothing more");
 
         RecipientFee[] memory recipients = new RecipientFee[](1);
         recipients[0] = RecipientFee({recipient: newRecipient, feeValue: 200});
@@ -254,27 +255,7 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
 
         assertApproxEqAbs(plasmaVault.balanceOf(newRecipient), feeAccountShares, 2, "new recipient gets the balance");
         assertLe(plasmaVault.balanceOf(managementFeeAccount), 2, "fee account drained");
-        assertEq(plasmaVault.balanceOf(curatorRecipient), 0, "curator still nothing");
-    }
-
-    /// @dev IL-8842 G7: recipient change -> the old period is split by the new recipients (DAO 1%)
-    function testShouldSplitOldPeriodByNewRecipients_whenRecipientsChange() public {
-        _setRecipientFee(400);
-        vm.warp(block.timestamp + 30 days);
-
-        RecipientFee[] memory recipients = new RecipientFee[](1);
-        recipients[0] = RecipientFee({recipient: newRecipient, feeValue: 400});
-        _setRecipientFees(recipients);
-
-        _deposit(other, 1e6);
-        uint256 feeAccountShares = plasmaVault.balanceOf(managementFeeAccount);
-        assertGt(feeAccountShares, 0, "old period minted");
-
-        feeManager.harvestManagementFee();
-
-        assertEq(plasmaVault.balanceOf(curatorRecipient), 0, "old recipient gets nothing");
-        assertApproxEqRel(plasmaVault.balanceOf(newRecipient), (feeAccountShares * 4) / 5, 1e16, "new gets 4/5");
-        assertApproxEqRel(plasmaVault.balanceOf(DAO_RECIPIENT), feeAccountShares / 5, 1e16, "DAO gets 1/5");
+        assertEq(plasmaVault.balanceOf(curatorRecipient), curatorBefore, "curator still nothing more");
     }
 
     /// @dev IL-8842 procedure: realize the fee first, then change -> the old recipients are paid
@@ -308,16 +289,22 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
         _deposit(user, USER_DEPOSIT);
         _setRecipientFee(400);
         vm.warp(block.timestamp + 20 days);
-        _setRecipientFees(new RecipientFee[](0));
         _deposit(other, 1e6);
-        uint256 feeAccountShares = plasmaVault.balanceOf(managementFeeAccount);
+        _setRecipientFees(new RecipientFee[](0));
+        uint256 curatorBefore = plasmaVault.balanceOf(curatorRecipient);
+        uint256 feeAccountShares = _seedFeeAccountShares(1_000e6);
         assertGt(feeAccountShares, 0, "shares waiting");
 
         _setRecipientFee(1);
         feeManager.harvestManagementFee();
         _setRecipientFees(new RecipientFee[](0));
 
-        assertApproxEqAbs(plasmaVault.balanceOf(curatorRecipient), feeAccountShares, 2, "curator gets the balance");
+        assertApproxEqAbs(
+            plasmaVault.balanceOf(curatorRecipient) - curatorBefore,
+            feeAccountShares,
+            2,
+            "curator gets the balance"
+        );
         assertLe(plasmaVault.balanceOf(managementFeeAccount), 2, "fee account drained");
         assertEq(plasmaVault.getUnrealizedManagementFee(), 0, "no new accrual");
     }
@@ -335,6 +322,20 @@ contract PlasmaVaultManagementFeeRateChangeTest is Test {
 
     function _setRecipientFees(RecipientFee[] memory recipients_) internal {
         feeManager.updateManagementFee(recipients_);
+    }
+
+    /// @dev IL-9431: configures the vault fee directly from the TECH role (the FeeManager), bypassing the FeeManager
+    ///      gate, to exercise the checkpoint while a fee is pending; the FeeManager's own configuration is unchanged
+    function _configureVaultFeeDirectly(uint256 total_) internal {
+        vm.prank(address(feeManager));
+        PlasmaVaultGovernance(address(plasmaVault)).configureManagementFee(managementFeeAccount, total_);
+    }
+
+    /// @dev Places shares in the management fee account explicitly (the "waiting shares" premise of IL-8842)
+    function _seedFeeAccountShares(uint256 amount_) internal returns (uint256) {
+        vm.prank(user);
+        plasmaVault.transfer(managementFeeAccount, amount_);
+        return plasmaVault.balanceOf(managementFeeAccount);
     }
 
     function _deposit(address user_, uint256 amount_) internal {

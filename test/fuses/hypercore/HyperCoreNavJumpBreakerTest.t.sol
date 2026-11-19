@@ -379,8 +379,8 @@ contract HyperCoreNavJumpBreakerTest is HyperCoreEffectSettlementBase {
         assertEq(uint8(key), 11);
         assertEq(uint256(value), 123e6);
 
-        vm.expectRevert(abi.encodeWithSelector(HyperCoreSubstrateLib.HyperCoreInvalidConfigKey.selector, uint8(12)));
-        this.decodeConfigExternal(bytes32((uint256(5) << 248) | (uint256(12) << 240)));
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreSubstrateLib.HyperCoreInvalidConfigKey.selector, uint8(13)));
+        this.decodeConfigExternal(bytes32((uint256(5) << 248) | (uint256(13) << 240)));
     }
 
     function testDuplicateFloorConfigReverts() public {
@@ -475,7 +475,7 @@ contract HyperCoreNavJumpBreakerTest is HyperCoreEffectSettlementBase {
 
     /// @dev Re-grants the full fixture substrate set, optionally with a `MaxNavJumpBps` entry.
     function _grantNavJump(bool set_, uint240 bps_) internal {
-        bytes32[] memory substrates = new bytes32[](set_ ? 9 : 8);
+        bytes32[] memory substrates = new bytes32[](set_ ? 10 : 9);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(USDC_TOKEN, address(_usdc));
         substrates[1] = HyperCoreSubstrateLib.encodePerpMarket(HYPE_PERP, 1_000_000e6, false);
         substrates[2] = HyperCoreSubstrateLib.encodeDestination(HyperCoreLib.systemAddress(USDC_TOKEN));
@@ -487,8 +487,10 @@ contract HyperCoreNavJumpBreakerTest is HyperCoreEffectSettlementBase {
             HyperCoreSubstrateLib.ConfigKey.MaxUsdClassTransferUsd6,
             1_000_000e6
         );
+        // IL-9597: the floor must be granted explicitly; an explicit 0 keeps these tests on the relative breaker.
+        substrates[8] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.NavJumpFloorUsd6, 0);
         if (set_) {
-            substrates[8] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.MaxNavJumpBps, bps_);
+            substrates[9] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.MaxNavJumpBps, bps_);
         }
         vm.prank(_fuseManager);
         PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, substrates);

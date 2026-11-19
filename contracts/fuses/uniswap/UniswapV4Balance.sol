@@ -29,6 +29,11 @@ import {PositionInfoLib} from "./ext/v4/PositionInfoLib.sol";
  *      derived from fee growth deltas. In V4 there is no PositionValue.total() equivalent, so the value
  *      is composed from core reads. Note: at the PoolManager level the position owner is the
  *      PositionManager itself and positions are distinguished by salt = bytes32(tokenId).
+ * @custom:security Spot-price risk: the principal of each position is split between token0 and token1 at the pool's
+ *      current spot price (`slot0`), which can be moved within a single transaction (for example by a large swap
+ *      or a flash loan), so the reported value can be moved with it and a market refresh would persist the moved
+ *      value. For vaults where this matters, the atomist should prefer the oracle-derived balance fuse `UniswapV4OracleBalance`
+ *      (see the README of this fuse family for how to choose and how to switch).
  * @author IPOR Labs
  */
 contract UniswapV4Balance is IMarketBalanceFuse {

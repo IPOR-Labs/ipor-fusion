@@ -2,11 +2,14 @@
 pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {PlasmaVaultLib} from "../../libraries/PlasmaVaultLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
+import {IRewardsClaimManager, VestingData} from "../../interfaces/IRewardsClaimManager.sol";
+import {ICoreDepositWallet} from "./ICoreDepositWallet.sol";
 import {HyperCoreLib} from "./lib/HyperCoreLib.sol";
 import {HyperCoreSupportedDexLib} from "./lib/HyperCoreSupportedDexLib.sol";
 import {HyperCoreSubstrateLib} from "./lib/HyperCoreSubstrateLib.sol";
@@ -47,6 +50,24 @@ contract HyperCoreSendFuse is IFuseCommon {
     address public immutable VERSION;
     /// @notice The Market ID associated with the Fuse
     uint256 public immutable MARKET_ID;
+
+    /// @dev Vault-side baseline of a Core -> EVM bridge, read BEFORE the action is sent (IL-9529). All sums are
+    ///      thresholds that already include the bridged EVM amount A.
+    struct BridgeBaseline {
+        /// @dev Granted ERC20 credited by the bridge; `address(0)` for a self-send (no cross-domain effect)
+        address evmAsset;
+        /// @dev Vault balance of `evmAsset` + A
+        uint256 expectedBalance;
+        /// @dev Rewards manager bound to the record; `address(0)` unless `evmAsset` is the vault's underlying and a
+        ///      rewards manager is set
+        address rewardsManager;
+        /// @dev Vault balance + the manager's balance of `evmAsset` + A (0 when unbound)
+        uint256 expectedRawSum;
+        /// @dev Vault balance + `IRewardsClaimManager.balanceOf()` + A (0 when unbound)
+        uint256 expectedVestedSum;
+        /// @dev The manager's `getVestingData()` at send: its push counter and anchor (zero when unbound)
+        VestingData vesting;
+    }
 
     /// @notice Emitted when entering the HyperCore spot send fuse
     event HyperCoreSendFuseSpotSend(address version, address destination, uint64 tokenIndex, uint64 amountWei);
@@ -95,7 +116,8 @@ contract HyperCoreSendFuse is IFuseCommon {
     /// @notice Thrown when a Core -> EVM amount is not representable at EVM precision (would burn value)
     error HyperCoreSendFuseAmountNotRepresentable(uint64 amountWei);
 
-    /// @notice Thrown when the configured transfer-class window is zero or exceeds `type(uint64).max`
+    /// @notice Thrown when the configured transfer-class window is below `MIN_WINDOW_TRANSFER_SECONDS` (2) or exceeds
+    ///         `type(uint64).max`
     error HyperCoreSendFuseInvalidWindow(uint240 value);
 
     /// @notice Thrown when the configured transfer timeout is below `MIN_TRANSFER_TIMEOUT_SECONDS` (60) or exceeds
@@ -116,6 +138,13 @@ contract HyperCoreSendFuse is IFuseCommon {
 
     /// @notice Thrown when a HIP-3 source dex has no positive or sufficient equity
     error HyperCoreSendFuseInsufficientDexEquity(uint32 dex, uint256 availableUsd6, uint256 requiredUsd6);
+
+    /// @notice Thrown when a Core -> EVM bridge is requested for a token whose granted ERC-20 is not the one HyperCore
+    ///         links to `tokenIndex` (IL-9639). Mirrors the Core-link check of `HyperCoreDepositFuse` and
+    ///         `HyperCoreMarginFuse`; it is not a grant policy.
+    /// @param tokenIndex HyperCore spot token index
+    /// @param grantedEvmAsset The ERC-20 granted for the token in the vault's substrates
+    error HyperCoreSendFuseBridgeTokenMismatch(uint64 tokenIndex, address grantedEvmAsset);
 
     /// @notice Thrown when `enterSpotSend` targets a token system address (Core -> EVM bridge) but the
     ///         Atomist has not explicitly enabled the spot-send bridge via
@@ -157,14 +186,10 @@ contract HyperCoreSendFuse is IFuseCommon {
         uint256 c = _cachedValueWad(data_.destination, data_.tokenIndex, data_.amountWei, s);
 
         bytes memory payload = HyperCoreLib.encodeSpotSend(data_.destination, data_.tokenIndex, data_.amountWei);
-        (address bridgeAsset, uint256 expectedEvmBalance) = _bridgeBaseline(
-            data_.destination,
-            data_.tokenIndex,
-            data_.amountWei
-        );
+        BridgeBaseline memory baseline = _bridgeBaseline(data_.destination, data_.tokenIndex, data_.amountWei);
         HyperCoreLib.sendRawAction(payload);
 
-        _enqueue(c, HyperCoreLib.ACTION_SPOT_SEND, payload, bridgeAsset, expectedEvmBalance);
+        _enqueue(c, HyperCoreLib.ACTION_SPOT_SEND, payload, baseline);
 
         emit HyperCoreSendFuseSpotSend(VERSION, data_.destination, data_.tokenIndex, data_.amountWei);
     }
@@ -192,14 +217,10 @@ contract HyperCoreSendFuse is IFuseCommon {
             data_.tokenIndex,
             data_.amountWei
         );
-        (address bridgeAsset, uint256 expectedEvmBalance) = _bridgeBaseline(
-            data_.destination,
-            data_.tokenIndex,
-            data_.amountWei
-        );
+        BridgeBaseline memory baseline = _bridgeBaseline(data_.destination, data_.tokenIndex, data_.amountWei);
         HyperCoreLib.sendRawAction(payload);
 
-        _enqueue(c, HyperCoreLib.ACTION_SEND_ASSET, payload, bridgeAsset, expectedEvmBalance);
+        _enqueue(c, HyperCoreLib.ACTION_SEND_ASSET, payload, baseline);
 
         emit HyperCoreSendFuseSendAsset(
             VERSION,
@@ -212,33 +233,75 @@ contract HyperCoreSendFuse is IFuseCommon {
     }
 
     /// @dev For a Core -> EVM bridge (destination is not the vault) returns the granted ERC20 and the vault
-    ///      balance it must reach once the credit lands: current balance plus the exact EVM amount (the
-    ///      Core -> EVM fee is charged separately on Core). Must be read BEFORE the action is sent. Returns
-    ///      `(address(0), 0)` for a self-send, which carries no cross-domain effect.
+    ///      balance it must reach once the credit lands: current balance plus the exact EVM amount A (the
+    ///      Core -> EVM fee is charged separately on Core). Must be read BEFORE the action is sent. Returns an
+    ///      empty baseline for a self-send, which carries no cross-domain effect.
+    ///      IL-9529 (3sigma #2, D-034): when the ERC20 is the vault's underlying and a rewards manager is set, the
+    ///      manager's vested underlying is already counted in NAV (`PlasmaVault._getGrossTotalAssets`) and can be pushed
+    ///      into the vault by anyone (`transferVestedTokensToVault`) or by the keeper (`updateBalance`). Such a push
+    ///      alone would meet `expectedBalance` before the credit, and with vesting accrual or underlying sent to the
+    ///      manager it could also meet any balance sum. So the baseline also snapshots the manager's
+    ///      `getVestingData()`: the gate subtracts the pushes the manager has counted in `transferredTokens` since the
+    ///      send, and a re-anchor (`updateBalanceTimestamp` or `lastUpdateBalance` changed, the counter reset) or a
+    ///      manager change waits for `timeoutAt`. The two D-004 sums, each plus A, stay: the vault balance plus the
+    ///      manager's raw token balance, and the vault balance plus `IRewardsClaimManager.balanceOf()`
+    ///      (`HyperCorePendingLib.isEffectObserved`).
     function _bridgeBaseline(
         address destination_,
         uint64 tokenIndex_,
         uint64 amountWei_
-    ) internal view returns (address evmAsset_, uint256 expectedBalance_) {
+    ) internal view returns (BridgeBaseline memory baseline_) {
         if (destination_ == address(this)) {
-            return (address(0), 0);
+            return baseline_;
         }
-        (, evmAsset_) = HyperCoreSubstrateLib.getSpotToken(MARKET_ID, tokenIndex_);
-        expectedBalance_ =
-            IERC20(evmAsset_).balanceOf(address(this)) +
-            HyperCoreLib.coreWeiToEvm(amountWei_, HyperCoreLib.tokenInfo(tokenIndex_).evmExtraWeiDecimals);
+        (, baseline_.evmAsset) = HyperCoreSubstrateLib.getSpotToken(MARKET_ID, tokenIndex_);
+        HyperCoreLib.TokenInfo memory info = HyperCoreLib.tokenInfo(tokenIndex_);
+        _requireCoreLinkedAsset(tokenIndex_, baseline_.evmAsset, info.evmContract);
+        uint256 vaultBalance = IERC20(baseline_.evmAsset).balanceOf(address(this));
+        uint256 evmAmount = HyperCoreLib.coreWeiToEvm(amountWei_, info.evmExtraWeiDecimals);
+        baseline_.expectedBalance = vaultBalance + evmAmount;
+
+        address rewardsManager = PlasmaVaultLib.getRewardsClaimManagerAddress();
+        if (rewardsManager != address(0) && baseline_.evmAsset == IERC4626(address(this)).asset()) {
+            baseline_.rewardsManager = rewardsManager;
+            baseline_.expectedRawSum = baseline_.expectedBalance + IERC20(baseline_.evmAsset).balanceOf(rewardsManager);
+            baseline_.expectedVestedSum = baseline_.expectedBalance + IRewardsClaimManager(rewardsManager).balanceOf();
+            baseline_.vesting = IRewardsClaimManager(rewardsManager).getVestingData();
+        }
     }
 
-    /// @dev Enqueues the transfer; a Core -> EVM bridge (`evmAsset_ != address(0)`) additionally waits for its
-    ///      EVM credit (or the configured timeout), a self-send settles by time only.
+    /// @dev IL-9639: the granted ERC-20 must be the token HyperCore links to `tokenIndex_`, because the bridge gate waits
+    ///      for a credit of exactly that token. This mirrors the Core-link check of `HyperCoreDepositFuse` (any token)
+    ///      and `HyperCoreMarginFuse` (USDC); it does not police what is granted or revoked. A token without an EVM
+    ///      contract (native HYPE) never matches. Token 0 (USDC) also accepts the CoreDepositWallet's `token()`, since
+    ///      there `tokenInfo(0).evmContract` is the wallet and not the ERC-20.
+    function _requireCoreLinkedAsset(uint64 tokenIndex_, address evmAsset_, address evmContract_) internal view {
+        if (evmAsset_ == address(0)) {
+            revert HyperCoreSendFuseBridgeTokenMismatch(tokenIndex_, evmAsset_);
+        }
+        if (evmAsset_ == evmContract_) {
+            return;
+        }
+        if (tokenIndex_ == HyperCoreLib.USDC_TOKEN && evmContract_ != address(0)) {
+            try ICoreDepositWallet(evmContract_).token() returns (address walletToken_) {
+                if (walletToken_ == evmAsset_) {
+                    return;
+                }
+            } catch {}
+        }
+        revert HyperCoreSendFuseBridgeTokenMismatch(tokenIndex_, evmAsset_);
+    }
+
+    /// @dev Enqueues the transfer; a Core -> EVM bridge (`baseline_.evmAsset != address(0)`) additionally waits for
+    ///      its EVM credit (or the configured timeout), a self-send settles by time only. A bridge of the underlying on
+    ///      a vault with a rewards manager is then bound to that manager (`HyperCorePendingLib.bindRewardsEffect`).
     function _enqueue(
         uint256 cachedValueWad_,
         uint24 actionId_,
         bytes memory payload_,
-        address evmAsset_,
-        uint256 expectedEvmBalance_
+        BridgeBaseline memory baseline_
     ) internal {
-        if (evmAsset_ == address(0)) {
+        if (baseline_.evmAsset == address(0)) {
             HyperCorePendingLib.enqueue(
                 cachedValueWad_,
                 _windowTransfer(),
@@ -253,10 +316,18 @@ contract HyperCoreSendFuse is IFuseCommon {
                 keccak256(payload_),
                 HyperCorePendingLib.EFFECT_EVM_BALANCE,
                 0,
-                evmAsset_,
-                expectedEvmBalance_,
+                baseline_.evmAsset,
+                baseline_.expectedBalance,
                 _transferTimeout()
             );
+            if (baseline_.rewardsManager != address(0)) {
+                HyperCorePendingLib.bindRewardsEffect(
+                    baseline_.rewardsManager,
+                    baseline_.expectedRawSum,
+                    baseline_.expectedVestedSum,
+                    baseline_.vesting
+                );
+            }
         }
     }
 
@@ -437,7 +508,9 @@ contract HyperCoreSendFuse is IFuseCommon {
         return s_ - a;
     }
 
-    /// @dev Reads the configured transfer-class settlement window; defaults to 2 seconds when unset.
+    /// @dev Reads the configured transfer-class settlement window; defaults to 2 seconds when unset. A configured value
+    ///      below `HyperCorePendingLib.MIN_WINDOW_TRANSFER_SECONDS` (2) reverts (IL-9529): a 1 s window could pass the
+    ///      time gate in the block in which the Core debit of a bridge is visible but its EVM credit is still queued.
     function _windowTransfer() internal view returns (uint64) {
         (bool set, uint240 value) = HyperCoreSubstrateLib.getConfig(
             MARKET_ID,
@@ -446,7 +519,7 @@ contract HyperCoreSendFuse is IFuseCommon {
         if (!set) {
             return 2;
         }
-        if (value == 0 || value > type(uint64).max) {
+        if (value < HyperCorePendingLib.MIN_WINDOW_TRANSFER_SECONDS || value > type(uint64).max) {
             revert HyperCoreSendFuseInvalidWindow(value);
         }
         return uint64(value);

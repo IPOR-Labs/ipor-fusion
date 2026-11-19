@@ -65,7 +65,13 @@ contract MorphoClaimFuse {
 
     /**
      * @notice Claims rewards from UniversalRewardsDistributor and forwards them to the RewardsClaimManager
-     * @dev Verifies the distributor is supported and uses merkle proofs for claim validation
+     * @dev Verifies the distributor is supported and uses merkle proofs for claim validation.
+     * Forwards to the RewardsClaimManager only the amount returned by this call. Rewards that someone
+     * claimed for the vault directly at the distributor (the interface in this repository says anyone can claim on
+     * behalf of an account) stay in the vault and are not moved by this fuse. Per the published source of the
+     * protocol, checked 2026-11-16 (a deployed instance can differ), claiming an amount that was already claimed in
+     * full reverts, and the keeper must leave that entry out. See "When someone else already claimed" in
+     * `contracts/rewards_fuses/README.md`.
      * @param universalRewardsDistributor The address of UniversalRewardsDistributor contract
      * @param rewardsToken The address of the reward token to claim
      * @param claimable The overall claimable amount of token rewards

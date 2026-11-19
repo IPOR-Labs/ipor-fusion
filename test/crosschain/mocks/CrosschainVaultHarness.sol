@@ -28,6 +28,7 @@ import {
     CcipCrosschainCommandFuse,
     CcipCommandFuseEnterData
 } from "../../../contracts/fuses/crosschain/ccip/CcipCrosschainCommandFuse.sol";
+import {SweepFloor} from "../../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CrosschainRecoveryContextTestLib} from "./CrosschainRecoveryContextTestLib.sol";
 import {IPreHook} from "../../../contracts/handlers/pre_hooks/IPreHook.sol";
 
@@ -121,6 +122,28 @@ contract CrosschainVaultHarness {
     function enterCcipCommand(CcipCommandFuseEnterData memory data_) external {
         ccipCommandFuse.functionDelegateCall(abi.encodeCall(CcipCrosschainCommandFuse.enter, (data_)));
         CrosschainRecoveryContextTestLib.clearContext(_marketIdOf(ccipCommandFuse));
+    }
+
+    /// @dev IL-9629: the CCIP command fuse's UPDATE_VAULTS entry with sweep floors.
+    function enterCcipCommandWithSweepFloors(
+        CcipCommandFuseEnterData memory data_,
+        SweepFloor[] memory floors_
+    ) external {
+        ccipCommandFuse.functionDelegateCall(
+            abi.encodeCall(CcipCrosschainCommandFuse.enterWithSweepFloors, (data_, floors_))
+        );
+        CrosschainRecoveryContextTestLib.clearContext(_marketIdOf(ccipCommandFuse));
+    }
+
+    /// @dev IL-9629: the Stargate command fuse's UPDATE_PLASMA_VAULTS entry with sweep floors.
+    function enterCommandWithSweepFloors(
+        StargateCrosschainCommandFuseEnterData memory data_,
+        SweepFloor[] memory floors_
+    ) external {
+        commandFuse.functionDelegateCall(
+            abi.encodeCall(StargateCrosschainCommandFuse.enterWithSweepFloors, (data_, floors_))
+        );
+        CrosschainRecoveryContextTestLib.clearContext(_marketIdOf(commandFuse));
     }
 
     function balanceOf() external returns (uint256) {

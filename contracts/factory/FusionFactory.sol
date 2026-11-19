@@ -140,6 +140,55 @@ contract FusionFactory is UUPSUpgradeable, FusionFactoryAccessControl {
             );
     }
 
+    /// @notice Same as `clone`, but reverts unless the DAO fee package at `daoFeePackageIndex_` equals `expectedFeePackage_`
+    /// @param expectedFeePackage_ Fee package (management fee, performance fee, recipient) the caller read and agreed to
+    /// @dev Reverts with FusionFactoryLogicLib.DaoFeePackageMismatch when the packages were replaced after the caller read them
+    function cloneWithExpectedFees(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_,
+        uint256 daoFeePackageIndex_,
+        FusionFactoryStorageLib.FeePackage calldata expectedFeePackage_
+    ) external returns (FusionFactoryLogicLib.FusionInstance memory) {
+        return
+            FusionFactoryLib.cloneWithExpectedFees(
+                assetName_,
+                assetSymbol_,
+                underlyingToken_,
+                redemptionDelayInSeconds_,
+                owner_,
+                false,
+                daoFeePackageIndex_,
+                expectedFeePackage_
+            );
+    }
+
+    /// @notice Same as `cloneSupervised`, but reverts unless the DAO fee package at `daoFeePackageIndex_` equals `expectedFeePackage_`
+    /// @dev Only callable by MAINTENANCE_MANAGER_ROLE
+    function cloneSupervisedWithExpectedFees(
+        string memory assetName_,
+        string memory assetSymbol_,
+        address underlyingToken_,
+        uint256 redemptionDelayInSeconds_,
+        address owner_,
+        uint256 daoFeePackageIndex_,
+        FusionFactoryStorageLib.FeePackage calldata expectedFeePackage_
+    ) external onlyRole(MAINTENANCE_MANAGER_ROLE) returns (FusionFactoryLogicLib.FusionInstance memory) {
+        return
+            FusionFactoryLib.cloneWithExpectedFees(
+                assetName_,
+                assetSymbol_,
+                underlyingToken_,
+                redemptionDelayInSeconds_,
+                owner_,
+                true,
+                daoFeePackageIndex_,
+                expectedFeePackage_
+            );
+    }
+
     /// @notice Sets the DAO fee packages array (replaces entire array)
     /// @param packages_ Array of DAO fee packages to set
     /// @dev Each package must have managementFee <= PlasmaVaultLib.MANAGEMENT_MAX_FEE_IN_PERCENTAGE (500 = 5%),

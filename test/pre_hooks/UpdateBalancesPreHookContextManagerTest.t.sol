@@ -2,7 +2,9 @@
 pragma solidity 0.8.30;
 
 /// @dev IL-8310 / IL-8322: ContextManager-relayed calls on selectors wired to UpdateBalancesPreHook or
-///      UpdateBalancesIgnoreDustPreHook (directly or nested under ExchangeRateValidatorPreHook). The hooks self-call
+///      UpdateBalancesIgnoreDustPreHook. UpdateBalancesPreHook is covered both directly and nested under
+///      ExchangeRateValidatorPreHook; UpdateBalancesIgnoreDustPreHook only directly (it cannot be nested, as it
+///      needs its own threshold substrate). The hooks self-call
 ///      PlasmaVault.updateMarketsBalances; PlasmaVault must authorize that self-call against the vault, not against
 ///      the context sender, without granting the context sender any role it does not hold.
 import {Test} from "forge-std/Test.sol";

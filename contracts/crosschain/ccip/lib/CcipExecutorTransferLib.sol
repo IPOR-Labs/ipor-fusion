@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {CcipAttestationState, CcipExecutorAttestationLib} from "./CcipExecutorAttestationLib.sol";
+import {CcipDecimalsLib} from "./CcipDecimalsLib.sol";
 import {CrosschainConstants} from "../../lib/CrosschainConstants.sol";
 
 enum ReturnStatus {
@@ -45,6 +46,19 @@ struct PendingReturn {
     ReturnStatus status;
 }
 
+/// @notice Per-chain FIFO of the cancelled recalls of the current reset generation, in cancel order (IL-9595).
+/// @dev One recall is active per chain at a time, so cancel order is also `createdAt` order (non-decreasing):
+///      the head entry is the oldest unresolved one. The list is doubly linked and every entry is unlinked in O(1)
+///      the moment it is resolved, so it holds unresolved recalls only. Empty exactly when the chain's
+///      `cancelledRecallCount` is zero. `prev` is the LAST field, appended after the original three (the struct is
+///      the executor's last storage variable, so no existing slot moves).
+struct CancelledRecallQueue {
+    mapping(uint256 chainId => bytes32 operationId) head;
+    mapping(uint256 chainId => bytes32 operationId) tail;
+    mapping(bytes32 operationId => bytes32 nextOperationId) next;
+    mapping(bytes32 operationId => bytes32 previousOperationId) prev;
+}
+
 /// @title CcipExecutorTransferLib
 /// @notice In-flight transfer bookkeeping for `CcipCrosschainExecutor`: the per-chain staleness pool, recall
 ///         opening and cancellation with the cancelled-recall clock reset, the `TRANSFER_SETTLED` body, the
@@ -82,6 +96,8 @@ library CcipExecutorTransferLib {
 
     /// @notice Mirror of the executor's event, so the delegatecalled log is indistinguishable.
     event ReturnCancelled(uint256 chainId, bytes32 operationId);
+    /// @notice Mirror of the executor's event (delegatecalled log is indistinguishable).
+    event ReturnBelowMinimumCredited(uint256 chainId, bytes32 operationId, uint256 received, uint256 minimum);
     /// @notice Mirror of the executor's event, so the delegatecalled log is indistinguishable.
     event AssetClaimed(address manager, uint256 amount);
 
@@ -165,7 +181,9 @@ library CcipExecutorTransferLib {
     ///      them; `balanceByChain` keeps enforcing the transfer staleness gate against it until every one is
     ///      resolved (late return, rejection) or `FORCE_SET_SETTLED` / `ADVANCE_FRONTIER` clears the chain
     ///      through `resetCancelledRecall` (each reset bumps `generation_`; the per-op `generationOf_` lets the
-    ///      executor ignore a stale answer).
+    ///      executor ignore a stale answer). IL-9595: the recall is appended to `queue_`, so that when the oldest
+    ///      one resolves `resolveCancelledRecall` re-anchors `cancelledAt_` on the oldest one still unresolved.
+    /// @param queue_ The chain's cancelled-recall FIFO (IL-9595).
     /// @param latestCancelledAt_ NEWEST `createdAt` among the chain's cancelled recalls (reset-guard anchor).
     /// @param stalenessMax_ How long the recall must have been outstanding on the permissionless path; a zero
     ///        value there always refuses. Ignored on the manager path (the executor passes 0).
@@ -180,6 +198,7 @@ library CcipExecutorTransferLib {
         mapping(uint256 => uint32) storage generation_,
         mapping(bytes32 => uint32) storage generationOf_,
         mapping(uint256 => uint64) storage latestCancelledAt_,
+        CancelledRecallQueue storage queue_,
         uint256 chainId_,
         uint256 stalenessMax_,
         bool requireStale_
@@ -207,7 +226,125 @@ library CcipExecutorTransferLib {
         if (oldestCancelled == 0 || pending.createdAt < oldestCancelled) cancelledAt_[chainId_] = pending.createdAt;
         // The reset guard keys on the NEWEST cancelled recall: its request deadline is the last to pass.
         if (pending.createdAt > latestCancelledAt_[chainId_]) latestCancelledAt_[chainId_] = pending.createdAt;
+        // IL-9595: append to the chain's FIFO (cancel order = `createdAt` order, one active recall at a time).
+        bytes32 tail = queue_.tail[chainId_];
+        if (tail == bytes32(0)) {
+            queue_.head[chainId_] = operationId;
+        } else {
+            queue_.next[tail] = operationId;
+        }
+        queue_.tail[chainId_] = operationId;
+        queue_.prev[operationId] = tail;
         emit ReturnCancelled(chainId_, operationId);
+    }
+
+    /// @notice A cancelled recall was answered (late `RETURN_TRANSFER` or `RETURN_REJECTED`; its status is already
+    ///         terminal): drop it from the chain's cancelled count and re-anchor the clock on the oldest recall still
+    ///         unresolved (IL-9595), or clear it with the last one (IL-8590).
+    /// @dev Called by the executor only for a record whose status was `CANCELLED` before the terminal write. No-op for
+    ///      a recall cancelled before the last reset (older generation: not in `queue_`). The answered recall is
+    ///      unlinked from `queue_` in O(1), so the queue holds unresolved recalls only and its head is always the
+    ///      oldest unresolved one: the anchor never moves past an unresolved recall, so every value-moving return the
+    ///      dispatcher may still deliver stays under a clock no looser than its own `createdAt`.
+    function resolveCancelledRecall(
+        mapping(uint256 => uint32) storage count_,
+        mapping(uint256 => uint64) storage cancelledAt_,
+        mapping(uint256 => uint32) storage generation_,
+        mapping(bytes32 => uint32) storage generationOf_,
+        CancelledRecallQueue storage queue_,
+        mapping(bytes32 => PendingReturn) storage pendingReturns_,
+        uint256 chainId_,
+        bytes32 operationId_
+    ) public {
+        uint32 count = count_[chainId_];
+        // An answer to a recall cancelled before the last reset must not touch the newer clock.
+        if (count == 0 || generationOf_[operationId_] != generation_[chainId_]) return;
+        count_[chainId_] = --count;
+        if (count == 0) {
+            // Every queued recall is resolved: the queue empties with the clock.
+            delete cancelledAt_[chainId_];
+            delete queue_.head[chainId_];
+            delete queue_.tail[chainId_];
+            delete queue_.next[operationId_];
+            delete queue_.prev[operationId_];
+            return;
+        }
+        bytes32 previous = queue_.prev[operationId_];
+        bytes32 following = queue_.next[operationId_];
+        if (previous == bytes32(0)) {
+            queue_.head[chainId_] = following;
+        } else {
+            queue_.next[previous] = following;
+        }
+        if (following == bytes32(0)) {
+            queue_.tail[chainId_] = previous;
+        } else {
+            queue_.prev[following] = previous;
+        }
+        delete queue_.next[operationId_];
+        delete queue_.prev[operationId_];
+        cancelledAt_[chainId_] = pendingReturns_[queue_.head[chainId_]].createdAt;
+    }
+
+    /// @notice Record a new outbound transfer (body of `_sendAssetToDispatcher`, EIP-170): claim a staleness slot,
+    ///         store the `Outbound` record and add the amount to the chain's in-flight total. `amountSD_` is shared
+    ///         decimals; `minDelivered_` is local decimals and must divide by `rate_` (else `AmountHasDust`, as `toSDExact`).
+    function openOutbound(
+        mapping(bytes32 => Outbound) storage outboundTransfers_,
+        mapping(uint256 => uint256) storage outboundInFlight_,
+        mapping(uint256 => uint64[16]) storage createdAt_,
+        mapping(uint256 => uint8) storage count_,
+        mapping(uint256 => uint64) storage oldest_,
+        uint256 chainId_,
+        bytes32 operationId_,
+        uint256 amountSD_,
+        uint256 minDelivered_,
+        uint256 rate_
+    ) public {
+        uint8 slot = armStaleness(createdAt_, count_, oldest_, chainId_);
+        // Same order as before the extraction: the slot claim (cap check) precedes the exact-decimals check.
+        if (minDelivered_ % rate_ != 0) revert CcipDecimalsLib.AmountHasDust(minDelivered_);
+        outboundTransfers_[operationId_] = Outbound({
+            chainId: chainId_,
+            amount: amountSD_,
+            createdAt: uint64(block.timestamp),
+            settled: false,
+            forceResolved: false,
+            remoteCreditAccounted: false,
+            stalenessSlot: slot,
+            resolveRepairSeq: 0,
+            minDeliveredSD: minDelivered_ / rate_
+        });
+        outboundInFlight_[chainId_] += amountSD_;
+    }
+
+    /// @notice Close an open recall on an authenticated `RETURN_TRANSFER` (`newStatus_ == FINALIZED`) or
+    ///         `RETURN_REJECTED` (`REJECTED`): validate it, emit the below-floor event for a credited shortfall and
+    ///         write the terminal status. Body lives here for EIP-170 headroom.
+    /// @return reason `"unknown"` / `"chain"` when the message does not match an open recall (nothing is written and
+    ///         the executor ignores it), otherwise zero.
+    /// @return status The recall's status before the terminal write; the executor resolves a `CANCELLED` one.
+    /// @return maxAccounted The recall's accounting bound (read before the write).
+    function closeReturn(
+        mapping(bytes32 => PendingReturn) storage pendingReturns_,
+        uint256 chainId_,
+        bytes32 operationId_,
+        ReturnStatus newStatus_,
+        uint256 received_
+    ) public returns (bytes32 reason, ReturnStatus status, uint256 maxAccounted) {
+        PendingReturn storage pending = pendingReturns_[operationId_];
+        status = pending.status;
+        if (pending.createdAt == 0 || (status != ReturnStatus.REQUESTED && status != ReturnStatus.CANCELLED)) {
+            return ("unknown", status, 0);
+        }
+        if (pending.chainId != chainId_) return ("chain", status, 0);
+        // The tokens are already home. Refusing them would not undo the transfer, it would strand them and kill the
+        // lane, so a shortfall against the requested floor is credited and loudly surfaced (audit H-2).
+        if (newStatus_ == ReturnStatus.FINALIZED && received_ < pending.minReturn) {
+            emit ReturnBelowMinimumCredited(chainId_, operationId_, received_, pending.minReturn);
+        }
+        pending.status = newStatus_;
+        maxAccounted = pending.maxAccounted;
     }
 
     /// @notice Drop a chain's cancelled-recall clock and start a new generation (IL-8590), behind a guard: while a
@@ -218,12 +355,15 @@ library CcipExecutorTransferLib {
     ///         leave value-moving requests unpriced.
     /// @dev Body lives here rather than on the executor for EIP-170 headroom. Before the window has passed: with
     ///      `strict_` it reverts `CancelledRecallNotExpired(chainId_, refusedUntil)`; otherwise it leaves the clock
-    ///      (count, both anchors, generation) untouched and returns. With no cancelled recall it always resets.
+    ///      (count, both anchors, queue, generation) untouched and returns. With no cancelled recall it always
+    ///      resets. A reset also empties the chain's cancelled-recall queue (IL-9595): the older generation's
+    ///      recalls are no longer tracked.
     function resetCancelledRecall(
         mapping(uint256 => uint32) storage count_,
         mapping(uint256 => uint64) storage cancelledAt_,
         mapping(uint256 => uint64) storage latestCancelledAt_,
         mapping(uint256 => uint32) storage generation_,
+        CancelledRecallQueue storage queue_,
         uint256 chainId_,
         uint256 transferStalenessMax_,
         bool strict_
@@ -238,6 +378,8 @@ library CcipExecutorTransferLib {
         }
         delete count_[chainId_];
         delete cancelledAt_[chainId_];
+        delete queue_.head[chainId_];
+        delete queue_.tail[chainId_];
         ++generation_[chainId_];
     }
 

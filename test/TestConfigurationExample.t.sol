@@ -283,6 +283,9 @@ contract TestConfigurationExample is Test {
         // The existing plasmaVaultCoreBase on fork is an initialized proxy that cannot be used with Clones.clone()
         FusionFactoryStorageLib.BaseAddresses memory existingBases = existingFactory.getBaseAddresses();
         existingBases.plasmaVaultCoreBase = address(new PlasmaVault());
+        // IL-9634: the on-chain access manager base predates setRedemptionDelayExemption, which the factory now calls on
+        // every clone, so this test deploys a fresh base
+        existingBases.accessManagerBase = address(new IporFusionAccessManager(owner, 0));
         uint256 version = existingFactory.getFusionFactoryVersion();
 
         vm.prank(owner);

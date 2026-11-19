@@ -81,19 +81,19 @@ contract HyperCoreEffectSettlementTest is HyperCoreEffectSettlementBase {
         assertApproxEqRel(got, ATTACK, 0.0001e18, "attacker gets back what was deposited: no free value");
     }
 
-    /// @dev IL-8532 (reviewer PoC port): WindowTransferSeconds = 1 is the smallest accepted window, but since
-    ///      IL-8526 it is only a minimum wait; the gate stays closed until the credit lands or the timeout.
-    function testWindowOneSecondDoesNotOpenGateBeforeCreditLands() public {
-        _grantSubstratesWindows(1);
+    /// @dev IL-8532 (reviewer PoC port), IL-9529: WindowTransferSeconds = 2 is the smallest accepted window (the
+    ///      fuses reject 1); it is only a minimum wait, so the gate stays closed until the credit lands or the timeout.
+    function testWindowTwoSecondsDoesNotOpenGateBeforeCreditLands() public {
+        _grantSubstratesWindows(2);
         uint256 navBefore = _vault.totalAssets();
         _coreDeposit(100_000e6);
         assertTrue(_isPendingLive(), "deposit enqueued");
         uint64 pendingUntil = _pendingUntil();
 
         vm.mockCall(CORE_USER_EXISTS_PRECOMPILE, abi.encode(address(_vault)), abi.encode(false));
-        vm.warp(block.timestamp + 1);
+        vm.warp(block.timestamp + 2);
         vm.roll(block.number + 1);
-        assertTrue(_isPendingLive(), "1 s window + one L1 block must not settle without the effect");
+        assertTrue(_isPendingLive(), "2 s window + one L1 block must not settle without the effect");
 
         bytes memory pendingErr = abi.encodeWithSelector(HyperCorePendingLib.HyperCoreActionPending.selector, pendingUntil);
         vm.prank(_attacker);
@@ -106,6 +106,16 @@ contract HyperCoreEffectSettlementTest is HyperCoreEffectSettlementBase {
         CoreSimulatorLib.nextBlock();
         assertFalse(_isPendingLive(), "credit landed, gate open");
         assertApproxEqAbs(_refreshAndTotalAssets(), navBefore, 2e6, "NAV ~flat after the credit");
+    }
+
+    /// @dev IL-9529 (D-004): a 1 s window is rejected by the deposit fuse before anything is sent.
+    function testWindowOneSecondRevertsAtDeposit() public {
+        _grantSubstratesWindows(1);
+        vm.expectRevert(
+            abi.encodeWithSelector(HyperCoreDepositFuse.HyperCoreDepositFuseInvalidWindow.selector, uint240(1))
+        );
+        _coreDeposit(100_000e6);
+        assertFalse(_isPendingLive(), "nothing enqueued");
     }
 
     function testDepositGateOpensOnTimeoutWhenCreditNeverLands() public {

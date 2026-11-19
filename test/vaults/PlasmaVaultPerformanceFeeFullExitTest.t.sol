@@ -36,6 +36,11 @@ import {MockERC20Decimals} from "../unitTest/fuses/term_finance/mocks/MockERC20D
 ///         Erc4626SupplyFuse reverted in execute and was silently skipped in instantWithdraw. The fuse now does a
 ///         full exit with redeem. Two non-malicious triggers: rewards vesting in the RewardsClaimManager, and the
 ///         withdraw fee burn of an earlier exit.
+/// @dev IL-9624 (Olympix 2026-11-06 M34): maxWithdraw now also prices the pending performance fee, so on a child
+///      built with IL-9624 withdraw(maxWithdraw(owner)) succeeds and maxWithdraw equals what redeeming the whole
+///      position pays. The fixture still proves that a performance fee is pending in each scenario, and the full
+///      exits below still pay exactly the full redeem payout (the fuse redeems for an amount >= maxWithdraw; legacy
+///      children keep the IL-8489 behaviour).
 contract PlasmaVaultPerformanceFeeFullExitTest is Test {
     address public atomist = address(this);
     address public alpha = address(0x1);
@@ -51,9 +56,6 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
     uint256 public constant USER_DEPOSIT = 1_000_000e6;
     uint256 public constant VESTED_REWARDS = 20_000e6;
     uint256 public constant VESTING_TIME = 30 days;
-
-    bytes4 internal constant EXCEEDED_MAX_WITHDRAW =
-        bytes4(keccak256("ERC4626ExceededMaxWithdraw(address,uint256,uint256)"));
 
     MockERC20Decimals public asset;
     UsersToRoles public usersToRoles;
@@ -134,13 +136,14 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
     /// @dev execute path, trigger: rewards vesting in the RewardsClaimManager lift totalAssets every block
     function testShouldFullyExitNestedPlasmaVault_whenPerformanceFeePendingFromVestingRewards() public {
         _setupVestingRewardsScenario();
-        uint256 expectedAssets = _assertPendingPerformanceFeeBreaksMaxWithdraw();
+        uint256 expectedAssets = _assertPendingPerformanceFeePricedInMaxWithdraw();
 
         parent.exitErc4626Supply(
             Erc4626SupplyFuseExitData({
                 vault: address(plasmaVault),
                 vaultAssetAmount: type(uint256).max,
-                maxSharesBurned: 0
+                maxSharesBurned: 0,
+                minAssetsOut: 0
             })
         );
 
@@ -150,7 +153,7 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
     /// @dev instantWithdraw path, trigger: rewards vesting; the old fuse caught the revert and exited nothing
     function testShouldFullyInstantWithdrawNestedPlasmaVault_whenPerformanceFeePendingFromVestingRewards() public {
         _setupVestingRewardsScenario();
-        uint256 expectedAssets = _assertPendingPerformanceFeeBreaksMaxWithdraw();
+        uint256 expectedAssets = _assertPendingPerformanceFeePricedInMaxWithdraw();
 
         parent.instantWithdraw(_instantWithdrawParams());
 
@@ -161,13 +164,14 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
     ///      check, which lifts the rate above the high-water mark
     function testShouldFullyExitNestedPlasmaVault_whenPerformanceFeePendingFromWithdrawFeeBurn() public {
         _setupWithdrawFeeBurnScenario();
-        uint256 expectedAssets = _assertPendingPerformanceFeeBreaksMaxWithdraw();
+        uint256 expectedAssets = _assertPendingPerformanceFeePricedInMaxWithdraw();
 
         parent.exitErc4626Supply(
             Erc4626SupplyFuseExitData({
                 vault: address(plasmaVault),
                 vaultAssetAmount: type(uint256).max,
-                maxSharesBurned: 0
+                maxSharesBurned: 0,
+                minAssetsOut: 0
             })
         );
 
@@ -177,7 +181,7 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
     /// @dev instantWithdraw path, trigger: withdraw fee burn
     function testShouldFullyInstantWithdrawNestedPlasmaVault_whenPerformanceFeePendingFromWithdrawFeeBurn() public {
         _setupWithdrawFeeBurnScenario();
-        uint256 expectedAssets = _assertPendingPerformanceFeeBreaksMaxWithdraw();
+        uint256 expectedAssets = _assertPendingPerformanceFeePricedInMaxWithdraw();
 
         parent.instantWithdraw(_instantWithdrawParams());
 
@@ -200,7 +204,8 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: address(plasmaVault),
                 vaultAssetAmount: type(uint256).max,
-                maxSharesBurned: parentShares - 1
+                maxSharesBurned: parentShares - 1,
+                minAssetsOut: 0
             })
         );
     }
@@ -214,7 +219,8 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: address(plasmaVault),
                 vaultAssetAmount: USER_DEPOSIT / 2,
-                maxSharesBurned: 0
+                maxSharesBurned: 0,
+                minAssetsOut: 0
             })
         );
 
@@ -223,28 +229,34 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
         assertLt(plasmaVault.balanceOf(address(parent)), sharesBefore, "parent burned shares");
     }
 
-    /// @dev Proves the fixture reaches the defect: the pending performance fee makes withdraw(maxWithdraw) revert
-    ///      for the parent. Returns what redeeming the whole parent position pays in the same state.
-    function _assertPendingPerformanceFeeBreaksMaxWithdraw() internal returns (uint256 expectedAssets) {
+    /// @dev Proves the fixture reaches the IL-8489 state: a performance fee is pending, so the child's exits mint it
+    ///      first. Since IL-9624 maxWithdraw prices that fee: it equals what redeeming the whole parent position pays,
+    ///      and withdraw(maxWithdraw) succeeds and pays it (before IL-9624 it reverted with
+    ///      ERC4626ExceededMaxWithdraw). Returns the full redeem payout in this state.
+    function _assertPendingPerformanceFeePricedInMaxWithdraw() internal returns (uint256 expectedAssets) {
         uint256 maxAssets = plasmaVault.maxWithdraw(address(parent));
         uint256 parentShares = plasmaVault.balanceOf(address(parent));
+        address feeAccount = PlasmaVaultGovernance(address(plasmaVault)).getPerformanceFeeData().feeAccount;
 
         uint256 snapshot = vm.snapshotState();
-        vm.prank(address(parent));
-        (bool ok, bytes memory ret) = address(plasmaVault).call(
-            abi.encodeCall(PlasmaVault.withdraw, (maxAssets, address(parent), address(parent)))
-        );
-        assertFalse(ok, "precondition: withdraw(maxWithdraw) reverts");
-        assertEq(bytes4(ret), EXCEEDED_MAX_WITHDRAW, "precondition: ERC4626ExceededMaxWithdraw");
-        vm.revertToState(snapshot);
-
-        snapshot = vm.snapshotState();
+        uint256 feeSharesBefore = plasmaVault.balanceOf(feeAccount);
         vm.prank(address(parent));
         expectedAssets = plasmaVault.redeem(parentShares, address(parent), address(parent));
+        assertGt(plasmaVault.balanceOf(feeAccount), feeSharesBefore, "precondition: a performance fee is pending");
         vm.revertToState(snapshot);
 
         assertGt(expectedAssets, 0, "precondition: full redeem pays assets");
-        assertLt(expectedAssets, maxAssets, "precondition: the performance fee lowers the payout below maxWithdraw");
+        assertEq(maxAssets, expectedAssets, "maxWithdraw prices the pending performance fee (IL-9624)");
+
+        snapshot = vm.snapshotState();
+        uint256 assetsBefore = asset.balanceOf(address(parent));
+        vm.prank(address(parent));
+        (bool ok, ) = address(plasmaVault).call(
+            abi.encodeCall(PlasmaVault.withdraw, (maxAssets, address(parent), address(parent)))
+        );
+        assertTrue(ok, "withdraw(maxWithdraw) succeeds with the fee pending");
+        assertEq(asset.balanceOf(address(parent)) - assetsBefore, maxAssets, "withdraw(maxWithdraw) pays maxWithdraw");
+        vm.revertToState(snapshot);
     }
 
     function _assertFullyExited(uint256 expectedAssets_) internal view {
@@ -293,7 +305,7 @@ contract PlasmaVaultPerformanceFeeFullExitTest is Test {
         plasmaVault.withdraw(USER_DEPOSIT / 2, other, other);
 
         assertGt(
-            plasmaVault.convertToAssets(10 ** plasmaVault.decimals()),
+            plasmaVault.convertToAssets(10 ** plasmaVault.decimals() * _feeManager().HIGH_WATER_MARK_SCALE()),
             _feeManager().getPlasmaVaultHighWaterMarkPerformanceFee().highWaterMark,
             "setup: the withdraw fee burn left the rate above the high-water mark"
         );

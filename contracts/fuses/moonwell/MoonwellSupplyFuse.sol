@@ -67,6 +67,10 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
     error MoonwellSupplyFuseMintFailed();
 
+    /// @notice Thrown when the ALPHA exit is rejected by the mToken
+    /// @param errorCode The non-zero error code returned by `redeemUnderlying`
+    error MoonwellSupplyFuseRedeemFailed(uint256 errorCode);
+
     constructor(uint256 marketId_) {
         VERSION = address(this);
         MARKET_ID = marketId_;
@@ -151,6 +155,17 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 balance = mToken.balanceOfUnderlying(address(this));
         uint256 amountToWithdraw = data_.amount > balance ? balance : data_.amount;
 
+        /// @dev Instant withdraw path only: an mToken redeems in full or not at all (above its cash it returns an
+        ///      error code), so cap the request at its cash. A partly liquid mToken then pays what it has and the
+        ///      next instant withdraw fuse pays the rest. The ALPHA exit stays uncapped. The read is outside the
+        ///      try block (fail closed).
+        if (catchExceptions_ && amountToWithdraw > 0) {
+            uint256 cash = mToken.getCash();
+            if (cash < amountToWithdraw) {
+                amountToWithdraw = cash;
+            }
+        }
+
         if (amountToWithdraw == 0) {
             return (asset, market, 0);
         }
@@ -170,29 +185,25 @@ contract MoonwellSupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         uint256 amountToWithdraw_,
         bool catchExceptions_
     ) private returns (uint256 amount) {
+        amount = amountToWithdraw_;
         if (catchExceptions_) {
             try MErc20(mToken_).redeemUnderlying(amountToWithdraw_) returns (uint256 redeemResult) {
-                if (redeemResult != 0) {
-                    amount = redeemResult;
+                if (redeemResult == 0) {
                     emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, amount);
                 } else {
-                    amount = amountToWithdraw_;
+                    /// @dev a redeem error code means nothing moved, continue with the next step
                     emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amount);
                 }
             } catch {
                 /// @dev if withdraw failed, continue with the next step
-                amount = amountToWithdraw_;
                 emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amount);
             }
         } else {
             uint256 redeemResult = MErc20(mToken_).redeemUnderlying(amountToWithdraw_);
             if (redeemResult != 0) {
-                amount = redeemResult;
-                emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, amount);
-            } else {
-                amount = amountToWithdraw_;
-                emit MoonwellSupplyExitFailed(VERSION, asset_, mToken_, amount);
+                revert MoonwellSupplyFuseRedeemFailed(redeemResult);
             }
+            emit MoonwellSupplyExitFuse(VERSION, asset_, mToken_, amount);
         }
     }
 

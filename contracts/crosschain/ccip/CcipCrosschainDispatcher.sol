@@ -9,36 +9,18 @@ import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
 import {CcipAppBase} from "./base/CcipAppBase.sol";
 import {CcipClient} from "./interfaces/CcipClient.sol";
 import {CcipRouteConfig} from "./interfaces/ICcipCrosschain.sol";
+import {ICcipWithdrawManager} from "./interfaces/ICcipWithdrawManager.sol";
 import {CcipMessages, CcipMsgType} from "./lib/CcipMessages.sol";
 import {CcipDecimalsLib} from "./lib/CcipDecimalsLib.sol";
 import {BusinessAction, CommandStatus, CommandResolution, CrosschainConstants} from "../lib/CrosschainConstants.sol";
 import {CrosschainErrors} from "../lib/CrosschainErrors.sol";
-import {Command, CrosschainMessages} from "../lib/CrosschainMessages.sol";
+import {Command, CrosschainMessages, SweepFloor} from "../lib/CrosschainMessages.sol";
 import {CrosschainVaultActionLib} from "../lib/CrosschainVaultActionLib.sol";
 import {TrackedVaultPricingLib} from "../lib/TrackedVaultPricingLib.sol";
 import {CcipDispatcherLib} from "./lib/CcipDispatcherLib.sol";
 import {RescueModule} from "../lib/RescueModule.sol";
 import {ICcipDispatcherLibraryAbi} from "./ICcipDispatcherLibraryAbi.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
-
-/// @notice Mirror of the WithdrawManager request view (`WithdrawManager.WithdrawRequestInfo`), field for field, so the
-///         dispatcher can decode `requestInfo` without importing the manager.
-/// @dev `shares` is the manager's outstanding request, `endWithdrawWindowTimestamp` the end of the window in which it
-///      can be redeemed, `canWithdraw` whether that window is open now, `withdrawWindowInSeconds` the window length.
-struct CcipWithdrawRequestInfo {
-    uint256 shares;
-    uint256 endWithdrawWindowTimestamp;
-    bool canWithdraw;
-    uint256 withdrawWindowInSeconds;
-}
-
-/// @notice The two WithdrawManager entry points the dispatcher calls on a remote vault's manager.
-interface ICcipWithdrawManager {
-    /// @notice Registers (replaces) the caller's withdraw request for `shares_` vault shares.
-    function requestShares(uint256 shares_) external;
-    /// @notice The manager's stored request of `account_`.
-    function requestInfo(address account_) external view returns (CcipWithdrawRequestInfo memory);
-}
 
 /// @notice Atomic CCIP dispatcher snapshot used to build a balance attestation from one eth_call.
 struct CcipObservation {
@@ -98,19 +80,15 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///      queued and the last `RESERVED_FOR_VALUE_MOVING` slots belong to the other response types (IL-8583).
     error ResponseQueueNeutralCapReached(uint256 live, uint256 cap);
     error NoQueuedResponse();
+    /// @dev `flushExpiredReturn` (IL-9621): the queue head is not a recall return that stayed queued (`deadline` 0),
+    ///      or its recall deadline has not passed yet (`block.timestamp <= deadline`).
+    error ReturnNotExpired(uint64 responseId, uint256 deadline);
+    /// @dev `flushExpiredReturn` (IL-9621): the call has less than `required` gas left before the attempt to send the
+    ///      return with its tokens, so that attempt could not get its full fixed budget. Retry with a higher gas limit.
+    error InsufficientGasForExpiredReturn(uint256 gasLeft, uint256 required);
     error VaultsAlreadyInitialized();
     error ZeroBusinessAmount();
     error VaultNotTracked(address vault);
-
-    /// @notice One queued dispatcher -> executor response.
-    /// @dev `amountLD` is the bridged token amount in LOCAL ASSET decimals (it is what the CCIP message carries).
-    ///      Sibling accounting values are SHARED decimals: `queuedTokenAmount`, `trackedIdle` and the `amount`
-    ///      of `InboundSettled` / `ReturnQueued`. Convert with `_toSDFloor` / `_toLD` (a factor
-    ///      `DECIMAL_CONVERSION_RATE`, invisible only when local and shared decimals are equal).
-    struct QueuedResponse {
-        bytes data;
-        uint256 amountLD;
-    }
 
     address public immutable FACTORY;
     address public immutable ASSET;
@@ -130,6 +108,11 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     /// @dev Chainlink `RateLimiter.TokenMaxCapacityExceeded(uint256,uint256,address)`: permanent until the pool
     ///      admin raises the bucket capacity, unlike the transient `TokenRateLimitReached`.
     bytes4 private constant TOKEN_MAX_CAPACITY_EXCEEDED_SELECTOR = 0x1a76572a;
+    /// @dev Exact gas given to the attempt of `flushExpiredReturn` to send the expired return WITH its tokens
+    ///      (IL-9621). The attempt always runs with this budget, whatever the caller's gas limit, so its outcome
+    ///      depends only on the state; `flushExpiredReturn` requires `EXPIRED_RETURN_ATTEMPT_GAS +
+    ///      EXPIRED_RETURN_ATTEMPT_GAS / 32` left before the attempt (EIP-150 forwards at most 63/64 of what is left).
+    uint256 private constant EXPIRED_RETURN_ATTEMPT_GAS = 2_000_000;
 
     uint256 public trackedIdle;
     /// @notice Number of value-moving transitions reported to the executor (IL-8257): it is bumped exactly once
@@ -151,7 +134,9 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     mapping(bytes32 => CommandStatus) public commandStatus;
     mapping(bytes32 => bytes32) public commandCommitment;
     mapping(bytes32 => bytes) private _storedCommands;
-    mapping(uint64 => QueuedResponse) private _queuedResponses;
+    /// @dev The response queue; the entry layout and the decimals of its fields are those of
+    ///      `CcipDispatcherLib.QueuedResponse` (`data`, `amountLD`, `returnDeadline`).
+    mapping(uint64 => CcipDispatcherLib.QueuedResponse) private _queuedResponses;
     uint64 public responseQueueHead;
     uint64 public responseQueueTail;
     uint256 public queuedTokenAmount;
@@ -172,6 +157,13 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///         `RETURN_REJECTED(ABOVE_POOL_CAPACITY)` instead of being delivered (IL-8553). `responseId` is the
     ///         dropped queue entry, also announced by `ResponseSkipped`.
     event ReturnAboveLocalPoolCapacity(bytes32 operationId, uint256 amount, uint256 capacity, uint64 responseId);
+    /// @notice A `RETURN_TRANSFER` past its recall deadline left WITHOUT its tokens (IL-9621): `amount` (shared
+    ///         decimals) went back to `trackedIdle`, and the response `responseId` kept its operation id and version
+    ///         and now carries a zero amount and the balance it was queued with raised by `amount`. The balance
+    ///         carried by every response then queued behind it (ids up to `responseQueueTail`) was raised by
+    ///         `amount` in the same transaction. The executor closes the recall with nothing received and nothing
+    ///         debited.
+    event ReturnExpiredUnwound(bytes32 operationId, uint256 amount, uint64 responseId);
     event CommandSucceeded(bytes32 commandId, uint64 sequence, int256 valueDelta);
     event CommandFailed(bytes32 commandId, uint64 sequence);
     event CommandCancelled(bytes32 commandId, uint64 sequence);
@@ -210,7 +202,9 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     event ResponseQueued(uint64 responseId, CcipMsgType messageType, uint256 amountLD);
     event ResponseDispatched(uint64 responseId, bytes32 messageId);
     /// @notice A queued response was dropped without being sent. `amountLD` is its token amount in LOCAL ASSET
-    ///         decimals (re-credited to `trackedIdle` in SHARED decimals).
+    ///         decimals (re-credited to `trackedIdle` in SHARED decimals). When it is non-zero, the balance carried by
+    ///         every response then queued behind the dropped one (ids up to `responseQueueTail`) was raised by that
+    ///         amount in shared decimals in the same transaction (IL-9621).
     event ResponseSkipped(uint64 responseId, uint256 amountLD);
     /// @notice A `BALANCE_REQUEST` was folded into the still-undispatched `BALANCE_REPORT` `responseId`: its
     ///         payload now carries the current balance and `stateVersion` and no new entry was appended (IL-8583).
@@ -265,7 +259,7 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     function configureVaults(address[] calldata vaults_, bool allowed_) external onlyFactory {
         if (vaultsInitialized) revert VaultsAlreadyInitialized();
         vaultsInitialized = true;
-        _configureVaults(vaults_, allowed_, false);
+        _configureVaults(vaults_, allowed_, false, new SweepFloor[](0));
         ++commandConfigEpoch;
         emit VaultsConfigured(commandConfigEpoch, false, allowed_, vaults_.length);
     }
@@ -278,8 +272,10 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
         } else if (messageType == CcipMsgType.RETURN_REQUEST) {
             _returnAssets(data);
         } else if (messageType == CcipMsgType.COMMAND || messageType == CcipMsgType.UPDATE_VAULTS) {
+            _requireRouteEnabled(srcChainId_);
             _executeCommand(data);
         } else if (messageType == CcipMsgType.RETRY_COMMAND) {
+            _requireRouteEnabled(srcChainId_);
             _retryCommand(abi.decode(data, (bytes32)));
         } else if (messageType == CcipMsgType.CANCEL_COMMAND) {
             _cancelCommand(abi.decode(data, (bytes32)));
@@ -289,6 +285,13 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
         } else {
             revert CcipMessages.InvalidMessageType(uint8(messageType));
         }
+    }
+
+    /// @dev New work (commands, vault updates, retries) is refused while the executor route is disabled (IL-9701).
+    ///      The revert also undoes the processed-message mark, so the same message executes after the route is
+    ///      re-enabled. Messages that settle or unwind existing state are not gated.
+    function _requireRouteEnabled(uint256 srcChainId_) private view {
+        if (!_ccipRoutes[srcChainId_].enabled) revert CcipUnknownChain(srcChainId_);
     }
 
     function _receiveOutbound(CcipClient.Any2EVMMessage memory message_, bytes memory data_) private {
@@ -318,7 +321,19 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///      (a permanent condition, IL-8553) the queue entry and the `trackedIdle` debit are unwound and the
     ///      recall is rejected with `ABOVE_POOL_CAPACITY`, so no value moves and `stateVersion` is not bumped.
     ///      A transient `TokenRateLimitReached`, any other send failure, or an occupied queue head keeps the
-    ///      recall queued for `flushResponse` as before.
+    ///      recall queued for `flushResponse` as before. The pool's outbound rate limit is shared with every
+    ///      sender of that token on the lane, and "transient" names the cause, not a duration: a head that keeps
+    ///      hitting `TokenRateLimitReached` has no fixed time bound on the token transfer itself and holds every later
+    ///      response behind it; only the recall's deadline (below) lets `flushExpiredReturn` close the recall without
+    ///      its tokens. The token-less transport of that exit must keep working whatever the pool's state.
+    ///      Once the recall is older than the executor's `TRANSFER_STALENESS_MAX` (a stale pending recall, or a
+    ///      cancelled but unresolved one measured from its cancellation), the executor's `getBalance()`
+    ///      reverts `TransferStale`, so the vault's NAV-validating pre-hook rejects the gated user operations
+    ///      (IL-9745). See the README of this directory, section "Recall held at the queue head by a shared pool
+    ///      rate limit (IL-9745, 3sigma #36)" under Recovery.
+    ///      A `RETURN_TRANSFER` that is still queued when this returns (its head send failed, or another response
+    ///      holds the head) keeps the request `deadline` in its queue entry (`queuedReturnDeadline`); once that has
+    ///      passed, `flushExpiredReturn` can close the recall without its tokens (IL-9621).
     /// @dev The request carries the `deadline` the executor stamped (`createdAt + TRANSFER_STALENESS_MAX`, IL-8590).
     ///      A request executed after it (CCIP delivery is permissionless, so a stuck message can be executed
     ///      arbitrarily late) is rejected with `EXPIRED` before any value moves: the executor has by then declared
@@ -373,6 +388,11 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
                 return;
             }
         }
+        // Still queued (the head send failed, or another response holds the head; a sent entry is deleted, so its
+        // `amountLD` reads 0): keep the deadline in the entry, so that `flushExpiredReturn` can release the return
+        // without its tokens once it has passed and every removal of the entry clears it (IL-9621).
+        CcipDispatcherLib.QueuedResponse storage queued = _queuedResponses[responseId];
+        if (queued.amountLD != 0) queued.returnDeadline = deadline;
         stateVersion = version;
         emit ReturnQueued(operationId, amount, responseId);
     }
@@ -462,7 +482,8 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///      decimals.
     /// @param storedType_ `COMMAND` or `UPDATE_VAULTS`.
     /// @param command_ The command as delivered.
-    /// @param extra_ ABI-encoded `(address[] vaults, bool allowed, bool replace)` for `UPDATE_VAULTS`, else unused.
+    /// @param extra_ ABI-encoded `(address[] vaults, bool allowed, bool replace, SweepFloor[] floors)` for
+    ///        `UPDATE_VAULTS` (IL-9629: `floors` in shared decimals), else unused.
     function runStoredCommand(
         CcipMsgType storedType_,
         Command calldata command_,
@@ -479,10 +500,14 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
             revert InvalidConfigEpoch(commandConfigEpoch, command_.commandConfigEpoch);
         }
         if (storedType_ == CcipMsgType.UPDATE_VAULTS) {
-            (address[] memory vaults, bool allowed, bool replace) = abi.decode(extra_, (address[], bool, bool));
+            (address[] memory vaults, bool allowed, bool replace, SweepFloor[] memory floors) = abi.decode(
+                extra_,
+                (address[], bool, bool, SweepFloor[])
+            );
             // Vaults leaving the allowlist are swept into idle inside this gas-bounded self-call (IL-8784): the
-            // redeemed assets are credited to `trackedIdle`, the position leaves the tracked set (value-neutral).
-            trackedIdle += _toSDFloor(_configureVaults(vaults, allowed, replace));
+            // redeemed assets are credited to `trackedIdle`, the position leaves the tracked set (value-neutral),
+            // unless its sweep floor is not reached and it stays tracked (IL-9629).
+            trackedIdle += _toSDFloor(_configureVaults(vaults, allowed, replace, floors));
             ++commandConfigEpoch;
             emit VaultsConfigured(commandConfigEpoch, replace, allowed, vaults.length);
             return 0;
@@ -532,28 +557,10 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
             uint256 receivedSD;
             (delta, receivedSD) = _creditReceived(beforeBalance, minAssetsSD, assets);
         } else if (command.action == uint8(BusinessAction.REQUEST_SHARES)) {
-            (address withdrawManager, address vault, uint256 shares, uint256 maxFeeShares) = CrosschainMessages
-                .decodeRequestSharesAction(command.actionData);
-            // Gate on the TRACKED set, not the allowlist: a vault removed from the deposit allowlist may
-            // still hold a live position that has to be unwound (matches Stargate, audit L-3).
-            if (!isTrackedVault[vault]) revert VaultNotTracked(vault);
-            _requireVaultWithdrawManager(vault, withdrawManager);
-            uint256 balance = IERC20(vault).balanceOf(address(this));
-            // Not a slippage bound: the dispatcher holds fewer shares than the request names. Same error as Stargate.
-            if (shares > balance) revert CrosschainErrors.RequestSharesUnavailable(balance, shares);
-            ICcipWithdrawManager(withdrawManager).requestShares(shares);
-            // Bound the fee the (remotely mutable) manager took out of this contract's shares (IL-8603).
-            uint256 balanceAfter = IERC20(vault).balanceOf(address(this));
-            uint256 deducted = balance > balanceAfter ? balance - balanceAfter : 0;
-            if (maxFeeShares != type(uint256).max && deducted > maxFeeShares) {
-                revert RequestSharesFeeExceeded(vault, deducted, shares, maxFeeShares);
-            }
-            uint256 afterShares = ICcipWithdrawManager(withdrawManager).requestInfo(address(this)).shares;
-            // The WithdrawManager REPLACES its stored request on every `requestShares` and takes the fee out of
-            // this contract's shares, so the event reports the manager's read-back outstanding request. The
-            // dispatcher keeps no copy (IL-8410): the manager bounds REDEEM_FROM_REQUEST and `balanceOf` alone
-            // proves a live position.
-            emit SharesRequested(vault, afterShares, deducted);
+            // The body runs in the linked `CcipDispatcherLib.requestShares` (EIP-170, IL-9621), under delegatecall in
+            // this frame: the same tracked-set gate, checks, calls on the vault and its WithdrawManager and
+            // `SharesRequested`, in the same order. It moves no value, so `delta` stays 0.
+            CcipDispatcherLib.requestShares(isTrackedVault, command.actionData);
         } else if (command.action == uint8(BusinessAction.REDEEM_FROM_REQUEST)) {
             (
                 address withdrawManager,
@@ -750,10 +757,13 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///      remote state on both transports (audit M-6). Additive/removal mode is kept for incremental
     ///      changes. A vault leaving the allowlist is swept (best-effort redeem) and untracked in
     ///      the same call (IL-8784); the redeemed assets are returned in local decimals for `trackedIdle`.
+    ///      IL-9629: `floors_` (shared decimals) sets per-vault sweep floors; a vault whose non-zero floor is not
+    ///      reached stays tracked off the allowlist and is swept again only by a command naming it in `floors_`.
     function _configureVaults(
         address[] memory vaults_,
         bool allowed_,
-        bool replace_
+        bool replace_,
+        SweepFloor[] memory floors_
     ) private returns (uint256 sweptAssetsLD) {
         return
             CcipDispatcherLib.configureVaults(
@@ -764,8 +774,22 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
                 _assetImm(),
                 vaults_,
                 allowed_,
-                replace_
+                replace_,
+                floors_,
+                DECIMAL_CONVERSION_RATE
             );
+    }
+
+    /// @notice The floored redeem of a vault-removal sweep, in its own call frame (IL-9629).
+    /// @dev Self-call only (`OnlySelf`): `CrosschainVaultActionLib.sweepShares` calls it through `this` with the sweep
+    ///      gas cap when the vault has a non-zero `SweepFloor`. It redeems `shares_` of `vault_` and reverts
+    ///      `SweepBelowMinimum` when the measured ASSET received is below `minAssetsLD_`, which rolls the redeem back.
+    /// @param vault_ The vault being removed.
+    /// @param shares_ The shares to redeem.
+    /// @param minAssetsLD_ The sweep floor, local ASSET decimals.
+    function sweepRedeemSelf(address vault_, uint256 shares_, uint256 minAssetsLD_) external {
+        if (msg.sender != address(this)) revert OnlySelf();
+        CrosschainVaultActionLib.redeemAtLeast(vault_, shares_, minAssetsLD_);
     }
 
     /// @dev The absolute remote balance read by off-chain attesters through `accountedBalance()`; responses to the
@@ -813,6 +837,9 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///      responses strictly by version (a value-neutral BALANCE_REPORT / COMMAND_ACK may land before them, but its
     ///      figure is still the one valid after they are applied). Counting those tokens again would leave a phantom
     ///      residual anchor once a later response empties `settled`.
+    ///      A queued token amount that stays here instead of leaving (a return released by `flushExpiredReturn`, a
+    ///      token-bearing head dropped by the skip rescue) would leave every balance already encoded in the queue
+    ///      too low by that amount, so both paths raise them with `CcipDispatcherLib.raiseQueuedBalances` (IL-9621).
     function _reportedBalance() private returns (uint256 balance) {
         uint256 unpricedCount;
         uint256 unpricedCodes;
@@ -830,7 +857,8 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     }
 
     // ============================================================
-    // Tracked-position set views (the timelocked force-untrack was removed: tracked == allowlisted, IL-8784)
+    // Tracked-position set views (the timelocked force-untrack was removed: tracked == allowlisted, IL-8784; the one
+    // exception, a vault retained below its sweep floor, IL-9629, is removed by an UPDATE_VAULTS floor-0 entry)
     // ============================================================
 
     /// @notice Canonical tracked-position-set commitment bound by balance attestations.
@@ -889,11 +917,82 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
         }
     }
 
+    /// @notice Permissionless exit for a recall return that cannot leave with its tokens (IL-9621). The queue head
+    ///         must be a `RETURN_TRANSFER` whose recall deadline has passed. It is first sent as it is, with its
+    ///         tokens. When that send fails, for whatever reason, its tokens go back to `trackedIdle` and the same
+    ///         response (same operation id, same version) is sent without them, with a zero amount. The executor then
+    ///         closes the recall with nothing received and nothing debited; the recalled liquidity does not arrive
+    ///         and the recall has to be re-issued.
+    ///         This only removes the recall's dependence on the token transfer: once the zero return is delivered,
+    ///         the executor's valuation reopens only when its other gates allow it (a `StateVersionGap` on an
+    ///         out-of-order delivery, `ObservationStale`, `ChainBlocked`, another stale transfer).
+    /// @dev Order of effects:
+    ///      (1) `NoQueuedResponse` on an empty queue; `ReturnNotExpired(head, deadline)` when the head has no recall
+    ///      deadline (`deadline` 0) or `block.timestamp <= deadline`.
+    ///      (2) `InsufficientGasForExpiredReturn` when less than `EXPIRED_RETURN_ATTEMPT_GAS * 33 / 32` is left.
+    ///      (3) The send with tokens through `dispatchResponseSelf`, with exactly `EXPIRED_RETURN_ATTEMPT_GAS` whatever
+    ///      the caller's gas limit; on success the function returns false. A send that needs more than that budget
+    ///      never leaves with its tokens through this function (`flushResponse` has no such budget).
+    ///      (4) Any failure of (3), whatever its cause (including a fee above `maxFee` or a fee balance that covers
+    ///      only the token-less message): the head becomes `(operationId, 0, balance + amount, version)`, `balance`
+    ///      being the one it was queued with, and every response queued behind it that carries a balance has it
+    ///      raised by `amount` (`CcipDispatcherLib.unwindQueuedReturn`; no vault is read).
+    ///      (5) `amount` moves from `queuedTokenAmount` to `trackedIdle`: `accountedBalance()`, `stateVersion` and
+    ///      the token balance of this contract do not change.
+    ///      (6) `ReturnExpiredUnwound`. (7) The token-less send, with the route's `messageGasLimit`; true.
+    ///      Every state write precedes that send: when it fails too (fee budget, disabled route, router failure) the
+    ///      whole call reverts with its error and the queue, its payloads, the ledgers and the deadline stay as they
+    ///      were. The deadline is the executor's `createdAt + TRANSFER_STALENESS_MAX`, read on this chain's clock
+    ///      (the assumption of the `EXPIRED` rejection). A skip scheduled for the released entry can no longer be
+    ///      executed (`NoQueuedResponse`).
+    /// @return unwound True when the head was sent without its tokens, false when it left with them.
+    function flushExpiredReturn() external nonReentrant returns (bool unwound) {
+        uint64 head = responseQueueHead;
+        if (head == 0) revert NoQueuedResponse();
+        uint256 deadline = _queuedResponses[head].returnDeadline;
+        if (deadline == 0 || block.timestamp <= deadline) revert ReturnNotExpired(head, deadline);
+        // EIP-150 forwards at most 63/64 of the gas left: with this much left (less the little spent until the call)
+        // the attempt gets exactly `EXPIRED_RETURN_ATTEMPT_GAS`, so its outcome does not depend on the caller's gas
+        // limit (the budget pattern of `_requireCommandGas`, IL-8625).
+        uint256 required = EXPIRED_RETURN_ATTEMPT_GAS + EXPIRED_RETURN_ATTEMPT_GAS / 32;
+        uint256 gasLeft = gasleft();
+        if (gasLeft < required) revert InsufficientGasForExpiredReturn(gasLeft, required);
+        try this.dispatchResponseSelf{gas: EXPIRED_RETURN_ATTEMPT_GAS}(head) {
+            return false;
+        } catch {}
+        // Nothing was sent. Rewrite the head without its amount and raise the balances queued behind it, then move
+        // the value from the queue bucket back to idle (as `_dropHeadResponse` does).
+        (bytes32 operationId, uint256 amountSD) = CcipDispatcherLib.unwindQueuedReturn(
+            _queuedResponses,
+            head,
+            responseQueueTail
+        );
+        queuedTokenAmount -= amountSD;
+        trackedIdle += amountSD;
+        emit ReturnExpiredUnwound(operationId, amountSD, head);
+        _dispatchResponse(head);
+        return true;
+    }
+
+    /// @notice The recall deadline kept for the queued `RETURN_TRANSFER` `responseId_` (IL-9621): past it,
+    ///         `flushExpiredReturn` can release that return when it is the queue head. Read it for
+    ///         `responseQueueHead()`.
+    /// @dev 0 means no deadline: no such entry, an entry that is not a queued return, or a return already sent,
+    ///      released or dropped (every removal deletes the entry with its deadline). The executor's clock stamped it
+    ///      (`createdAt + TRANSFER_STALENESS_MAX`); it is compared with this chain's `block.timestamp`.
+    /// @param responseId_ The response id.
+    /// @return deadline The recall deadline, or 0.
+    function queuedReturnDeadline(uint64 responseId_) external view returns (uint256 deadline) {
+        return _queuedResponses[responseId_].returnDeadline;
+    }
+
     /// @notice Sends the queued response `responseId_` to the executor.
     /// @dev Self-call only (`OnlySelf`): it is reached through `this` from `flushResponse(maxCount_)` for every
     ///      entry after the first, so a failed send stops the drain instead of reverting it, and from
     ///      `_tryDispatchHead` for a response queued at the head (`_queueResponse`, and the RETURN_TRANSFER path). The queue is strictly
-    ///      FIFO, so `responseId_` has to be the head of the queue.
+    ///      FIFO, so `responseId_` has to be the head of the queue. `flushExpiredReturn` calls it with the fixed
+    ///      `EXPIRED_RETURN_ATTEMPT_GAS` budget for its attempt to send an expired return with its tokens (IL-9621);
+    ///      every other caller forwards the gas it has.
     function dispatchResponseSelf(uint64 responseId_) external returns (bytes32 messageId) {
         if (msg.sender != address(this)) revert OnlySelf();
         messageId = _dispatchResponse(responseId_);
@@ -909,19 +1008,22 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///      `accountedBalance()` / `observation()` and the rescue floor (`trackedIdle + queuedTokenAmount`) are unchanged
     ///      (IL-8064); the balance carried by responses queued AFTER the drop rises by the dropped amount, because
     ///      since IL-8768 it excludes only what is still queued (the executor still counts those tokens in
-    ///      `settledRemoteBalance`). Token-bearing responses already queued behind the dropped one keep the balance
-    ///      encoded when they were queued, which is lower by the dropped amount (IL-9146). The executor's recall
-    ///      record for that response stays open: cancel it there (`cancelPendingReturn`, MANAGER-gated via
-    ///      `CcipCrosschainCommandFuse`'s `CANCEL_RETURN`, or the permissionless `cancelStalePendingReturn`
-    ///      once stale) and re-issue the recall. The cancelled recall's staleness clock (IL-8590) is cleared
-    ///      by a late return, a `RETURN_REJECTED`, `FORCE_SET_SETTLED` or the `ADVANCE_FRONTIER` that repairs
-    ///      the skipped version (which is the usual exit here); the two rescues clear it only past the reset
-    ///      guard's `refusedUntil` (before it `FORCE_SET_SETTLED` reverts and `ADVANCE_FRONTIER` keeps the clock).
+    ///      `settledRemoteBalance`). The responses already queued behind the dropped one were encoded net of the
+    ///      dropped amount, so every one that carries a balance has it raised by that amount in the same transaction
+    ///      (`CcipDispatcherLib.raiseQueuedBalances`, IL-9621; dispatchers built before it leave them lower, IL-9146).
+    ///      The executor's recall record for that response stays open: cancel it there (`cancelPendingReturn`,
+    ///      MANAGER-gated via `CcipCrosschainCommandFuse`'s `CANCEL_RETURN`, or the permissionless
+    ///      `cancelStalePendingReturn` once stale) and re-issue the recall. The cancelled recall's staleness clock
+    ///      (IL-8590) is cleared by a late return, a `RETURN_REJECTED`, `FORCE_SET_SETTLED` or the
+    ///      `ADVANCE_FRONTIER` that repairs the skipped version (which is the usual exit here); the two rescues clear
+    ///      it only past the reset guard's `refusedUntil` (before it `FORCE_SET_SETTLED` reverts and
+    ///      `ADVANCE_FRONTIER` keeps the clock).
     ///      Full rescue delay and guardian veto apply; the drop itself is irreversible. `stateVersion` is not
     ///      touched: dropping a value-neutral response (`BALANCE_REPORT`, `COMMAND_ACK`, ...) is harmless to
     ///      the frontier, but dropping a `TRANSFER_SETTLED` or `RETURN_TRANSFER` response leaves a version the
     ///      executor never sees, so the frontier then stays one behind for good and only the timelocked
-    ///      `ADVANCE_FRONTIER` rescue repairs it (IL-8257).
+    ///      `ADVANCE_FRONTIER` rescue repairs it (IL-8257). A skip scheduled for a return that `flushExpiredReturn`
+    ///      releases first can no longer be executed (`NoQueuedResponse`): cancel it (IL-9621).
     function scheduleSkipStuckResponse(uint64 responseId_) external onlyRescueAdmin returns (uint256 rescueId) {
         _requireHead(responseId_);
         return _scheduleForceResolve(_skipCommitment(responseId_));
@@ -938,9 +1040,12 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
         return keccak256(abi.encode("CCIP_SKIP_RESPONSE", responseId_));
     }
 
-    /// @dev Drops the undispatched queue head, shared by the skip rescue and the capacity unwind.
+    /// @dev Drops the undispatched queue head, shared by the skip rescue and the capacity unwind. For a token-bearing
+    ///      head, the responses queued behind it have their carried balances raised by its amount (IL-9621); in the
+    ///      capacity unwind the dropped entry is always the tail, so nothing is raised there.
     function _dropHeadResponse(uint64 responseId_) private {
         uint256 amount = _queuedResponses[responseId_].amountLD;
+        uint64 tail = responseQueueTail;
         if (amount != 0) {
             // Nothing was sent: the tokens are still here (a dispatch deletes the record before
             // `_sendCcip`, so an undispatched record always means undelivered tokens). Move the value back
@@ -949,9 +1054,13 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
             uint256 amountSD = _toSDFloor(amount);
             queuedTokenAmount -= amountSD;
             trackedIdle += amountSD;
+            // The balances queued behind were encoded net of this amount, which now stays here (IL-9621).
+            if (responseId_ < tail) {
+                CcipDispatcherLib.raiseQueuedBalances(_queuedResponses, responseId_ + 1, tail, amountSD);
+            }
         }
         delete _queuedResponses[responseId_];
-        responseQueueHead = responseId_ == responseQueueTail ? 0 : responseId_ + 1;
+        responseQueueHead = responseId_ == tail ? 0 : responseId_ + 1;
         emit ResponseSkipped(responseId_, amount);
     }
 
@@ -1004,7 +1113,7 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     function queuedResponse(
         uint64 responseId_
     ) external view returns (bytes memory data, address token, uint256 amountLD) {
-        QueuedResponse storage response = _queuedResponses[responseId_];
+        CcipDispatcherLib.QueuedResponse storage response = _queuedResponses[responseId_];
         amountLD = response.amountLD;
         return (response.data, amountLD == 0 ? address(0) : _assetImm(), amountLD);
     }
@@ -1040,6 +1149,10 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
     ///      get a slot while a stalled head keeps the neutral traffic out. The reserved band is only
     ///      `RESERVED_FOR_VALUE_MOVING` deep: past the soft cap just that many more of those responses fit before
     ///      `ResponseQueueFull`, so a stalled head should be repaired or skipped before then.
+    ///      A new response type whose payload carries a dispatcher balance must also be added to
+    ///      `CcipDispatcherLib.raiseQueuedBalances`, or a released or dropped token-bearing head ahead of it would
+    ///      leave its balance too low (IL-9621). `returnDeadline` is not written here: ids are never reused and every
+    ///      removal deletes the entry, so it is 0 until `_returnAssets` sets it.
     function _enqueueResponse(
         CcipMsgType messageType_,
         bytes memory payload_,
@@ -1056,10 +1169,9 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
             ) revert ResponseQueueNeutralCapReached(live, MAX_QUEUED_RESPONSES - RESERVED_FOR_VALUE_MOVING);
         }
         responseId = ++responseQueueTail;
-        _queuedResponses[responseId] = QueuedResponse({
-            data: CcipMessages.encode(messageType_, payload_),
-            amountLD: amount_
-        });
+        CcipDispatcherLib.QueuedResponse storage entry = _queuedResponses[responseId];
+        entry.data = CcipMessages.encode(messageType_, payload_);
+        entry.amountLD = amount_;
         if (head == 0) responseQueueHead = responseId;
         if (amount_ != 0) queuedTokenAmount += _toSDFloor(amount_);
         emit ResponseQueued(responseId, messageType_, amount_);
@@ -1067,7 +1179,7 @@ contract CcipCrosschainDispatcher is CcipAppBase, RescueModule, ICcipDispatcherL
 
     function _dispatchResponse(uint64 responseId_) private returns (bytes32 messageId) {
         _requireHead(responseId_);
-        QueuedResponse storage stored = _queuedResponses[responseId_];
+        CcipDispatcherLib.QueuedResponse storage stored = _queuedResponses[responseId_];
         bytes memory data = stored.data;
         uint256 amount = stored.amountLD;
         CcipRouteConfig memory route = _ccipRoutes[_executorChainIdImm()];

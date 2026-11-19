@@ -190,6 +190,10 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
      * @notice Updates whether a target contract is closed for operations (emergency pause / unpause)
      * @param target_ Target contract address
      * @param closed_ New closed status
+     * @dev A GUARDIAN_ROLE holder must have execution delay 0 and the role must keep a minimal execution delay floor of 0:
+     *      for a holder with a non-zero delay `canCall` requires a scheduled operation, and `schedule()` treats a custom
+     *      selector of the manager itself, such as this one, as unauthorized, so a delayed guardian can never pause or
+     *      reopen a target (IL-8384, IL-8394, IL-9658).
      * @custom:access Restricted to GUARDIAN_ROLE
      */
     function updateTargetClosed(address target_, bool closed_) external override restricted {
@@ -219,6 +223,8 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
 
     /**
      * @notice Sets minimal execution delays for specified roles
+     * @dev The delay is a floor checked only when a role is granted; existing holders keep their delay until the role
+     * is granted to them again
      * @param rolesIds_ Array of role IDs
      * @param delays_ Array of corresponding delays
      * @custom:access Restricted to TECH_PLASMA_VAULT_ROLE
@@ -299,9 +305,12 @@ contract IporFusionAccessManager is Initializable, IIporFusionAccessManager, Acc
      * @notice Retrieves the minimal execution delay configured for a specific role
      * @param roleId_ The role identifier to query
      * @return The minimal execution delay in seconds for the specified role
-     * @dev This delay represents the minimum time that must pass between scheduling and executing an operation
+     * @dev This is the floor for the execution delay of a NEW grant of the role. It is checked only when a role is
+     * granted (see _grantRoleInternal); holders granted earlier keep their own delay until the role is granted to
+     * them again. The delay in force for a holder is returned by getAccess(roleId_, account) of the OpenZeppelin
+     * AccessManager.
      * @custom:access No access restrictions - can be called by anyone
-     * @custom:security Used to enforce timelock restrictions on role operations
+     * @custom:security Used to constrain the execution delay of new role grants, not to timelock existing holders
      */
     function getMinimalExecutionDelayForRole(uint64 roleId_) external view override returns (uint256) {
         return RoleExecutionTimelockLib.getMinimalExecutionDelayForRole(roleId_);

@@ -103,12 +103,15 @@ contract FusionFactoryDaoFeePackagesForkTest is Test {
         // Deploy new PlasmaVault as plasmaVaultCoreBase for cloning
         // The existing one on fork may be incompatible with new PlasmaVaultInitData structure
         address newPlasmaVaultCoreBase = address(new PlasmaVault());
+        // IL-9634 (D-060): the on-chain access manager base predates setRedemptionDelayExemption, which the factory now
+        // calls on every clone, so the fork tests deploy a fresh base
+        address newAccessManagerBase = address(new IporFusionAccessManager(owner, 0));
 
         vm.prank(owner);
         fusionFactory.updateBaseAddresses(
             version,
             newPlasmaVaultCoreBase,
-            existingBases.accessManagerBase,
+            newAccessManagerBase,
             existingBases.priceManagerBase,
             existingBases.withdrawManagerBase,
             existingBases.rewardsManagerBase,

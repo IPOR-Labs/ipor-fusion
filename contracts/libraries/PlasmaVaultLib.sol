@@ -157,8 +157,10 @@ library PlasmaVaultLib {
     /// Security considerations:
     /// - Only callable by authorized governance functions
     /// - Critical for maintaining market balance consistency
-    /// - Must prevent circular dependencies
-    /// - Should validate market existence
+    /// - Does not validate the ids: a dependency on a market without a balance fuse, or on a market whose balance
+    ///   fuse is removed later, makes every refresh that expands the graph to it revert MarketWithoutBalanceFuse
+    ///   until the graph is rewritten (fail-closed by design, IL-8312)
+    /// - Cycles are not rejected; the graph expansion tolerates them
     ///
     /// Common update scenarios:
     /// - Adding new market dependencies
@@ -561,6 +563,8 @@ library PlasmaVaultLib {
     ///   ConfigureInstantWithdrawalFuse, by ALPHA via PlasmaVault.execute
     /// - Validates that every fuse is supported and that every params array is not empty
     /// - Does not validate the content or the length of a non-empty params array
+    /// - Support is checked only here, at write time: a fuse removed later with removeFuses stays in the list
+    ///   and is skipped by PlasmaVaultMarketsLib.withdrawFromMarkets (isFuseSupported per entry)
     /// - Critical for withdrawal security
     ///
     /// @dev Important: Configuration affects:
@@ -577,6 +581,7 @@ library PlasmaVaultLib {
     ///
     /// @custom:revert FuseUnsupported When an entry's fuse is not supported
     /// @custom:revert InstantWithdrawalFuseEmptyParams When an entry's params array is empty
+    /// @dev Each entry's params key is cleared before it is written, so entries left by older builds are never appended to
     function configureInstantWithdrawalFuses(InstantWithdrawalFusesParamsStruct[] calldata fuses_) internal {
         // Get previous configuration to clean up stale entries
         address[] memory previousFuses = PlasmaVaultStorageLib.getInstantWithdrawalFusesArray().value;
@@ -605,6 +610,9 @@ library PlasmaVaultLib {
 
             fusesList[i] = fuses_[i].fuse;
             key = keccak256(abi.encodePacked(fuses_[i].fuse, i));
+
+            // Clear the key before writing: it may hold entries written by an older build that are outside the previous list
+            delete instantWithdrawalFusesParams.value[key];
 
             for (uint256 j; j < fuses_[i].params.length; ++j) {
                 instantWithdrawalFusesParams.value[key].push(fuses_[i].params[j]);

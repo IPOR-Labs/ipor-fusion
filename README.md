@@ -44,6 +44,7 @@ An example `.env` file is in [.env.example](./.env.example). Copy this file to `
 - `BASE_PROVIDER_URL` - Base provider URL
 - `TAC_PROVIDER_URL` - TAC provider URL
 - `INK_PROVIDER_URL` - Ink provider URL
+- `HOODI_PROVIDER_URL` - Hoodi testnet provider URL
 
 Test smart contracts using:
 

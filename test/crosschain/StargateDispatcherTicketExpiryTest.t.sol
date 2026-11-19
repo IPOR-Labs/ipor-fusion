@@ -289,16 +289,21 @@ contract StargateDispatcherTicketExpiryTest is FactoryTestBase {
         assertEq(IDispatcherAssetView(ticket.executor).STARGATE_POOL(), newPool, "dispatcher bound to the new pool");
     }
 
-    /// @notice Once the asset is frozen on the destination (any `createExecutor`), a stale scheduled migration
-    ///         cannot execute anymore and must not block fresh deployments.
+    /// @notice A frozen asset cannot be migrated, so it holds no commitment and does not gate a fresh ticket.
+    /// @dev Since IL-9641 `createExecutor` is gated too, so a commitment can no longer be pending when an asset is
+    ///      frozen: freeze first, scheduling then reverts, and the ticket still deploys.
     function testShouldSkipMigrationGateOnceTheAssetIsFrozen() public requiresFactory {
         DeploymentTicket memory ticket = _makeTicket(1, keccak256("frozen"), block.timestamp + 30 days);
-        _scheduleMigration();
         factory.createExecutor(keccak256("freezer"), _params(manager)); // freezes ASSET_ID
         assertTrue(_real().assetFrozen(ASSET_ID), "frozen by createExecutor");
 
+        address newToken = address(new MockERC20("USD Coin v2", "USDC2", 6));
+        address newPool = address(new MockStargatePool(newToken, 6));
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.AssetConfigFrozen.selector, ASSET_ID));
+        factory.scheduleAssetConfig(ASSET_ID, newToken, newPool);
+
         _deliver(ticket);
-        assertEq(uint8(_lastType()), uint8(MsgType.DEPLOYMENT_ACK), "ACK despite the stale schedule");
+        assertEq(uint8(_lastType()), uint8(MsgType.DEPLOYMENT_ACK), "ACK on the frozen asset");
         assertGt(ticket.executor.code.length, 0, "deployed");
     }
 

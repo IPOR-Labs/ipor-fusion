@@ -122,7 +122,8 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: F_TOKEN,
             vaultAssetAmount: amount_,
-            maxSharesBurned: 0
+            maxSharesBurned: 0,
+            minAssetsOut: 0
         });
         FluidInstadappStakingSupplyFuseExitData memory exitDataStaking = FluidInstadappStakingSupplyFuseExitData({
             fluidTokenAmount: amount_,
@@ -130,7 +131,7 @@ contract FluidInstadappStakingUSDCArbitrum is SupplyTest {
         });
 
         data = new bytes[](2);
-        data[1] = abi.encodeWithSignature("exit((address,uint256,uint256))", exitData);
+        data[1] = abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", exitData);
         data[0] = abi.encodeWithSignature("exit((uint256,address))", exitDataStaking);
 
         fusesSetup = new address[](2);

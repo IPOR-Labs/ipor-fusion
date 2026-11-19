@@ -84,6 +84,7 @@ contract CcipFactoryCancelledTicketSetTest is Test {
                 rescueDelay: 3 days,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             })
@@ -172,7 +173,10 @@ contract CcipFactoryCancelledTicketSetTest is Test {
         vm.expectRevert(_unknown(executor, h1));
         _deliver(CcipMsgType.DEPLOYMENT_ACK, _ack(executor, h1), "ack-T1");
 
-        _deliver(CcipMsgType.DEPLOYMENT_NACK, abi.encode(executor, REMOTE_CHAIN, h3, uint8(1)), "nack-T3");
+        // The NACK names the pending request T3 by its `expiresAt` (IL-9685).
+        uint256 expiresAt3 = uint256(factory.pendingDeploymentCreatedAt(executor, REMOTE_CHAIN)) +
+            factory.DEPLOYMENT_TTL();
+        _deliver(CcipMsgType.DEPLOYMENT_NACK, abi.encode(executor, REMOTE_CHAIN, h3, uint8(1), expiresAt3), "nack-T3");
         _deliver(CcipMsgType.DEPLOYMENT_ACK, _ack(executor, h1), "ack-T1");
         assertTrue(CcipCrosschainExecutor(payable(executor)).hasDispatcher(REMOTE_CHAIN), "ready");
     }

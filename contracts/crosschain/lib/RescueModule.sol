@@ -18,8 +18,9 @@ import {RescueLogicLib, RescueStorage, RescueStorageRecord} from "./RescueLogicL
 ///      `RescueLogicLib` on that storage. The same queue and timelock/veto machinery back the hosts' other
 ///      timelocked admin exits (executor force-resolves, force-sets and chain rescues; dispatcher admin recall,
 ///      force-untrack and, on CCIP, the stuck-response skip) via the `_scheduleForceResolve` / `_consumeForceResolve`
-///      internal helpers, so those share the delay, the guardian veto epoch and the cancel path with generic
-///      rescues.
+///      internal helpers, so those share the delay (except frontier repairs, which use the shorter
+///      `CrosschainConstants.FRONTIER_REPAIR_DELAY` of 6 h), the guardian veto epoch and the cancel path with
+///      generic rescues.
 /// @author IPOR Labs
 abstract contract RescueModule is ReentrancyGuard {
     /// @notice Discriminates a queued action between a generic external call and a force-resolve marker.
@@ -63,7 +64,9 @@ abstract contract RescueModule is ReentrancyGuard {
     /// @dev Immutable and distinct from `ADMIN`. Can never schedule or execute.
     address public immutable RESCUE_GUARDIAN;
 
-    /// @notice Minimum delay (seconds) between scheduling and executing an action.
+    /// @notice Minimum delay (seconds) between scheduling and executing an action, for every action except a
+    ///         frontier repair (`ADVANCE_FRONTIER` / `ADVANCE_STATE_FRONTIER`), which uses
+    ///         `CrosschainConstants.FRONTIER_REPAIR_DELAY` (6 h).
     uint256 public immutable RESCUE_DELAY;
 
     /// @dev The rescue queue: records, `rescueCount`, `pendingRescueCount` and the monotonic guardian veto
@@ -107,6 +110,7 @@ abstract contract RescueModule is ReentrancyGuard {
     error RescueFactoryCall(address factory);
     error RescueExecutorCall(address executor);
     error RescueContextCall(address target);
+    error RescueCallShapeNotAllowed(address target, bytes4 selector);
     error RescueTransportCall(address target, bytes4 selector);
     error RescueTrackedVaultCall(address vault);
     error RescueTrackedSetTooLarge(uint256 len, uint256 max);
@@ -140,12 +144,16 @@ abstract contract RescueModule is ReentrancyGuard {
 
     /// @param admin_ Rescue admin (full delayed administrator); must be non-zero and != guardian_.
     /// @param guardian_ Rescue guardian (veto only); must be non-zero and != admin_.
-    /// @param rescueDelay_ Timelock in seconds applied to every scheduled action.
+    /// @param rescueDelay_ Timelock in seconds applied to every scheduled action; within
+    ///        [`MIN_RESCUE_DELAY`, `MAX_RESCUE_DELAY`].
     constructor(address admin_, address guardian_, uint256 rescueDelay_) {
         if (admin_ == address(0) || guardian_ == address(0)) revert CrosschainErrors.ZeroAddress();
         if (admin_ == guardian_) revert CrosschainErrors.SameAddress();
         if (rescueDelay_ < CrosschainConstants.MIN_RESCUE_DELAY) {
             revert CrosschainErrors.InvalidRescueDelay(rescueDelay_, CrosschainConstants.MIN_RESCUE_DELAY);
+        }
+        if (rescueDelay_ > CrosschainConstants.MAX_RESCUE_DELAY) {
+            revert CrosschainErrors.RescueDelayTooLong(rescueDelay_, CrosschainConstants.MAX_RESCUE_DELAY);
         }
         ADMIN = admin_;
         RESCUE_GUARDIAN = guardian_;
@@ -175,6 +183,16 @@ abstract contract RescueModule is ReentrancyGuard {
     ///      executors (the address passes the host's `isExecutor(address)`; re-checked at execute time),
     ///      because executors trust it by `msg.sender`; and no call may carry the ContextManager
     ///      `runWithContext` selector, because it would make this contract the context sender.
+    ///      One more fence, after all of the above, on hosts that hold vault shares (dispatchers, IL-9654): the
+    ///      calldata must have one of seven shapes, otherwise `RescueCallShapeNotAllowed(target, selector)`: empty
+    ///      calldata (value only; on a contract target it runs its `receive` / `fallback`),
+    ///      `transfer(address,uint256)`, `approve(address,uint256)` with amount 0, `redeem(uint256,address,address)`
+    ///      or `redeemFromRequest(uint256,address,address)` with this contract as owner, `requestShares(uint256)` on
+    ///      a WithdrawManager whose vault (`getPlasmaVaultAddress()`, one non-zero address word) is neither tracked
+    ///      nor allowlisted (else `RescueTrackedVaultCall(vault)`; re-checked at execute time), or LayerZero packet
+    ///      hygiene on the endpoint. It checks the calldata bytes, not what the target does with them; the
+    ///      manager's request fee is not bounded on this path (unlike the `REQUEST_SHARES` command). Executors and
+    ///      the Stargate factory are not restricted by it.
     /// @param target_ The call target.
     /// @param value_ Native value to forward with the call.
     /// @param callData_ The calldata that will be executed (committed via its keccak hash).
@@ -195,6 +213,10 @@ abstract contract RescueModule is ReentrancyGuard {
     ///      the target's revert data atomically. On success the `_afterRescueExecuted` hook runs (each executor /
     ///      dispatcher snapshots ASSET before the call and requires `balanceAfter >= min(balanceBefore, ledger)`
     ///      after it; the Stargate factory tracks no ASSET and keeps the no-op default).
+    ///      On a dispatcher the vault ban is checked again against the current sets, and a `requestShares` rescue
+    ///      reads its manager's vault again (IL-9654): `RescueTrackedVaultCall(vault)` when that vault is now
+    ///      tracked or allowlisted, `RescueCallShapeNotAllowed` when the manager no longer answers with one non-zero
+    ///      address. The request fee the manager charges at this point is not bounded.
     /// @param rescueId_ The scheduled rescue id.
     /// @param callData_ The exact calldata committed at schedule time.
     function executeRescue(uint256 rescueId_, bytes calldata callData_) external onlyRescueAdmin nonReentrant {

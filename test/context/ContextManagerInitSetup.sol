@@ -77,6 +77,8 @@ abstract contract ContextManagerInitSetup is Test {
         _plasmaVault.addRewardsClaimManager(address(_rewardsClaimManager));
 
         _contextManager = _accessManager.setupInitRoles(_plasmaVault, withdrawManager, address(_rewardsClaimManager));
+        /// @dev IL-9531: requestShares checks the balance on the vault the WithdrawManager is wired to
+        _withdrawManager.updatePlasmaVaultAddress(address(_plasmaVault));
 
         address[] memory mTokens = new address[](3);
         mTokens[0] = TestAddresses.BASE_M_WSTETH;

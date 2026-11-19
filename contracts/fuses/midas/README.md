@@ -113,6 +113,35 @@ Slippage protection:
 -   `minMTokenAmountOut` on enter (minimum mTokens to receive)
 -   `minTokenOutAmount` on exit (minimum underlying tokens to receive)
 
+#### Instant withdraw sizing (IL-9617)
+
+The withdraw router writes the amount the PlasmaVault is missing, in its underlying token, into `params[0]`
+(`[amount, mToken, tokenOut, instantRedemptionVault, minTokenOutAmount]`). On this path the fuse does not read that
+word as mTokens. It converts it into the mTokens Midas needs to pay that amount of `tokenOut`, with the vault's own
+rates and fees: `ceil(amountBase18 × tokenOutRate × 100_00 / (mTokenRate × (100_00 − instantFee − tokenFee)))`, where
+`mTokenRate` comes from `mTokenDataFeed()` and `tokenOutRate` is 1e18 for a stable payment token, otherwise its data feed.
+The result is capped at the token allowance (`tokensConfig(tokenOut).allowance`, converted to mTokens), at the rest of
+the instant daily limit (`instantDailyLimit() − dailyLimits(block.timestamp / 1 days)`) and at the vault's mToken
+balance. An entry below `minAmount()` is skipped without a call (Midas would revert); a redemption Midas cannot fund
+still fails inside the `try`, emits `MidasSupplyFuseExitFailed` and the router moves on. Any amount above the missing
+one stays in the PlasmaVault.
+
+The instant path never reverts on a Midas read failure (IL-9590): with no mToken balance it returns before any Midas
+read; otherwise every read (`tokensConfig`, `instantFee`, both data feeds, `instantDailyLimit`, `dailyLimits`,
+`minAmount`) is a guarded staticcall (target has code, call succeeds, return data complete). A failed read, a non-stable
+`tokenOut` without a data feed, a used-up daily limit, a rate of 0, a fee of 100 % or more and an amount below
+`minAmount()` are all skipped with `MidasSupplyFuseExitFailed` (amount in tokenOut units, or in mTokens for the minimum
+skip and a failed redemption). PlasmaVault versions before IL-9659 have no skip and bubble every revert of the fuse.
+
+-   `minTokenOutAmount` is passed to Midas as `minReceiveAmount`; on the instant path the fuse does not re-check it after
+    the call, because a revert there would not be caught and would end the user's withdrawal. The ALPHA `exit` is
+    unchanged: `amount` is an mToken amount and the received `tokenOut` is still re-checked.
+-   The sizing reads the redemption vault's public views (`IMidasRedemptionVaultLimits`). A vault that is exempt from
+    the minimum (`isFreeFromMinAmount`) or from fees (`waivedFeeRestriction`) is sized as if it were not: an entry below
+    `minAmount()` is skipped and a fee-free redemption pays slightly more than missing.
+-   Rollout: vaults that list an older `MidasSupplyFuse` in their instant withdraw configuration redeem dust there
+    (`params[0]` read as mTokens) until governance replaces it with this version.
+
 ### Async Supply (MidasRequestSupplyFuse)
 
 -   **Enter**: Submit deposit request via `depositRequest()`. USDC leaves PlasmaVault; mTokens minted after admin approval.

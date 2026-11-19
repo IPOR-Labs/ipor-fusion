@@ -20,6 +20,7 @@ import {
 } from "../../../contracts/fuses/hypercore/HyperCoreMarginFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreHookWiringLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreHookWiringLib.sol";
+import {HyperCoreTestHelper} from "./HyperCoreTestHelper.sol";
 import {CoreSimulatorLib} from "./simulation/CoreSimulatorLib.sol";
 import {HyperCoreCapitalFlowPreHook} from "../../../contracts/handlers/pre_hooks/pre_hooks/HyperCoreCapitalFlowPreHook.sol";
 import {HyperCorePendingActionPreHook} from "../../../contracts/handlers/pre_hooks/pre_hooks/HyperCorePendingActionPreHook.sol";
@@ -260,10 +261,28 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
         _executeOrder(true, 50e8, 10e8, false, HyperCoreLib.TIF_IOC, CLOID_2);
     }
 
-    // vi. KNOWN LIMITATION: a re-wiring after exposure exists is not detected by the user flows. Here deposit loses
-    //     its hook through a duplicate selector in one call (PreHooksLib keeps the last value). The unhooked deposit
-    //     runs no HyperCore code and is NOT blocked; only the next opening order notices. Process controls
-    //     (timelock on PRE_HOOKS_MANAGER_ROLE, PreHookImplementationChanged monitoring) cover this case.
+    // vi. Duplicate-selector batch: since IL-9677 the governance setter itself refuses it on a vault with market 55
+    //     (the last duplicate would leave deposit without its hook).
+    function testDuplicateSelectorBatchDroppingDepositHookRevertsInSetter() public {
+        _openLong();
+        bytes4[] memory selectors = new bytes4[](2);
+        selectors[0] = PlasmaVault.deposit.selector;
+        selectors[1] = PlasmaVault.deposit.selector;
+        address[] memory implementations = new address[](2);
+        implementations[0] = _correctFlowHook;
+        implementations[1] = address(0);
+        bytes32[][] memory substrates = new bytes32[][](2);
+        substrates[0] = new bytes32[](0);
+        substrates[1] = new bytes32[](0);
+        vm.prank(_atomist);
+        vm.expectRevert(_notWired(PlasmaVault.deposit.selector, address(0)));
+        PlasmaVaultGovernance(address(_vault)).setPreHookImplementations(selectors, implementations, substrates);
+    }
+
+    // vii. LEGACY-VAULT VARIANT (PlasmaVaultBase from before IL-9677, whose setter has no wiring gate): a re-wiring
+    //      after exposure exists is not detected by the user flows. Here deposit loses its hook (written into storage).
+    //      The unhooked deposit runs no HyperCore code and is NOT blocked; only the next opening order notices (fuse-level
+    //      gate). Process controls (timelock on PRE_HOOKS_MANAGER_ROLE, PreHookImplementationChanged monitoring) cover it.
     function testLaterPartialRewiringIsNotBlockedOnUserFlowsButBlocksNextOpeningOrder() public {
         _openLong();
         _dropDepositHookViaDuplicate();
@@ -271,7 +290,7 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
         _usdc.mint(_user, 1_000e6);
         vm.startPrank(_user);
         _usdc.approve(address(_vault), type(uint256).max);
-        assertGt(_vault.deposit(1_000e6, _user), 0, "unhooked deposit is not blocked (known limitation)");
+        assertGt(_vault.deposit(1_000e6, _user), 0, "unhooked deposit is not blocked on a legacy vault");
         vm.stopPrank();
 
         vm.expectRevert(_notWired(PlasmaVault.deposit.selector, address(0)));
@@ -340,14 +359,9 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
         _vault.execute(actions);
     }
 
+    /// @dev Legacy-vault variant of the duplicate-selector batch (the setter now reverts, see the test below).
     function _dropDepositHookViaDuplicate() private {
-        bytes4[] memory selectors = new bytes4[](2);
-        selectors[0] = PlasmaVault.deposit.selector;
-        selectors[1] = PlasmaVault.deposit.selector;
-        address[] memory implementations = new address[](2);
-        implementations[0] = _correctFlowHook;
-        implementations[1] = address(0);
-        _set(selectors, implementations);
+        _storeHook(PlasmaVault.deposit.selector, address(0));
     }
 
     function _notWired(bytes4 selector_, address implementation_) private pure returns (bytes memory) {
@@ -368,18 +382,20 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
         selectors[3] = PlasmaVault.redeem.selector;
         selectors[4] = PlasmaVault.depositWithPermit.selector;
         selectors[5] = PlasmaVault.redeemFromRequest.selector;
-        address[] memory implementations = new address[](6);
-        for (uint256 i; i < 4; ++i) implementations[i] = flows4_;
-        implementations[4] = flows2_;
-        implementations[5] = flows2_;
-        _set(selectors, implementations);
+        for (uint256 i; i < 4; ++i) _storeHook(selectors[i], flows4_);
+        _storeHook(selectors[4], flows2_);
+        _storeHook(selectors[5], flows2_);
     }
 
-    function _set(bytes4[] memory selectors_, address[] memory implementations_) private {
-        bytes32[][] memory substrates = new bytes32[][](selectors_.length);
-        for (uint256 i; i < selectors_.length; ++i) substrates[i] = new bytes32[](0);
-        vm.prank(_atomist);
-        PlasmaVaultGovernance(address(_vault)).setPreHookImplementations(selectors_, implementations_, substrates);
+    /// @dev Writes the hook straight into the vault's pre-hook storage, like a vault on a PlasmaVaultBase from before
+    ///      IL-9677 (whose governance setter does not run the HyperCore wiring gate). These tests cover the fuse-level
+    ///      gate for such legacy vaults; the setter itself is covered by HyperCorePreHookRewiringGateTest.
+    function _storeHook(bytes4 selector_, address hook_) private {
+        vm.store(
+            address(_vault),
+            keccak256(abi.encode(bytes32(selector_), HyperCoreTestHelper.PRE_HOOKS_SLOT)),
+            bytes32(uint256(uint160(hook_)))
+        );
     }
 
     function _flowSelectors() private pure returns (bytes4[6] memory flows) {
@@ -395,7 +411,16 @@ contract HyperCorePreHookWiringTest is HyperCoreEffectSettlementBase {
         return abi.encodeWithSelector(HyperCoreCapitalFlowPreHook.HyperCorePreHookWrongSelector.selector, selector_);
     }
 
+    /// @dev The six share-priced selectors are written into storage (legacy vault, see `_storeHook`); execute and
+    ///      updateMarketsBalances still go through the governance setter.
     function _wire(bytes4 selector_, address hook_) private {
+        bytes4[6] memory flows = _flowSelectors();
+        for (uint256 i; i < flows.length; ++i) {
+            if (flows[i] == selector_) {
+                _storeHook(selector_, hook_);
+                return;
+            }
+        }
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = selector_;
         address[] memory implementations = new address[](1);

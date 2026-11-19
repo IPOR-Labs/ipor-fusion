@@ -132,6 +132,13 @@ contract CompoundV3SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         uint256 finalAmount = IporMath.min(data_.amount, _getBalance(data_.asset));
 
+        /// @dev Instant withdraw path only: Comet pays a base withdrawal in full or not at all, so cap the request at
+        ///      the base tokens the Comet holds. Collateral is not lent out and needs no cap. The ALPHA exit stays
+        ///      uncapped. The read is outside the try block (fail closed).
+        if (catchExceptions_ && finalAmount > 0 && data_.asset == COMPOUND_BASE_TOKEN) {
+            finalAmount = IporMath.min(finalAmount, ERC20(COMPOUND_BASE_TOKEN).balanceOf(address(COMET)));
+        }
+
         if (finalAmount == 0) {
             return (data_.asset, address(COMET), 0);
         }

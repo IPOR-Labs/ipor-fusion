@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 
 import {IFuseCommon} from "../../IFuseCommon.sol";
 import {ICrosschainExecutor} from "../../../crosschain/interfaces/ICrosschainExecutor.sol";
-import {Command, CrosschainMessages} from "../../../crosschain/lib/CrosschainMessages.sol";
+import {Command, CrosschainMessages, SweepFloor} from "../../../crosschain/lib/CrosschainMessages.sol";
 import {BusinessAction} from "../../../crosschain/lib/CrosschainConstants.sol";
 import {CrosschainSubstrateLib} from "../lib/CrosschainSubstrateLib.sol";
 
@@ -100,9 +100,14 @@ struct StargateCrosschainCommandFuseEnterData {
 ///      `balanceByChain` / `computeNavSD` at the end of the vault transaction, not by an explicit executor check.
 ///      Variant dispatch is modeled on `RWAOperationFuse` (single typed entry point, internal dispatch).
 ///      UPDATE_PLASMA_VAULTS removal warning (IL-8784, D-060 / D-065): redeem or recall the position to zero BEFORE removing
-///      a vault. A removed vault is swept best effort and always untracked, so a failed sweep drops the residual shares
+///      a vault. A removed vault is swept best effort and untracked, so a failed sweep drops the residual shares
 ///      out of NAV until the vault is allowlisted again; alert on the dispatcher's `TrackedVaultSweepResidual` event.
 ///      On tight lanes send ONE removal per UPDATE_PLASMA_VAULTS and adds in a separate command.
+///      Sweep floors (IL-9629): `enterWithSweepFloors` sends an UPDATE_PLASMA_VAULTS with per-vault floors (`minAssets`
+///      in SHARED decimals, like REDEEM `minAssets`); a vault whose non-zero floor is not reached is not redeemed and
+///      stays tracked off the allowlist (still in NAV, exit with REDEEM). Such a retained vault is swept again only by a
+///      later update naming it in a floor entry (`minAssets` 0 = forced removal). Floors add no exposure, so they are
+///      not checked against the REMOTE_VAULT substrates and do not change the chain-blocked rule.
 /// @author IPOR Labs
 contract StargateCrosschainCommandFuse is IFuseCommon {
     /// @notice Emitted after a manager operation is forwarded to the executor.
@@ -133,6 +138,25 @@ contract StargateCrosschainCommandFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
+    /// @notice `enter` for an UPDATE_PLASMA_VAULTS with per-vault sweep floors (IL-9629): forwards to the executor's
+    ///         `updatePlasmaVaultsWithSweepFloors` (to `updatePlasmaVaults` when `floors_` is empty).
+    /// @dev Only `UPDATE_PLASMA_VAULTS` is accepted (any other type reverts
+    ///      `CrosschainCommandFuseUnsupportedCommandType`); the executor validation, the gating and the event are those
+    ///      of `enter`.
+    /// @param data_ The enter data, `commandType` = `UPDATE_PLASMA_VAULTS`.
+    /// @param floors_ The sweep floors; `minAssets` in SHARED decimals.
+    function enterWithSweepFloors(
+        StargateCrosschainCommandFuseEnterData memory data_,
+        SweepFloor[] memory floors_
+    ) external {
+        if (data_.commandType != StargateCrosschainCommandType.UPDATE_PLASMA_VAULTS) {
+            revert CrosschainCommandFuseUnsupportedCommandType(uint8(data_.commandType));
+        }
+        _validateExecutor(data_.executor);
+        _updatePlasmaVaults(data_, floors_);
+        emit CrosschainCommandFuseEnter(VERSION, data_.executor, uint8(data_.commandType), data_.chainId);
+    }
+
     /// @notice Forward a single manager operation to the executor, selected by `data_.commandType`.
     /// @param data_ The tagged-union enter data.
     function enter(StargateCrosschainCommandFuseEnterData memory data_) external {
@@ -147,9 +171,7 @@ contract StargateCrosschainCommandFuse is IFuseCommon {
             CrosschainSubstrateLib.validateRemoteVaultsGranted(MARKET_ID, data_.chainId, data_.plasmaVaults);
             executor.createDispatcher(data_.chainId, data_.plasmaVaults);
         } else if (commandType == StargateCrosschainCommandType.UPDATE_PLASMA_VAULTS) {
-            if (data_.plasmaVaults.length != 0) _requireChainNotBlocked(data_.executor, data_.chainId);
-            CrosschainSubstrateLib.validateRemoteVaultsGranted(MARKET_ID, data_.chainId, data_.plasmaVaults);
-            executor.updatePlasmaVaults(data_.chainId, data_.plasmaVaults);
+            _updatePlasmaVaults(data_, new SweepFloor[](0));
         } else if (commandType == StargateCrosschainCommandType.SEND_COMMAND) {
             if (data_.command.action == uint8(BusinessAction.DEPOSIT)) {
                 _requireChainNotBlocked(data_.executor, data_.chainId);
@@ -202,6 +224,25 @@ contract StargateCrosschainCommandFuse is IFuseCommon {
             ? 0
             : data_.chainId;
         emit CrosschainCommandFuseEnter(VERSION, data_.executor, uint8(commandType), emittedChainId);
+    }
+
+    /// @dev UPDATE_PLASMA_VAULTS: a non-empty list is chain-gated, every listed vault substrate-checked; `floors_`
+    ///      (IL-9629) selects `updatePlasmaVaultsWithSweepFloors` when non-empty.
+    function _updatePlasmaVaults(
+        StargateCrosschainCommandFuseEnterData memory data_,
+        SweepFloor[] memory floors_
+    ) private {
+        if (data_.plasmaVaults.length != 0) _requireChainNotBlocked(data_.executor, data_.chainId);
+        CrosschainSubstrateLib.validateRemoteVaultsGranted(MARKET_ID, data_.chainId, data_.plasmaVaults);
+        if (floors_.length == 0) {
+            ICrosschainExecutor(data_.executor).updatePlasmaVaults(data_.chainId, data_.plasmaVaults);
+        } else {
+            ICrosschainExecutor(data_.executor).updatePlasmaVaultsWithSweepFloors(
+                data_.chainId,
+                data_.plasmaVaults,
+                floors_
+            );
+        }
     }
 
     function _requireChainNotBlocked(address executor_, uint256 chainId_) private view {

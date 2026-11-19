@@ -46,16 +46,21 @@ SiloConfig (Risk-Isolated Market)
 
 ## Balance Calculation
 
-The balance calculation follows a multi-step process for each configured silo:
+The balance calculation follows a multi-step process for each configured `SiloConfig` (one isolated market = two silos):
 
-1. **Get share token balances**: Retrieve Plasma Vault's balance in each share token type
+1. **Get share token balances**: Retrieve Plasma Vault's balance in each share token type of both silos
 2. **Convert to assets**: Convert share token balances to underlying asset amounts using `convertToAssets()`
-3. **Calculate net balance**:
-    - Add protected and collateral assets (gross assets)
-    - Subtract debt assets
-    - Net balance = max(0, gross assets - debt assets)
-4. **Get price**: Retrieve underlying asset price from price oracle
-5. **Calculate USD value**: Convert to USD using WAD decimals and add to total balance
+3. **Get price**: Retrieve the underlying asset price from the price oracle and convert every amount to USD (WAD)
+4. **Calculate net balance of the SiloConfig**:
+    - Add protected and collateral value of both silos (gross value)
+    - Subtract debt value of both silos
+    - Net value of the SiloConfig = max(0, gross value - debt value)
+5. **Sum the SiloConfigs**: Add the floored values of all configured SiloConfigs to the total balance
+
+Each SiloConfig is an isolated market that is liquidated on its own, so the floor is applied per SiloConfig: the
+shortfall of an underwater market is never charged to a healthy one (a market worth -50k next to a market worth
++1.0M gives 1.0M), and the fuse does not revert on a negative net. silo0 and silo1 of one market are netted inside the
+same unit; a deposit in the debt silo of the same market is not counted in full outside the market's floor.
 
 ### Important Notes
 

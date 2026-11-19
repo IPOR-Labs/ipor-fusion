@@ -462,6 +462,10 @@ same shortcut response used to build `commands`/`state`, for every approval it c
   so it is not an available escape hatch today for an undeclared allowance. Using it for this
   purpose would require a dedicated recovery fuse, which does not currently exist.
 
+### Share-price views during a shortcut (IL-9743)
+
+The granted substrates are target and selector pairs, but the pools, hooks and tokens a shortcut passes through are chosen by its commands, so a shortcut through a path that nobody reviewed runs third-party code in the middle of the vault's `execute`. The reentrancy guard then blocks the vault's `deposit`, `mint`, `withdraw`, `redeem` and `execute`, but not its share-price views, which can stay too low or too high until the final balance refresh of the batch. See [Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)](../../vaults/README.md#transient-share-price-views-during-execute-and-instant-withdrawal-il-9631-il-9743).
+
 ## Important Considerations
 
 ### Key Architectural Principles

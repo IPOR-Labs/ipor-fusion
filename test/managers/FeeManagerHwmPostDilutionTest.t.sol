@@ -63,6 +63,9 @@ contract FeeManagerHwmPostDilutionTest is Test {
     uint256 public oneShare;
     uint256 public userDeposit;
 
+    /// @dev IL-9601: the HWM and the performance fee rate are stored per 10 ** decimals() shares times this scale
+    uint256 public constant HWM_SCALE = 1e12;
+
     // ---------------------------------------------------------------------------------------------
     // T1 - the HWM is the post-mint price and the recovery to the pre-mint rate is charged
     // ---------------------------------------------------------------------------------------------
@@ -72,21 +75,21 @@ contract FeeManagerHwmPostDilutionTest is Test {
         _deposit();
 
         asset.mint(address(plasmaVault), userDeposit / 10);
-        uint256 preMintRate = plasmaVault.convertToAssets(oneShare);
+        uint256 preMintRate = _rate();
         _crystallize();
 
         uint256 feeShares1 = plasmaVault.balanceOf(performanceFeeAccount);
         uint256 hwm = _hwm();
-        uint256 postMintRate = plasmaVault.convertToAssets(oneShare);
+        uint256 postMintRate = _rate();
 
         assertGt(feeShares1, 0, "round 1: performance fee minted");
         assertEq(hwm, postMintRate, "HWM equals the share price after the fee mint");
         assertLt(postMintRate, preMintRate, "the mint diluted the price");
 
         // Round 2: gain that lifts the price from the post-mint rate up to (just under) the pre-mint rate
-        uint256 donation2 = ((preMintRate - postMintRate) * plasmaVault.totalSupply()) / oneShare - 3e6;
+        uint256 donation2 = ((preMintRate - postMintRate) * plasmaVault.totalSupply()) / (oneShare * HWM_SCALE) - 3e6;
         asset.mint(address(plasmaVault), donation2);
-        assertLe(plasmaVault.convertToAssets(oneShare), preMintRate, "precondition: still below the pre-mint rate");
+        assertLe(_rate(), preMintRate, "precondition: still below the pre-mint rate");
         _crystallize();
 
         uint256 feeShares2 = plasmaVault.balanceOf(performanceFeeAccount) - feeShares1;
@@ -99,7 +102,7 @@ contract FeeManagerHwmPostDilutionTest is Test {
             0.005e18,
             "round 2 fee is about 20% of gain"
         );
-        assertEq(_hwm(), plasmaVault.convertToAssets(oneShare), "HWM follows the post-mint price again");
+        assertEq(_hwm(), _rate(), "HWM follows the post-mint price again");
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -151,7 +154,7 @@ contract FeeManagerHwmPostDilutionTest is Test {
         _crystallize();
 
         assertGt(plasmaVault.balanceOf(performanceFeeAccount), 0, "fee minted");
-        assertEq(_hwm(), plasmaVault.convertToAssets(oneShare), "execute: HWM == price of one share");
+        assertEq(_hwm(), _rate(), "execute: HWM == price of one share");
     }
 
     function testShouldStorePostMintPriceOnUpdateMarketsBalances() public {
@@ -166,7 +169,7 @@ contract FeeManagerHwmPostDilutionTest is Test {
         plasmaVault.updateMarketsBalances(markets);
 
         assertGt(plasmaVault.balanceOf(performanceFeeAccount), 0, "fee minted");
-        assertEq(_hwm(), plasmaVault.convertToAssets(oneShare), "updateMarketsBalances: HWM == price of one share");
+        assertEq(_hwm(), _rate(), "updateMarketsBalances: HWM == price of one share");
     }
 
     /// @dev withdraw / redeem crystallize before burning the caller's shares; the burn pays assets rounded
@@ -177,13 +180,13 @@ contract FeeManagerHwmPostDilutionTest is Test {
         _deposit();
         asset.mint(address(plasmaVault), userDeposit / 10);
 
-        uint256 preMintRate = plasmaVault.convertToAssets(oneShare);
+        uint256 preMintRate = _rate();
         vm.prank(user);
         plasmaVault.withdraw(1_000e6, user, user);
 
         assertGt(plasmaVault.balanceOf(performanceFeeAccount), 0, "fee minted");
-        assertLe(_hwm(), plasmaVault.convertToAssets(oneShare), "withdraw: price is not below the HWM");
-        assertApproxEqRel(_hwm(), plasmaVault.convertToAssets(oneShare), 1e9, "withdraw: HWM ~ price of one share");
+        assertLe(_hwm(), _rate(), "withdraw: price is not below the HWM");
+        assertApproxEqRel(_hwm(), _rate(), 1e9, "withdraw: HWM ~ price of one share");
         assertLt(_hwm(), preMintRate, "HWM is below the pre-mint rate");
     }
 
@@ -192,13 +195,13 @@ contract FeeManagerHwmPostDilutionTest is Test {
         _deposit();
         asset.mint(address(plasmaVault), userDeposit / 10);
 
-        uint256 preMintRate = plasmaVault.convertToAssets(oneShare);
+        uint256 preMintRate = _rate();
         vm.prank(user);
         plasmaVault.redeem(1_000e8, user, user);
 
         assertGt(plasmaVault.balanceOf(performanceFeeAccount), 0, "fee minted");
-        assertLe(_hwm(), plasmaVault.convertToAssets(oneShare), "redeem: price is not below the HWM");
-        assertApproxEqRel(_hwm(), plasmaVault.convertToAssets(oneShare), 1e9, "redeem: HWM ~ price of one share");
+        assertLe(_hwm(), _rate(), "redeem: price is not below the HWM");
+        assertApproxEqRel(_hwm(), _rate(), 1e9, "redeem: HWM ~ price of one share");
         assertLt(_hwm(), preMintRate, "HWM is below the pre-mint rate");
     }
 
@@ -230,19 +233,39 @@ contract FeeManagerHwmPostDilutionTest is Test {
     function testShouldInitializeHwmToStartingRateWithoutFee() public {
         _deployVault(6);
 
-        assertEq(_hwm(), 10 ** 6, "HWM = initial rate (1 asset unit per share)");
+        assertEq(_hwm(), 10 ** 6 * HWM_SCALE, "HWM = initial rate (1 asset unit per share, scaled)");
         assertEq(plasmaVault.balanceOf(performanceFeeAccount), 0, "no fee shares");
     }
 
-    /// @dev Pinned value of the first positive fee, identical on main (sizing is unchanged by IL-8744)
-    function testShouldKeepFirstFeeSharesSizingUnchanged() public {
+    /// @dev First positive fee: 1,000,000 deposited, 100,000 donated, 20% fee, HWM 1_000_000 * 1e12 (IL-9601 scale),
+    ///      rate 1_099_999_999_999_900_000 (1.1 less the virtual share offset: 1.0999999999999 asset units per share).
+    ///      Before IL-9601 the unit was 1e12 smaller: HWM 1_000_000, rate 1_099_999 (the floor of 1.1). IL-8870: the fee shares are sized on the price after their
+    ///      own mint, S * f / (10000 * rate - f) with f = fee * (rate - HWM), so they are worth 20% of the gain
+    ///      (less the fee on the price unit the floor of the rate drops: 0.2 asset on 1,000,000 shares). The sizing
+    ///      before IL-8870, S * (rate - HWM) / rate * fee = 1818165289241 shares (unchanged by IL-8744), was worth
+    ///      19,642.68, that is 19.64% of the gain.
+    function testShouldSizeFirstFeeSharesOnPostMintPrice() public {
         _deployVault(6);
         _deposit();
-        asset.mint(address(plasmaVault), userDeposit / 10);
+        uint256 gain = userDeposit / 10;
+        asset.mint(address(plasmaVault), gain);
 
         _crystallize();
 
-        assertEq(plasmaVault.balanceOf(performanceFeeAccount), PINNED_FIRST_FEE_SHARES, "first fee shares as on main");
+        uint256 feeShares = plasmaVault.balanceOf(performanceFeeAccount);
+        uint256 feeValue = PERFORMANCE_FEE * (RATE_AFTER_GAIN - 1_000_000 * HWM_SCALE);
+        assertEq(
+            feeShares,
+            (plasmaVault.balanceOf(user) * feeValue) / (10000 * RATE_AFTER_GAIN - feeValue),
+            "first fee shares: S * f / (10000 * rate - f)"
+        );
+        assertEq(feeShares, FIRST_FEE_SHARES, "first fee shares");
+        assertApproxEqAbs(
+            plasmaVault.convertToAssets(feeShares),
+            (gain * PERFORMANCE_FEE) / 10000,
+            0.2e6,
+            "the fee shares are worth 20% of the gain"
+        );
     }
 
     /// @dev feeShares == 0 keeps storing the current rate (S = 1 wei of supply, delta = 1)
@@ -286,7 +309,7 @@ contract FeeManagerHwmPostDilutionTest is Test {
         uint256 loss = plasmaVault.totalAssets() / 2;
         vm.prank(address(plasmaVault));
         asset.transfer(address(0xdead), loss);
-        uint256 lowRate = plasmaVault.convertToAssets(oneShare);
+        uint256 lowRate = _rate();
         assertLt(lowRate, hwmAfterGain, "precondition: price below HWM");
 
         _crystallize();
@@ -301,8 +324,13 @@ contract FeeManagerHwmPostDilutionTest is Test {
     // helpers
     // ---------------------------------------------------------------------------------------------
 
-    /// @dev Set after the first run on main (see testShouldKeepFirstFeeSharesSizingUnchanged)
-    uint256 internal constant PINNED_FIRST_FEE_SHARES = 1818165289241;
+    /// @dev floor(1e20 * (1.1e12 + 1) / (1e14 + 100)): the scaled rate after the 10% gain, 1e14 shares, offset 100
+    uint256 internal constant RATE_AFTER_GAIN = 1_099_999_999_999_900_000;
+
+    /// @dev 1e14 * f / (10000 * RATE_AFTER_GAIN - f) with f = 2000 * (RATE_AFTER_GAIN - 1e18) = 1.999999999998e20
+    ///      (see testShouldSizeFirstFeeSharesOnPostMintPrice); 1851834705062 before IL-9601, the exact value of the
+    ///      unscaled rate 1.1 is 1851851851851
+    uint256 internal constant FIRST_FEE_SHARES = 1851851851850;
 
     /// @dev Effective fee paid by the depositor in bps of its gross gain over `steps_` crystallized gains of
     ///      `ppm_` parts per million of total assets (10_000 ppm = 1%)
@@ -320,6 +348,11 @@ contract FeeManagerHwmPostDilutionTest is Test {
         uint256 userNetGain = plasmaVault.convertToAssets(userShares) - userDeposit;
         uint256 feePaid = userGrossGain - userNetGain;
         effectiveFeeBps = (feePaid * 10000) / userGrossGain;
+    }
+
+    /// @dev Share price in the HWM unit: assets per 10 ** decimals() shares times HWM_SCALE
+    function _rate() internal view returns (uint256) {
+        return plasmaVault.convertToAssets(oneShare * HWM_SCALE);
     }
 
     function _hwm() internal view returns (uint256) {

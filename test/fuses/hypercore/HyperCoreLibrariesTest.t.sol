@@ -601,11 +601,11 @@ contract HyperCoreLibrariesTest is Test {
             abi.encodeWithSelector(HyperCoreSubstrateLib.HyperCoreInvalidSubstrate.selector, malformedSendCap)
         );
         _substrate.decodeSendCap(malformedSendCap);
-        vm.expectRevert(abi.encodeWithSelector(HyperCoreSubstrateLib.HyperCoreInvalidConfigKey.selector, uint8(12)));
-        _substrate.decodeConfig(bytes32((uint256(5) << 248) | (uint256(12) << 240)));
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreSubstrateLib.HyperCoreInvalidConfigKey.selector, uint8(13)));
+        _substrate.decodeConfig(bytes32((uint256(5) << 248) | (uint256(13) << 240)));
     }
 
-    function testNewConfigKeysRoundTripAndUpperBoundIsNavJumpFloorUsd6() public view {
+    function testNewConfigKeysRoundTripAndUpperBoundIsNavZeroBaselineCapUsd6() public view {
         bytes32 timeout = HyperCoreSubstrateLib.encodeConfig(
             HyperCoreSubstrateLib.ConfigKey.TransferTimeoutSeconds,
             600
@@ -631,5 +631,10 @@ contract HyperCoreLibrariesTest is Test {
         (key, value) = _substrate.decodeConfig(floorWord);
         assertEq(uint8(key), 11);
         assertEq(uint256(value), 1e6);
+
+        // Key 12 as a literal so that the file also compiles against a build without the enum member (IL-9691).
+        (key, value) = _substrate.decodeConfig(bytes32((uint256(5) << 248) | (uint256(12) << 240) | 7e6));
+        assertEq(uint8(key), 12);
+        assertEq(uint256(value), 7e6);
     }
 }

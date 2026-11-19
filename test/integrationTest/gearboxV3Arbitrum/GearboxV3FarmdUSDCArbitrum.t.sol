@@ -152,14 +152,15 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: D_USDC,
             vaultAssetAmount: amount_,
-            maxSharesBurned: 0
+            maxSharesBurned: 0,
+            minAssetsOut: 0
         });
         GearboxV3FarmdSupplyFuseExitData memory exitDataFarm = GearboxV3FarmdSupplyFuseExitData({
             farmdToken: FARM_D_USDC,
             dTokenAmount: amount_
         });
         data = new bytes[](2);
-        data[1] = abi.encodeWithSignature("exit((address,uint256,uint256))", exitData);
+        data[1] = abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", exitData);
         data[0] = abi.encodeWithSignature("exit((uint256,address))", exitDataFarm);
 
         fusesSetup = new address[](2);
@@ -284,10 +285,11 @@ contract GearboxV3FarmdUSDCArbitrum is SupplyTest {
         inputsByFuse[0][0] = TypeConversionLib.toBytes32(amount_);
         inputsByFuse[0][1] = TypeConversionLib.toBytes32(FARM_D_USDC);
 
-        inputsByFuse[1] = new bytes32[](3);
+        inputsByFuse[1] = new bytes32[](4);
         inputsByFuse[1][0] = TypeConversionLib.toBytes32(D_USDC);
         inputsByFuse[1][1] = TypeConversionLib.toBytes32(amount_);
         inputsByFuse[1][2] = TypeConversionLib.toBytes32(uint256(0));
+        inputsByFuse[1][3] = TypeConversionLib.toBytes32(uint256(0));
 
         calls = new FuseAction[](3);
 

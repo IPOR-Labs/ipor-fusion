@@ -17,6 +17,17 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 /// @dev Access control is managed through roles:
 /// @dev - PRICE_ORACLE_MIDDLEWARE_MANAGER_ROLE: Can set and remove asset price sources
 /// @dev - ATOMIST_ROLE: Can set the price oracle middleware address
+/// @dev Custom price sources are read with latestRoundData() and only price > 0 is validated: there is no freshness
+/// @dev check (updatedAt against a max age) and no round completeness check (answeredInRound against roundId).
+/// @dev This applies to custom and direct Chainlink-style feeds. Accepted risk: a stalled feed is used as returned.
+/// @dev ChainlinkGuardedPriceFeed (contracts/price_oracle/price_feed/ChainlinkGuardedPriceFeed.sol) can be used as the
+/// @dev source to add freshness and deviation checks only. It reverts when updatedAt == 0, when updatedAt is in the
+/// @dev future, or when the answer is older than MAX_STALE_PERIOD (at most 7 days), and it compares the answer with
+/// @dev the mean of the previous rounds (MAX_DEVIATION). Feeds are deployed through
+/// @dev ChainlinkGuardedPriceFeedFactory.
+/// @dev It does NOT check the L2 sequencer uptime feed and does NOT check answeredInRound against roundId: that
+/// @dev field is deprecated in OCR aggregators, so the check is skipped on purpose. Sequencer status and round
+/// @dev completeness are not validated anywhere in the price path.
 contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable, ContextClient, UniversalReader {
     using SafeCast for int256;
 
@@ -30,6 +41,11 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
 
     /// @notice Thrown when the price oracle middleware is invalid
     error InvalidPriceOracleMiddleware();
+
+    /// @notice Thrown when the price oracle middleware does not report this manager's QUOTE_CURRENCY (USD)
+    /// @dev Also thrown when the middleware has no code or does not implement `QUOTE_CURRENCY()`
+    /// @param priceOracleMiddleware The rejected price oracle middleware address
+    error InvalidPriceOracleMiddlewareQuoteCurrency(address priceOracleMiddleware);
 
     /// @notice Thrown when the authority is invalid
     error InvalidAuthority();
@@ -72,6 +88,8 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
         if (priceOracleMiddleware_ == address(0)) {
             revert InvalidPriceOracleMiddleware();
         }
+
+        _validateMiddlewareQuoteCurrency(priceOracleMiddleware_);
 
         super.__AccessManaged_init_unchained(initialAuthority_);
 
@@ -118,7 +136,10 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
     /// @notice Sets the price oracle middleware address
     /// @param priceOracleMiddleware_ The new price oracle middleware address
     /// @dev Only callable by addresses with ATOMIST_ROLE
+    /// @dev Reverts with InvalidPriceOracleMiddlewareQuoteCurrency when the middleware's QUOTE_CURRENCY() differs
+    ///      from this manager's QUOTE_CURRENCY (USD) or cannot be read
     function setPriceOracleMiddleware(address priceOracleMiddleware_) external restricted {
+        _validateMiddlewareQuoteCurrency(priceOracleMiddleware_);
         PriceOracleMiddlewareManagerLib.setPriceOracleMiddleware(priceOracleMiddleware_);
     }
 
@@ -264,6 +285,24 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
         }
     }
 
+    /// @notice Checks that a middleware quotes prices in this manager's QUOTE_CURRENCY
+    /// @dev The zero address is skipped here, it is rejected by the existing zero-address checks.
+    ///      A low-level staticcall is used so that an address without code or without the getter reverts with the
+    ///      custom error instead of a bare revert.
+    function _validateMiddlewareQuoteCurrency(address priceOracleMiddleware_) private view {
+        if (priceOracleMiddleware_ == address(0)) {
+            return;
+        }
+
+        (bool success, bytes memory result) = priceOracleMiddleware_.staticcall(
+            abi.encodeCall(IPriceOracleMiddleware.QUOTE_CURRENCY, ())
+        );
+
+        if (!success || result.length != 32 || abi.decode(result, (address)) != QUOTE_CURRENCY) {
+            revert InvalidPriceOracleMiddlewareQuoteCurrency(priceOracleMiddleware_);
+        }
+    }
+
     /// @notice Internal function to get asset price from either custom source or PriceOracleMiddleware
     /// @param asset_ The address of the asset to price
     /// @return assetPrice The price in USD (with QUOTE_CURRENCY_DECIMALS decimals)
@@ -273,6 +312,11 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
     /// @dev - asset_ is zero address
     /// @dev - price <= 0
     /// @dev - no custom price source is set and PriceOracleMiddleware reverts
+    /// @dev Custom source branch: only price > 0 is validated; updatedAt and answeredInRound are not checked
+    /// @dev (no freshness or round completeness validation). ChainlinkGuardedPriceFeed
+    /// @dev (contracts/price_oracle/price_feed/ChainlinkGuardedPriceFeed.sol) as the source adds freshness and
+    /// @dev deviation checks only; it checks neither the L2 sequencer nor answeredInRound (see the contract NatSpec).
+    /// @dev Accepted risk, no logic change.
     function _getAssetPrice(address asset_) private view returns (uint256 assetPrice, uint256 decimals) {
         if (asset_ == address(0)) {
             revert UnsupportedAsset();
@@ -283,7 +327,8 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
         uint256 priceFeedDecimals;
 
         if (source != address(0)) {
-            // Use custom source directly
+            // Use custom source directly. Only price > 0 is validated here: no freshness or round completeness check
+            // (see the contract NatSpec; ChainlinkGuardedPriceFeed adds freshness and deviation checks only)
             try IPriceFeed(source).latestRoundData() returns (
                 uint80 /*roundId*/,
                 int256 price,
@@ -318,7 +363,7 @@ contract PriceOracleMiddlewareManager is Initializable, AccessManagedUpgradeable
                 revert InvalidPriceOracleMiddleware();
             }
 
-            // Let PriceOracleMiddleware handle Chainlink fallback and validation
+            // Let PriceOracleMiddleware handle Chainlink fallback; it validates only price > 0 (no freshness check)
             // Errors from middleware (like UnsupportedAsset, UnexpectedPriceResult) will propagate
             (assetPrice, decimals) = IPriceOracleMiddleware(middleware).getAssetPrice(asset_);
 

@@ -13,6 +13,10 @@ on:
                 required: true
             INK_PROVIDER_URL:
                 required: true
+            SEPOLIA_PROVIDER_URL:
+                required: true
+            HOODI_PROVIDER_URL:
+                required: true
 
         inputs:
             node-version:
@@ -136,6 +140,8 @@ jobs:
                   BASE_PROVIDER_URL: ${{ secrets.BASE_PROVIDER_URL }}
                   TAC_PROVIDER_URL: ${{ secrets.TAC_PROVIDER_URL }}
                   INK_PROVIDER_URL: ${{ secrets.INK_PROVIDER_URL }}
+                  SEPOLIA_PROVIDER_URL: ${{ secrets.SEPOLIA_PROVIDER_URL }}
+                  HOODI_PROVIDER_URL: ${{ secrets.HOODI_PROVIDER_URL }}
               run: |
                   forge test ${{ inputs.test-options }} -vvv
               id: test

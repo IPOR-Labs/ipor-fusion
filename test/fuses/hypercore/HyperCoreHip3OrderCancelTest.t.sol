@@ -20,6 +20,7 @@ import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCore
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreAssetIdLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreAssetIdLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
 import {HyperCoreMockState} from "./mocks/MockHyperCorePrecompiles.sol";
 import {MockCoreWriter} from "./mocks/MockCoreWriter.sol";
@@ -148,14 +149,18 @@ contract HyperCoreHip3OrderCancelTest is Test {
         assertEq(coreWriter.lastAction(), bytes(""));
     }
 
-    function testDuplicateHip3GrantsAreCountedAndRejected() public {
-        _grantMany(110002, 110002, 2);
-        _setAssetInfo(10002, 5);
-        vm.expectRevert(
-            abi.encodeWithSelector(HyperCoreOrderFuse.HyperCoreOrderFuseSingleMarketRequired.selector, uint256(2))
-        );
-        _execute(110002, 100e8, 1000, 5);
-        assertEq(coreWriter.lastAction(), bytes(""));
+    // IL-9642: duplicate HIP-3 grants are rejected at grant time (previously counted twice by the fuse).
+    function testDuplicateHip3GrantsAreRejectedAtGrant() public {
+        _ensureHip3Registered(110002);
+        bytes32 perp = HyperCoreSubstrateLib.encodePerpMarket(110002, 1_000_000_000, false);
+        bytes32[] memory subs = new bytes32[](3);
+        subs[0] = perp;
+        subs[1] = perp;
+        subs[2] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.PerpDexIds, 2);
+        bytes32[] memory withFloor = NavJumpFloorFixture.withFloor(subs);
+        vm.prank(TestAddresses.FUSE_MANAGER);
+        vm.expectRevert(abi.encodeWithSignature("MarketSubstrateDuplicate(uint256,bytes32)", MARKET_ID, perp));
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, withFloor);
     }
 
     function testMultipleHip3MarketsAreRejected() public {
@@ -398,7 +403,7 @@ contract HyperCoreHip3OrderCancelTest is Test {
                 dexBitmap
             );
         }
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, subs);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(subs));
     }
 
     function _setAssetInfo(uint32 readIndex, uint8 decimals_) private {

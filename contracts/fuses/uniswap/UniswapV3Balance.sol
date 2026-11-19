@@ -19,6 +19,11 @@ import {PositionValue} from "./ext/PositionValue.sol";
  *      by iterating through all position token IDs stored in fuse storage, calculating the
  *      value of each position (including fees and principal), and converting to USD using
  *      the price oracle middleware.
+ * @custom:security Spot-price risk: the principal of each position is split between token0 and token1 at the pool's
+ *      current spot price (`slot0`), which can be moved within a single transaction (for example by a large swap
+ *      or a flash loan), so the reported value can be moved with it and a market refresh would persist the moved
+ *      value. For vaults where this matters, the atomist should prefer the oracle-derived balance fuse `UniswapV3OracleBalance`
+ *      (see the README of this fuse family for how to choose and how to switch).
  * @author IPOR Labs
  */
 contract UniswapV3Balance is IMarketBalanceFuse {

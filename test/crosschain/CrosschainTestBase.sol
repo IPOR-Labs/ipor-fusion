@@ -109,6 +109,7 @@ abstract contract CrosschainTestBase is Test {
             balanceApprover: approver,
             stalenessMax: STALENESS_MAX,
             bigChangeBps: BIG_CHANGE_BPS,
+            anchorBandBps: 2_000,
             minUpdateInterval: MIN_UPDATE_INTERVAL,
             deploymentTtl: DEPLOYMENT_TTL,
             transferStalenessMax: TRANSFER_STALENESS_MAX

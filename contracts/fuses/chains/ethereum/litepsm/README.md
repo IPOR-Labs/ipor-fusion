@@ -161,6 +161,11 @@ PlasmaVaultGovernance(plasmaVault).configureInstantWithdrawalFuses(fuses);
 
 > **Note:** `params[1]` (`allowedTout`) controls the maximum tout fee the fuse will accept during instant withdrawals.
 > Recommended value is `0` since tout is currently zero. If governance enables a tout fee in the future, this parameter must be updated to match or exceed the new fee, otherwise instant withdrawals will silently fail.
+>
+> **Who pays the fee.** With a non-zero tout, the fee paid during an instant withdrawal lowers the vault NAV before the
+> payout is priced, so it is paid by all holders, not only by the holder who triggered the withdrawal. With the
+> recommended `allowedTout = 0` there is no such cost. By the instant withdrawal list rule (see "Instant withdrawals" in
+> `contracts/vaults/README.md`), do not keep this fuse on the list with a tolerance above zero without an explicit decision.
 
 ## Events
 

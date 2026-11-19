@@ -4,6 +4,7 @@ import {PlasmaVaultCloneLib} from "../../test_helpers/PlasmaVaultCloneLib.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
 
@@ -13,6 +14,7 @@ import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/Euler
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
+import {InstantWithdrawalFusesParamsStruct} from "../../../contracts/libraries/PlasmaVaultLib.sol";
 
 import {PriceOracleMiddleware} from "../../../contracts/price_oracle/PriceOracleMiddleware.sol";
 import {MarketSubstratesConfig, MarketBalanceFuseConfig, FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
@@ -58,6 +60,7 @@ contract EulerV2SupplyFuseInstantWithdrawIntegrationTest is Test {
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
+    address private _withdrawManager;
     address private _eulerSupplyFuse;
 
     address private _subAccountInstantAddress;
@@ -75,7 +78,7 @@ contract EulerV2SupplyFuseInstantWithdrawIntegrationTest is Test {
 
         _priceOracle = _createPriceOracle();
         _accessManager = _createAccessManager();
-        address withdrawManager = address(new WithdrawManager(_accessManager));
+        _withdrawManager = address(new WithdrawManager(_accessManager));
 
         // Deploy PlasmaVault
         vm.startPrank(_ATOMIST);
@@ -89,7 +92,7 @@ contract EulerV2SupplyFuseInstantWithdrawIntegrationTest is Test {
                 feeConfig: _setupFeeConfig(),
                 accessManager: _accessManager,
                 plasmaVaultBase: address(new PlasmaVaultBase()),
-                withdrawManager: withdrawManager,
+                withdrawManager: _withdrawManager,
                 plasmaVaultVotesPlugin: address(0)
             })
         );
@@ -352,6 +355,79 @@ contract EulerV2SupplyFuseInstantWithdrawIntegrationTest is Test {
         assertGt(sharesCollateral, 0, "Collateral sub-account should still have shares");
     }
 
+    // ============ Test 6: Depositor exit through the configured instant withdraw ============
+
+    /// @notice A depositor redeem larger than the idle balance is served by the configured Euler instant withdraw
+    function testShouldRedeemDepositorSharesThroughConfiguredEulerInstantWithdraw() public {
+        // given - 9,000 of the 10,000 USDC deposit supplied to Euler, 1,000 USDC stays idle
+        FuseAction[] memory enterActions = new FuseAction[](1);
+        enterActions[0] = FuseAction({
+            fuse: _eulerSupplyFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,bytes1))",
+                EulerV2SupplyFuseEnterData({
+                    eulerVault: EULER_VAULT_USDC,
+                    maxAmount: 9_000e6,
+                    subAccount: _SUB_ACCOUNT_INSTANT
+                })
+            )
+        });
+        vm.prank(_ATOMIST);
+        PlasmaVault(_plasmaVault).execute(enterActions);
+
+        // and - the Euler supply fuse is the configured instant withdraw source (amount slot is overwritten)
+        bytes32[] memory fuseParams = new bytes32[](3);
+        fuseParams[0] = bytes32(0);
+        fuseParams[1] = PlasmaVaultConfigLib.addressToBytes32(EULER_VAULT_USDC);
+        fuseParams[2] = bytes32(_SUB_ACCOUNT_INSTANT);
+        InstantWithdrawalFusesParamsStruct[] memory instantFuses = new InstantWithdrawalFusesParamsStruct[](1);
+        instantFuses[0] = InstantWithdrawalFusesParamsStruct({fuse: _eulerSupplyFuse, params: fuseParams});
+        vm.prank(_ATOMIST);
+        PlasmaVaultGovernance(_plasmaVault).configureInstantWithdrawalFuses(instantFuses);
+
+        uint256 idleBefore = ERC20(_USDC).balanceOf(_plasmaVault);
+        assertEq(idleBefore, 1_000e6, "idle balance is below the request");
+
+        uint256 userSharesBefore = PlasmaVault(_plasmaVault).balanceOf(_USER);
+        uint256 sharesToRedeem = (userSharesBefore * 4) / 10; // about 4,000 USDC, 3,000 USDC short of idle
+        uint256 expectedAssets = PlasmaVault(_plasmaVault).previewRedeem(sharesToRedeem);
+        assertGt(expectedAssets, idleBefore, "request exceeds idle");
+
+        uint256 subAccountSharesBefore = ERC20(EULER_VAULT_USDC).balanceOf(_subAccountInstantAddress);
+        uint256 subAccountAssetsBefore = IERC4626(EULER_VAULT_USDC).convertToAssets(subAccountSharesBefore);
+        uint256 usdcUserBefore = ERC20(_USDC).balanceOf(_USER);
+
+        // when - the depositor redeems (zero fees)
+        vm.prank(_USER);
+        uint256 assetsOut = PlasmaVault(_plasmaVault).redeem(sharesToRedeem, _USER, _USER);
+
+        // then - paid out in full, shares burned
+        assertEq(assetsOut, expectedAssets, "redeem returns previewed assets");
+        assertEq(ERC20(_USDC).balanceOf(_USER) - usdcUserBefore, assetsOut, "depositor received the USDC");
+        assertEq(PlasmaVault(_plasmaVault).balanceOf(_USER), userSharesBefore - sharesToRedeem, "shares burned");
+
+        // and - the shortfall came out of the Euler sub-account position
+        uint256 subAccountSharesAfter = ERC20(EULER_VAULT_USDC).balanceOf(_subAccountInstantAddress);
+        assertLt(subAccountSharesAfter, subAccountSharesBefore, "sub-account position decreased");
+        uint256 withdrawnFromEuler = subAccountAssetsBefore -
+            IERC4626(EULER_VAULT_USDC).convertToAssets(subAccountSharesAfter);
+        // redeem requests the payout plus the vault's 2% slippage allowance from the markets
+        assertGe(withdrawnFromEuler + 10, assetsOut - idleBefore, "Euler covered at least the shortfall above idle");
+        assertLe(
+            withdrawnFromEuler,
+            (assetsOut * 102) / 100 - idleBefore + 10,
+            "Euler withdrawal bounded by the slippage allowance"
+        );
+
+        // and - market 11 balance was refreshed to the remaining position
+        assertApproxEqAbs(
+            PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2),
+            IERC4626(EULER_VAULT_USDC).convertToAssets(subAccountSharesAfter),
+            10,
+            "market balance refreshed"
+        );
+    }
+
     // ============ Helper Functions ============
 
     function _createPriceOracle() private returns (address) {
@@ -464,7 +540,7 @@ contract EulerV2SupplyFuseInstantWithdrawIntegrationTest is Test {
                 plasmaVault: _plasmaVault,
                 accessManager: _accessManager,
                 rewardsClaimManager: address(0x123),
-                withdrawManager: address(0x123),
+                withdrawManager: _withdrawManager,
                 feeManager: FeeAccount(PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount)
                     .FEE_MANAGER(),
                 contextManager: address(0x123),

@@ -15,8 +15,9 @@ struct RoleToFunction {
     uint64 roleId;
     /// @notice The 4-byte function selector of the authorized function
     bytes4 functionSelector;
-    /// @notice Timelock delay for function execution
-    /// @dev If greater than 0, function calls require waiting for the specified delay
+    /// @notice Minimal execution delay floor of `roleId`, a per-role value (not per function)
+    /// @dev Applied for each entry in order during `initialize`, so the last entry for a role wins. It is the floor
+    ///      checked when the role is granted to an account later; it does not timelock the function (IL-9671)
     uint256 minimalExecutionDelay;
 }
 

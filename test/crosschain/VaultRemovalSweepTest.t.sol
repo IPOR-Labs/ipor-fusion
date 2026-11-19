@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import {EnforcedOptionParam} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppOptionsType3.sol";
 
@@ -21,7 +22,8 @@ import {
     CrosschainMessages,
     UpdateVaults,
     Command,
-    OutboundTransfer
+    OutboundTransfer,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 
 import {ValueNeutralToken} from "./CcipValueNeutralVersionTest.t.sol";
@@ -47,7 +49,21 @@ contract VaultSweepHarness {
     function sweep(
         address vault_
     ) external returns (uint256 redeemed, uint256 assetsLD, uint256 left, uint8 reason, bytes4 err) {
-        return CrosschainVaultActionLib.sweepShares(vault_);
+        return CrosschainVaultActionLib.sweepShares(vault_, 0);
+    }
+
+    /// @dev IL-9629: the floored sweep (`minAssetsLD_` in the asset's decimals).
+    function sweepFloored(
+        address vault_,
+        uint256 minAssetsLD_
+    ) external returns (uint256 redeemed, uint256 assetsLD, uint256 left, uint8 reason, bytes4 err) {
+        return CrosschainVaultActionLib.sweepShares(vault_, minAssetsLD_);
+    }
+
+    /// @dev IL-9629: the dispatchers' self-call frame of the floored redeem, played by the harness.
+    function sweepRedeemSelf(address vault_, uint256 shares_, uint256 minAssetsLD_) external {
+        require(msg.sender == address(this), "only self");
+        CrosschainVaultActionLib.redeemAtLeast(vault_, shares_, minAssetsLD_);
     }
 }
 
@@ -240,6 +256,157 @@ contract VaultSweepLibTest is Test {
         assertEq(reason, 5, "gas limited");
         assertEq(err, bytes4(0), "no vault revert data");
     }
+
+    // ------------------------------------------------------------------ IL-9629 sweep floor
+
+    /// @dev Takes `amount_` of the vault's assets away, so its spot share price drops (a manipulated price).
+    function _drainVault(uint256 amount_) private {
+        vm.prank(address(vault));
+        token.transfer(address(0xBAD), amount_);
+    }
+
+    /// @dev A floor at the fair value is met: the floored redeem (through the host's `sweepRedeemSelf`) redeems the
+    ///      whole position exactly like the floorless sweep.
+    function testShouldRedeemTheWholePositionWhenTheFloorIsReached() public {
+        vm.expectEmit(false, false, false, true, address(host));
+        emit TrackedVaultSwept(address(vault), 60e18, 60e18);
+        (uint256 redeemed, uint256 assetsLD, uint256 left, uint8 reason, bytes4 err) = host.sweepFloored(
+            address(vault),
+            60e18
+        );
+        assertEq(redeemed, 60e18, "redeemed");
+        assertEq(assetsLD, 60e18, "assets measured");
+        assertEq(left, 0, "nothing left");
+        assertEq(reason, 0, "reason none");
+        assertEq(err, bytes4(0), "no error");
+    }
+
+    /// @dev The price is pushed down to a sixth: the redeem would pay 10e18 for a position worth 60e18. Under a 55e18
+    ///      floor the redeem runs and is ROLLED BACK (`SweepBelowMinimum` in the self-call frame): no share burned,
+    ///      no asset received, reason 6 with `untracked` false.
+    function testShouldRollBackAFlooredRedeemBelowTheFloor() public {
+        _drainVault(50e18);
+        bytes4 below = CrosschainVaultActionLib.SweepBelowMinimum.selector;
+        vm.expectEmit(false, false, false, true, address(host));
+        emit TrackedVaultSweepResidual(address(vault), 60e18, 6, below, false);
+        (uint256 redeemed, uint256 assetsLD, uint256 left, uint8 reason, bytes4 err) = host.sweepFloored(
+            address(vault),
+            55e18
+        );
+        assertEq(redeemed, 0, "nothing burned");
+        assertEq(assetsLD, 0, "nothing received");
+        assertEq(left, 60e18, "position intact");
+        assertEq(reason, CrosschainVaultActionLib.SWEEP_BELOW_MIN, "below the floor");
+        assertEq(err, below, "the floor revert is surfaced");
+        assertEq(vault.balanceOf(address(host)), 60e18, "shares still held");
+        assertEq(token.balanceOf(address(host)), 0, "no asset moved");
+    }
+
+    /// @dev Control for the test above: the same manipulated price WITHOUT a floor sells the position for 10e18.
+    function testShouldSellAtTheManipulatedPriceWithoutAFloor() public {
+        _drainVault(50e18);
+        (uint256 redeemed, uint256 assetsLD, uint256 left, uint8 reason, ) = host.sweep(address(vault));
+        assertEq(redeemed, 60e18, "whole position burned");
+        assertEq(assetsLD, 10e18, "for a sixth of its fair value");
+        assertEq(left, 0);
+        assertEq(reason, 0);
+    }
+
+    /// @dev A floor exactly at the manipulated receipt is met (the comparison is `received < floor`).
+    function testShouldAcceptAReceiptExactlyAtTheFloor() public {
+        _drainVault(50e18);
+        (uint256 redeemed, uint256 assetsLD, , uint8 reason, ) = host.sweepFloored(address(vault), 10e18);
+        assertEq(redeemed, 60e18, "redeemed");
+        assertEq(assetsLD, 10e18, "at the floor");
+        assertEq(reason, 0, "floor met");
+    }
+
+    /// @dev Dust under a non-zero floor received nothing: reason 6 (kept tracked), still without a redeem call.
+    function testShouldReportDustUnderANonZeroFloorAsBelowTheFloor() public {
+        MockFaultyVault dustVault = new MockFaultyVault(IERC20(address(token)), "D", "D");
+        token.approve(address(dustVault), 1);
+        dustVault.deposit(1, address(host));
+        dustVault.setRedeemFaults(true, false, false, false); // a redeem call would revert: it must not be made
+        vm.expectEmit(false, false, false, true, address(host));
+        emit TrackedVaultSweepResidual(address(dustVault), 1, 6, bytes4(0), false);
+        (uint256 redeemed, , uint256 left, uint8 reason, bytes4 err) = host.sweepFloored(address(dustVault), 1);
+        assertEq(redeemed, 0, "nothing redeemed");
+        assertEq(left, 1, "dust kept");
+        assertEq(reason, 6, "below the floor");
+        assertEq(err, bytes4(0), "redeem never called");
+    }
+
+    /// @dev Nothing redeemable (`maxRedeem` 0) under a non-zero floor: reason 6, not 3.
+    function testShouldReportAZeroMaxRedeemUnderAFloorAsBelowTheFloor() public {
+        vault.setMaxRedeemFaults(false, true, 0);
+        vault.setRedeemFaults(true, false, false, false); // would revert if it were called
+        (, , uint256 left, uint8 reason, bytes4 err) = host.sweepFloored(address(vault), 1e18);
+        assertEq(left, 60e18, "nothing movable");
+        assertEq(reason, 6, "below the floor");
+        assertEq(err, bytes4(0), "redeem never called");
+    }
+
+    /// @dev IL-9694 D-002 (intended behaviour change of the former testShouldKeepTheRevertReasonOfAFlooredRedeem, which
+    ///      expected reason 2 and untracked true): under a non-zero floor a redeem reverting with the vault's own error
+    ///      that burned nothing is reason 6, so the caller keeps the vault tracked. The vault's selector is reported.
+    function testShouldReportAFlooredRedeemRevertingWithTheVaultsOwnErrorAsBelowTheFloor() public {
+        vault.setRedeemFaults(true, false, false, false);
+        vm.expectEmit(false, false, false, true, address(host));
+        emit TrackedVaultSweepResidual(address(vault), 60e18, 6, MockFaultyVault.RedeemBroken.selector, false);
+        (, , uint256 left, uint8 reason, bytes4 err) = host.sweepFloored(address(vault), 1e18);
+        assertEq(left, 60e18, "position intact");
+        assertEq(reason, 6, "kept tracked");
+        assertEq(err, MockFaultyVault.RedeemBroken.selector, "the vault's selector, not the floor's");
+    }
+
+    /// @dev D-028 stands without a floor: the same revert is reason 2 (untracked).
+    function testShouldKeepTheRevertReasonOfAFloorlessRedeem() public {
+        vault.setRedeemFaults(true, false, false, false);
+        vm.expectEmit(false, false, false, true, address(host));
+        emit TrackedVaultSweepResidual(address(vault), 60e18, 2, MockFaultyVault.RedeemBroken.selector, true);
+        (, , uint256 left, uint8 reason, bytes4 err) = host.sweep(address(vault));
+        assertEq(left, 60e18, "position intact");
+        assertEq(reason, 2, "reverted");
+        assertEq(err, MockFaultyVault.RedeemBroken.selector, "the vault's selector");
+    }
+
+    /// @dev The floored redeem runs under the same cap: a gas-burning redeem cannot consume more than the sweep cap.
+    function testShouldBoundAGasBurningFlooredRedeemToTheSweepCap() public {
+        vault.setRedeemFaults(false, true, false, false);
+        uint256 gasBefore = gasleft();
+        (, , uint256 left, uint8 reason, bytes4 err) = host.sweepFloored{gas: 5_000_000}(address(vault), 1e18);
+        uint256 used = gasBefore - gasleft();
+        assertEq(left, 60e18, "position intact");
+        assertEq(reason, 2, "out of gas inside the cap is a revert");
+        assertEq(err, bytes4(0), "no revert data");
+        assertLt(used, CrosschainConstants.VAULT_SWEEP_GAS + 600_000, "bounded by the cap plus overhead");
+    }
+
+    /// @dev A partial redeem that still reaches the floor is a partial (3): the floor bounds the receipt, not the rest.
+    function testShouldReportAPartialFlooredRedeemThatReachesTheFloor() public {
+        vault.setMaxRedeemFaults(false, true, 25e18);
+        (uint256 redeemed, uint256 assetsLD, uint256 left, uint8 reason, ) = host.sweepFloored(address(vault), 20e18);
+        assertEq(redeemed, 25e18, "capped redeem");
+        assertEq(assetsLD, 25e18, "above the floor");
+        assertEq(left, 35e18, "rest stays");
+        assertEq(reason, 3, "partial");
+    }
+
+    /// @dev `redeemAtLeast` on its own reverts below the floor with the measured receipt.
+    function testShouldRevertRedeemAtLeastBelowTheFloor() public {
+        _drainVault(50e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(CrosschainVaultActionLib.SweepBelowMinimum.selector, address(vault), 10e18, 11e18)
+        );
+        vm.prank(address(host));
+        host.sweepRedeemSelf(address(vault), 60e18, 11e18);
+    }
+
+    /// @dev Only the host itself may open the floored redeem frame (the dispatchers' `OnlySelf`).
+    function testShouldRefuseTheFlooredRedeemFrameFromAnotherCaller() public {
+        vm.expectRevert(bytes("only self"));
+        host.sweepRedeemSelf(address(vault), 60e18, 0);
+    }
 }
 
 /// @title CcipVaultRemovalSweepTest
@@ -291,6 +458,7 @@ contract CcipVaultRemovalSweepTest is Test {
                 rescueDelay: RESCUE_DELAY,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             })
@@ -674,10 +842,13 @@ contract CcipVaultRemovalSweepTest is Test {
         assertEq(obs.unpricedCount, 0, "priced");
     }
 
-    // ------------------------------------------------------------------ IL-8844: residual share allowance (D-074)
+    // ------------------------------------------------------------------ IL-8844: residual share allowance (D-074); on dispatchers with the IL-9654 library D-074 is superseded by IL-9654
 
-    /// @dev Removal with a reverting redeem leaves the vault neither allowlisted nor tracked, so a rescue `approve` on
-    ///      it is schedulable. Re-allowlisting before the delay elapses makes execute refuse it.
+    /// @dev Removal with a reverting redeem leaves the vault neither allowlisted nor tracked, so the vault ban does
+    ///      not cover it. Since IL-9654 the dispatcher accepts only the listed rescue calldata shapes (an `approve` is
+    ///      accepted only with amount 0), so an `approve` above 0 is refused at schedule in every allowlist state and
+    ///      no allowance can survive a re-add.
+    ///      A recovery `redeem` scheduled while the vault is out is refused at execute once it is allowlisted again.
     function _removeWithResidual() private {
         _bridge(100e18);
         _position(vaultA, 50e18);
@@ -694,10 +865,9 @@ contract CcipVaultRemovalSweepTest is Test {
         assertTrue(dispatcher.isTrackedVault(address(vaultA)), "tracked again");
     }
 
-    function testShouldRefuseAResidualApproveAtExecuteOnceTheVaultIsAllowlistedAgain() public {
+    function testShouldRefuseAResidualRedeemAtExecuteOnceTheVaultIsAllowlistedAgain() public {
         _removeWithResidual();
-        address spender = address(0xBAD);
-        bytes memory cd = abi.encodeCall(IERC20.approve, (spender, type(uint256).max));
+        bytes memory cd = abi.encodeCall(IERC4626.redeem, (1e18, RESCUE_ADMIN, address(dispatcher)));
         vm.prank(RESCUE_ADMIN);
         uint256 id = dispatcher.scheduleRescue(address(vaultA), 0, cd);
 
@@ -706,26 +876,36 @@ contract CcipVaultRemovalSweepTest is Test {
         vm.prank(RESCUE_ADMIN);
         vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.RescueTrackedVaultCall.selector, address(vaultA)));
         dispatcher.executeRescue(id, cd);
-        assertEq(vaultA.allowance(address(dispatcher), spender), 0, "no allowance was granted");
+        assertEq(vaultA.balanceOf(address(dispatcher)), 50e18, "the residual stays with the dispatcher");
     }
 
-    function testShouldKeepAResidualAllowanceExecutedWhileTheVaultWasOut() public {
+    /// @notice IL-9654 closes the IL-8844 residual: the grant is refused while the vault is out.
+    function testShouldRefuseAResidualApproveAtScheduleWhileTheVaultIsOut() public {
         _removeWithResidual();
         address spender = address(0xBAD);
         bytes memory cd = abi.encodeCall(IERC20.approve, (spender, type(uint256).max));
         vm.prank(RESCUE_ADMIN);
-        uint256 id = dispatcher.scheduleRescue(address(vaultA), 0, cd);
-        vm.warp(block.timestamp + RESCUE_DELAY);
-        vm.prank(RESCUE_ADMIN);
-        dispatcher.executeRescue(id, cd); // the vault is still out: the fence does not apply
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CrosschainErrors.RescueCallShapeNotAllowed.selector,
+                address(vaultA),
+                IERC20.approve.selector
+            )
+        );
+        dispatcher.scheduleRescue(address(vaultA), 0, cd);
 
         _reAdd();
-        assertEq(
-            vaultA.allowance(address(dispatcher), spender),
-            type(uint256).max,
-            "the allowance survives the re-add"
-        );
+        assertEq(vaultA.allowance(address(dispatcher), spender), 0, "no allowance to survive the re-add");
+    }
 
+    /// @notice A revoke is refused once the vault is allowlisted again (the vault ban covers every call).
+    function testShouldRefuseARevokeOnceTheVaultIsAllowlistedAgain() public {
+        _removeWithResidual();
+        address spender = address(0xBAD);
+        vm.prank(address(dispatcher)); // an allowance left by any other route; a rescue can no longer grant one
+        vaultA.approve(spender, type(uint256).max);
+
+        _reAdd();
         bytes memory revoke = abi.encodeCall(IERC20.approve, (spender, 0));
         vm.prank(RESCUE_ADMIN);
         vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.RescueTrackedVaultCall.selector, address(vaultA)));
@@ -735,13 +915,8 @@ contract CcipVaultRemovalSweepTest is Test {
     function testShouldClearAResidualAllowanceRevokedBeforeTheReAdd() public {
         _removeWithResidual();
         address spender = address(0xBAD);
-        bytes memory grant = abi.encodeCall(IERC20.approve, (spender, type(uint256).max));
-        vm.prank(RESCUE_ADMIN);
-        uint256 id = dispatcher.scheduleRescue(address(vaultA), 0, grant);
-        vm.warp(block.timestamp + RESCUE_DELAY);
-        vm.prank(RESCUE_ADMIN);
-        dispatcher.executeRescue(id, grant);
-        assertEq(vaultA.allowance(address(dispatcher), spender), type(uint256).max, "granted while out");
+        vm.prank(address(dispatcher)); // an allowance left by any other route; a rescue can no longer grant one
+        vaultA.approve(spender, type(uint256).max);
 
         bytes memory revoke = abi.encodeCall(IERC20.approve, (spender, 0));
         vm.prank(RESCUE_ADMIN);
@@ -752,6 +927,21 @@ contract CcipVaultRemovalSweepTest is Test {
 
         _reAdd();
         assertEq(vaultA.allowance(address(dispatcher), spender), 0, "runbook: revoke first, then re-add");
+    }
+
+    /// @notice The residual of a removed vault is still recoverable: `redeem` with the dispatcher as owner pays the
+    ///         receiver and burns the residual shares.
+    function testShouldRecoverAResidualByRedeemWhileTheVaultIsOut() public {
+        _removeWithResidual();
+        bytes memory cd = abi.encodeCall(IERC4626.redeem, (50e18, RESCUE_ADMIN, address(dispatcher)));
+        vm.prank(RESCUE_ADMIN);
+        uint256 id = dispatcher.scheduleRescue(address(vaultA), 0, cd);
+        vm.warp(block.timestamp + RESCUE_DELAY);
+        uint256 before = token.balanceOf(RESCUE_ADMIN);
+        vm.prank(RESCUE_ADMIN);
+        dispatcher.executeRescue(id, cd);
+        assertEq(vaultA.balanceOf(address(dispatcher)), 0, "residual shares redeemed");
+        assertEq(token.balanceOf(RESCUE_ADMIN) - before, 50e18, "the receiver is paid");
     }
 }
 
@@ -848,7 +1038,8 @@ contract StargateVaultRemovalSweepTest is Test {
                     sequence: dispatcher.nextCommandSequence(),
                     newConfigEpoch: dispatcher.commandConfigEpoch() + 1,
                     minExecutionGas: DEFAULT_COMMAND_BUDGET,
-                    vaults: vaults_
+                    vaults: vaults_,
+                    floors: new SweepFloor[](0)
                 })
             )
         );
@@ -1058,10 +1249,13 @@ contract StargateVaultRemovalSweepTest is Test {
         assertFalse(_tracked(address(vault)), "no position, no tracking");
     }
 
-    // ------------------------------------------------------------------ IL-8844: residual share allowance (D-074)
+    // ------------------------------------------------------------------ IL-8844: residual share allowance (D-074); on dispatchers with the IL-9654 library D-074 is superseded by IL-9654
 
-    /// @dev Removal with a reverting redeem leaves the vault neither allowlisted nor tracked, so a rescue `approve` on
-    ///      it is schedulable. Re-allowlisting before the delay elapses makes execute refuse it.
+    /// @dev Removal with a reverting redeem leaves the vault neither allowlisted nor tracked, so the vault ban does
+    ///      not cover it. Since IL-9654 the dispatcher accepts only the listed rescue calldata shapes (an `approve` is
+    ///      accepted only with amount 0), so an `approve` above 0 is refused at schedule in every allowlist state and
+    ///      no allowance can survive a re-add.
+    ///      A recovery `redeem` scheduled while the vault is out is refused at execute once it is allowlisted again.
     function _removeWithResidualSg() private {
         _setVaults(_one(address(vault)));
         _compose(100e6);
@@ -1078,10 +1272,9 @@ contract StargateVaultRemovalSweepTest is Test {
         assertTrue(_tracked(address(vault)), "tracked again");
     }
 
-    function testShouldRefuseAResidualApproveAtExecuteOnceTheVaultIsAllowlistedAgain() public {
+    function testShouldRefuseAResidualRedeemAtExecuteOnceTheVaultIsAllowlistedAgain() public {
         _removeWithResidualSg();
-        address spender = address(0xBAD);
-        bytes memory cd = abi.encodeCall(IERC20.approve, (spender, type(uint256).max));
+        bytes memory cd = abi.encodeCall(IERC4626.redeem, (1e6, admin, address(dispatcher)));
         vm.prank(admin);
         uint256 id = dispatcher.scheduleRescue(address(vault), 0, cd);
 
@@ -1090,22 +1283,36 @@ contract StargateVaultRemovalSweepTest is Test {
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.RescueTrackedVaultCall.selector, address(vault)));
         dispatcher.executeRescue(id, cd);
-        assertEq(vault.allowance(address(dispatcher), spender), 0, "no allowance was granted");
+        assertEq(vault.balanceOf(address(dispatcher)), 50e6, "the residual stays with the dispatcher");
     }
 
-    function testShouldKeepAResidualAllowanceExecutedWhileTheVaultWasOut() public {
+    /// @notice IL-9654 closes the IL-8844 residual: the grant is refused while the vault is out.
+    function testShouldRefuseAResidualApproveAtScheduleWhileTheVaultIsOut() public {
         _removeWithResidualSg();
         address spender = address(0xBAD);
         bytes memory cd = abi.encodeCall(IERC20.approve, (spender, type(uint256).max));
         vm.prank(admin);
-        uint256 id = dispatcher.scheduleRescue(address(vault), 0, cd);
-        vm.warp(block.timestamp + 3 days);
-        vm.prank(admin);
-        dispatcher.executeRescue(id, cd); // the vault is still out: the fence does not apply
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CrosschainErrors.RescueCallShapeNotAllowed.selector,
+                address(vault),
+                IERC20.approve.selector
+            )
+        );
+        dispatcher.scheduleRescue(address(vault), 0, cd);
 
         _reAddSg();
-        assertEq(vault.allowance(address(dispatcher), spender), type(uint256).max, "the allowance survives the re-add");
+        assertEq(vault.allowance(address(dispatcher), spender), 0, "no allowance to survive the re-add");
+    }
 
+    /// @notice A revoke is refused once the vault is allowlisted again (the vault ban covers every call).
+    function testShouldRefuseARevokeOnceTheVaultIsAllowlistedAgain() public {
+        _removeWithResidualSg();
+        address spender = address(0xBAD);
+        vm.prank(address(dispatcher)); // an allowance left by any other route; a rescue can no longer grant one
+        vault.approve(spender, type(uint256).max);
+
+        _reAddSg();
         bytes memory revoke = abi.encodeCall(IERC20.approve, (spender, 0));
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.RescueTrackedVaultCall.selector, address(vault)));
@@ -1115,13 +1322,8 @@ contract StargateVaultRemovalSweepTest is Test {
     function testShouldClearAResidualAllowanceRevokedBeforeTheReAdd() public {
         _removeWithResidualSg();
         address spender = address(0xBAD);
-        bytes memory grant = abi.encodeCall(IERC20.approve, (spender, type(uint256).max));
-        vm.prank(admin);
-        uint256 id = dispatcher.scheduleRescue(address(vault), 0, grant);
-        vm.warp(block.timestamp + 3 days);
-        vm.prank(admin);
-        dispatcher.executeRescue(id, grant);
-        assertEq(vault.allowance(address(dispatcher), spender), type(uint256).max, "granted while out");
+        vm.prank(address(dispatcher)); // an allowance left by any other route; a rescue can no longer grant one
+        vault.approve(spender, type(uint256).max);
 
         bytes memory revoke = abi.encodeCall(IERC20.approve, (spender, 0));
         vm.prank(admin);
@@ -1132,6 +1334,21 @@ contract StargateVaultRemovalSweepTest is Test {
 
         _reAddSg();
         assertEq(vault.allowance(address(dispatcher), spender), 0, "runbook: revoke first, then re-add");
+    }
+
+    /// @notice The residual of a removed vault is still recoverable: `redeem` with the dispatcher as owner pays the
+    ///         receiver and burns the residual shares.
+    function testShouldRecoverAResidualByRedeemWhileTheVaultIsOut() public {
+        _removeWithResidualSg();
+        bytes memory cd = abi.encodeCall(IERC4626.redeem, (50e6, admin, address(dispatcher)));
+        vm.prank(admin);
+        uint256 id = dispatcher.scheduleRescue(address(vault), 0, cd);
+        vm.warp(block.timestamp + 3 days);
+        uint256 before = usdc.balanceOf(admin);
+        vm.prank(admin);
+        dispatcher.executeRescue(id, cd);
+        assertEq(vault.balanceOf(address(dispatcher)), 0, "residual shares redeemed");
+        assertEq(usdc.balanceOf(admin) - before, 50e6, "the receiver is paid");
     }
 }
 
@@ -1226,7 +1443,8 @@ contract StargateVaultRemovalLaneGasTest is Test {
                 sequence: dispatcher.nextCommandSequence(),
                 newConfigEpoch: dispatcher.commandConfigEpoch() + 1,
                 minExecutionGas: minExecutionGas_,
-                vaults: vaults_
+                vaults: vaults_,
+                floors: new SweepFloor[](0)
             })
         );
     }
@@ -1446,20 +1664,27 @@ contract StargateVaultRemovalCommittedLaneTest is Test {
     /// @dev Measured on forge 1.8.5, 2026-10-20, IL-8839 T61.
     uint256 internal constant K_AT_MIN_LANE = 31; // all 31 kept vaults ACK at the 2.5M lane (K = 31, no K + 1)
     /// @dev Measured on forge 1.8.5, 2026-10-20, IL-8839 T61. Smallest lane (10k steps) with 31 kept vaults; it is the
-    ///      floor of what `commandGasBudget` accepts (CommandLaneGasTooLow below 2,450,286), so the removal never
-    ///      needs more than the minimum lane.
-    uint256 internal constant LANE_FOR_31_KEPT = 2_460_000;
+    ///      floor of what `commandGasBudget` accepts, so the removal never needs more than the minimum lane. IL-9629
+    ///      (2026-11-10): the payload grew by two words (the empty `floors` list), so that floor moved from 2,450,286
+    ///      to 2,499,048 and the lane is now the 2.5M minimum itself (was 2,460,000).
+    uint256 internal constant LANE_FOR_31_KEPT = 2_500_000;
     /// @dev Measured on forge 1.8.5, 2026-10-20, IL-8839 T61. Adversarial delivery: the command is stamped for the
     ///      2.5M lane, the delivery gas is cut to the smallest value (1k steps) that still ACKs. Margin to 2.5M is
-    ///      about 98k gas (4 percent); the per kept vault marginal cost is (EDGE_31 - EDGE_0) / 31, about 9.9k.
+    ///      about 98k gas (4 percent); the per kept vault marginal cost is (EDGE_31 - EDGE_0) / 31, about 9.9k
+    ///      (IL-9629 layout: about 68k and 11.5k, see below).
     ///      The edge depends on the forge version: `vm.cool` does not make an EXTCODESIZE access cold on forge 1.8.x
     ///      (it costs the warm 100 there) but does on 1.9+ (the real EIP-2929 2,600), so the same removal needs 3,000 gas
     ///      more on 1.9 (2,405,000, measured 2026-11-03). Both are pinned as a band, the real chain pays the upper value.
-    uint256 internal constant EDGE_GAS_31_KEPT_MIN = 2_402_000;
-    uint256 internal constant EDGE_GAS_31_KEPT_MAX = 2_405_000;
+    ///      IL-9629 (forge 1.9.0, 2026-11-10): the UPDATE_VAULTS payload carries two more words (the empty `floors`
+    ///      list: about 44k more pre-check storage), so the edge rose to 2,432,000 (band kept 3k wide below it); the
+    ///      margin to 2.5M is now about 68k gas.
+    uint256 internal constant EDGE_GAS_31_KEPT_MIN = 2_429_000;
+    uint256 internal constant EDGE_GAS_31_KEPT_MAX = 2_432_000;
     /// @dev Measured on forge 1.8.5, 2026-10-20, IL-8839 T61 (same method, 0 kept vaults); band for the same reason.
-    uint256 internal constant EDGE_GAS_0_KEPT_MIN = 2_095_000;
-    uint256 internal constant EDGE_GAS_0_KEPT_MAX = 2_100_000;
+    ///      IL-9629 (forge 1.9.0, 2026-11-10): 2,074,000, bound by the budget check, whose 2.5M budget is 48k lower for
+    ///      the two extra words (band kept 5k wide below it).
+    uint256 internal constant EDGE_GAS_0_KEPT_MIN = 2_069_000;
+    uint256 internal constant EDGE_GAS_0_KEPT_MAX = 2_074_000;
 
     uint256 internal constant DISPATCHER_CHAIN = 42161;
     uint256 internal constant EXECUTOR_CHAIN = 1;
@@ -1567,7 +1792,8 @@ contract StargateVaultRemovalCommittedLaneTest is Test {
                 sequence: dispatcher.nextCommandSequence(),
                 newConfigEpoch: dispatcher.commandConfigEpoch() + 1,
                 minExecutionGas: minExecutionGas_,
-                vaults: vaults_
+                vaults: vaults_,
+                floors: new SweepFloor[](0)
             })
         );
     }
@@ -1680,7 +1906,7 @@ contract StargateVaultRemovalCommittedLaneTest is Test {
 
     /// @dev Smallest lane (multiple of 10k) that ACKs with `kept_` kept vaults.
     function _minLane(uint256 kept_) private returns (uint256) {
-        uint256 lo = 245; // 2,450,000: below the command budget formula's own floor (CommandLaneGasTooLow)
+        uint256 lo = 249; // 2,490,000: below the command budget formula's own floor (CommandLaneGasTooLow, IL-9629 layout)
         uint256 hi = 500; // 5,000,000, must ACK
         assertTrue(_acks(kept_, hi * LANE_STEP), "5M lane ACKs");
         while (hi - lo > 1) {
@@ -1726,7 +1952,7 @@ contract StargateVaultRemovalCommittedLaneTest is Test {
         emit log_named_uint("per kept vault marginal lane cost (gas, (L31 - L0) / 31)", (l31 - l0) / EMPTIES);
         emit log_named_uint(
             "command budget at the 2.5M lane with 31 kept",
-            CrosschainMessages.commandGasBudget(MIN_LANE, CrosschainMessages.payloadWords(32 * 32 + 5 * 32), true)
+            CrosschainMessages.commandGasBudget(MIN_LANE, CrosschainMessages.payloadWords((9 + EMPTIES) * 32), true)
         );
 
         uint256 edge31 = _ackEdge(EMPTIES, MIN_LANE);

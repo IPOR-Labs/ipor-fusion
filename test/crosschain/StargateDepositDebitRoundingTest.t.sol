@@ -12,7 +12,8 @@ import {
     CrosschainMessages,
     Command,
     UpdateVaults,
-    OutboundTransfer
+    OutboundTransfer,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 
 import {MockLzEndpoint} from "./mocks/MockLzEndpoint.sol";
@@ -157,7 +158,14 @@ contract StargateDepositDebitRoundingTest is Test {
         vaults[0] = vault_;
         _deliver(
             CrosschainMessages.encodeUpdateVaults(
-                UpdateVaults({commandId: keccak256("uv"), sequence: 0, newConfigEpoch: 1, minExecutionGas: DEFAULT_COMMAND_BUDGET, vaults: vaults})
+                UpdateVaults({
+                    commandId: keccak256("uv"),
+                    sequence: 0,
+                    newConfigEpoch: 1,
+                    minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                    vaults: vaults,
+                    floors: new SweepFloor[](0)
+                })
             )
         );
     }

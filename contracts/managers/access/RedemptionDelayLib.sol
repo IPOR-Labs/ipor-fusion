@@ -25,9 +25,9 @@ bytes4 constant TRANSFER_SELECTOR = PlasmaVault.transfer.selector;
  * accounts behaves as if the vault-wide delay were 0 on exit (withdraw, redeem, transfer, transferFrom);
  * the exemption is evaluated at exit time, so granting and revoking take effect immediately
  * @custom:risk An exempt address can deposit and transfer fresh shares to a never-deposited address, which can
- * then withdraw at once. The lock check sees only the address the vault passes (caller, share owner, from), so
- * exempting a contract that acts for many users (a wrapper, router, zap or ContextManager-relayed path) exempts
- * all of its users at once. An exemption also removes the same-block deposit -> withdraw guard that a 1-second
+ * then withdraw at once. The lock check sees only the address the vault passes (the share owner or from; the
+ * caller of withdraw, redeem and transferFrom is not checked, IL-9705), so exempting a contract that acts for
+ * many users (a wrapper, router, zap or ContextManager-relayed path) exempts all of its users at once. An exemption also removes the same-block deposit -> withdraw guard that a 1-second
  * delay provides. Only exempt trusted, specific addresses
  * @custom:security-contact security@ipor.io
  */
@@ -86,6 +86,23 @@ library RedemptionDelayLib {
      * 2. For deposits/mints: Records the lock start time
      * 3. Exempt accounts pass the exit check of rule 1 (the exemption set is read only when the account
      * would otherwise revert, so a normal unlocked exit costs no extra storage read)
+     * 4. Not checked, by design: `redeemFromRequest` (scheduled exit from a WithdrawManager request), which is
+     * routed through `canCallWithDelay` and never reaches this function. Its selector is intentionally absent
+     * from the exit list above, so a request-bound exit is not blocked by a lock on the request owner. The
+     * WithdrawManager bounds that exit instead: only shares held without a break since the request, and a request
+     * filed during the owner's lock starts when that lock ends; later deposits do not move it
+     * (`WithdrawManager.requestShares`, IL-9531)
+     * Design decision (IL-8736, reaffirmed by IL-9695): the lock sits on the RECEIVER of the shares, not on the
+     * depositor, and every deposit or mint restarts it. So anyone can restart the lock of any non-exempt holder
+     * by depositing to it (also a dust amount); locking the depositor instead would let one address mint to a fresh
+     * address and exit in the same block. This is accepted, not a defect. Ways out and mitigations:
+     * - exit through `WithdrawManager.requestShares` and `redeemFromRequest`, whose request path a later deposit cannot extend (rule 4: a request filed during the lock starts when that lock ends);
+     * - exempt a trusted account with `setRedemptionDelayExemption` (IL-7935); the factory exempts the fee manager
+     *   and both fee accounts (IL-9634). The owner of a remote or child vault should exempt the crosschain
+     *   dispatcher or the parent vault that holds a position in it, otherwise every top-up of that position
+     *   (a deposit with the dispatcher or the parent vault as receiver) locks the whole position again;
+     * - `maxWithdraw` and `maxRedeem` return 0 while the owner is locked (IL-9679), so integrators see the lock
+     *   instead of a revert.
      * Gas: the lock start is written and the event emitted on EVERY deposit/mint, also when the redemption
      * delay is 0 (no early return). This is a deliberate cost (~20k gas on an account's first deposit, ~3-5k
      * afterwards, plus the event) accepted so that a later increase of the delay reaches accounts that

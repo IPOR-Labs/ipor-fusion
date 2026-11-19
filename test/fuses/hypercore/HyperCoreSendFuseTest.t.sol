@@ -17,6 +17,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
@@ -142,7 +143,7 @@ contract HyperCoreSendFuseTest is Test {
         substrates[2] = HyperCoreSubstrateLib.encodeDestination(address(vault));
         substrates[3] = HyperCoreSubstrateLib.encodeSendCap(HyperCoreLib.USDC_TOKEN, 1_000_000e8);
         substrates[4] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         vm.stopPrank();
     }
 
@@ -219,7 +220,7 @@ contract HyperCoreSendFuseTest is Test {
         substrates[1] = HyperCoreSubstrateLib.encodeDestination(usdcSystemAddress);
         substrates[2] = HyperCoreSubstrateLib.encodeDestination(address(vault));
         substrates[3] = HyperCoreSubstrateLib.encodeSendCap(HyperCoreLib.USDC_TOKEN, 1_000_000e8);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(HyperCoreSendFuse.HyperCoreSendFuseSpotSendBridgeDisabled.selector);
         _executeSpotSend(usdcSystemAddress, HyperCoreLib.USDC_TOKEN, 200e8);
@@ -252,7 +253,7 @@ contract HyperCoreSendFuseTest is Test {
         substrates[1] = HyperCoreSubstrateLib.encodeDestination(usdcSystemAddress);
         substrates[2] = HyperCoreSubstrateLib.encodeDestination(address(vault));
         substrates[3] = HyperCoreSubstrateLib.encodeSendCap(HyperCoreLib.USDC_TOKEN, 1_000_000e8);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(HyperCoreSendFuse.HyperCoreSendFuseSelfSend.selector);
         _executeSpotSend(address(vault), HyperCoreLib.USDC_TOKEN, 1e8);
@@ -283,7 +284,7 @@ contract HyperCoreSendFuseTest is Test {
         substrates[2] = HyperCoreSubstrateLib.encodeDestination(thirdParty);
         substrates[3] = HyperCoreSubstrateLib.encodeSendCap(HyperCoreLib.USDC_TOKEN, 1_000_000e8);
         substrates[4] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(
             abi.encodeWithSelector(HyperCoreSendFuse.HyperCoreSendFuseDestinationNotAllowed.selector, thirdParty)
@@ -301,7 +302,7 @@ contract HyperCoreSendFuseTest is Test {
         substrates[1] = HyperCoreSubstrateLib.encodeDestination(usdcSystemAddress);
         substrates[2] = HyperCoreSubstrateLib.encodeSendCap(HyperCoreLib.USDC_TOKEN, 100e8);
         substrates[3] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(
             abi.encodeWithSelector(HyperCoreSendFuse.HyperCoreSendFuseExceedsSendCap.selector, uint64(200e8), uint128(100e8))
@@ -339,7 +340,7 @@ contract HyperCoreSendFuseTest is Test {
         substrates[1] = HyperCoreSubstrateLib.encodeDestination(HyperCoreLib.systemAddress(9));
         substrates[2] = HyperCoreSubstrateLib.encodeSendCap(9, 1_000_000e8);
         substrates[3] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         core.setSpotBalance(address(vault), 9, HyperCoreMockState.SpotBalance({total: 1_000e8, hold: 0, entryNtl: 0}));
         oracle.setAssetPriceWithDecimals(address(usdc), 1e8, 8);
 
@@ -372,7 +373,8 @@ contract HyperCoreSendFuseTest is Test {
     ///      Core-registered `evmContract` (which is used only for the transfer/representability checks).
     function testCachedValuePricesTransitAmountUsingGrantedEvmAssetNotRealEvmContract() public {
         address grantedPricingAsset = address(new HyperCoreMockUsdc()); // priced at $2; needs an ERC20 balanceOf
-        address realCoreEvmContract = makeAddr("realCoreEvmContract"); // priced at $5 (must NOT be used)
+        // IL-9639: the granted ERC-20 must be the Core-linked token, so the Core link points at the granted asset.
+        address realCoreEvmContract = grantedPricingAsset;
 
         core.setTokenInfo(
             5,
@@ -388,7 +390,6 @@ contract HyperCoreSendFuseTest is Test {
             })
         );
         oracle.setAssetPriceWithDecimals(grantedPricingAsset, 2e8, 8);
-        oracle.setAssetPriceWithDecimals(realCoreEvmContract, 5e8, 8);
 
         vm.prank(TestAddresses.FUSE_MANAGER);
         bytes32[] memory substrates = new bytes32[](5);
@@ -397,18 +398,17 @@ contract HyperCoreSendFuseTest is Test {
         substrates[2] = HyperCoreSubstrateLib.encodeDestination(HyperCoreLib.systemAddress(5));
         substrates[3] = HyperCoreSubstrateLib.encodeSendCap(5, 1_000_000e8);
         substrates[4] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         core.setSpotBalance(address(vault), HyperCoreLib.USDC_TOKEN, HyperCoreMockState.SpotBalance({total: 500e8, hold: 0, entryNtl: 0}));
         core.setSpotBalance(address(vault), 5, HyperCoreMockState.SpotBalance({total: 10e8, hold: 0, entryNtl: 0}));
 
         // S = $500 (USDC) + $20 (5 units @ $2) = $520.
-        // Sending 5 units of token 5: correct A = 5 * $2 = $10 (grantedPricingAsset); wrong A (real
-        // evmContract @ $5) would be $25.
+        // Sending 5 units of token 5: A = 5 * $2 = $10, priced through the granted (= Core-linked) asset.
         _executeSpotSend(HyperCoreLib.systemAddress(5), 5, 5e8);
 
         (, , , , , , , uint256 cachedValueWad) = _readPending();
-        assertEq(cachedValueWad, 510e18, "A must be priced with the granted evmAsset, not the real evmContract");
+        assertEq(cachedValueWad, 510e18, "A must be priced with the granted evmAsset");
     }
 
     function testEnterSendAssetSelfCrossDexMoveStaysOnCoreWithLiveValueCached() public {
@@ -483,7 +483,7 @@ contract HyperCoreSendFuseTest is Test {
         substrates[2] = HyperCoreSubstrateLib.encodeSendCap(HyperCoreLib.USDC_TOKEN, 1_000_000e8);
         substrates[3] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, 0);
         substrates[4] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(abi.encodeWithSelector(HyperCoreSendFuse.HyperCoreSendFuseInvalidWindow.selector, uint240(0)));
         _executeSpotSend(usdcSystemAddress, HyperCoreLib.USDC_TOKEN, 1e8);
@@ -642,7 +642,7 @@ contract HyperCoreSendFuseTest is Test {
         substrates[3] = HyperCoreSubstrateLib.encodeSendCap(HyperCoreLib.USDC_TOKEN, 1_000_000e8);
         substrates[4] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
         substrates[5] = HyperCoreSubstrateLib.encodeConfig(key_, value_);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _readEffect()

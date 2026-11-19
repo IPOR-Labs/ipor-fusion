@@ -15,6 +15,17 @@ import {IporMath} from "../libraries/math/IporMath.sol";
 /// @dev Supports both custom price feeds and Chainlink Feed Registry as fallback.
 /// @dev When CHAINLINK_FEED_REGISTRY is set to address(0), Chainlink fallback is disabled
 /// @dev and only custom price feeds will be supported
+/// @dev Custom price feeds are read with latestRoundData() and only price > 0 is validated: there is no freshness check
+/// @dev (updatedAt against a max age) and no round completeness check (answeredInRound against roundId).
+/// @dev This applies to custom and direct Chainlink-style feeds. Accepted risk: a stalled feed is used as returned.
+/// @dev ChainlinkGuardedPriceFeed (contracts/price_oracle/price_feed/ChainlinkGuardedPriceFeed.sol) can be used as the
+/// @dev source to add freshness and deviation checks only. It reverts when updatedAt == 0, when updatedAt is in the
+/// @dev future, or when the answer is older than MAX_STALE_PERIOD (at most 7 days), and it compares the answer with
+/// @dev the mean of the previous rounds (MAX_DEVIATION). Feeds are deployed through
+/// @dev ChainlinkGuardedPriceFeedFactory.
+/// @dev It does NOT check the L2 sequencer uptime feed and does NOT check answeredInRound against roundId: that
+/// @dev field is deprecated in OCR aggregators, so the check is skipped on purpose. Sequencer status and round
+/// @dev completeness are not validated anywhere in the price path.
 contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeCast for int256;
 
@@ -119,6 +130,12 @@ contract PriceOracleMiddleware is IPriceOracleMiddleware, Ownable2StepUpgradeabl
     /// @dev - no custom price feed is set and CHAINLINK_FEED_REGISTRY is address(0)
     /// @dev - asset is not supported in Chainlink Registry when using it as fallback
     /// @dev - Chainlink Registry call fails
+    /// @dev Custom feed branch: only price > 0 is validated; updatedAt and answeredInRound are not checked
+    /// @dev (no freshness or round completeness validation). ChainlinkGuardedPriceFeed
+    /// @dev (contracts/price_oracle/price_feed/ChainlinkGuardedPriceFeed.sol) as the source adds freshness and
+    /// @dev deviation checks only; it checks neither the L2 sequencer nor answeredInRound (see the contract NatSpec).
+    /// @dev The Chainlink Feed Registry branch ignores updatedAt and answeredInRound in the same way.
+    /// @dev Accepted risk, no logic change.
     function _getAssetPrice(address asset_) private view returns (uint256 assetPrice, uint256 decimals) {
         if (asset_ == address(0)) {
             revert IPriceOracleMiddleware.UnsupportedAsset();

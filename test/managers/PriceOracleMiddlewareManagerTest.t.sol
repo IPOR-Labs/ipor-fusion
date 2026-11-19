@@ -28,6 +28,7 @@ import {MutableValuePriceFeed} from "./MutableValuePriceFeed.sol";
 import {FeeConfigHelper} from "../test_helpers/FeeConfigHelper.sol";
 import {Roles} from "../../contracts/libraries/Roles.sol";
 import {PriceOracleMiddlewareManagerLib} from "../../contracts/managers/price/PriceOracleMiddlewareManagerLib.sol";
+import {QuoteCurrencyMiddlewareMock} from "./PriceOracleMiddlewareManagerQuoteCurrencyTest.t.sol";
 import {WithdrawManager} from "../../contracts/managers/withdraw/WithdrawManager.sol";
 import {PlasmaVaultConfigurator} from "../utils/PlasmaVaultConfigurator.sol";
 
@@ -421,7 +422,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
     }
 
     function testSetPriceOracleMiddleware_Success() public {
-        address newMiddleware = address(0x999);
+        address newMiddleware = address(new QuoteCurrencyMiddlewareMock(address(0x348)));
 
         vm.startPrank(_ATOMIST);
         PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setPriceOracleMiddleware(newMiddleware);
@@ -431,7 +432,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
     }
 
     function testSetPriceOracleMiddleware_Unauthorized() public {
-        address newMiddleware = address(0x999);
+        address newMiddleware = address(new QuoteCurrencyMiddlewareMock(address(0x348)));
 
         vm.expectRevert();
         PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setPriceOracleMiddleware(newMiddleware);
@@ -445,8 +446,8 @@ contract PriceOracleMiddlewareManagerTest is Test {
     }
 
     function testSetPriceOracleMiddleware_MultipleUpdates() public {
-        address middleware1 = address(0x999);
-        address middleware2 = address(0x888);
+        address middleware1 = address(new QuoteCurrencyMiddlewareMock(address(0x348)));
+        address middleware2 = address(new QuoteCurrencyMiddlewareMock(address(0x348)));
 
         vm.startPrank(_ATOMIST);
 
@@ -479,7 +480,7 @@ contract PriceOracleMiddlewareManagerTest is Test {
         vm.startPrank(_ATOMIST);
 
         // Change middleware
-        address newMiddleware = address(0x999);
+        address newMiddleware = address(new QuoteCurrencyMiddlewareMock(address(0x348)));
         PriceOracleMiddlewareManager(_priceOracleMiddlewareManager).setPriceOracleMiddleware(newMiddleware);
         vm.stopPrank();
 

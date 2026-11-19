@@ -156,6 +156,9 @@ contract ReentrancyAttacker {
     uint256 public reentrancyAmount;
     bool public callbackFired;
     bool public reentrancySucceeded;
+    /// @dev IL-9659: revert data of the blocked re-entrant call; the attacker catches it so that the outer unwind
+    ///      is not skipped by `withdrawFromMarkets` and the guard itself can be asserted
+    bytes public reentrancyRevertData;
     uint256 public totalAssetsSeenDuringCallback;
 
     constructor(address vault_, address asset_) {
@@ -168,6 +171,7 @@ contract ReentrancyAttacker {
         reentrancyAmount = amount_;
         callbackFired = false;
         reentrancySucceeded = false;
+        delete reentrancyRevertData;
         totalAssetsSeenDuringCallback = 0;
     }
 
@@ -201,14 +205,23 @@ contract ReentrancyAttacker {
         callbackFired = true;
         totalAssetsSeenDuringCallback = VAULT.totalAssets();
 
+        /// @dev IL-9659: the revert of a failing instant withdrawal entry is now swallowed by `withdrawFromMarkets`
+        ///      (the entry is skipped), so the re-entrant call is caught here and its revert data recorded; the
+        ///      assertions then check that the vault guard rejected it and that it never went through.
         if (mode == Mode.REDEEM) {
-            VAULT.redeem(reentrancyAmount, address(this), address(this));
+            try VAULT.redeem(reentrancyAmount, address(this), address(this)) {
+                reentrancySucceeded = true;
+            } catch (bytes memory reason) {
+                reentrancyRevertData = reason;
+            }
         } else {
             ASSET.approve(address(VAULT), reentrancyAmount);
-            VAULT.deposit(reentrancyAmount, address(this));
+            try VAULT.deposit(reentrancyAmount, address(this)) {
+                reentrancySucceeded = true;
+            } catch (bytes memory reason) {
+                reentrancyRevertData = reason;
+            }
         }
-
-        reentrancySucceeded = true;
     }
 }
 
@@ -247,6 +260,10 @@ contract PlasmaVaultRedeemFromRequestReentrancyTest is Test {
 
         _initAccessManager();
 
+        /// @dev IL-9531: requestShares checks the balance on the vault the WithdrawManager is wired to
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+
         vm.prank(_USDC_HOLDER);
         ERC20(_USDC).transfer(_USER, 10_000e6);
         vm.prank(_USDC_HOLDER);
@@ -271,16 +288,18 @@ contract PlasmaVaultRedeemFromRequestReentrancyTest is Test {
 
     /// @dev IL-7980: re-entrant redeem() from inside the market unwind started by redeemFromRequest.
     ///      Before the fix the re-entrant redeem goes through against a transiently inflated totalAssets();
-    ///      after the fix the shared ReentrancyGuard flag blocks it and the whole transaction reverts.
+    ///      after the fix the shared ReentrancyGuard flag rejects it (the attacker records the guard revert, IL-9659).
     function test_redeemFromRequest_revertsWhenReentrantRedeemDuringMarketUnwind() external {
         // given
         uint256 sharesToRedeem = 500e8;
         _attacker.setAttack(ReentrancyAttacker.Mode.REDEEM, 100e8);
         _prepareReleasedRequest(sharesToRedeem);
 
-        // when / then
-        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
+        // when
         _attacker.redeemFromRequest(sharesToRedeem);
+
+        // then
+        _assertReentrancyBlocked();
     }
 
     /// @dev IL-7980: re-entrant deposit() from inside the market unwind started by redeemFromRequest.
@@ -290,9 +309,11 @@ contract PlasmaVaultRedeemFromRequestReentrancyTest is Test {
         _attacker.setAttack(ReentrancyAttacker.Mode.DEPOSIT, 1_000e6);
         _prepareReleasedRequest(sharesToRedeem);
 
-        // when / then
-        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
+        // when
         _attacker.redeemFromRequest(sharesToRedeem);
+
+        // then
+        _assertReentrancyBlocked();
     }
 
     /// @dev Control case: the very same malicious fuse reached through redeem() was already blocked before
@@ -302,9 +323,23 @@ contract PlasmaVaultRedeemFromRequestReentrancyTest is Test {
         // given
         _attacker.setAttack(ReentrancyAttacker.Mode.REDEEM, 100e8);
 
-        // when / then
-        vm.expectRevert(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector);
+        // when
         _attacker.redeem(500e8);
+
+        // then
+        _assertReentrancyBlocked();
+    }
+
+    /// @dev IL-9659: the callback fired inside the unwind and its re-entrant call was rejected by the vault guard
+    ///      with `ReentrancyGuardReentrantCall`; the re-entrant call never succeeded.
+    function _assertReentrancyBlocked() private view {
+        assertTrue(_attacker.callbackFired(), "the callback must fire inside the market unwind");
+        assertFalse(_attacker.reentrancySucceeded(), "the re-entrant call must not go through");
+        assertEq(
+            _attacker.reentrancyRevertData(),
+            abi.encodeWithSelector(ReentrancyGuardUpgradeable.ReentrancyGuardReentrantCall.selector),
+            "the re-entrant call must be rejected by the reentrancy guard"
+        );
     }
 
     /// @dev The guard must not break the legitimate flow: same unwind machinery, no re-entrancy attempt.

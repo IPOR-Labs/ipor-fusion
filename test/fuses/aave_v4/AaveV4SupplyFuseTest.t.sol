@@ -272,6 +272,95 @@ contract AaveV4SupplyFuseTest is Test {
         assertEq(supplyShares, 0, "All shares should be withdrawn via instant withdraw");
     }
 
+    function testShouldCapInstantWithdrawAtHubLiquidity() public {
+        // given - supply 1,000; the Hub can release only 400 (IL-9559)
+        uint256 amount = 1_000e18;
+        token.mint(address(vaultMock), amount);
+        vaultMock.enterAaveV4Supply(_enterData(address(spoke), address(token), RESERVE_ID, amount, 0));
+        spoke.setHubLiquidity(400e18);
+        uint256 balanceBefore = token.balanceOf(address(vaultMock));
+
+        // when - the router asks this entry for 600
+        vaultMock.instantWithdraw(_instantWithdrawParams(600e18, address(token), address(spoke), RESERVE_ID, 0));
+
+        // then - the reserve pays its liquidity instead of nothing
+        assertEq(token.balanceOf(address(vaultMock)) - balanceBefore, 400e18, "capped at Hub liquidity");
+    }
+
+    function testShouldSkipInstantWithdrawWhenHubHasNoLiquidity() public {
+        // given - the Hub holds nothing; a Spoke call would fail and emit ExitFailed
+        uint256 amount = 1_000e18;
+        token.mint(address(vaultMock), amount);
+        vaultMock.enterAaveV4Supply(_enterData(address(spoke), address(token), RESERVE_ID, amount, 0));
+        spoke.setHubLiquidity(0);
+        spoke.setShouldRevertOnWithdraw(true);
+
+        // when
+        vm.recordLogs();
+        vaultMock.instantWithdraw(_instantWithdrawParams(600e18, address(token), address(spoke), RESERVE_ID, 0));
+
+        // then - no Spoke call, no event, position unchanged
+        assertEq(vm.getRecordedLogs().length, 0, "no event when the Hub has no liquidity");
+        assertEq(spoke.getUserSuppliedAssets(RESERVE_ID, address(vaultMock)), amount, "position unchanged");
+    }
+
+    function testShouldNotCapInstantWithdrawWhenHubLiquidityReadReverts() public {
+        // given - the Hub getter reverts; the cap falls back to the position cap
+        uint256 amount = 1_000e18;
+        token.mint(address(vaultMock), amount);
+        vaultMock.enterAaveV4Supply(_enterData(address(spoke), address(token), RESERVE_ID, amount, 0));
+        spoke.setHubLiquidityShouldRevert(true);
+        uint256 balanceBefore = token.balanceOf(address(vaultMock));
+
+        // when
+        vaultMock.instantWithdraw(_instantWithdrawParams(1_200e18, address(token), address(spoke), RESERVE_ID, 0));
+
+        // then - position cap only
+        assertEq(token.balanceOf(address(vaultMock)) - balanceBefore, amount, "position cap only");
+    }
+
+    function testShouldNotCapInstantWithdrawWhenHubHasNoCode() public {
+        // given - the reported Hub is an address without code
+        uint256 amount = 1_000e18;
+        token.mint(address(vaultMock), amount);
+        vaultMock.enterAaveV4Supply(_enterData(address(spoke), address(token), RESERVE_ID, amount, 0));
+        spoke.setHubOverride(address(0xdead));
+        uint256 balanceBefore = token.balanceOf(address(vaultMock));
+
+        // when
+        vaultMock.instantWithdraw(_instantWithdrawParams(1_200e18, address(token), address(spoke), RESERVE_ID, 0));
+
+        // then - position cap only
+        assertEq(token.balanceOf(address(vaultMock)) - balanceBefore, amount, "position cap only");
+    }
+
+    function testShouldNotCapInstantWithdrawWhenHubAnswersWithLessThan32Bytes() public {
+        // given - the Hub answers with 16 bytes
+        uint256 amount = 1_000e18;
+        token.mint(address(vaultMock), amount);
+        vaultMock.enterAaveV4Supply(_enterData(address(spoke), address(token), RESERVE_ID, amount, 0));
+        spoke.setHubOverride(address(new ShortAnswerHub()));
+        uint256 balanceBefore = token.balanceOf(address(vaultMock));
+
+        // when
+        vaultMock.instantWithdraw(_instantWithdrawParams(1_200e18, address(token), address(spoke), RESERVE_ID, 0));
+
+        // then - position cap only
+        assertEq(token.balanceOf(address(vaultMock)) - balanceBefore, amount, "position cap only");
+    }
+
+    function testShouldNotCapAlphaExitAtHubLiquidity() public {
+        // given - the Hub can release only 400
+        uint256 amount = 1_000e18;
+        token.mint(address(vaultMock), amount);
+        vaultMock.enterAaveV4Supply(_enterData(address(spoke), address(token), RESERVE_ID, amount, 0));
+        spoke.setHubLiquidity(400e18);
+
+        // when/then - the ALPHA exit is not capped: the Spoke call above the liquidity reverts
+        vm.expectRevert("MockAaveV4Spoke: above Hub liquidity");
+        vaultMock.exitAaveV4Supply(_exitData(address(spoke), address(token), RESERVE_ID, 600e18, 0));
+    }
+
     function testShouldInstantWithdrawFromBorrowableNonCollateralReserve() public {
         // given - canBorrow does not block instant withdraw, only isCollateral does
         _grant(AaveV4SubstrateLib.encodeReserve(address(spoke), RESERVE_ID, false, true));
@@ -743,5 +832,15 @@ contract AaveV4SupplyFuseTest is Test {
         params[2] = bytes32(uint256(uint160(spoke_)));
         params[3] = bytes32(reserveId_);
         params[4] = bytes32(minAmount_);
+    }
+}
+
+/// @dev Hub whose getAssetLiquidity answers with 16 bytes (a valid call, but not a uint256)
+contract ShortAnswerHub {
+    fallback() external {
+        assembly {
+            mstore(0x00, 0x0000000000000000000000000000000100000000000000000000000000000000)
+            return(0x00, 0x10)
+        }
     }
 }

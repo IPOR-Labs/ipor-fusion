@@ -2117,8 +2117,11 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userTwoSharesAmount = plasmaVault.deposit(amount, userTwo);
 
         // Set up withdrawal request and release funds
-        vm.prank(atomist);
+        vm.startPrank(atomist);
         WithdrawManager(withdrawManager).updateWithdrawWindow(1 days);
+        /// @dev IL-9531: requestShares checks the balance on the vault the WithdrawManager is wired to
+        WithdrawManager(withdrawManager).updatePlasmaVaultAddress(address(plasmaVault));
+        vm.stopPrank();
 
         uint256 userOneRequestSharesAmount = userOneSharesAmount / 4;
 
@@ -2225,8 +2228,11 @@ contract PlasmaVaultWithdrawTest is Test {
         uint256 userTwoSharesAmount = plasmaVault.deposit(amount, userTwo);
 
         // Set up withdrawal request and release funds
-        vm.prank(atomist);
+        vm.startPrank(atomist);
         WithdrawManager(withdrawManager).updateWithdrawWindow(1 days);
+        /// @dev IL-9531: requestShares checks the balance on the vault the WithdrawManager is wired to
+        WithdrawManager(withdrawManager).updatePlasmaVaultAddress(address(plasmaVault));
+        vm.stopPrank();
 
         uint256 userOneRequestSharesAmount = userOneSharesAmount / 4;
 

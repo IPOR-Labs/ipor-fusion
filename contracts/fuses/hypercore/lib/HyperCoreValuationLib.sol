@@ -38,6 +38,12 @@ library HyperCoreValuationLib {
     error HyperCoreNavJumpConfigInvalid(uint240 value);
     /// @notice The underlying asset has no oracle price, so the stored value cannot be compared.
     error HyperCoreNavJumpReferenceUnavailable();
+    /// @notice `Config{NavJumpFloorUsd6}` is not granted for the market (IL-9597). An explicit value is required;
+    ///         an explicit `0` is allowed and means a purely relative breaker.
+    error HyperCoreNavJumpFloorNotConfigured();
+    /// @notice The stored market value is zero and the live Core value exceeds the optional
+    ///         `Config{NavZeroBaselineCapUsd6}` cap (IL-9691). Both values are USD WAD (the cap is `capUsd6 * 1e12`).
+    error HyperCoreNavZeroBaselineCapExceeded(uint256 liveWad, uint256 capWad);
 
     /// @dev Default `MaxMarkOracleDeviationBps` (5%) when the config substrate is not granted.
     uint256 internal constant DEFAULT_MAX_MARK_ORACLE_DEVIATION_BPS = 500;
@@ -51,8 +57,14 @@ library HyperCoreValuationLib {
     /// @notice Live Core NAV in USD WAD, guarded by the NAV jump circuit breaker (IL-8533).
     /// @dev Reverts when the live value differs from the value stored for `marketId` (priced in USD WAD
     ///      through the vault oracle) by more than `MaxNavJumpBps` AND by more than the absolute `NavJumpFloorUsd6` tolerance
-    ///      (default 0 = no tolerance). The comparison is skipped while the stored value is zero
+    ///      (required: an unset key reverts `HyperCoreNavJumpFloorNotConfigured`, an explicit 0 = no tolerance). The comparison is skipped while the stored value is zero
     ///      (first activation / fully withdrawn); a zero or above-`uint64` `MaxNavJumpBps` always reverts.
+    ///      IL-9691: while the stored value is zero, the optional `Config{NavZeroBaselineCapUsd6}` (key 12) caps the live
+    ///      value (`HyperCoreNavZeroBaselineCapExceeded`). The key is validated on every check: a zero cap, a cap
+    ///      above `uint64` or a cap below `NavJumpFloorUsd6` reverts `HyperCoreNavJumpConfigInvalid` (D-019; the floor is
+    ///      itself required, so the floor comparison always applies). It is compared only while the stored value is
+    ///      zero; an unset key keeps the uncapped first booking. A donation above a valid cap while the stored value
+    ///      is zero still freezes the flows until FUSE_MANAGER raises or removes the key (documented residual).
     function liveValueWad(uint256 marketId) internal view returns (uint256 live) {
         live = _rawLiveValueWad(marketId);
         _checkNavJump(marketId, live);
@@ -70,11 +82,28 @@ library HyperCoreValuationLib {
             marketId,
             HyperCoreSubstrateLib.ConfigKey.NavJumpFloorUsd6
         );
-        if (floorSet && floorUsd6 > type(uint64).max) {
+        if (!floorSet) {
+            revert HyperCoreNavJumpFloorNotConfigured();
+        }
+        if (floorUsd6 > type(uint64).max) {
             revert HyperCoreNavJumpConfigInvalid(floorUsd6);
+        }
+        (bool capSet, uint240 capUsd6) = HyperCoreSubstrateLib.getConfig(
+            marketId,
+            HyperCoreSubstrateLib.ConfigKey.NavZeroBaselineCapUsd6
+        );
+        // D-019: a granted cap must be non-zero, at most `uint64` max and not below the configured floor
+        // (both USD6; the floor is always configured here, an explicit 0 floor leaves only the zero check).
+        if (capSet && (capUsd6 == 0 || capUsd6 > type(uint64).max || capUsd6 < floorUsd6)) {
+            revert HyperCoreNavJumpConfigInvalid(capUsd6);
         }
         uint256 stored = PlasmaVaultLib.getTotalAssetsInMarket(marketId);
         if (stored == 0) {
+            // IL-9691: optional cap on the first booking (a granted cap is validated above: non-zero, >= the floor).
+            uint256 capWad = uint256(capUsd6) * 1e12;
+            if (capSet && live > capWad) {
+                revert HyperCoreNavZeroBaselineCapExceeded(live, capWad);
+            }
             return;
         }
         uint256 maxJumpBps = set ? uint256(configured) : DEFAULT_MAX_NAV_JUMP_BPS;
@@ -91,8 +120,8 @@ library HyperCoreValuationLib {
         );
         uint256 diff = live > storedWad ? live - storedWad : storedWad - live;
         // IL-8766: absolute tolerance. A deviation up to `NavJumpFloorUsd6` never trips the relative check, so a
-        // small donation to a small stored value cannot freeze the vault. Unset = 0 = purely relative breaker.
-        uint256 floorWad = floorSet ? uint256(floorUsd6) * 1e12 : 0;
+        // small donation to a small stored value cannot freeze the vault. An explicit 0 = purely relative breaker.
+        uint256 floorWad = uint256(floorUsd6) * 1e12;
         if (diff > floorWad && diff * 10_000 > maxJumpBps * storedWad) {
             revert HyperCoreNavJumpExceeded(storedWad, live, maxJumpBps);
         }
@@ -115,6 +144,12 @@ library HyperCoreValuationLib {
     ///      Markets without a position are skipped after the single position read. HIP-3 markets are only read when
     ///      their dex is enabled in `bitmap_` (the same dexes NAV values). Assets outside the native/HIP-3 id space
     ///      are ignored. Native markets use position 0x800, HIP-3 markets 0x813 (read index above 65535 possible).
+    ///      IL-9690 (accepted behaviour, IL-9566 D-002): the band covers only markets that currently hold a
+    ///      `PerpMarket` grant, while NAV prices the whole account equity. If a `PerpMarket` grant is revoked while the
+    ///      vault still holds a position on that market, the band no longer covers it, its mark still enters NAV and
+    ///      ALPHA can no longer close it (the order fuse needs the grant). Fuses do not police grant/revoke
+    ///      consequences, so there is no guard: closing the position first and only then revoking the grant is the
+    ///      atomist's operational responsibility. Pinned by `HyperCoreMarkBandRevokedGrantPinTest`.
     function _checkMarkOracleBand(uint256 marketId, uint240 bitmap_) private view {
         (bool set, uint240 configured) = HyperCoreSubstrateLib.getConfig(
             marketId,

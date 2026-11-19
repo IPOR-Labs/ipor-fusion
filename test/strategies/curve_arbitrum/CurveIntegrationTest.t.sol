@@ -249,13 +249,14 @@ contract CurveIntegrationTest is Test {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: _CURVE_VAULT_1,
             vaultAssetAmount: supplyAmount,
-            maxSharesBurned: 0
+            maxSharesBurned: 0,
+            minAssetsOut: 0
         });
 
         FuseAction[] memory withdrawActions = new FuseAction[](1);
         withdrawActions[0] = FuseAction({
             fuse: address(_erc4626SupplyFuse),
-            data: abi.encodeWithSignature("exit((address,uint256,uint256))", exitData)
+            data: abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", exitData)
         });
 
         _plasmaVault.execute(withdrawActions);
@@ -347,13 +348,14 @@ contract CurveIntegrationTest is Test {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: _CURVE_VAULT_2,
             vaultAssetAmount: supplyAmount,
-            maxSharesBurned: 0
+            maxSharesBurned: 0,
+            minAssetsOut: 0
         });
 
         FuseAction[] memory withdrawActions = new FuseAction[](1);
         withdrawActions[0] = FuseAction({
             fuse: address(_erc4626SupplyFuse),
-            data: abi.encodeWithSignature("exit((address,uint256,uint256))", exitData)
+            data: abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", exitData)
         });
 
         _plasmaVault.execute(withdrawActions);
@@ -445,13 +447,14 @@ contract CurveIntegrationTest is Test {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: _CURVE_VAULT_3,
             vaultAssetAmount: supplyAmount,
-            maxSharesBurned: 0
+            maxSharesBurned: 0,
+            minAssetsOut: 0
         });
 
         FuseAction[] memory withdrawActions = new FuseAction[](1);
         withdrawActions[0] = FuseAction({
             fuse: address(_erc4626SupplyFuse),
-            data: abi.encodeWithSignature("exit((address,uint256,uint256))", exitData)
+            data: abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", exitData)
         });
 
         _plasmaVault.execute(withdrawActions);
@@ -615,7 +618,8 @@ contract CurveIntegrationTest is Test {
         Erc4626SupplyFuseExitData memory erc4626ExitData = Erc4626SupplyFuseExitData({
             vault: _CURVE_VAULT_3,
             vaultAssetAmount: supplyAmount,
-            maxSharesBurned: 0
+            maxSharesBurned: 0,
+            minAssetsOut: 0
         });
 
         // Combine unstake and withdraw actions
@@ -626,7 +630,7 @@ contract CurveIntegrationTest is Test {
         });
         unstakeAndWithdrawActions[1] = FuseAction({
             fuse: address(_erc4626SupplyFuse),
-            data: abi.encodeWithSignature("exit((address,uint256,uint256))", erc4626ExitData)
+            data: abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", erc4626ExitData)
         });
 
         _plasmaVault.execute(unstakeAndWithdrawActions);

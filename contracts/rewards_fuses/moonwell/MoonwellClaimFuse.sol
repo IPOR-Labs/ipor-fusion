@@ -47,6 +47,9 @@ contract MoonwellClaimFuse is IFuseCommon {
     }
 
     /// @notice Claims rewards from specified mTokens and transfers them to the rewards claim manager
+    /// @dev This fuse forwards only the balance increase produced by its own call. Per the published source of the
+    /// protocol, checked 2026-11-16, anyone can claim for the vault and the protocol pays the vault; a deployed
+    /// instance can differ. See "When someone else already claimed" in `contracts/rewards_fuses/README.md`.
     /// @param data_ Struct containing array of mToken addresses to claim from
     function claim(MoonwellClaimFuseData calldata data_) external {
         uint256 len = data_.mTokens.length;

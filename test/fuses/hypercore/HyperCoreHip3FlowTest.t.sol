@@ -33,6 +33,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 import {
     HyperCorePendingActionPreHook
@@ -519,7 +520,7 @@ contract HyperCoreHip3FlowTest is Test {
         subs[i++] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
 
         vm.prank(TestAddresses.FUSE_MANAGER);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, subs);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(subs));
     }
 
     /// @dev Registers read index 10002 (xyz:NVDA) with the real mainnet `perpAssetInfo` metadata and

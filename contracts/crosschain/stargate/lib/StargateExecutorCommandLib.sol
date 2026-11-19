@@ -5,7 +5,14 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 
 import {CrosschainErrors} from "../../lib/CrosschainErrors.sol";
 import {BusinessAction, CommandStatus, MsgType, CrosschainConstants} from "../../lib/CrosschainConstants.sol";
-import {CrosschainMessages, Command, UpdateVaults, RetryCommand, CancelCommand} from "../../lib/CrosschainMessages.sol";
+import {
+    CrosschainMessages,
+    Command,
+    UpdateVaults,
+    RetryCommand,
+    CancelCommand,
+    SweepFloor
+} from "../../lib/CrosschainMessages.sol";
 import {StargateExecutorState, ActiveCommand} from "./StargateExecutorState.sol";
 
 /// @title StargateExecutorCommandLib
@@ -30,6 +37,28 @@ library StargateExecutorCommandLib {
     event VaultsUpdateRequested(
         uint256 dstChainId, bytes32 commandId, uint64 sequence, uint64 newConfigEpoch, address[] vaults
     );
+    /// @notice A command was sent to the dispatcher. Same signature as the executor's declaration.
+    event CommandSent(uint256 dstChainId, bytes32 commandId, uint64 sequence, uint8 action);
+    /// @notice A FAILED command was re-armed and a RETRY_COMMAND was sent. Same signature as the executor's.
+    event CommandRetried(uint256 dstChainId, bytes32 commandId);
+    /// @notice A CANCEL_COMMAND was sent for a FAILED command. Same signature as the executor's.
+    event CommandCancelRequested(uint256 dstChainId, bytes32 commandId);
+
+    /// @dev Emits one of the executor's command events (kind 0 `CommandSent`, 1 `CommandRetried`, 2
+    ///      `CommandCancelRequested`) from the executor's address under delegatecall. The executor calls it after the
+    ///      LayerZero send, keeping the event order of the inlined version (EIP-170).
+    function emitCommandEvent(
+        uint8 kind_,
+        uint256 chainId_,
+        bytes32 commandId_,
+        uint64 sequence_,
+        uint8 action_
+    ) public {
+        if (kind_ == 0) emit CommandSent(chainId_, commandId_, sequence_, action_);
+        else if (kind_ == 1) emit CommandRetried(chainId_, commandId_);
+        else emit CommandCancelRequested(chainId_, commandId_);
+    }
+
     /// @dev Allocate a business command in the free slot and return its encoded COMMAND envelope. The
     ///      executor allocates the authoritative id/sequence/commandConfigEpoch and the gas budget (IL-8625): the
     ///      chain's registered command-lane gas minus its 1/64 hop loss and the payload-dependent pre-call work
@@ -116,20 +145,30 @@ library StargateExecutorCommandLib {
 
     /// @dev Allocate a sequenced UPDATE_VAULTS command and return its encoded envelope (shared by the
     ///      manager path and the factory-callback auto-send; the slot is free in both cases). The budget comes from
-    ///      the lane and the payload size (a 32-vault list is the largest case); there is no manager top-up path.
+    ///      the lane and the payload size (a 32-vault list with 32 sweep floors is the largest case); there is no
+    ///      manager top-up path. IL-9629: `floors_` (shared decimals, forwarded verbatim) is validated like a vault
+    ///      list: at most `MAX_TRACKED_POSITION_VAULTS` entries (`VaultsCapReached`), no zero or duplicate vault
+    ///      (`InvalidVault`).
     function buildUpdateVaults(
         StargateExecutorState storage self,
         uint256 chainId_,
         address[] memory vaults_,
+        SweepFloor[] memory floors_,
         uint256 commandNonce_
     ) public returns (bytes memory payload, bytes32 commandId, uint64 sequence) {
+        _validateSweepFloors(floors_);
         sequence = self.nextSequenceToSend[chainId_];
         uint64 newEpoch = self.chainConfigEpoch[chainId_] + 1;
         commandId = CrosschainMessages.stampCommandId(
             keccak256(abi.encode(address(this), chainId_, "UPDATE", sequence, commandNonce_))
         );
         UpdateVaults memory u = UpdateVaults({
-            commandId: commandId, sequence: sequence, newConfigEpoch: newEpoch, minExecutionGas: 0, vaults: vaults_
+            commandId: commandId,
+            sequence: sequence,
+            newConfigEpoch: newEpoch,
+            minExecutionGas: 0,
+            vaults: vaults_,
+            floors: floors_
         });
         uint256 words = CrosschainMessages.payloadWords(abi.encode(u).length);
         u.minExecutionGas = CrosschainMessages.commandGasBudget(self.commandLaneReceiveGas[chainId_], words, true);
@@ -151,6 +190,21 @@ library StargateExecutorCommandLib {
         });
         payload = CrosschainMessages.encodeEnvelope(MsgType.UPDATE_VAULTS, inner);
         emit VaultsUpdateRequested(chainId_, commandId, sequence, newEpoch, vaults_);
+    }
+
+    /// @dev Shape of the sweep floors of an UPDATE_VAULTS (IL-9629), the same rule as a vault list.
+    function _validateSweepFloors(SweepFloor[] memory floors_) private pure {
+        uint256 len = floors_.length;
+        if (len > CrosschainConstants.MAX_TRACKED_POSITION_VAULTS) {
+            revert CrosschainErrors.VaultsCapReached(CrosschainConstants.MAX_TRACKED_POSITION_VAULTS);
+        }
+        for (uint256 i; i < len; ++i) {
+            address v = floors_[i].vault;
+            if (v == address(0)) revert CrosschainErrors.InvalidVault(v);
+            for (uint256 j = i + 1; j < len; ++j) {
+                if (floors_[j].vault == v) revert CrosschainErrors.InvalidVault(v);
+            }
+        }
     }
 
     /// @dev Re-arm a FAILED command to PENDING and return the encoded RETRY_COMMAND envelope.

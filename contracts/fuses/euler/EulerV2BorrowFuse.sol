@@ -41,6 +41,7 @@ contract EulerV2BorrowFuse is IFuseCommon {
     event EulerV2BorrowExitFuse(address version, address eulerVault, uint256 repayAmount, address subAccount);
 
     error EulerV2BorrowFuseUnsupportedEnterAction(address vault, bytes1 subAccount);
+    error EulerV2BorrowFuseUnsupportedExitAction(address vault, bytes1 subAccount);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -106,8 +107,10 @@ contract EulerV2BorrowFuse is IFuseCommon {
             emit EulerV2BorrowExitFuse(VERSION, eulerVault, repayAmount, subAccount);
             return (eulerVault, repayAmount, subAccount);
         }
-        if (!EulerFuseLib.canBorrow(MARKET_ID, data_.eulerVault, data_.subAccount)) {
-            revert EulerV2BorrowFuseUnsupportedEnterAction(data_.eulerVault, data_.subAccount);
+        // Repaying only requires the granted (vault, sub-account) entry, not `canBorrow`: a position must stay
+        // repayable after the borrow right was revoked. The check must stay: exit approves the vault for `max`.
+        if (!EulerFuseLib.canSupply(MARKET_ID, data_.eulerVault, data_.subAccount)) {
+            revert EulerV2BorrowFuseUnsupportedExitAction(data_.eulerVault, data_.subAccount);
         }
 
         address asset = ERC4626Upgradeable(data_.eulerVault).asset();

@@ -20,6 +20,9 @@ import {IPreHook} from "../IPreHook.sol";
 /// - When registered, any call to the associated function will revert
 /// - Useful for emergency situations or planned maintenance
 /// - Can be used to pause restricted (access-controlled) functions
+/// - Never register it (or any other reverting hook) on `setPreHookImplementations`, or on another repair selector
+///   such as `grantMarketSubstrates`: the pre-hook of the called selector runs before the call, so a reverting hook
+///   on a governance selector locks governance out of removing hooks (IL-8258, IL-9633)
 ///
 /// Security considerations:
 /// - Protected by PlasmaVault's access control for hook registration

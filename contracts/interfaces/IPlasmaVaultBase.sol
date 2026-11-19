@@ -21,9 +21,10 @@ interface IPlasmaVaultBase {
     ///
     /// Access Control:
     /// - Restricted to TECH_WITHDRAW_MANAGER_ROLE only
-    /// - Cannot be called by any other role, including admin or owner
+    /// - Callable only by a holder of TECH_WITHDRAW_MANAGER_ROLE; other roles, including owner, cannot call it
     /// - System-level role assigned during initialization
-    /// - Technical role that cannot be reassigned during runtime
+    /// - ADMIN_ROLE, the root role of the access manager, can grant or revoke any role, so this role can be reassigned
+    ///   by a trusted admin
     ///
     /// Fee System:
     /// - Transfers request fee tokens from user to withdraw manager

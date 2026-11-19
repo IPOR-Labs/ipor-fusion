@@ -41,7 +41,8 @@ contract HyperCoreBuilderFeeFuse is IFuseCommon {
     /// @notice Thrown when the requested max fee rate exceeds the granted cap
     error HyperCoreBuilderFeeFuseExceedsMaxRate(uint64 requested, uint64 maxAllowed);
 
-    /// @notice Thrown when the configured transfer-class window is zero or exceeds `type(uint64).max`
+    /// @notice Thrown when the configured transfer-class window is below `MIN_WINDOW_TRANSFER_SECONDS` (2) or exceeds
+    ///         `type(uint64).max`
     error HyperCoreBuilderFeeFuseInvalidWindow(uint240 value);
 
     /// @notice Constructor for HyperCoreBuilderFeeFuse
@@ -87,7 +88,9 @@ contract HyperCoreBuilderFeeFuse is IFuseCommon {
         emit HyperCoreBuilderFeeFuseEnter(VERSION, data_.builder, data_.maxFeeRateDecibps);
     }
 
-    /// @dev Reads the configured transfer-class settlement window; defaults to 2 seconds when unset.
+    /// @dev Reads the configured transfer-class settlement window; defaults to 2 seconds when unset. A configured value
+    ///      below `HyperCorePendingLib.MIN_WINDOW_TRANSFER_SECONDS` (2) reverts (IL-9529), as in every HyperCore fuse
+    ///      that reads `Config{WindowTransferSeconds}`.
     function _windowTransfer() internal view returns (uint64) {
         (bool set, uint240 value) = HyperCoreSubstrateLib.getConfig(
             MARKET_ID,
@@ -96,7 +99,7 @@ contract HyperCoreBuilderFeeFuse is IFuseCommon {
         if (!set) {
             return 2;
         }
-        if (value == 0 || value > type(uint64).max) {
+        if (value < HyperCorePendingLib.MIN_WINDOW_TRANSFER_SECONDS || value > type(uint64).max) {
             revert HyperCoreBuilderFeeFuseInvalidWindow(value);
         }
         return uint64(value);

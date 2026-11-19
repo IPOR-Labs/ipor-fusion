@@ -109,6 +109,7 @@ contract CcipForceSetDustTest is Test {
                 rescueDelay: RESCUE_DELAY,
                 balanceStalenessMax: BALANCE_STALENESS_MAX,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             });

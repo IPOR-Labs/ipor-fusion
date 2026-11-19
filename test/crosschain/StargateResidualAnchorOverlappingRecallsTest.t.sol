@@ -155,6 +155,11 @@ contract StargateReturnDebitHarness {
     uint256 internal constant CHAIN = 1;
     bytes32 internal constant ID = bytes32(uint256(1));
 
+    constructor() {
+        // IL-9720: the band is a per-executor value the harness has to set, as the executor constructor does.
+        s.anchorBandBps = 2_000;
+    }
+
     function seed(uint256 settled_, uint256 anchor_, uint256 maxAccounted_) external {
         s.settledRemoteBalance[CHAIN] = settled_;
         s.anchorPrincipal[CHAIN] = anchor_;

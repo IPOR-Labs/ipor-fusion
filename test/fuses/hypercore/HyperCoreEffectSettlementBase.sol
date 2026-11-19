@@ -268,7 +268,7 @@ contract HyperCoreEffectSettlementBase is Test {
     }
 
     function _grantBaseSubstrates(uint240 windowTransfer_, bytes32[] memory extra_) private {
-        bytes32[] memory substrates = new bytes32[](8 + extra_.length);
+        bytes32[] memory substrates = new bytes32[](9 + extra_.length);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(USDC_TOKEN, address(_usdc));
         substrates[1] = HyperCoreSubstrateLib.encodePerpMarket(HYPE_PERP, 1_000_000e6, false);
         substrates[2] = HyperCoreSubstrateLib.encodeDestination(HyperCoreLib.systemAddress(USDC_TOKEN));
@@ -277,8 +277,10 @@ contract HyperCoreEffectSettlementBase is Test {
         substrates[5] = HyperCoreSubstrateLib.encodeSendCap(USDC_TOKEN, type(uint128).max);
         substrates[6] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, windowTransfer_);
         substrates[7] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.MaxUsdClassTransferUsd6, 1_000_000e6);
+        // IL-9597: an explicit NavJumpFloorUsd6 is required; 0 keeps the purely relative breaker of the fixtures.
+        substrates[8] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.NavJumpFloorUsd6, 0);
         for (uint256 i; i < extra_.length; ++i) {
-            substrates[8 + i] = extra_[i];
+            substrates[9 + i] = extra_[i];
         }
         vm.prank(_fuseManager);
         PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, substrates);

@@ -8,6 +8,7 @@ import {PlasmaVault} from "../contracts/vaults/PlasmaVault.sol";
 import {Roles} from "../contracts/libraries/Roles.sol";
 import {FeeManager} from "../contracts/managers/fee/FeeManager.sol";
 import {FeeAccount} from "../contracts/managers/fee/FeeAccount.sol";
+import {IWithdrawManagerReleaseFunds} from "../contracts/managers/withdraw/IWithdrawManagerReleaseFunds.sol";
 import {WithdrawManager} from "../contracts/managers/withdraw/WithdrawManager.sol";
 struct UsersToRoles {
     address superAdmin;
@@ -101,8 +102,9 @@ library RoleLib {
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.grantRole(Roles.TECH_PLASMA_VAULT_ROLE, plasmaVault_, 0);
 
-        bytes4[] memory performanceFeeSig = new bytes4[](1);
+        bytes4[] memory performanceFeeSig = new bytes4[](2);
         performanceFeeSig[0] = PlasmaVaultGovernance.configurePerformanceFee.selector;
+        performanceFeeSig[1] = PlasmaVault.realizePerformanceFee.selector;
 
         vm_.prank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(plasmaVault_, performanceFeeSig, Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE);
@@ -245,8 +247,10 @@ library RoleLib {
         withdrawManagerSig[0] = WithdrawManager.canWithdrawFromUnallocated.selector;
         withdrawManagerSig[1] = WithdrawManager.canWithdrawFromRequest.selector;
 
-        bytes4[] memory alphaRoleSig = new bytes4[](1);
-        alphaRoleSig[0] = WithdrawManager.releaseFunds.selector;
+        bytes4[] memory alphaRoleSig = new bytes4[](2);
+        // The legacy selector is named explicitly: `WithdrawManager.releaseFunds.selector` is ambiguous (IL-9653)
+        alphaRoleSig[0] = bytes4(keccak256("releaseFunds(uint256,uint256)"));
+        alphaRoleSig[1] = IWithdrawManagerReleaseFunds.releaseFunds.selector;
 
         vm_.startPrank(usersWithRoles_.superAdmin);
         accessManager_.setTargetFunctionRole(withdrawManager_, withdrawManagerSig, Roles.TECH_PLASMA_VAULT_ROLE);

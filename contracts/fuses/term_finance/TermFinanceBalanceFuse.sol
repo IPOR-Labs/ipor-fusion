@@ -2,7 +2,6 @@
 pragma solidity 0.8.30;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -23,28 +22,39 @@ import {TermFinanceSubstrateLib} from "./lib/TermFinanceSubstrateLib.sol";
 
 /// @title TermFinanceBalanceFuse
 /// @author IPOR Labs
-/// @notice Reports PlasmaVault's net value in the Term Finance market in WAD-USD across both
+/// @notice Reports PlasmaVault's value in the Term Finance market in WAD-USD across both
 ///         the lender side (held `TermRepoToken` PV, pending offers) and the borrower side
 ///         (locked collateral, pending bid locked collateral, outstanding debt).
-/// @dev Signed-int aggregation:
-///        +heldRepoTokenPV (≥0)           — lender side
-///        +pendingOffersValueWad (≥0)     — lender side
-///        +lockedCollateralValueWad (≥0)  — borrower side
-///        +pendingBidsCollateralWad (≥0)  — borrower side
-///        −outstandingDebtPvValueWad (≥0) — borrower side (returned as negative)
+/// @dev Per-servicer valuation (IL-9553, IL-9566 D-003 / D-016). Every servicer is one Term Repo, an
+///      isolated position with limited liability: `TermRepoCollateralManager.batchDefault` /
+///      `batchLiquidation` seize only the collateral locked in that servicer's collateral manager
+///      (`lockedCollateralLedger`), never the vault's repo tokens, pending offers, pending bid collateral
+///      or positions on other servicers. Each servicer is therefore valued on its own as
+///        pendingOffersValueWad + pendingBidsCollateralWad
+///          + max(0, heldRepoTokenPV + lockedCollateralValueWad − outstandingDebtPvValueWad)
+///      and `balanceOf` is the unsigned sum over servicers. The pending legs are free: a default does not
+///      take them. The vault's own repo tokens of the SAME servicer are netted with its locked collateral
+///      against its debt (D-016): after the repurchase window the residual debt of an underwater
+///      default stays outstanding and lowers the pool recovery ratio that those repo tokens redeem at,
+///      and before the window the vault can cancel debt with them at par (`burnCollapseExposure`).
+///      Netting never overstates. After the window it can understate, because the residual
+///      also lowers the recovery ratio. An underwater servicer contributes 0: it neither
+///      lowers the value of the other servicers nor reverts `balanceOf`. Its health is
+///      monitored off-chain; a later default does not raise NAV, because the floored
+///      leg already excludes the shortfall.
 ///      Aggregation is performed in straight-line internal code: `balanceOf` iterates the
-///      servicer substrates and delegates each leg to `_signedValueForServicerInternal`. No
+///      servicer substrates and delegates each servicer to `_valueForServicerInternal`. No
 ///      external self-call is used — under PlasmaVault delegatecall semantics `address(this)`
 ///      is the vault (NOT this fuse), so a `try this.fn(...)` would hit the vault fallback
 ///      and degrade every leg to zero unconditionally. Instead each FOREIGN Term Finance
 ///      call (collateral manager probe, accepted-token count, locked offer / bid read,
-///      adapter discount rate / haircut, shortfall haircut, servicer topology) is wrapped in
-///      its own `try/catch` at the call site (`_tryReadCollateralManager`,
+///      adapter discount rate / haircut, post-maturity recovery ratio, servicer topology) is wrapped
+///      in its own `try/catch` (or a checked `staticcall`) at the call site (`_tryReadCollateralManager`,
 ///      `_tryReadAcceptedCollateralCount`, `_tryReadLockedOfferAmount`,
 ///      `_tryReadLockedBidIsLive`, `_tryGetDiscountRate`, `_tryGetRepoRedemptionHaircut`,
-///      `_tryReadShortfallHaircut`, `_tryReadServicerTopology`, `_tryReadPurchaseToken`,
-///      `_tryReadRepoToken`, `_tryReadEndOfRepurchaseWindow`, and the explicit `try` around
-///      `IExtTermRepoServicer.getBorrowerRepurchaseObligation` in `_debtValueWadForServicer`).
+///      `_tryReadShortfallHaircut`, `_tryReadServicerUint`, `_tryReadServicerTopology`,
+///      `_tryReadPurchaseToken`, `_tryReadRepoToken`, `_tryReadEndOfRepurchaseWindow`, and the explicit
+///      `try` around `IExtTermRepoServicer.getBorrowerRepurchaseObligation` in `_debtValueWadForServicer`).
 ///      A single broken servicer leg degrades to 0 without affecting other legs, EXCEPT
 ///      when the vault tracks a position on it (see the propagating reverts below).
 ///
@@ -81,21 +91,16 @@ import {TermFinanceSubstrateLib} from "./lib/TermFinanceSubstrateLib.sol";
 ///          from `_debtPvWad` when ANY supporting read (purchase token / repo token /
 ///          end-of-repurchase-window / Adapter-B discount rate) fails while the borrower
 ///          is tracked-by-construction (`obligationFace > 0`). Silently zeroing the
-///          negative debt leg in that state would open an ERC4626 share-mint window.
+///          debt PV in that state would open an ERC4626 share-mint window.
 ///          Mirrors the same fail-fast posture as the other tracked-leg reverts.
 ///        - `Errors.WrongAddress` — propagates from `balanceOf` itself when the PlasmaVault
 ///          price oracle middleware address is unset (a misconfiguration NAV signal, not a
 ///          per-leg failure).
-/// @dev Defensive saturation: each per-servicer signed leg is clamped to ±`MAX_VALUE_PER_LEG = 1e36`
-///      before the signed sum so that `int256` arithmetic cannot overflow even under
-///      adversarial oracle returns. Final aggregation is converted to `uint256` via
-///      `SafeCast.toUint256` which reverts on net-negative — matching `AaveV3BalanceFuse` /
-///      `MorphoBalanceFuse` and preventing the ERC4626 share-mint attack window on the
-///      borrower side.
+/// @dev Defensive saturation: the debt PV and each per-servicer value are clamped to
+///      `MAX_VALUE_PER_LEG_UINT = 1e36` before the unsigned sum, so the sum cannot overflow even under
+///      adversarial oracle returns. A negative net is never returned and never reverts (IL-9553): the
+///      fail-closed gates above stay the only reverts on the valuation path.
 contract TermFinanceBalanceFuse is IMarketBalanceFuse {
-    using SafeCast for int256;
-    using SafeCast for uint256;
-
     /// @notice Reverts when an oracle returns 0 for ANY leg's pricing path on a TRACKED
     ///         servicer (held repo position, pending offers, pending bids in storage,
     ///         locked collateral, or positive debt obligation).
@@ -136,7 +141,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     ///      `TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked`).
     ///      Debt-leg failure semantics: silently zeroing debt for a tracked borrower
     ///      would over-report equity (collateral + pending bids still contribute positive
-    ///      while the negative debt leg disappears) and open a share-mint attack window.
+    ///      while the debt PV subtracted from them disappears) and open a share-mint attack window.
     ///      The revert intentionally propagates so ERC4626 share math freezes until the
     ///      proxy issue is resolved.
     /// @param servicer Servicer whose debt read failed despite tracked exposure.
@@ -159,7 +164,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     ///         the vault has exposure to.
     /// @dev The probe runs BEFORE any leg is valued and gates the WHOLE servicer leg. A bare
     ///      `return 0` there silently zeroes EVERY leg — including the CM-independent held-repo
-    ///      PV, pending offers, and the negative debt leg — bypassing the tracked
+    ///      PV, pending offers, and the debt PV — bypassing the tracked
     ///      gates and opening the same share-mint / over-withdrawal window those gates close.
     ///      When the vault has detectable exposure (pending storage, held repo balance, or a
     ///      positive debt obligation) the revert intentionally propagates to freeze share math.
@@ -178,15 +183,20 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param servicer Servicer whose adapter reported a non-zero repoRedemptionHaircut.
     error TermFinanceBalanceFuseNonZeroRepoRedemptionHaircut(address servicer);
 
-    /// @notice WAD-USD per-leg saturation bound used to prevent `int256` overflow in the
-    ///         signed-int aggregation.
-    /// @dev `1e36` is 18-dec WAD scaled by another 18 decimals of token
-    ///      precision headroom. Applied symmetrically to the collateral and debt legs.
-    int256 internal constant MAX_VALUE_PER_LEG = 1e36;
-
-    /// @dev Unsigned mirror of `MAX_VALUE_PER_LEG` for uint256 comparisons before negation.
-    ///      Kept in sync with `MAX_VALUE_PER_LEG`; if either is changed, both must change.
+    /// @notice WAD-USD saturation bound for the debt PV and for each servicer's value.
+    /// @dev `1e36` is 18-dec WAD scaled by another 18 decimals of token precision headroom. It also
+    ///      bounds the servicer repurchase counters read for the post-maturity recovery ratio, so
+    ///      `collected * 1e18` cannot overflow.
     uint256 internal constant MAX_VALUE_PER_LEG_UINT = 1e36;
+
+    /// @dev Selector of the public getter `TermRepoServicer.totalRepurchaseCollected()` (purchase tokens
+    ///      repaid into the repo locker). Read with a checked `staticcall` in `_tryReadServicerUint`.
+    bytes4 internal constant TOTAL_REPURCHASE_COLLECTED_SELECTOR = bytes4(keccak256("totalRepurchaseCollected()"));
+
+    /// @dev Selector of the public getter `TermRepoServicer.totalOutstandingRepurchaseExposure()` (face debt
+    ///      not yet repaid by any borrower). Read with a checked `staticcall` in `_tryReadServicerUint`.
+    bytes4 internal constant TOTAL_OUTSTANDING_REPURCHASE_EXPOSURE_SELECTOR =
+        bytes4(keccak256("totalOutstandingRepurchaseExposure()"));
 
     /// @notice Hard cap on the number of collateral tokens enumerated per servicer leg.
     /// @dev Live verification 2026-05-15 measured 1 accepted collateral token on the
@@ -245,13 +255,11 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @inheritdoc IMarketBalanceFuse
     /// @dev Iterates the substrate list, filters out `COLLATERAL_TOKEN` substrates (only
     ///      `SERVICER`-typed entries contribute to NAV — collateral-token substrates are
-    ///      pure allowlist entries consumed by the action fuses), and aggregates each
-    ///      servicer's signed valuation via the internal `_signedValueForServicerInternal`
-    ///      helper (no external self-call — see file-level NatSpec for rationale).
-    ///      Per-leg saturation to ±`MAX_VALUE_PER_LEG` keeps `int256` arithmetic safe under
-    ///      adversarial oracle returns. The final signed accumulator is converted via
-    ///      `SafeCast.toUint256` which reverts on net-negative — see the net-negative
-    ///      rationale on `balanceOf`.
+    ///      pure allowlist entries consumed by the action fuses), and sums each servicer's
+    ///      non-negative value from the internal `_valueForServicerInternal` helper (no external
+    ///      self-call — see file-level NatSpec for rationale). Each servicer is floored at 0 on its
+    ///      own (limited liability of a Term Repo, IL-9553) and saturated at `MAX_VALUE_PER_LEG_UINT`,
+    ///      so an underwater servicer never lowers the others and the sum cannot overflow.
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory rawSubstrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 substrateCount = rawSubstrates.length;
@@ -261,7 +269,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         if (priceOracleMiddleware == address(0)) revert Errors.WrongAddress();
 
         address plasmaVault = address(this);
-        int256 totalValueWad;
+        uint256 totalValueWad;
 
         for (uint256 i; i < substrateCount; ++i) {
             bytes32 raw = rawSubstrates[i];
@@ -273,22 +281,18 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             address servicer = PlasmaVaultConfigLib.bytes32ToAddress(raw);
             if (servicer == address(0)) continue;
 
-            int256 leg = _signedValueForServicerInternal(servicer, plasmaVault, priceOracleMiddleware);
+            uint256 servicerValueWad = _valueForServicerInternal(servicer, plasmaVault, priceOracleMiddleware);
 
-            // Saturate per leg to ±MAX_VALUE_PER_LEG to keep int256 arithmetic safe
-            // under adversarial oracle returns (mirrors PresentValueLib saturation).
-            if (leg > MAX_VALUE_PER_LEG) leg = MAX_VALUE_PER_LEG;
-            if (leg < -MAX_VALUE_PER_LEG) leg = -MAX_VALUE_PER_LEG;
-            totalValueWad += leg;
+            // Saturate per servicer so the unsigned sum cannot overflow under adversarial oracle
+            // returns (mirrors PresentValueLib saturation).
+            if (servicerValueWad > MAX_VALUE_PER_LEG_UINT) servicerValueWad = MAX_VALUE_PER_LEG_UINT;
+            totalValueWad += servicerValueWad;
         }
 
-        // SafeCast.toUint256 reverts on negative input. Net-negative is treated as
-        // ERC4626 insolvency signal — share math freezes, monitoring fires, recovery is
-        // explicit via emergency procedures.
-        return totalValueWad.toUint256();
+        return totalValueWad;
     }
 
-    /// @notice Internal per-servicer signed valuation entry point.
+    /// @notice Internal per-servicer valuation entry point.
     /// @dev Probes the collateral manager and the accepted-collateral-token count via
     ///      try/catch helpers; if either fails the leg silently degrades to 0 (same effect
     ///      as the pre-refactor outer-catch swallow). A cap breach on
@@ -307,15 +311,15 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param servicer_ Servicer substrate to value.
     /// @param plasmaVault_ Vault address (== `address(this)` under delegatecall).
     /// @param priceOracleMiddleware_ Cached PlasmaVault oracle middleware address.
-    /// @return Signed WAD-USD contribution from this servicer (can be negative).
-    function _signedValueForServicerInternal(
+    /// @return Non-negative WAD-USD value of this servicer (0 when it is underwater).
+    function _valueForServicerInternal(
         address servicer_,
         address plasmaVault_,
         address priceOracleMiddleware_
-    ) internal view returns (int256) {
+    ) internal view returns (uint256) {
         // The collateral-manager probe gates the WHOLE servicer leg. On failure
         // we must NOT blanket-zero it — that would silently drop the CM-independent held-repo,
-        // pending-offer, and negative debt legs and bypass the tracked gates.
+        // pending-offer legs and the debt PV and bypass the tracked gates.
         // Degrade to 0 only for a servicer with no detectable exposure; otherwise freeze.
         (bool cmOk, address collateralManager) = _tryReadCollateralManager(servicer_);
         if (!cmOk || collateralManager == address(0)) {
@@ -328,7 +332,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         }
 
         return
-            _signedValueForServicerImpl(
+            _valueForServicerImpl(
                 servicer_,
                 plasmaVault_,
                 priceOracleMiddleware_,
@@ -337,12 +341,20 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             );
     }
 
-    /// @notice Per-servicer signed valuation body. Sums collateral-side legs (≥0) with the
-    ///         debt leg (≤0); gates a re-raise when a tracked leg priced to zero.
-    /// @dev Sign convention:
-    ///        collateral aggregation (held repo PV + pending offers + pending bids locked
-    ///          collateral + actively locked collateral) → non-negative `int256`.
-    ///        debt aggregation → non-positive `int256` (returned as negative).
+    /// @notice Per-servicer valuation body: free legs + max(0, credit legs − debt PV); gates a
+    ///         re-raise when a tracked leg priced to zero.
+    /// @dev Legs (IL-9553, IL-9566 D-003 / D-016):
+    ///        free = pending offers + pending bid collateral — not seized by a default of the
+    ///          servicer's obligation (offers sit in the offer locker, bid collateral in the bid
+    ///          locker, outside the collateral manager's `lockedCollateralLedger`);
+    ///        credit = actively locked collateral + the vault's own held repo tokens of this servicer —
+    ///          the locked collateral is what `batchDefault` seizes, and the own repo tokens absorb the
+    ///          residual through the pool recovery ratio (or cancel debt at par via
+    ///          `burnCollapseExposure` before the repurchase window ends);
+    ///        value = free + max(0, credit − debt PV). With no debt the value is the plain sum of all
+    ///          legs; with no held repo tokens the credit leg is the locked collateral alone.
+    ///      Rounding stays as in each leg (values rounded down by `convertToWad`); the floor only removes
+    ///      a negative net and never adds value.
     /// @dev Tracked-vs-untracked gate: each collateral-side helper returns
     ///      `(bool ok, uint256 valueWad, bool hasAnyPosition)` so the aggregator can
     ///      distinguish "no tracked exposure at all" (silently zero on price failure) from
@@ -357,19 +369,19 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param priceOracleMiddleware_ Oracle middleware address.
     /// @param collateralManager_ TermRepoCollateralManager paired with `servicer_`.
     /// @param acceptedCollateralCount_ `cm.numOfAcceptedCollateralTokens()`.
-    /// @return Per-servicer signed WAD-USD valuation.
-    function _signedValueForServicerImpl(
+    /// @return Per-servicer non-negative WAD-USD valuation.
+    function _valueForServicerImpl(
         address servicer_,
         address plasmaVault_,
         address priceOracleMiddleware_,
         address collateralManager_,
         uint8 acceptedCollateralCount_
-    ) internal view returns (int256) {
+    ) internal view returns (uint256) {
         // Aggregate collateral-side value with the tracked-vs-untracked oracle gate
         // applied in `_collateralValueWadWithGate`. The split keeps the stack depth manageable
         // (four (ok, value, hasPosition) tuples + cumulative signals overflow the 16-slot
         // limit when inlined alongside the debt leg in a single frame).
-        uint256 collateralSum = _collateralValueWadWithGate(
+        (uint256 freeValueWad, uint256 creditValueWad) = _collateralValueWadWithGate(
             servicer_,
             plasmaVault_,
             priceOracleMiddleware_,
@@ -377,10 +389,17 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             acceptedCollateralCount_
         );
 
-        int256 collateralValue = collateralSum.toInt256();
-        int256 debtValue = _debtValueWadForServicer(servicer_, plasmaVault_, priceOracleMiddleware_, collateralValue);
+        // The debt-read gate still keys on the whole collateral side ("position tracked").
+        uint256 debtValueWad = _debtValueWadForServicer(
+            servicer_,
+            plasmaVault_,
+            priceOracleMiddleware_,
+            freeValueWad + creditValueWad
+        );
 
-        return collateralValue + debtValue;
+        // Limited liability of the Term Repo: an underwater credit leg contributes 0.
+        uint256 netCreditValueWad = creditValueWad > debtValueWad ? creditValueWad - debtValueWad : 0;
+        return freeValueWad + netCreditValueWad;
     }
 
     /// @notice Aggregate the four collateral-side legs and apply the oracle gate.
@@ -397,18 +416,19 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param priceOracleMiddleware_ Oracle middleware address.
     /// @param collateralManager_ Paired CollateralManager.
     /// @param acceptedCollateralCount_ `cm.numOfAcceptedCollateralTokens()`.
-    /// @return Aggregate collateral-side WAD-USD value as a non-negative `uint256`. Reverts
-    ///         iff tracked + priced-zero.
+    /// @return freeValueWad Pending offers + pending bid collateral (WAD-USD): legs a default of the
+    ///         servicer's obligation does not seize.
+    /// @return creditValueWad Held repo-token PV + actively locked collateral (WAD-USD): legs that back the
+    ///         servicer's debt. Reverts iff tracked + priced-zero.
     function _collateralValueWadWithGate(
         address servicer_,
         address plasmaVault_,
         address priceOracleMiddleware_,
         address collateralManager_,
         uint8 acceptedCollateralCount_
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 freeValueWad, uint256 creditValueWad) {
         bool anyPriceZero;
         bool trackedFromLegs;
-        uint256 sum;
         {
             (bool ok1, uint256 v1, bool hasHeld) = _heldTermRepoTokenPv(
                 servicer_,
@@ -417,19 +437,19 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             );
             if (!ok1) anyPriceZero = true;
             if (hasHeld) trackedFromLegs = true;
-            sum += v1;
+            creditValueWad += v1;
         }
         {
             (bool ok2, uint256 v2, bool hasOffers) = _pendingOffersValueWad(servicer_, priceOracleMiddleware_);
             if (!ok2) anyPriceZero = true;
             if (hasOffers) trackedFromLegs = true;
-            sum += v2;
+            freeValueWad += v2;
         }
         {
             (bool ok3, uint256 v3, bool hasBids) = _pendingBidsValueWadForServicer(servicer_, priceOracleMiddleware_);
             if (!ok3) anyPriceZero = true;
             if (hasBids) trackedFromLegs = true;
-            sum += v3;
+            freeValueWad += v3;
         }
         {
             (bool ok4, uint256 v4, bool hasLocked) = _lockedCollateralValueWad(
@@ -440,7 +460,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             );
             if (!ok4) anyPriceZero = true;
             if (hasLocked) trackedFromLegs = true;
-            sum += v4;
+            creditValueWad += v4;
         }
 
         if (anyPriceZero) {
@@ -450,14 +470,12 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
             // the debt leg would otherwise be subtracted in full. An unused servicer still
             // evaluates to false and degrades to 0.
             bool trackedPre = _servicerHasExposure(servicer_, plasmaVault_);
-            if (trackedPre || trackedFromLegs || sum > 0) {
+            if (trackedPre || trackedFromLegs || freeValueWad > 0 || creditValueWad > 0) {
                 revert TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked(servicer_);
             }
             // Untracked + priced zero: silently degrade. The debt leg's tracked-exposure
             // gate keeps its semantics unchanged.
         }
-
-        return sum;
     }
 
     /// @notice Held TermRepoToken present value for a single servicer (lender-side leg).
@@ -870,14 +888,15 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         }
     }
 
-    /// @notice Compute the borrower debt leg in WAD-USD as a NON-POSITIVE `int256` (or 0).
+    /// @notice Compute the borrower debt PV in WAD-USD (0 when the vault owes nothing).
     /// @dev Tracked-position-gated revert semantics ("Debt-leg failure semantics"):
     ///        - If `getBorrowerRepurchaseObligation` SUCCEEDS:
     ///            face > 0 → PV-discount via `TermFinancePresentValueLib.presentValuePreMaturity`
     ///                       with `adapterHaircut_ = 0` (Convention B — same math as
     ///                       borrower-debt PV), multiply by purchase-token oracle price
-    ///                       (reverts on `price == 0`), negate, return.
+    ///                       (reverts on `price == 0`), saturate at `MAX_VALUE_PER_LEG_UINT`, return.
     ///            face == 0 → no debt, return 0.
+    ///      The caller subtracts the result from the servicer's credit leg and floors the net at 0.
     ///        - If `getBorrowerRepurchaseObligation` REVERTS:
     ///            tracked exposure (prior collateral value > 0 OR pending bids tracked)
     ///              → revert with `TermFinanceBalanceFuseDebtReadFailedForTrackedServicer`.
@@ -887,13 +906,13 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @param priceOracleMiddleware_ Oracle middleware address.
     /// @param priorCollateralValue_ Aggregate of the collateral legs (passed in to detect
     ///        tracked exposure without re-reading any external state).
-    /// @return Signed WAD-USD debt contribution (always ≤ 0).
+    /// @return WAD-USD PV of the outstanding debt, saturated at `MAX_VALUE_PER_LEG_UINT`.
     function _debtValueWadForServicer(
         address servicer_,
         address plasmaVault_,
         address priceOracleMiddleware_,
-        int256 priorCollateralValue_
-    ) internal view returns (int256) {
+        uint256 priorCollateralValue_
+    ) internal view returns (uint256) {
         bool obligationOk;
         uint256 obligationFace;
         try IExtTermRepoServicer(servicer_).getBorrowerRepurchaseObligation(plasmaVault_) returns (uint256 face) {
@@ -906,11 +925,9 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         if (obligationOk) {
             if (obligationFace == 0) return 0;
             uint256 pvWad = _debtPvWad(servicer_, priceOracleMiddleware_, obligationFace);
-            // Saturate the raw uint256 to MAX_VALUE_PER_LEG before negating so the unary
-            // minus on int256 stays within range. The outer `balanceOf` loop re-saturates
-            // each per-servicer leg too — this is belt-and-braces.
-            if (pvWad > MAX_VALUE_PER_LEG_UINT) return -MAX_VALUE_PER_LEG;
-            return -pvWad.toInt256();
+            // Saturate to the same bound as each servicer's value. A saturated debt can only lower the
+            // servicer's own credit leg (floored at 0), never the value of other servicers.
+            return pvWad > MAX_VALUE_PER_LEG_UINT ? MAX_VALUE_PER_LEG_UINT : pvWad;
         }
 
         // Obligation read reverted. Did we have tracked exposure on this servicer?
@@ -944,7 +961,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         // `_debtPvWad` is invoked only when `obligationFace > 0`
         // (borrower tracked-by-construction). Any failure of the supporting servicer or
         // adapter reads MUST revert with the dedicated diagnostic — silently zeroing the
-        // negative debt leg while collateral / pending bids remain positive opens an
+        // debt PV while collateral / pending bids remain positive opens an
         // ERC4626 share-mint attack window.
         (bool ptOk, address purchaseToken) = _tryReadPurchaseToken(servicer_);
         if (!ptOk || purchaseToken == address(0)) {
@@ -1044,7 +1061,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
 
     /// @notice Decision for a collateral-manager probe failure: revert if the vault
     ///         has detectable exposure to `servicer_`, otherwise degrade the leg to 0.
-    /// @dev Used by `_signedValueForServicerInternal` when `termRepoCollateralManager()` /
+    /// @dev Used by `_valueForServicerInternal` when `termRepoCollateralManager()` /
     ///      `numOfAcceptedCollateralTokens()` revert or the accepted-count is out of range — a
     ///      broken / paused / upgraded CM or servicer proxy threat model. Freezing
     ///      a servicer with exposure matches the tracked-gate philosophy; degrading an
@@ -1059,7 +1076,7 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     function _gateOnCollateralManagerProbeFailure(
         address servicer_,
         address plasmaVault_
-    ) internal view returns (int256) {
+    ) internal view returns (uint256) {
         if (_servicerHasExposure(servicer_, plasmaVault_)) {
             revert TermFinanceBalanceFuseCollateralManagerReadFailedForTrackedServicer(servicer_);
         }
@@ -1152,15 +1169,15 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
     /// @notice Discount face value to present value, branching on maturity.
     /// @dev Pre-maturity uses `TermFinancePresentValueLib.presentValuePreMaturity` with the
     ///      adapter discount rate and adapter conservative haircut. Post-maturity uses
-    ///      `presentValuePostMaturity` with the servicer's realised default haircut.
-    /// @param servicer_ Servicer (post-maturity branch reads its shortfall haircut).
+    ///      `presentValueAtRecovery` with the servicer's recovery ratio (`_tryReadPostMaturityRecovery`,
+    ///      IL-9553: the face value times the share of it Term pays on redemption).
+    /// @param servicer_ Servicer (post-maturity branch reads its recovery ratio).
     /// @param repoToken_ TermRepoToken to query the adapter for (pre-maturity branch).
     /// @param tred_ Servicer's redemption timestamp.
     /// @param purchasePrec_ `10 ** purchaseToken.decimals()`.
     /// @param faceInPurchase_ Face value already converted to purchase-token units.
-    /// @return ok False iff a supporting try/catch read (shortfall haircut post-maturity,
-    ///         discount rate pre-maturity) failed — the caller must NOT treat this as a
-    ///         genuine zero value.
+    /// @return ok False iff a supporting read (recovery ratio post-maturity, discount rate
+    ///         pre-maturity) failed — the caller must NOT treat this as a genuine zero value.
     /// @return pv PV in purchase-token raw units, valid only when `ok == true`.
     function _pvForFace(
         address servicer_,
@@ -1170,9 +1187,9 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         uint256 faceInPurchase_
     ) internal view returns (bool ok, uint256 pv) {
         if (block.timestamp >= tred_) {
-            (bool haircutReadOk, uint256 hcut) = _tryReadShortfallHaircut(servicer_);
-            if (!haircutReadOk) return (false, 0);
-            return (true, TermFinancePresentValueLib.presentValuePostMaturity(faceInPurchase_, hcut));
+            (bool recoveryOk, uint256 recoveryMantissa) = _tryReadPostMaturityRecovery(servicer_);
+            if (!recoveryOk) return (false, 0);
+            return (true, TermFinancePresentValueLib.presentValueAtRecovery(faceInPurchase_, recoveryMantissa));
         }
 
         (bool rateOk, uint256 rate) = _tryGetDiscountRate(repoToken_);
@@ -1499,16 +1516,68 @@ contract TermFinanceBalanceFuse is IMarketBalanceFuse {
         }
     }
 
-    /// @notice Probe the servicer's realised default haircut with try/catch.
+    /// @notice Probe the servicer's `shortfallHaircutMantissa` with try/catch.
+    /// @dev Despite its name, Term defines the value as the "proportion of redemption value for
+    ///      redemption" (a recovery ratio): `TermRepoServicer._proRataRedemption` pays
+    ///      `redemptionValue * mantissa / 1e18`. It is 0 until the first pro-rata redemption sets it.
     /// @param servicer_ Substrate key.
     /// @return ok True if the call succeeded.
-    /// @return hcut Haircut in 18-dec mantissa.
-    function _tryReadShortfallHaircut(address servicer_) internal view returns (bool ok, uint256 hcut) {
+    /// @return mantissa Recovery ratio in 18-dec mantissa (0 while unset).
+    function _tryReadShortfallHaircut(address servicer_) internal view returns (bool ok, uint256 mantissa) {
         try IExtTermRepoServicer(servicer_).shortfallHaircutMantissa() returns (uint256 h) {
             return (true, h);
         } catch {
             return (false, 0);
         }
+    }
+
+    /// @notice Share of the face value a held repo token redeems at after maturity (18-dec), mirroring
+    ///         `TermRepoServicer.redeemTermRepoTokens`.
+    /// @dev IL-9553 (IL-9566 D-017). Term's redemption takes one of three paths:
+    ///        - mantissa set (> 0): pro-rata redemption pays `value * mantissa` → return the mantissa
+    ///          (clamped to 1e18 by `presentValueAtRecovery`);
+    ///        - mantissa unset (0) and no repurchase exposure outstanding: par redemption → 1e18;
+    ///        - mantissa unset (0) with exposure outstanding: the first pro-rata redemption sets the
+    ///          mantissa to `collected / (collected + outstanding)` → return that ratio now.
+    ///      A stored 0 always means "unset": a pro-rata redemption with nothing collected would compute 0,
+    ///      pay nothing and fail the servicer's `_isTermRepoBalanced` assertion, so a total loss stays unset
+    ///      and the ratio above is 0. While encumbered collateral remains, redemptions revert until a
+    ///      default clears it; a default only adds to `collected`, so the current ratio is a lower bound.
+    ///      Outstanding exposure below Term's 1e4 par tolerance is valued pro rata (at most 1e4 raw units
+    ///      below par across the repo). Counters above `MAX_VALUE_PER_LEG_UINT` are treated as a failed
+    ///      read (corrupted proxy state), so the tracked gate fires instead of overflowing.
+    /// @param servicer_ Substrate key.
+    /// @return ok False iff a servicer read failed or returned corrupted counters.
+    /// @return recoveryMantissa Recovery ratio in 18-dec mantissa.
+    function _tryReadPostMaturityRecovery(address servicer_) internal view returns (bool ok, uint256 recoveryMantissa) {
+        (bool mantissaOk, uint256 mantissa) = _tryReadShortfallHaircut(servicer_);
+        if (!mantissaOk) return (false, 0);
+        if (mantissa != 0) return (true, mantissa);
+
+        (bool collectedOk, uint256 collected) = _tryReadServicerUint(servicer_, TOTAL_REPURCHASE_COLLECTED_SELECTOR);
+        (bool outstandingOk, uint256 outstanding) = _tryReadServicerUint(
+            servicer_,
+            TOTAL_OUTSTANDING_REPURCHASE_EXPOSURE_SELECTOR
+        );
+        if (!collectedOk || !outstandingOk) return (false, 0);
+        if (outstanding == 0) return (true, TermFinancePresentValueLib.RATE_PRECISION);
+        if (collected > MAX_VALUE_PER_LEG_UINT || outstanding > MAX_VALUE_PER_LEG_UINT) return (false, 0);
+
+        return (true, (collected * TermFinancePresentValueLib.RATE_PRECISION) / (collected + outstanding));
+    }
+
+    /// @notice Read a `uint256` public getter of the servicer with a checked `staticcall`.
+    /// @dev Used for `totalRepurchaseCollected()` and `totalOutstandingRepurchaseExposure()` (public state of
+    ///      the live `TermRepoServicer`). A revert, a target without code or a return shorter than one word is
+    ///      reported as `ok == false`.
+    /// @param servicer_ Substrate key.
+    /// @param selector_ Getter selector.
+    /// @return ok True iff the call succeeded and returned at least 32 bytes.
+    /// @return value Decoded value (0 when `ok == false`).
+    function _tryReadServicerUint(address servicer_, bytes4 selector_) internal view returns (bool ok, uint256 value) {
+        (bool success, bytes memory returnData) = servicer_.staticcall(abi.encodeWithSelector(selector_));
+        if (!success || returnData.length < 32) return (false, 0);
+        return (true, abi.decode(returnData, (uint256)));
     }
 
     /// @notice Probe `IPriceOracleMiddleware(mw).getAssetPrice(asset)` with try/catch +

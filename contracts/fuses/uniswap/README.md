@@ -11,14 +11,44 @@ Fuses integrating the PlasmaVault with Uniswap V2, V3 and V4. All fuses are stat
 | `UniswapV3NewPositionFuse` | action | `UNISWAP_SWAP_V3_POSITIONS` (8) | Mint / burn V3 concentrated liquidity positions (NFTs) |
 | `UniswapV3ModifyPositionFuse` | action | `UNISWAP_SWAP_V3_POSITIONS` (8) | Increase / decrease liquidity of an existing V3 position |
 | `UniswapV3CollectFuse` | action | `UNISWAP_SWAP_V3_POSITIONS` (8) | Collect owed tokens (fees + decreased principal) from V3 positions |
-| `UniswapV3Balance` | balance | `UNISWAP_SWAP_V3_POSITIONS` (8) | USD (WAD) valuation of all tracked V3 positions |
+| `UniswapV3Balance` | balance | `UNISWAP_SWAP_V3_POSITIONS` (8) | USD (WAD) valuation of all tracked V3 positions at the pool's spot price (`slot0`) |
+| `UniswapV3OracleBalance` | balance | `UNISWAP_SWAP_V3_POSITIONS` (8) | Same valuation, with the token0/token1 split taken at the price-oracle price |
 | `UniswapV4NewPositionFuse` | action | `UNISWAP_V4` (53) | Mint / burn V4 concentrated liquidity positions (NFTs) |
 | `UniswapV4ModifyPositionFuse` | action | `UNISWAP_V4` (53) | Increase / decrease liquidity of an existing V4 position |
 | `UniswapV4CollectFuse` | action | `UNISWAP_V4` (53) | Collect accrued fees from V4 positions (zero-liquidity decrease) |
-| `UniswapV4Balance` | balance | `UNISWAP_V4` (53) | USD (WAD) valuation of all tracked V4 positions |
+| `UniswapV4Balance` | balance | `UNISWAP_V4` (53) | USD (WAD) valuation of all tracked V4 positions at the pool's spot price (`slot0`) |
+| `UniswapV4OracleBalance` | balance | `UNISWAP_V4` (53) | Same valuation, with the token0/token1 split taken at the price-oracle price |
 | `UniswapV4SubstrateLib` | library | — | Substrate gating (PoolId + tokens) shared by the V4 fuses |
 
 `ext/` contains vendored Uniswap periphery interfaces and math libraries (`INonfungiblePositionManager`, `PositionValue`, `IUniversalRouter`, …); `ext/v4/` contains the V4 counterparts (`IPositionManagerV4`, `ActionsV4`, `LiquidityAmountsV4`, `PositionInfoLib`).
+
+## Balance fuses: spot version vs oracle version
+
+Each market has two balance fuses. Both stay in the code base and the atomist chooses one per vault; nothing is switched automatically.
+
+| | Spot version (`UniswapV3Balance`, `UniswapV4Balance`; Ramses V2: `RamsesV2Balance`) | Oracle version (`UniswapV3OracleBalance`, `UniswapV4OracleBalance`; Ramses V2: `RamsesV2OracleBalance`) |
+|---|---|---|
+| Principal split | At the pool's current price (`slot0`) | At the price implied by the vault's price-oracle middleware for the two pool tokens |
+| Manipulation | The pool price can be moved within a transaction, and the reported NAV moves with it | Not moved by pool trades; as resistant as the oracle |
+| Price feeds needed | For the tokens, to convert amounts to USD | For **both** tokens of **every** tracked position, also a position without liquidity (even if one leg is 0); V4 reads no feed for a position with zero liquidity |
+| Missing feed | Depends on the oracle middleware (see the fuse) | Reverts, with no fallback to `slot0` |
+| Meaning of the value | Value at the pool price | Value at the oracle price, not an exit amount |
+
+**Risk of the spot version.** The principal is split between token0 and token1 at the pool's spot price. An attacker who moves the pool price inside one transaction (a large swap, a flash loan) changes the reported value, and a market-balance refresh in that transaction persists the moved value. The spot version only has this risk documented; it is not changed.
+
+**Which to choose.** Prefer the oracle version for vaults where NAV manipulation matters (large share price sensitivity, deposits and withdrawals priced from NAV, positions in thin or manipulable pools). The spot version is acceptable when the vault does not depend on it for such flows or when no price feed exists for one of the pool tokens.
+
+**Oracle version requirements.** The vault must have a price-oracle middleware, and the middleware must price both tokens of every position the vault tracks, including positions without liquidity: `fromOracle` and `_convertToUsd` run for every tracked token id in the V3 and Ramses V2 fuses. `UniswapV4OracleBalance` reads prices only for positions with non-zero liquidity (a zero-liquidity V4 position needs no feed). The fuses also revert if the oracle-implied price is outside the Q64.96 range, and `UniswapV4OracleBalance` does not support native-currency pools. A missing feed reverts and so freezes the NAV refresh of that market.
+
+**Migration.** Markets: V3 = 8, V4 = 53, Ramses V2 = 18.
+
+1. Verify that the price oracle prices both tokens of every open position (a quick `getAssetPrice` per token), and that the middleware is set.
+2. Call `addBalanceFuse(<marketId>, <oracle fuse>)` as the atomist. This replaces the market's balance fuse (the balance fuse is keyed by market).
+3. Call `updateMarketsBalances` for that market and compare the new `totalAssetsInMarket` with the previous value; expect a difference when the pool price differs from the oracle price.
+   Steps 2 and 3 are separate transactions unless batched: between them, flows are priced on the cached value of the old fuse. Run both in the same Safe batch.
+4. Vaults whose configuration pre-dates IL-6953 may have a different balance-fuse registration layout and can double-count a market when a fuse is swapped. Rehearse the switch on a fork of that vault first.
+
+Constructor arguments: `UniswapV3OracleBalance(marketId, nonfungiblePositionManager)` has no factory argument (the spot `UniswapV3Balance` takes `marketId, nonfungiblePositionManager, uniswapFactory`); `UniswapV4OracleBalance(marketId, positionManager, poolManager)` and `RamsesV2OracleBalance(marketId, nonfungiblePositionManager, ramsesFactory)` take the same three arguments as their spot versions.
 
 ## Substrate configuration
 

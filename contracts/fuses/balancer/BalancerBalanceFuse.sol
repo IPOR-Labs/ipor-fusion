@@ -38,6 +38,12 @@ import {IporMath} from "../../libraries/math/IporMath.sol";
  * - Immutable market ID prevents configuration changes
  * - Uses view functions for balance calculations to prevent state changes
  * - Relies on trusted price oracle middleware for accurate pricing
+ * @custom:security Spot-balance risk: the position is valued as the vault's pro-rata share of the pool's current raw
+ *      balances, which can be moved within a single transaction (for example by a large swap or a flash loan) while
+ *      the oracle prices stay unchanged, so the reported value can be moved with them and a market refresh would
+ *      persist the moved value. The raw balances also include yield fees that the Balancer Vault has not collected
+ *      yet. This fuse family has no oracle-derived balance fuse: the risk is documented, not mitigated in code (see
+ *      the README of this fuse family for the risk, the state of Balancer V3 pools and the guidance for atomists).
  */
 contract BalancerBalanceFuse is IMarketBalanceFuse {
     /// @notice Thrown when price oracle middleware is not configured

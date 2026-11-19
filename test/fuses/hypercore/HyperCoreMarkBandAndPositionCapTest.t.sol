@@ -14,6 +14,7 @@ import {
 } from "../../../contracts/fuses/hypercore/HyperCoreCancelFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCoreValuationLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreValuationLib.sol";
 import {CoreSimulatorLib} from "./simulation/CoreSimulatorLib.sol";
 import {PrecompileLib} from "./simulation/src/PrecompileLib.sol";
@@ -211,7 +212,7 @@ contract HyperCoreMarkBandAndPositionCapTest is HyperCoreEffectSettlementBase {
         subs[0] = HyperCoreSubstrateLib.encodeSpotToken(USDC_TOKEN, address(_usdc));
         subs[1] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, 2);
         vm.prank(_fuseManager);
-        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, subs);
+        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(subs));
         _depositPasses();
     }
 
@@ -477,7 +478,7 @@ contract HyperCoreMarkBandAndPositionCapTest is HyperCoreEffectSettlementBase {
         _fillCommon(subs);
         for (uint256 i; i < extra_.length; ++i) subs[8 + i] = extra_[i];
         vm.prank(_fuseManager);
-        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, subs);
+        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(subs));
     }
 
     /// @dev HIP-3 grants require a single PerpMarket: NVDA replaces HYPE.
@@ -488,7 +489,7 @@ contract HyperCoreMarkBandAndPositionCapTest is HyperCoreEffectSettlementBase {
         _fillCommon(subs);
         for (uint256 i; i < extra_.length; ++i) subs[8 + i] = extra_[i];
         vm.prank(_fuseManager);
-        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, subs);
+        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(subs));
     }
 
     function _fillCommon(bytes32[] memory subs_) private view {

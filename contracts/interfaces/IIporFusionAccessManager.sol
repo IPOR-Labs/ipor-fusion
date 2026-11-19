@@ -25,6 +25,8 @@ interface IIporFusionAccessManager is IAccessManager {
 
     /// @notice Check if the caller can call the target with the given selector. Update the account lock time.
     /// @dev canCall cannot be a view function because it updates the account lock time.
+    /// A counterparty (receiver, owner, `from`) may be passed only for this lock side effect: the returned access
+    /// result is then intentionally ignored and only the caller's access is enforced.
     function canCallAndUpdate(
         address caller,
         address target,

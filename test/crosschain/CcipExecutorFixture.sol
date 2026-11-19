@@ -98,6 +98,7 @@ abstract contract CcipExecutorFixture is Test {
             rescueDelay: RESCUE_DELAY,
             balanceStalenessMax: BALANCE_STALENESS_MAX,
             bigChangeBps: 2_000,
+            anchorBandBps: 2_000,
             minUpdateInterval: MIN_UPDATE_INTERVAL,
             transferStalenessMax: 1 days
         });

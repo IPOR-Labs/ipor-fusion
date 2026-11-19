@@ -11,6 +11,10 @@ import {
 contract MockCcipRouter is ICcipRouterClient {
     mapping(address => uint64) public selectorOf;
     uint256 public fee;
+    /// @dev IL-9621: when set, messages that carry tokens are quoted (and must be paid) `tokenFee` instead of `fee`;
+    ///      token-less messages keep paying `fee`. Off by default, so every other suite is unchanged.
+    uint256 public tokenFee;
+    bool public tokenFeeSet;
     /// @dev Token-pool haircut: this share (bps) of every delivered token amount is withheld by the "pool".
     uint256 public poolHaircutBps;
     bool public autoDeliver = true;
@@ -46,6 +50,21 @@ contract MockCcipRouter is ICcipRouterClient {
         fee = fee_;
     }
 
+    /// @notice Quote a separate fee for messages that carry tokens (IL-9621); `clearTokenFee` restores `fee`.
+    function setTokenFee(uint256 tokenFee_) external {
+        tokenFee = tokenFee_;
+        tokenFeeSet = true;
+    }
+
+    function clearTokenFee() external {
+        tokenFee = 0;
+        tokenFeeSet = false;
+    }
+
+    function _feeFor(uint256 tokenCount_) private view returns (uint256) {
+        return tokenFeeSet && tokenCount_ != 0 ? tokenFee : fee;
+    }
+
     function setPoolHaircutBps(uint256 bps_) external {
         poolHaircutBps = bps_;
     }
@@ -71,8 +90,8 @@ contract MockCcipRouter is ICcipRouterClient {
         return true;
     }
 
-    function getFee(uint64, CcipClient.EVM2AnyMessage memory) external view returns (uint256) {
-        return fee;
+    function getFee(uint64, CcipClient.EVM2AnyMessage memory message_) external view returns (uint256) {
+        return _feeFor(message_.tokenAmounts.length);
     }
 
     function ccipSend(uint64, CcipClient.EVM2AnyMessage calldata message_)
@@ -87,7 +106,8 @@ contract MockCcipRouter is ICcipRouterClient {
             }
         }
         require(!failSend[msg.sender], "forced send failure");
-        require(msg.value == (message_.feeToken == address(0) ? fee : 0), "fee");
+        uint256 quoted = _feeFor(message_.tokenAmounts.length);
+        require(msg.value == (message_.feeToken == address(0) ? quoted : 0), "fee");
         lastExtraArgs = message_.extraArgs;
         address receiver = abi.decode(message_.receiver, (address));
         CcipClient.EVMTokenAmount[] memory delivered = new CcipClient.EVMTokenAmount[](message_.tokenAmounts.length);
@@ -98,8 +118,8 @@ contract MockCcipRouter is ICcipRouterClient {
             if (withheld != 0) IERC20(tokenAmount.token).transferFrom(msg.sender, address(this), withheld);
             delivered[i] = CcipClient.EVMTokenAmount(tokenAmount.token, tokenAmount.amount - withheld);
         }
-        if (message_.feeToken != address(0) && fee != 0) {
-            IERC20(message_.feeToken).transferFrom(msg.sender, address(this), fee);
+        if (message_.feeToken != address(0) && quoted != 0) {
+            IERC20(message_.feeToken).transferFrom(msg.sender, address(this), quoted);
         }
         messageId = keccak256(abi.encode(address(this), msg.sender, receiver, ++_nonce));
         if (!autoDeliver) {

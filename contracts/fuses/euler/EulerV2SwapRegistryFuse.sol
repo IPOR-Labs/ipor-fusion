@@ -18,7 +18,8 @@ struct EulerV2SwapRegistryFuseEnterData {
 }
 
 /// @notice Data structure for unregistering an EulerSwap pool
-/// @param pool The pool to unregister (used for ownership validation and the event)
+/// @param pool The pool to unregister; must equal the pool currently registered for the sub-account
+///        (checked against the registry), also reported in the event
 /// @param subAccount Sub-account identifier owning the pool
 struct EulerV2SwapRegistryFuseExitData {
     address pool;
@@ -42,6 +43,10 @@ contract EulerV2SwapRegistryFuse is IFuseCommon {
     error EulerV2SwapRegistryFuseInvalidOwner(address pool, address expectedEulerAccount);
     /// @notice Thrown when there is no registered pool for the sub-account on exit
     error EulerV2SwapRegistryFuseNotRegistered(address eulerAccount);
+    /// @notice Thrown when the pool given on exit is not the pool registered for the sub-account
+    /// @param pool The pool given in the exit data
+    /// @param registeredPool The pool currently registered for the sub-account
+    error EulerV2SwapRegistryFuseInvalidPool(address pool, address registeredPool);
 
     /// @notice Address of this fuse contract version
     address public immutable VERSION;
@@ -89,12 +94,20 @@ contract EulerV2SwapRegistryFuse is IFuseCommon {
     }
 
     /// @notice Unregisters the pool, refunding its validity bond to the vault
+    /// @dev Reverts with `EulerV2SwapRegistryFuseNotRegistered` when the sub-account has no registered pool and with
+    ///      `EulerV2SwapRegistryFuseInvalidPool` when `data_.pool` differs from the registered pool. The registry
+    ///      unregisters whatever pool is registered for the sub-account, so the check keeps the event and the
+    ///      caller's intent aligned with the pool actually removed.
     /// @param data_ Unregistration parameters
     function exit(EulerV2SwapRegistryFuseExitData memory data_) public {
         address eulerAccount = EulerFuseLib.generateSubAccountAddress(address(this), data_.subAccount);
 
-        if (REGISTRY.poolByEulerAccount(eulerAccount) == address(0)) {
+        address registeredPool = REGISTRY.poolByEulerAccount(eulerAccount);
+        if (registeredPool == address(0)) {
             revert EulerV2SwapRegistryFuseNotRegistered(eulerAccount);
+        }
+        if (registeredPool != data_.pool) {
+            revert EulerV2SwapRegistryFuseInvalidPool(data_.pool, registeredPool);
         }
 
         EVC.call(address(REGISTRY), eulerAccount, 0, abi.encodeCall(IEulerV2SwapRegistry.unregisterPool, ()));

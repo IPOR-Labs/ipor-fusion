@@ -18,6 +18,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
@@ -442,7 +443,7 @@ contract HyperCoreDepositFuseTest is Test {
         bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(HyperCoreLib.USDC_TOKEN, address(usdc));
         substrates[1] = HyperCoreSubstrateLib.encodeSpotToken(9, address(usdc));
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         assertFalse(_isBlocked(), "credit landed and the pending window is over");
         uint256[] memory marketIds = new uint256[](1);
         marketIds[0] = MARKET_ID;
@@ -458,7 +459,7 @@ contract HyperCoreDepositFuseTest is Test {
         bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(HyperCoreLib.USDC_TOKEN, address(usdc));
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, 0);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(
             abi.encodeWithSelector(HyperCoreDepositFuse.HyperCoreDepositFuseInvalidWindow.selector, uint240(0))
@@ -474,7 +475,7 @@ contract HyperCoreDepositFuseTest is Test {
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(
             HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, overflowingWindow
         );
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(
             abi.encodeWithSelector(HyperCoreDepositFuse.HyperCoreDepositFuseInvalidWindow.selector, overflowingWindow)
@@ -720,7 +721,7 @@ contract HyperCoreDepositFuseTest is Test {
         bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(HyperCoreLib.USDC_TOKEN, address(usdc));
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(key_, value_);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _readEffect()
@@ -753,7 +754,7 @@ contract HyperCoreDepositFuseTest is Test {
         vm.prank(TestAddresses.FUSE_MANAGER);
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(tokenIndex_, evmAsset_);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     /// @dev Reads HyperCorePendingLib.PendingAction directly out of the vault's storage via the fixed

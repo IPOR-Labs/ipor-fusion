@@ -183,6 +183,17 @@ library PositionValue {
         return _fees(positionManager, feeParams);
     }
 
+    /// @notice Fees owed to a position: `tokensOwed` plus the fee growth inside the range since the position's last
+    /// snapshot, times its liquidity
+    /// @dev Port of Uniswap v3-periphery `PositionValue._fees` (v1.4.4), compiled there with solc < 0.8.0. Uniswap V3
+    /// fee growth values are accumulators that only have meaning modulo 2^256 (v3-core `Position.update` and the
+    /// `NonfungiblePositionManager` take the same difference with wrapping arithmetic), so
+    /// `feeGrowthInside - feeGrowthInsideLast` is computed in an `unchecked` block. With checked arithmetic a position
+    /// whose fee growth inside wrapped would revert with an arithmetic panic. The `tokensOwed` addition stays checked.
+    /// @param positionManager The Uniswap V3 NonfungiblePositionManager
+    /// @param feeParams The position data read from the NonfungiblePositionManager
+    /// @return amount0 The amount of fees owed in token0
+    /// @return amount1 The amount of fees owed in token1
     function _fees(
         INonfungiblePositionManager positionManager,
         FeeParams memory feeParams
@@ -198,23 +209,30 @@ library PositionValue {
             feeParams.tickUpper
         );
 
-        amount0 =
-            FullMath.mulDiv(
-                poolFeeGrowthInside0LastX128 - feeParams.positionFeeGrowthInside0LastX128,
-                feeParams.liquidity,
-                FixedPoint128.Q128
-            ) +
-            feeParams.tokensOwed0;
+        uint256 feeGrowthDelta0X128;
+        uint256 feeGrowthDelta1X128;
+        unchecked {
+            feeGrowthDelta0X128 = poolFeeGrowthInside0LastX128 - feeParams.positionFeeGrowthInside0LastX128;
+            feeGrowthDelta1X128 = poolFeeGrowthInside1LastX128 - feeParams.positionFeeGrowthInside1LastX128;
+        }
 
-        amount1 =
-            FullMath.mulDiv(
-                poolFeeGrowthInside1LastX128 - feeParams.positionFeeGrowthInside1LastX128,
-                feeParams.liquidity,
-                FixedPoint128.Q128
-            ) +
-            feeParams.tokensOwed1;
+        amount0 = FullMath.mulDiv(feeGrowthDelta0X128, feeParams.liquidity, FixedPoint128.Q128) + feeParams.tokensOwed0;
+
+        amount1 = FullMath.mulDiv(feeGrowthDelta1X128, feeParams.liquidity, FixedPoint128.Q128) + feeParams.tokensOwed1;
     }
 
+    /// @notice All-time fee growth per unit of liquidity inside the tick range, as the pool computes it
+    /// @dev Port of Uniswap v3-periphery `PositionValue._getFeeGrowthInside` (v1.4.4), which equals v3-core
+    /// `Tick.getFeeGrowthInside` (v1.0.1) modulo 2^256: below the range the inside growth is
+    /// `lowerOutside - upperOutside`, inside the range `global - lowerOutside - upperOutside`, above the range
+    /// `upperOutside - lowerOutside`. Tick fee growth outside values are relative to when each tick was initialized,
+    /// so these differences legitimately wrap below zero (for example when the two ticks' outside values sum above
+    /// the global value); Uniswap relies on solc < 0.8.0 wrapping arithmetic, reproduced here with `unchecked`.
+    /// @param pool The Uniswap V3 pool of the position
+    /// @param tickLower The lower tick of the position
+    /// @param tickUpper The upper tick of the position
+    /// @return feeGrowthInside0X128 The all-time fee growth in token0 inside the range, modulo 2^256
+    /// @return feeGrowthInside1X128 The all-time fee growth in token1 inside the range, modulo 2^256
     function _getFeeGrowthInside(
         IUniswapV3Pool pool,
         int24 tickLower,
@@ -225,26 +243,22 @@ library PositionValue {
         (, , uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128, , , , ) = pool.ticks(tickUpper);
 
         if (tickCurrent < tickLower) {
-            feeGrowthInside0X128 = _subtractOrZero(lowerFeeGrowthOutside0X128, upperFeeGrowthOutside0X128);
-            feeGrowthInside1X128 = _subtractOrZero(lowerFeeGrowthOutside1X128, upperFeeGrowthOutside1X128);
+            unchecked {
+                feeGrowthInside0X128 = lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
+            }
         } else if (tickCurrent < tickUpper) {
             uint256 feeGrowthGlobal0X128 = pool.feeGrowthGlobal0X128();
             uint256 feeGrowthGlobal1X128 = pool.feeGrowthGlobal1X128();
-            feeGrowthInside0X128 = _subtractOrZero(
-                feeGrowthGlobal0X128,
-                lowerFeeGrowthOutside0X128 + upperFeeGrowthOutside0X128
-            );
-            feeGrowthInside1X128 = _subtractOrZero(
-                feeGrowthGlobal1X128,
-                lowerFeeGrowthOutside1X128 + upperFeeGrowthOutside1X128
-            );
+            unchecked {
+                feeGrowthInside0X128 = feeGrowthGlobal0X128 - lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = feeGrowthGlobal1X128 - lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
+            }
         } else {
-            feeGrowthInside0X128 = _subtractOrZero(upperFeeGrowthOutside0X128, lowerFeeGrowthOutside0X128);
-            feeGrowthInside1X128 = _subtractOrZero(upperFeeGrowthOutside1X128, lowerFeeGrowthOutside1X128);
+            unchecked {
+                feeGrowthInside0X128 = upperFeeGrowthOutside0X128 - lowerFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128;
+            }
         }
-    }
-
-    function _subtractOrZero(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a - b : 0;
     }
 }

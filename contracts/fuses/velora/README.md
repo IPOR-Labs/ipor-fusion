@@ -314,6 +314,8 @@ event VeloraSwapperFuseEnter(
 6. **CEI Pattern**: Checks-Effects-Interactions pattern in execution flow
 7. **Same Token Protection**: Swapping token to itself is not allowed
 
+**Share-price views during a swap (IL-9743).** The router is fixed, but the pools, hooks and intermediate tokens on the path are chosen by the swap calldata of each transaction, so a path that nobody reviewed runs third-party code in the middle of the vault's `execute`. The reentrancy guard then blocks the vault's `deposit`, `mint`, `withdraw`, `redeem` and `execute`, but not its share-price views, which can stay too low or too high until the final balance refresh of the batch. See [Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)](../../vaults/README.md#transient-share-price-views-during-execute-and-instant-withdrawal-il-9631-il-9743).
+
 ### Residual tokens and accounting
 
 - `VeloraSwapExecutor.execute()` is permissionless and pays `msg.sender`. Any token left in the executor after

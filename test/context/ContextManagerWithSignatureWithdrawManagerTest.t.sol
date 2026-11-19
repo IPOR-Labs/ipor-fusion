@@ -37,6 +37,9 @@ contract ContextManagerWithSignatureWithdrawManagerTest is Test, ContextManagerI
     function testRequestWithdraw() public {
         // given
         uint256 withdrawAmount = 50e18;
+        /// @dev IL-9531: a request must be backed by shares the requester holds
+        vm.prank(_USER);
+        _plasmaVault.transfer(_USER_2, withdrawAmount);
 
         ContextDataWithSender[] memory dataWithSignatures = new ContextDataWithSender[](1);
         dataWithSignatures[0] = preperateDataWithSignature(
@@ -66,7 +69,7 @@ contract ContextManagerWithSignatureWithdrawManagerTest is Test, ContextManagerI
             block.timestamp + 1000,
             block.number,
             address(_withdrawManager),
-            abi.encodeWithSelector(WithdrawManager.releaseFunds.selector, timestamp, 100e18)
+            abi.encodeWithSelector(bytes4(keccak256("releaseFunds(uint256,uint256)")), timestamp, 100e18)
         );
 
         uint256 initialReleaseFundsTimestamp = _withdrawManager.getLastReleaseFundsTimestamp();

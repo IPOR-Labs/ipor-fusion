@@ -10,16 +10,91 @@ import {DataToCheck, MarketToCheck} from "../../libraries/AssetDistributionProte
 import {IporMath} from "../../libraries/math/IporMath.sol";
 import {FusesLib} from "../../libraries/FusesLib.sol";
 import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.sol";
+import {TransientStorageLib} from "../../transient_storage/TransientStorageLib.sol";
 
 library PlasmaVaultMarketsLib {
     using Address for address;
     event MarketBalancesUpdated(uint256[] marketIds, int256 deltaInUnderlying);
+
+    /// @notice Emitted when an instant withdrawal entry reverted with error data and was skipped (IL-9659)
+    /// @param fuse Address of the instant withdrawal fuse of the skipped entry
+    /// @param index Position of the entry in the instant withdrawal list
+    /// @param errorSelector First four bytes of the revert data of the entry (zero if the data is shorter)
+    event InstantWithdrawalFuseFailed(address fuse, uint256 index, bytes4 errorSelector);
 
     /// @dev Error thrown when asset price is zero
     error AssetPriceIsZero();
 
     /// @dev Error thrown when a market passed to updateMarketsBalances has no registered balance fuse
     error MarketWithoutBalanceFuse(uint256 marketId);
+
+    /// @notice Transient slot (ERC-7201 namespace) holding the number of market ids recorded by callbacks
+    ///         (PlasmaVault.executeInternal) during the current PlasmaVault.execute (IL-9404)
+    /// @dev Calculation:
+    ///      keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.transient.CallbackMarkets")) - 1))
+    ///      & ~bytes32(uint256(0xff))
+    ///      Element i of the list is stored at uint256(keccak256(abi.encode(CALLBACK_MARKETS_TRANSIENT_SLOT))) + i.
+    ///      The library functions run via DELEGATECALL, so the list lives in the transient storage of the vault.
+    bytes32 internal constant CALLBACK_MARKETS_TRANSIENT_SLOT =
+        0x5aa8d5c4eed54ae6d6941b8519babb054f24551cea95ec75fc0249f99cc57400;
+
+    /// @notice Records the markets touched by the fuse actions of a callback (PlasmaVault.executeInternal)
+    /// @param markets_ Market ids touched in the callback; zero entries are skipped
+    /// @dev Appends the ids to the transient list of the current execute. PlasmaVault.execute takes the list right
+    ///      after executeFinished() and refreshes and limit-checks these markets once more, after every callback
+    ///      returned and the flash loan was repaid. executeInternal refreshes the callback markets without a limit check
+    ///      (IL-9708), because inside the callback the NAV still holds the borrowed tokens; the market caches it writes
+    ///      predate the end of the callback (IL-9404), so this is the only limit check of these markets.
+    function recordCallbackMarkets(uint256[] memory markets_) public {
+        uint256 length = uint256(TransientStorageLib.tload(CALLBACK_MARKETS_TRANSIENT_SLOT));
+        uint256 firstElementSlot = uint256(keccak256(abi.encode(CALLBACK_MARKETS_TRANSIENT_SLOT)));
+        uint256 marketsLength = markets_.length;
+
+        for (uint256 i; i < marketsLength; ++i) {
+            if (markets_[i] != 0) {
+                TransientStorageLib.tstore(bytes32(firstElementSlot + length), bytes32(markets_[i]));
+                ++length;
+            }
+        }
+
+        TransientStorageLib.tstore(CALLBACK_MARKETS_TRANSIENT_SLOT, bytes32(length));
+    }
+
+    /// @notice Merges the markets of an execute with the markets recorded by its callbacks and clears the record
+    /// @param markets_ Market ids collected by PlasmaVault.execute from its own fuse actions (may contain zero entries)
+    /// @return markets `markets_` unchanged when no callback recorded a market; otherwise the union of `markets_` and
+    ///         the recorded markets without duplicates, non-zero ids first (the ids of `markets_` keep their order)
+    ///         and zero entries at the end
+    /// @dev Resets the recorded length, so a later execute in the same transaction starts from an empty list; a revert
+    ///      of execute also reverts the transient writes (IL-9404).
+    function takeCallbackMarkets(uint256[] memory markets_) public returns (uint256[] memory markets) {
+        uint256 recordedLength = uint256(TransientStorageLib.tload(CALLBACK_MARKETS_TRANSIENT_SLOT));
+
+        if (recordedLength == 0) {
+            return markets_;
+        }
+
+        TransientStorageLib.tstore(CALLBACK_MARKETS_TRANSIENT_SLOT, bytes32(0));
+
+        uint256 outerLength = markets_.length;
+        uint256 totalLength = outerLength + recordedLength;
+        uint256 firstElementSlot = uint256(keccak256(abi.encode(CALLBACK_MARKETS_TRANSIENT_SLOT)));
+        uint256 marketId;
+        uint256 count;
+
+        markets = new uint256[](totalLength);
+
+        for (uint256 i; i < totalLength; ++i) {
+            marketId = i < outerLength
+                ? markets_[i]
+                : uint256(TransientStorageLib.tload(bytes32(firstElementSlot + i - outerLength)));
+
+            if (marketId != 0 && !_checkIfExistsMarket(markets, marketId)) {
+                markets[count] = marketId;
+                ++count;
+            }
+        }
+    }
 
     /// @notice Updates balances for specified markets by fetching balance from balance fuses and converting from USD to underlying asset
     /// @param markets_ Array of market IDs to update balances for
@@ -99,6 +174,20 @@ library PlasmaVaultMarketsLib {
     /// @return markets Array of unique market IDs that were touched during the withdrawal process
     /// @dev Uses instant withdrawal fuses to withdraw assets from markets, tracking unique market IDs
     ///      that were affected. The array may contain zero values at the end if fewer markets were used.
+    ///      An entry whose fuse is no longer supported (removed with `removeFuses`) is skipped without a call, an event
+    ///      or a revert, and contributes no market; its position in the list is kept so the parameters of the
+    ///      following entries, keyed by (fuse, index), still match. If every entry is skipped the requested amount is
+    ///      not served and the caller reverts as it does for an empty list. The stored list is not changed by this
+    ///      skip: governance still has to rewrite it with `configureInstantWithdrawalFuses`. Vaults whose
+    ///      `PlasmaVaultMarketsLib` predates this check keep calling such entries until they are upgraded.
+    ///      IL-9659: an entry whose `instantWithdraw` reverts WITH error data (bad params, a revoked substrate) is
+    ///      skipped as well: its effects are rolled back, `InstantWithdrawalFuseFailed` is emitted, it contributes no
+    ///      market and the loop goes on, so one faulty entry cannot block the withdrawal until governance rewrites the
+    ///      list. An entry that reverts with EMPTY data (possibly out of gas, 63/64 rule) still reverts the whole call,
+    ///      so the gas limit of the caller cannot decide that a market is skipped. A nested out-of-gas that a wrapper turns
+    ///      into error data (for example OpenZeppelin `FailedCall`) is skipped like any other revert with data; this is
+    ///      impractical, since it needs about 64 times the gas of the nested call. If every entry fails the requested
+    ///      amount is not served and the caller reverts as before.
     function withdrawFromMarkets(
         address assetAddress_,
         uint256 assets_,
@@ -122,12 +211,33 @@ library PlasmaVaultMarketsLib {
         uint256 fusesLength = fuses.length;
 
         for (uint256 i; left != 0 && i < fusesLength; ++i) {
+            /// @dev IL-9534: the supported-fuse registry stays authoritative at execution time (as in PlasmaVault.execute),
+            ///      an entry whose fuse was removed with removeFuses is skipped. The loop index is kept, because the
+            ///      parameters are keyed by (fuse, index), and a skipped entry adds no market to the returned list.
+            if (!FusesLib.isFuseSupported(fuses[i])) {
+                continue;
+            }
+
             params = PlasmaVaultLib.getInstantWithdrawalFusesParams(fuses[i], i);
 
             /// @dev always first param is amount, by default is 0 in storage, set to left
             params[0] = bytes32(left);
 
-            fuses[i].functionDelegateCall(abi.encodeWithSignature("instantWithdraw(bytes32[])", params));
+            (bool success, bytes memory returnData) = fuses[i].delegatecall(
+                abi.encodeWithSignature("instantWithdraw(bytes32[])", params)
+            );
+
+            if (!success && returnData.length != 0) {
+                bytes4 errorSelector;
+                if (returnData.length >= 4) {
+                    errorSelector = bytes4(returnData);
+                }
+                emit InstantWithdrawalFuseFailed(fuses[i], i, errorSelector);
+                continue;
+            }
+
+            /// @dev reverts with FailedInnerCall on an empty revert and with AddressEmptyCode on a target without code
+            Address.verifyCallResultFromTarget(fuses[i], success, returnData);
 
             balanceOf = IERC20(assetAddress_).balanceOf(address(this));
 

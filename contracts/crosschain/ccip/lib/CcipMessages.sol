@@ -24,9 +24,11 @@ enum CcipMsgType {
 
 library CcipMessages {
     /// @dev Version 2 (IL-8590): `RETURN_REQUEST` carries a fifth word, the request `deadline`.
-    ///      Version 3 (IL-8625): the `Command` inside COMMAND / UPDATE_VAULTS carries `minExecutionGas`. A mixed
-    ///      old/new pair fails `InvalidVersion` instead of mis-decoding.
-    uint8 internal constant VERSION = 3;
+    ///      Version 3 (IL-8625): the `Command` inside COMMAND / UPDATE_VAULTS carries `minExecutionGas`.
+    ///      Version 4 (IL-9629): the UPDATE_VAULTS `extra` is `(address[] vaults, bool allowed, bool replace,
+    ///      SweepFloor[] floors)`; an old dispatcher would decode it without the floors. A mixed old/new pair fails
+    ///      `InvalidVersion` instead of mis-decoding.
+    uint8 internal constant VERSION = 4;
 
     error InvalidVersion(uint8 version);
     error InvalidMessageType(uint8 messageType);

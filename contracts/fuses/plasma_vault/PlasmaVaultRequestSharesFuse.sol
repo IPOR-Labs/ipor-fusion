@@ -37,9 +37,11 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
     /// @param data_ The data structure containing plasma vault address and shares amount
     /// @return plasmaVault The address of the Plasma Vault
     /// @return sharesAmount The actual amount of shares requested (clamped to available balance)
-    /// @dev IMPORTANT: This function reads the WITHDRAW_MANAGER storage slot via getWithdrawManager() on the target vault.
+    /// @dev IMPORTANT: This function reads the withdraw manager of the target vault via getWithdrawManager().
     /// The WITHDRAW_MANAGER slot was corrected in IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER.
-    /// Ensure that both this fuse and the target PlasmaVault use the same corrected slot value.
+    /// Both kinds of target are supported (IL-9424): a target that stores its manager in the corrected slot and a
+    /// pre-IL-6952 target that still stores it in the legacy slot. The corrected slot has priority; the legacy slot
+    /// is read only when the corrected one is empty.
     function enter(
         PlasmaVaultRequestSharesFuseEnterData memory data_
     ) public returns (address plasmaVault, uint256 sharesAmount) {
@@ -99,14 +101,14 @@ contract PlasmaVaultRequestSharesFuse is IFuseCommon {
     ///      Calling it directly on the fuse contract will revert, as the fuse's own storage does not contain the
     ///      withdraw manager slot.
     /// @return The address of the WithdrawManager contract
-    /// @dev IMPORTANT: Reads the WITHDRAW_MANAGER storage slot via PlasmaVaultStorageLib.getWithdrawManager().
-    /// This slot was corrected in IL-6952 (audit R4H7) to avoid collision with CALLBACK_HANDLER.
+    /// @dev IMPORTANT: Reads the withdraw manager via PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback():
+    /// the WITHDRAW_MANAGER slot corrected in IL-6952 (audit R4H7) first, the legacy slot only when it is empty (IL-9424).
     /// Any changes to the WITHDRAW_MANAGER slot must be carefully coordinated with all fuses that access it,
     /// as fuses execute via delegatecall in the PlasmaVault storage context.
     function getWithdrawManager() external view returns (address) {
         if (address(this) == VERSION) {
             revert PlasmaVaultRequestSharesFuseInvalidWithdrawManager(address(this));
         }
-        return PlasmaVaultStorageLib.getWithdrawManager().manager;
+        return PlasmaVaultStorageLib.getWithdrawManagerAddressWithLegacyFallback();
     }
 }

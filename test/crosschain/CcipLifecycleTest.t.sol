@@ -127,6 +127,7 @@ contract CcipLifecycleTest is Test {
                 rescueDelay: 3 days,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000, // == ATTESTATION_ANCHOR_BAND_BPS, the constructor ceiling (IL-8058)
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             });
@@ -788,20 +789,44 @@ contract CcipLifecycleTest is Test {
             uint64(block.timestamp + 1 days),
             dispatcher.trackedPositionSetHash()
         );
+        // IL-9720: 200 is a value above the anchor band (anchor 100, band 2_000): approving it no longer reverts. Nothing is
+        // written, the proposal is closed and the chain is blocked, exactly as by `rejectBalanceAndBlock` (the relative
+        // step is not reached: the band is checked first for a value above it).
+        vm.expectEmit(address(executor));
+        emit CcipCrosschainExecutor.BalanceRejectedAndBlocked(proposalId, REMOTE_CHAIN);
         vm.prank(address(0xA33));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.BigChangeExceeded.selector,
-                uint256(100e18),
-                uint256(200e18),
-                uint256(2_000)
-            )
-        );
         executor.approveBalance(proposalId);
-        vm.prank(address(0xA33));
-        executor.rejectBalanceAndBlock(proposalId);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 100e18, "nothing was written");
+        assertEq(executor.activeProposalId(REMOTE_CHAIN), 0, "the proposal is closed");
+        assertTrue(executor.chainBlocked(REMOTE_CHAIN), "the chain is blocked");
         vm.expectRevert(abi.encodeWithSelector(CcipExecutorTransferLib.ChainBlocked.selector, REMOTE_CHAIN));
         executor.getBalance();
+    }
+
+    /// @dev IL-9720: a proposal INSIDE the band but further than the relative step from the last approved value still
+    ///      reverts `BigChangeExceeded` (the chain is not blocked): only values above the band block.
+    function testShouldStillRevertARelativeStepInsideTheBand() public {
+        _fundRemoteIdle(100e18);
+        vm.warp(block.timestamp + 1 hours);
+        _attestBalance(80e18); // -20% from 100: the band floor, an ordinary step
+        vm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 1);
+        uint256 proposalId = executor.proposeBalance(
+            REMOTE_CHAIN,
+            96e18 + 1, // inside the band (anchor 100: [80, 120]) but 20% + 1 above the approved 80
+            executor.lastRemoteStateVersion(REMOTE_CHAIN),
+            uint64(block.number),
+            uint64(block.timestamp),
+            uint64(block.timestamp + 1 days),
+            dispatcher.trackedPositionSetHash()
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(CcipExecutorAttestationLib.BigChangeExceeded.selector, 80e18, 96e18 + 1, 2_000)
+        );
+        vm.prank(address(0xA33));
+        executor.approveBalance(proposalId);
+        assertFalse(executor.chainBlocked(REMOTE_CHAIN), "inside the band nothing blocks the chain");
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 80e18, "settled unchanged");
     }
 
     /// @dev IL-8260: a blocked chain with nothing tracked adds nothing to NAV, so it must not gate NAV for

@@ -339,14 +339,15 @@ contract PlasmaVaultRequestSharesTest is Test {
         bytes[] memory data = new bytes[](1);
         PlasmaVaultRedeemFromRequestFuseEnterData memory enterData = PlasmaVaultRedeemFromRequestFuseEnterData({
             sharesAmount: sharesAmountBefore,
-            plasmaVault: FORTUNAFI_VAULT
+            plasmaVault: FORTUNAFI_VAULT,
+            minAssetsOut: 0
         });
         data[0] = abi.encode(enterData);
 
         FuseAction[] memory enterCalls = new FuseAction[](1);
         enterCalls[0] = FuseAction(
             plasmaVaultRedeemFromRequestFuse,
-            abi.encodeWithSignature("enter((uint256,address))", enterData)
+            abi.encodeWithSignature("enter((uint256,address,uint256))", enterData)
         );
 
         vm.warp(block.timestamp + 1 hours);
@@ -400,9 +401,10 @@ contract PlasmaVaultRequestSharesTest is Test {
         fuses[0] = plasmaVaultRedeemFromRequestFuse;
 
         bytes32[][] memory inputsByFuse = new bytes32[][](1);
-        inputsByFuse[0] = new bytes32[](2);
+        inputsByFuse[0] = new bytes32[](3);
         inputsByFuse[0][0] = TypeConversionLib.toBytes32(sharesAmountBefore);
         inputsByFuse[0][1] = TypeConversionLib.toBytes32(FORTUNAFI_VAULT);
+        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(0));
 
         FuseAction[] memory calls = new FuseAction[](2);
 

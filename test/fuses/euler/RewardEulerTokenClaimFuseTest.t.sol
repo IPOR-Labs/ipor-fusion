@@ -6,7 +6,10 @@ import {MerklClaimFuse} from "../../../contracts/rewards_fuses/merkl/MerklClaimF
 import {RewardsClaimManager} from "../../../contracts/managers/rewards/RewardsClaimManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {FuseAction} from "../../../contracts/vaults/PlasmaVault.sol";
-import {RewardEulerTokenClaimFuse, ClaimData} from "../../../contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol";
+import {
+    RewardEulerTokenClaimFuse,
+    ClaimData
+} from "../../../contracts/rewards_fuses/euler/RewardEulerTokenClaimFuse.sol";
 import {IREUL} from "../../../contracts/rewards_fuses/euler/ext/IREUL.sol";
 
 // Merkl specific addresses on Ethereum mainnet
@@ -296,5 +299,95 @@ contract RewardEulerTokenClaimFuseTest is Test {
         vm.startPrank(CLAIM_REWARDS);
         RewardsClaimManager(REWARDS_CLAIM_MANAGER).claimRewards(calls);
         vm.stopPrank();
+    }
+
+    /// @dev `getLockedAmountByLockTimestamp` is not part of the IREUL interface used by the fuse, so it is read directly.
+    function _lockedAmount(address account_, uint256 lockTimestamp_) private view returns (uint256) {
+        (bool success, bytes memory result) = rEUL.staticcall(
+            abi.encodeWithSignature("getLockedAmountByLockTimestamp(address,uint256)", account_, lockTimestamp_)
+        );
+        require(success, "getLockedAmountByLockTimestamp failed");
+        return abi.decode(result, (uint256));
+    }
+
+    /// @dev Creates a new rEUL lock for the vault by a transfer from the whitelisted Merkl distributor and returns
+    /// the normalized timestamp of the lock created.
+    function _createLock(uint256 amount_) private returns (uint256 lockTimestamp) {
+        vm.prank(MERKL_DISTRIBUTOR);
+        IERC20(rEUL).transfer(PLASMA_VAULT, amount_);
+        uint256[] memory lockTimestamps = IREUL(rEUL).getLockedAmountsLockTimestamps(PLASMA_VAULT);
+        lockTimestamp = lockTimestamps[lockTimestamps.length - 1];
+    }
+
+    function testShouldClaimOnlyMatureLockWhenClaimAllWithoutRemainderLossOnMixedMaturityLocks() public {
+        // given - the setUp lock is removed first, so the rEUL swap-and-pop moves the newest lock to index 0
+        uint256 start = block.timestamp;
+        uint256 setUpLock = IREUL(rEUL).getLockedAmountsLockTimestamps(PLASMA_VAULT)[0];
+
+        vm.warp(start + 1 days);
+        uint256 matureLock = _createLock(2e18);
+        vm.warp(start + 30 days);
+        uint256 immatureLockOne = _createLock(3e18);
+        vm.warp(start + 60 days);
+        uint256 immatureLockTwo = _createLock(5e18);
+
+        uint256[] memory removeSetUpLock = new uint256[](1);
+        removeSetUpLock[0] = setUpLock;
+        vm.prank(PLASMA_VAULT);
+        IREUL(rEUL).withdrawToByLockTimestamps(PLASMA_VAULT, removeSetUpLock, true);
+
+        vm.warp(start + 182 days);
+
+        // then - the layout is [immature, mature, immature]
+        uint256[] memory layout = IREUL(rEUL).getLockedAmountsLockTimestamps(PLASMA_VAULT);
+        assertEq(layout.length, 3, "vault should hold three locks");
+        assertEq(layout[0], immatureLockTwo, "index 0 should be the newest lock");
+        assertEq(layout[1], matureLock, "index 1 should be the mature lock");
+        assertEq(layout[2], immatureLockOne, "index 2 should be the second newest lock");
+
+        (uint256 matureAmount, uint256 matureRemainder) = IREUL(rEUL).getWithdrawAmountsByLockTimestamp(
+            PLASMA_VAULT,
+            matureLock
+        );
+        (, uint256 remainderOne) = IREUL(rEUL).getWithdrawAmountsByLockTimestamp(PLASMA_VAULT, immatureLockOne);
+        (, uint256 remainderTwo) = IREUL(rEUL).getWithdrawAmountsByLockTimestamp(PLASMA_VAULT, immatureLockTwo);
+        assertEq(matureRemainder, 0, "mature lock should be fully vested");
+        assertGt(remainderOne, 0, "first immature lock should have a remainder");
+        assertGt(remainderTwo, 0, "second immature lock should have a remainder");
+        assertEq(matureAmount, 2e18, "mature lock amount");
+
+        uint256 lockedOneBefore = _lockedAmount(PLASMA_VAULT, immatureLockOne);
+        uint256 lockedTwoBefore = _lockedAmount(PLASMA_VAULT, immatureLockTwo);
+
+        FuseAction[] memory calls = new FuseAction[](1);
+        calls[0] = FuseAction({
+            fuse: address(rewardEulerTokenClaimFuse),
+            data: abi.encodeWithSelector(RewardEulerTokenClaimFuse.claimAll.selector, false)
+        });
+        uint256 managerBalanceBefore = IERC20(EUL).balanceOf(REWARDS_CLAIM_MANAGER);
+
+        // when
+        vm.startPrank(CLAIM_REWARDS);
+        RewardsClaimManager(REWARDS_CLAIM_MANAGER).claimRewards(calls);
+        vm.stopPrank();
+
+        // then - exactly the mature lock is paid, both immature locks keep their timestamps and amounts
+        assertEq(
+            IERC20(EUL).balanceOf(REWARDS_CLAIM_MANAGER) - managerBalanceBefore,
+            matureAmount,
+            "only the mature lock should be paid"
+        );
+        assertEq(IREUL(rEUL).getLockedAmountsLength(PLASMA_VAULT), 2, "two immature locks should remain");
+        assertEq(_lockedAmount(PLASMA_VAULT, matureLock), 0, "mature lock should be removed");
+        assertEq(
+            _lockedAmount(PLASMA_VAULT, immatureLockOne),
+            lockedOneBefore,
+            "first immature lock amount should be unchanged"
+        );
+        assertEq(
+            _lockedAmount(PLASMA_VAULT, immatureLockTwo),
+            lockedTwoBefore,
+            "second immature lock amount should be unchanged"
+        );
     }
 }

@@ -41,6 +41,19 @@ library RescueLogicLib {
     bytes4 private constant _ERC20_TRANSFER_SELECTOR = 0xa9059cbb;
     /// @dev `runWithContext((address[],bytes[]))` of the Fusion ContextManager (IL-8770); pinned by tests.
     bytes4 private constant _RUN_WITH_CONTEXT_SELECTOR = 0x6955cebb;
+    /// @dev `approve(address,uint256)`. A host that holds vault shares accepts it only with amount 0 (IL-9654).
+    bytes4 private constant _ERC20_APPROVE_SELECTOR = 0x095ea7b3;
+    /// @dev ERC-4626 `redeem(uint256,address,address)`. A host that holds vault shares accepts it only with
+    ///      itself as the owner (IL-9654).
+    bytes4 private constant _ERC4626_REDEEM_SELECTOR = 0xba087652;
+    /// @dev PlasmaVault `redeemFromRequest(uint256,address,address)`. A host that holds vault shares accepts it only
+    ///      with itself as the owner (IL-9654).
+    bytes4 private constant _REDEEM_FROM_REQUEST_SELECTOR = 0xa64099d2;
+    /// @dev WithdrawManager `requestShares(uint256)`. A host that holds vault shares accepts it only on a manager
+    ///      whose vault is neither tracked nor allowlisted, checked at schedule and again at execute (IL-9654).
+    bytes4 private constant _REQUEST_SHARES_SELECTOR = 0xfc415e9c;
+    /// @dev WithdrawManager `getPlasmaVaultAddress()`: the one read the `requestShares` rule makes on the target.
+    bytes4 private constant _GET_PLASMA_VAULT_ADDRESS_SELECTOR = 0x0bdcc726;
 
     /// @dev LayerZero EndpointV2 packet-hygiene selectors, the only calls a rescue may make to the host's
     ///      `endpoint()` (IL-8555). Each only touches the inbound channel of a (srcEid, sender, nonce) tuple:
@@ -77,6 +90,10 @@ library RescueLogicLib {
     ///      Two more: the caller's own executors are untouchable (IL-8763, Stargate factory host; re-checked in
     ///      `execute` because a CREATE3 executor address can gain code during the delay), and no call may carry the
     ///      ContextManager `runWithContext` selector (IL-8770), because it would make the host the context sender.
+    ///      One more, after all of the above and only on hosts that hold vault shares (dispatchers: the host answers
+    ///      `getTrackedVaults()` or `trackedVaultsLength()`): the calldata must have one of seven shapes, otherwise
+    ///      `RescueCallShapeNotAllowed` (IL-9654, see `_requireAllowedRescueShape`). Its `requestShares` rule reads
+    ///      the target manager's vault and is repeated in `execute`. The fences above keep their order and errors.
     function schedule(
         RescueStorage storage self,
         uint256 rescueDelay_,
@@ -89,8 +106,13 @@ library RescueLogicLib {
         _requireNotOwnExecutorTarget(target_); // IL-8763
         _requireNotTransportTarget(target_, callData_);
         _requireNotContextCall(target_, callData_); // IL-8770
-        _requireNotTrackedVaultTarget(target_, _bannedVaultTargets(_trackedVaults()));
-        _requireSafeProtectedTokenCall(target_, callData_);
+        {
+            (address[] memory tracked, bool shareHost) = _trackedVaults();
+            address[] memory banned = _bannedVaultTargets(tracked);
+            _requireNotTrackedVaultTarget(target_, banned);
+            _requireSafeProtectedTokenCall(target_, callData_);
+            if (shareHost) _requireAllowedRescueShape(target_, callData_, banned); // IL-9654
+        }
         bytes32 commitment = keccak256(callData_);
         uint64 executableAt = (block.timestamp + rescueDelay_).toUint64();
         uint64 epoch = self.guardianVetoEpoch.toUint64();
@@ -113,10 +135,14 @@ library RescueLogicLib {
     /// @dev Re-checks the vault ban against the CURRENT tracked set plus the allowlist (UPDATE_VAULTS can add
     ///      a vault between schedule and execute) and snapshots every tracked vault's share balance around the
     ///      call: any decrease reverts `RescueTrackedSharesReduced`. The snapshot bounds what a rescue may
-    ///      MOVE in shares (an indirect target holding a leftover allowance), while the target ban bounds
-    ///      what it may AUTHORISE (an allowance grant leaves the balance unchanged) — the same pair the
-    ///      host's ASSET floor and `_requireSafeProtectedTokenCall` form for the asset. Hosts without a
-    ///      tracked set (executors) skip both.
+    ///      MOVE in shares (an indirect target holding a leftover allowance), while the target ban and the
+    ///      schedule-time shape fence (IL-9654) narrow the calls it may make (an allowance grant leaves the balance
+    ///      unchanged, so the snapshot does not see it) — the same pair the host's ASSET floor and
+    ///      `_requireSafeProtectedTokenCall` form for the asset. The shape itself is not re-checked (the calldata is
+    ///      bound by its hash); only the state-dependent `requestShares` rule is: on a host that holds vault shares,
+    ///      the manager's vault is read again and must still be neither tracked nor allowlisted, otherwise
+    ///      `RescueTrackedVaultCall(vault)`, or `RescueCallShapeNotAllowed` when the manager no longer answers with one
+    ///      non-zero address (IL-9654). Hosts without a tracked set (executors) skip all of these.
     function execute(RescueStorage storage self, uint256 rescueId_, bytes calldata callData_) public {
         RescueStorageRecord storage record = self.rescues[rescueId_];
         if (record.kind != _KIND_GENERIC) revert CrosschainErrors.RescueWrongKind(rescueId_);
@@ -132,8 +158,16 @@ library RescueLogicLib {
         uint256 value = record.value;
         bytes32 commitment = record.commitment;
         _requireNotOwnExecutorTarget(target); // IL-8763
-        address[] memory vaults = _trackedVaults();
-        _requireNotTrackedVaultTarget(target, _bannedVaultTargets(vaults));
+        address[] memory vaults;
+        {
+            bool shareHost;
+            (vaults, shareHost) = _trackedVaults();
+            address[] memory banned = _bannedVaultTargets(vaults);
+            _requireNotTrackedVaultTarget(target, banned);
+            if (shareHost && callData_.length == 36 && bytes4(callData_[:4]) == _REQUEST_SHARES_SELECTOR) {
+                _requireRequestVaultNotBanned(target, banned); // IL-9654
+            }
+        }
         uint256[] memory sharesBefore = _shareBalances(vaults);
         (bool ok, bytes memory ret) = target.call{value: value}(callData_);
         if (!ok) {
@@ -283,13 +317,97 @@ library RescueLogicLib {
         if (pool != address(0) && target_ == pool) revert CrosschainErrors.RescueTransportCall(pool, selector);
         address endpoint = _selfAddressGetter("endpoint()");
         if (endpoint != address(0) && target_ == endpoint) {
-            if (
-                selector != _LZ_SKIP_SELECTOR &&
-                selector != _LZ_CLEAR_SELECTOR &&
-                selector != _LZ_NILIFY_SELECTOR &&
-                selector != _LZ_BURN_SELECTOR
-            ) revert CrosschainErrors.RescueTransportCall(endpoint, selector);
+            if (!_isLzHygieneSelector(selector)) revert CrosschainErrors.RescueTransportCall(endpoint, selector);
         }
+    }
+
+    function _isLzHygieneSelector(bytes4 selector_) private pure returns (bool) {
+        return
+            selector_ == _LZ_SKIP_SELECTOR ||
+            selector_ == _LZ_CLEAR_SELECTOR ||
+            selector_ == _LZ_NILIFY_SELECTOR ||
+            selector_ == _LZ_BURN_SELECTOR;
+    }
+
+    /// @dev Shape fence (IL-9654) for hosts that hold vault shares (dispatchers). The fences above name targets, but
+    ///      the contracts that can act for a share holder cannot be listed: a vault connector (Euler EVC
+    ///      `setAccountOperator` / `call`), a lending sibling of a vault (`borrow` against the holder's shares), a
+    ///      trusted forwarder, or the share token of a vault that is not allowlisted (`approve`). Such a call can
+    ///      grant a right over the host's shares, or encumber them, without a call to a tracked vault and without a
+    ///      balance change, so neither the vault ban nor the share snapshot sees it. A host that answers
+    ///      `getTrackedVaults()` or `trackedVaultsLength()` therefore accepts a generic rescue only in one of seven
+    ///      calldata shapes:
+    ///      - empty calldata: value only; on a contract target it runs that contract's `receive` / `fallback` with
+    ///        the host as `msg.sender`, and this fence does not judge what that code does;
+    ///      - `transfer(address,uint256)`, exactly 68 bytes;
+    ///      - `approve(address,uint256)` with amount 0, exactly 68 bytes;
+    ///      - `redeem(uint256,address,address)`, exactly 100 bytes, with the whole 32-byte owner word equal to the
+    ///        host;
+    ///      - `redeemFromRequest(uint256,address,address)`, exactly 100 bytes, with the whole 32-byte owner word
+    ///        equal to the host;
+    ///      - `requestShares(uint256)`, exactly 36 bytes, on a WithdrawManager whose vault is neither tracked nor
+    ///        allowlisted (`_requireRequestVaultNotBanned`; repeated in `execute`);
+    ///      - LayerZero inbound packet hygiene (`skip`, `clear`, `nilify`, `burn`) on the host's own `endpoint()`.
+    ///      Any other call reverts `RescueCallShapeNotAllowed(target, selector)` at schedule time. The forwarded
+    ///      value and the recipient of `transfer`, `redeem` and `redeemFromRequest` are not restricted.
+    ///      What this guarantees is narrow: the fence checks the bytes of the call, not what the target does with
+    ///      them. For ERC-20 tokens and ERC-4626 / PlasmaVault vaults these shapes move only the host's own balance
+    ///      at the direct target or set an allowance to zero, and on a WithdrawManager `requestShares` files a
+    ///      request over the host's own shares; a target that gives one of these selectors another meaning is not
+    ///      covered (an ERC-721 `approve(spender, 0)` approves token id 0). NFTs are not supported on crosschain
+    ///      hosts. The manager's request fee is not bounded on this path: the `REQUEST_SHARES` command caps it with
+    ///      `maxFeeShares`, a `requestShares` rescue pays whatever fee the manager charges when it executes, and
+    ///      that fee is taken from the host's shares.
+    ///      The rule depends on the host's code, not on the content of its tracked set, so it also holds while the
+    ///      sets are empty and after a removal. Hosts without a tracked-vault set (executors, the Stargate factory)
+    ///      are not restricted. On dispatchers linked with this library it refuses at schedule the rescue routes
+    ///      through a vault connector (IL-9654), through a lending sibling (IL-9672) and a share `approve` above 0
+    ///      while a vault is off the allowlist (IL-8844), which were documentation-only before (IL-9590 D-076).
+    function _requireAllowedRescueShape(
+        address target_,
+        bytes calldata callData_,
+        address[] memory banned_
+    ) private view {
+        uint256 length = callData_.length;
+        if (length == 0) return;
+        bytes4 selector = length < 4 ? bytes4(0) : bytes4(callData_[:4]);
+        if (length == 68) {
+            if (selector == _ERC20_TRANSFER_SELECTOR) return;
+            if (selector == _ERC20_APPROVE_SELECTOR && uint256(bytes32(callData_[36:68])) == 0) return;
+        } else if (length == 100) {
+            if (
+                (selector == _ERC4626_REDEEM_SELECTOR || selector == _REDEEM_FROM_REQUEST_SELECTOR) &&
+                bytes32(callData_[68:100]) == bytes32(uint256(uint160(address(this))))
+            ) return;
+        } else if (length == 36 && selector == _REQUEST_SHARES_SELECTOR) {
+            _requireRequestVaultNotBanned(target_, banned_);
+            return;
+        }
+        if (_isLzHygieneSelector(selector)) {
+            address endpoint = _selfAddressGetter("endpoint()");
+            if (endpoint != address(0) && target_ == endpoint) return;
+        }
+        revert CrosschainErrors.RescueCallShapeNotAllowed(target_, selector);
+    }
+
+    /// @dev `requestShares` rule (IL-9654), at schedule (inside the shape fence) and again in `execute` against the
+    ///      current sets. One read, fail-closed: the target must answer `getPlasmaVaultAddress()` with exactly one
+    ///      32-byte word holding a non-zero address (the word is decoded as `uint256`, so dirty upper bits refuse
+    ///      instead of failing in the decoder). A failed call, a target without code, any other return length, zero
+    ///      or dirty upper bits revert `RescueCallShapeNotAllowed(target, requestShares selector)`. The vault it
+    ///      reports must not be in the ban set the vault fence uses (tracked, plus allowlisted on Stargate),
+    ///      otherwise `RescueTrackedVaultCall(vault)`. The rule goes from manager to vault only: it trusts the vault
+    ///      the manager reports and does not check that the vault still uses this manager. The manager's request fee
+    ///      is not read or bounded.
+    function _requireRequestVaultNotBanned(address manager_, address[] memory banned_) private view {
+        (bool ok, bytes memory ret) = manager_.staticcall(abi.encodeWithSelector(_GET_PLASMA_VAULT_ADDRESS_SELECTOR));
+        uint256 word = ok && ret.length == 32 ? abi.decode(ret, (uint256)) : 0;
+        if (word == 0 || word > type(uint160).max) {
+            revert CrosschainErrors.RescueCallShapeNotAllowed(manager_, _REQUEST_SHARES_SELECTOR);
+        }
+        // casting to 'uint160' is safe because `word <= type(uint160).max` is checked above
+        // forge-lint: disable-next-line(unsafe-typecast)
+        _requireNotTrackedVaultTarget(address(uint160(word)), banned_);
     }
 
     /// @dev Tracked-vault fence (IL-8556). The ERC-4626 shares a dispatcher holds for its tracked vaults are
@@ -297,7 +415,8 @@ library RescueLogicLib {
     ///      `approve(x, max)` on a share token survives the timelock and `redeem(S, x, this)` drains the
     ///      position. No call to a tracked OR allowlisted vault is a rescue: the Stargate dispatcher keeps its deposit
     ///      allowlist apart from the tracked set (which grows on the first deposit), so an approval granted on an
-    ///      allowlisted-but-untracked vault would otherwise survive until shares exist.
+    ///      allowlisted-but-untracked vault would otherwise survive until shares exist. The `requestShares` rule
+    ///      (IL-9654) reuses it for the vault the target manager reports, so the error then names that vault.
     function _requireNotTrackedVaultTarget(address target_, address[] memory vaults_) private pure {
         for (uint256 i; i < vaults_.length; ++i) {
             if (vaults_[i] == target_) revert CrosschainErrors.RescueTrackedVaultCall(target_);
@@ -306,9 +425,13 @@ library RescueLogicLib {
 
     /// @dev Target ban set = tracked vaults UNION the host's deposit allowlist (`getAllowedVaults()`, Stargate
     ///      dispatcher only; executors and the CCIP dispatcher lack it, which is a no-op). The share SNAPSHOT
-    ///      stays on the tracked set alone (an untracked vault holds no shares). Residual: a vault approved via
-    ///      rescue while it is not allowlisted (before it is ever allowlisted, or after a removal with a residual,
-    ///      IL-8784) is not caught, and the allowance survives a later re-allowlisting (see the READMEs).
+    ///      stays on the tracked set alone (an untracked vault holds no shares). The `requestShares` rule checks
+    ///      the vault a manager reports against this same set. A vault that is not allowlisted (before it is ever
+    ///      allowlisted, or after a removal with a residual, IL-8784) is outside this ban; on a host that holds vault
+    ///      shares the shape fence (`_requireAllowedRescueShape`, IL-9654) refuses an `approve` above 0 on every
+    ///      target, so a rescue can no longer leave an allowance on it that would survive a later re-allowlisting
+    ///      (IL-8844). On dispatchers linked with this library that replaces the documentation-only treatment of
+    ///      IL-8844, IL-9654 and IL-9672 (IL-9590 D-076).
     function _bannedVaultTargets(address[] memory tracked_) private view returns (address[] memory banned) {
         (bool ok, bytes memory ret) = address(this).staticcall(abi.encodeWithSignature("getAllowedVaults()"));
         if (!ok || ret.length < 64) return tracked_;
@@ -324,17 +447,21 @@ library RescueLogicLib {
 
     /// @dev The host's tracked vault set, read through staticcalls so the hosts need no new code. Stargate
     ///      dispatcher: `getTrackedVaults()`. CCIP dispatcher: `trackedVaultsLength()` +
-    ///      `trackedVaults(uint256)`, bounded by `MAX_TRACKED_POSITION_VAULTS`. A host exposing neither
-    ///      (executors) yields an empty list, so the tracked-vault fences do not apply.
-    function _trackedVaults() private view returns (address[] memory vaults) {
+    ///      `trackedVaults(uint256)`, bounded by `MAX_TRACKED_POSITION_VAULTS`. `shareHost` is true when either
+    ///      read answers (an array from `getTrackedVaults()`, one word from `trackedVaultsLength()`), also for an
+    ///      empty set; it selects the IL-9654 shape fence and `requestShares` rule. A host exposing neither
+    ///      (executors, the Stargate factory) yields an empty list and `shareHost == false`, so the tracked-vault
+    ///      fences do not apply.
+    function _trackedVaults() private view returns (address[] memory vaults, bool shareHost) {
         (bool ok, bytes memory ret) = address(this).staticcall(abi.encodeWithSignature("getTrackedVaults()"));
         if (ok && ret.length >= 64) {
             vaults = abi.decode(ret, (address[]));
             _requireTrackedSetWithinCap(vaults.length);
-            return vaults;
+            return (vaults, true);
         }
         (ok, ret) = address(this).staticcall(abi.encodeWithSignature("trackedVaultsLength()"));
-        if (!ok || ret.length != 32) return new address[](0);
+        if (!ok || ret.length != 32) return (new address[](0), false);
+        shareHost = true;
         uint256 len = abi.decode(ret, (uint256));
         _requireTrackedSetWithinCap(len);
         vaults = new address[](len);

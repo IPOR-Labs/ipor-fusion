@@ -70,7 +70,11 @@ contract WhitelistWrappedPlasmaVault is WrappedPlasmaVaultBase, WhitelistAccessC
         address feeAccount_,
         uint256 feeInPercentage_
     ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Settle the accrual at the old rate first, so a rate change never applies retroactively.
+        _realizeManagementFee();
         PlasmaVaultLib.configureManagementFee(feeAccount_, feeInPercentage_);
+        // Restart the accrual clock at the change (also when the old rate was 0 and nothing was minted).
+        PlasmaVaultLib.updateManagementFeeData();
     }
 
     /**

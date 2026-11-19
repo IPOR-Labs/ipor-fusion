@@ -18,12 +18,7 @@ import {MockTermRepoToken} from "./mocks/MockTermRepoToken.sol";
 
 contract TermFinanceRedeemFuseTest is Test {
     /// @dev Local copy of fuse event for `vm.expectEmit` assertions.
-    event TermFinanceRedeemed(
-        address version,
-        address servicer,
-        uint256 amountToRedeem,
-        uint256 purchaseTokenReceived
-    );
+    event TermFinanceRedeemed(address version, address servicer, uint256 amountToRedeem, uint256 purchaseTokenReceived);
 
     uint256 internal constant MARKET_ID = 52;
 
@@ -120,18 +115,32 @@ contract TermFinanceRedeemFuseTest is Test {
         assertEq(usdc.balanceOf(address(harness)), amt, "received purchase token");
     }
 
-    function test_enter_happyPath_withHaircut_receivesReduced() public {
+    function test_enter_happyPath_withRecoveryRatio_receivesAmountTimesMantissa() public {
         uint256 amt = 1_000_000;
         _setupVaultWithRepoToken(amt);
 
         servicer.setRedemptionTimestamp(block.timestamp);
-        servicer.setShortfallHaircutMantissa(3e16); // 3%
+        servicer.setShortfallHaircutMantissa(97e16); // Term recovery ratio: 97% of redemption value
         vm.warp(block.timestamp + 1);
 
         harness.enter(_data(amt));
 
-        uint256 expected = (amt * (1e18 - 3e16)) / 1e18;
-        assertEq(usdc.balanceOf(address(harness)), expected);
+        assertEq(usdc.balanceOf(address(harness)), 970_000, "pays amount * mantissa / 1e18");
+    }
+
+    function test_enter_unsetMantissaWithOutstanding_receivesCollectedShare() public {
+        uint256 amt = 1_000_000;
+        _setupVaultWithRepoToken(amt);
+
+        servicer.setRedemptionTimestamp(block.timestamp);
+        // Mantissa unset (0) with unpaid debt: Term pays collected / (collected + outstanding).
+        servicer.setTotalRepurchaseCollected(750_000);
+        servicer.setTotalOutstandingRepurchaseExposure(250_000);
+        vm.warp(block.timestamp + 1);
+
+        harness.enter(_data(amt));
+
+        assertEq(usdc.balanceOf(address(harness)), 750_000, "pays collected share while mantissa unset");
     }
 
     // ============ enter — guards ============

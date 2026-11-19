@@ -204,7 +204,9 @@ enum ReturnRejectReason {
 ///      POC-tuned and intentionally small.
 library CrosschainConstants {
     /// @notice Current envelope codec version. `decodeEnvelope` rejects any other value.
-    uint8 internal constant CODEC_VERSION = 4;
+    /// @dev 5 (IL-9629): `UpdateVaults` gained `floors`, so an old dispatcher would decode a new UPDATE_VAULTS without its
+    ///      sweep floors; a mixed old/new pair fails `UnsupportedCodecVersion` instead (4: IL-8625 `minExecutionGas`).
+    uint8 internal constant CODEC_VERSION = 5;
 
     /// @notice Single mandatory compose index for taxi-mode sends (one compose per message).
     /// @dev Not referenced by the code: the factory's dispatcher compose option passes index 0 literally.
@@ -218,8 +220,13 @@ library CrosschainConstants {
     /// @notice Maximum size of a dispatcher deposit allowlist.
     uint256 internal constant MAX_ALLOWED_VAULTS = 32;
 
-    /// @notice Maximum size of the dispatcher tracked-position set (Stargate: vaults holding live shares, the
-    ///         allowlist is kept apart; CCIP: allowlist ∪ live positions).
+    /// @notice Maximum size of the dispatcher tracked-position set (CCIP: equal to the allowlist; Stargate: the
+    ///         allowlisted vaults in which the dispatcher holds shares).
+    /// @dev A vault removed from the allowlist is swept best effort and untracked (IL-8784), so a residual
+    ///      left by a failed sweep is outside the set, and outside NAV, until the vault is allowlisted again. The
+    ///      exception is a vault whose non-zero sweep floor is not reached (IL-9629), or whose floored redeem
+    ///      reverts with error data and burns nothing (IL-9694 D-002): it keeps its slot, off the
+    ///      allowlist, until a REDEEM empties it (Stargate) or an UPDATE_VAULTS floor entry removes it.
     uint256 internal constant MAX_TRACKED_POSITION_VAULTS = 32;
 
     /// @notice Maximum concurrent in-flight transfer records per chain. Stargate: one shared counter across
@@ -237,6 +244,9 @@ library CrosschainConstants {
 
     /// @notice Governance-approved minimum delay for any value-moving rescue.
     uint256 internal constant MIN_RESCUE_DELAY = 24 hours;
+
+    /// @notice Upper bound on the rescue delay (IL-9674): a longer delay would make rescues practically unreachable.
+    uint256 internal constant MAX_RESCUE_DELAY = 30 days;
 
     /// @notice Lower bound on the factory configuration timelock (assets, paths, routes). Shared by Stargate and CCIP.
     uint256 internal constant MIN_CONFIG_DELAY = 24 hours;
@@ -281,6 +291,14 @@ library CrosschainConstants {
     ///         fail-closed staleness gates become unreachable. Must exceed `MIN_RESCUE_DELAY` so a
     ///         rescue can land inside the window.
     uint256 internal constant MAX_STALENESS_WINDOW = 7 days;
+
+    /// @notice Lower bound on `TRANSFER_STALENESS_MAX` (IL-9663), shared by both transports. The value stamps the
+    ///         deadline of every `RETURN_REQUEST`, and a recall takes two legs (request out, return back): on the
+    ///         slowest supported path (source-chain finality of ~20 min per leg) plus
+    ///         `RECALL_DEADLINE_SKEW_MARGIN` that is ~55 min, so a smaller window makes recalls that always
+    ///         expire. A floor, not a recommended value: it catches unit mistakes (seconds / minutes), not
+    ///         transport outages.
+    uint256 internal constant MIN_TRANSFER_STALENESS_WINDOW = 1 hours;
 
     /// @notice Safety margin added to `TRANSFER_STALENESS_MAX` before the CCIP executor lets `FORCE_SET_SETTLED` /
     ///         `ADVANCE_FRONTIER` clear a cancelled recall's clock (IL-8590). A `RETURN_REQUEST` deadline is stamped
@@ -358,8 +376,12 @@ library CrosschainConstants {
     ///         `STALENESS_MAX >= MIN_PROPOSAL_APPROVAL_WINDOW`.
     uint256 internal constant MIN_PROPOSAL_APPROVAL_WINDOW = 15 minutes;
 
-    /// @notice Bound on how far an approved attestation may sit from the per-chain accounting anchor
-    ///         (`anchorPrincipal`), expressed in bps (1e4) of the anchor, symmetric in both directions.
+    /// @notice REFERENCE bound on how far an approved attestation may sit from the per-chain accounting anchor
+    ///         (`anchorPrincipal`), expressed in bps (1e4) of the anchor, symmetric in both directions. Since IL-9720 the
+    ///         enforced band is the executor's own `anchorBandBps` (constructor parameter, at most
+    ///         `MAX_ATTESTATION_ANCHOR_BAND_BPS`); this constant is the value for a leg without leverage and is no longer read
+    ///         by any contract. The "20%", "0.8" and "1.2" figures below describe this reference value; for a band `b` read
+    ///         `(1 - b)` and `(1 + b)`.
     /// @dev The relative per-approval limiter (`bigChangeBps`) bounds only the size of ONE step; it does
     ///      not bound the number of steps, so a compliant proposer/approver pair can walk `settledSD`
     ///      to any value given enough rounds (audit `no_cumulative_bound_on_attested_balance_ratchet`,
@@ -424,6 +446,12 @@ library CrosschainConstants {
     ///      `BalanceApproved` direction reversals.
     uint256 internal constant ATTESTATION_ANCHOR_BAND_BPS = 2_000;
 
+    /// @notice Upper limit, in basis points, for the per-executor attestation anchor band `anchorBandBps`
+    ///         (IL-9720): 50_000 allows a settled value of up to 6x its anchor. The executor constructor enforces
+    ///         `0 < bigChangeBps <= anchorBandBps <= MAX_ATTESTATION_ANCHOR_BAND_BPS`. `ATTESTATION_ANCHOR_BAND_BPS`
+    ///         stays the reference band for unlevered legs; no contract reads it any more.
+    uint256 internal constant MAX_ATTESTATION_ANCHOR_BAND_BPS = 50_000;
+
     /// @notice Absolute bound, in shared decimals (0.01 of a 6-shared-decimal asset), at or below which a
     ///         settled bucket may be attested down to exactly zero without the relative `BigChange` and
     ///         anchor-band checks (IL-8499, audit IL-8424 finding 6).
@@ -479,6 +507,10 @@ library CrosschainConstants {
     ///      smallest margin covers about four more. Stargate on the mock endpoint (`StargatePreCheckPinTest`, cooled) reads
     ///      lower; CCIP, direct `ccipReceive` (`CcipPreCheckPinTest`, cooled) 321k / 344k / 544k / 725k / 1,087k for
     ///      14 / 15 / 23 / 31 / 47 words, a margin of at least 508k.
+    ///      IL-9629 added the `floors` list to UPDATE_VAULTS (two more words when empty, two per floor). Re-measured on
+    ///      forge 1.9.0 (2026-11-10): Stargate fork 538k / 758k / 958k / 1,359k for 9 / 17 / 25 / 41 words (fit 308k +
+    ///      25.6k per word, DEPOSIT about 590k from the fit, margin 125k - 178k); CCIP 364k / 413k / 631k / 828k /
+    ///      1,224k for 14 / 17 / 25 / 33 / 49 words, a margin of at least 452k.
     uint256 internal constant COMMAND_PRE_CALL_BASE = 500_000;
 
     /// @notice Gas per stored payload word the dispatcher spends before the budget check (IL-8625).
@@ -498,7 +530,9 @@ library CrosschainConstants {
     ///      `lzReceive` gas (the budget plus `COMMAND_PRE_CALL_BASE` and `COMMAND_PRE_CALL_PER_WORD` per stored word plus
     ///      the endpoint's lane / 64 hop loss) plus the executor's transaction overhead. At 14,000,000 the largest payload
     ///      (39 words, a 32-vault UPDATE_VAULTS retry) needs `laneGasFor` = about 15.68M and the test requires that plus 1M
-    ///      of transaction overhead to stay under the cap (about 0.1M of headroom: 14M is the largest round cap that fits) (pinned by `testShouldKeepTheMaximumBudgetDeliverableUnderTheEthereumTransactionGasCap`). On CCIP
+    ///      of transaction overhead to stay under the cap (about 0.1M of headroom: 14M is the largest round cap that fits) (pinned by `testShouldKeepTheMaximumBudgetDeliverableUnderTheEthereumTransactionGasCap`).
+    ///      IL-9629: without sweep floors that payload is 41 words (about 15.73M, 47k of headroom); each floor adds two
+    ///      words, so a 32-vault update with floors raised to the cap can exceed it on Ethereum (safe, see below). On CCIP
     ///      a manual execution adds about three 63/64 hops (roughly 0.4M of headroom at the cap), moot under the lane's
     ///      FeeQuoter `maxPerMsgGasLimit`; the CCIP executor bounds the STAMPED budget by this cap too. A budget above the
     ///      cap could never be delivered on Ethereum. It stays safe even so: an expired command is NACKed before its
@@ -528,7 +562,8 @@ library CrosschainConstants {
     ///      redeems measured on a mainnet fork (`VaultSweepIdleRedeemForkTest`: 3-market PlasmaVault about 1.40M, 12-market
     ///      MetaMorpho about 0.52M) fit the cap; a position allocated into markets needs more (a cold 100k USDC position
     ///      of the Ethereum TESS USDC Optimiser redeemed at 3.11M uncapped), so the sweep ends as a residual (reason 2,
-    ///      or 5 when the command gas was the limit) and the vault is untracked all the same (D-028). That is accepted
+    ///      or 5 when the command gas was the limit) and the vault is untracked all the same (D-028; under a non-zero
+    ///      floor a revert with error data is reason 6 and the vault stays tracked, IL-9694 D-002). That is accepted
     ///      (D-060): ALPHA must redeem or recall a position to zero BEFORE removing a vault, so that only the dust path
     ///      (no `redeem` call, D-061) runs. A CCIP RETRY cannot add gas, which is why the sweep never reverts for lack
     ///      of it. Measured cold over the real CCIP transport on a 3M route (`VaultRemovalDustForkTest`): a 1-wei
@@ -536,8 +571,9 @@ library CrosschainConstants {
     ///      the residual path) 2.78M; all ACKed. Realistic 100k to 200k USDC Prime positions are swept fully at 3M.
     ///      The no-revert guarantee holds for ONE removal per command: on tight lanes send one removal per
     ///      UPDATE_VAULTS and adds in a separate command (after a gas-limited sweep a later vault's reads can fail,
-    ///      which is a safe NACK that rolls everything back). On a 3M CCIP lane any failed sweep reports reason 5,
-    ///      also a non-gas revert, so monitoring must read `redeemError`.
+    ///      which is a safe NACK that rolls everything back). On a 3M CCIP lane a failed sweep reports reason 5
+    ///      (reason 6 under a non-zero floor when the revert carries error data), also a non-gas revert, so monitoring
+    ///      must read `redeemError`.
     ///      On Stargate the re-track reads and writes run before the sweeps (IL-8839). On CCIP the COMMAND_ACK prices
     ///      the tracked set outside the capped self-call, after the sweep: size the route for that valuation, otherwise
     ///      the delivery fails on the OffRamp and needs manual execution with a higher gas limit.

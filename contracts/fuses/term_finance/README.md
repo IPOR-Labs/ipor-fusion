@@ -6,7 +6,7 @@ integration lets a vault act as a **lender** (post offers, hold `TermRepoToken`,
 maturity) and as a **borrower** (lock collateral, post bids, repurchase debt).
 
 - **Market id:** `IporFusionMarkets.TERM_FINANCE = 52`
-- **Net value reporting:** single signed-int balance fuse aggregating 5 legs across both sides
+- **Net value reporting:** single unsigned balance fuse that values each servicer on its own, floored at zero, over 5 legs across both sides
 
 > All NAV math is in **WAD-USD** (USD scaled by `1e18`). All token amounts passed to fuses
 > are **raw token units** (not WAD).
@@ -17,7 +17,7 @@ maturity) and as a **borrower** (lock collateral, post bids, repurchase debt).
 
 ```
 contracts/fuses/term_finance/
-├── TermFinanceBalanceFuse.sol        # NAV: signed-int aggregation over 5 legs (the only balance fuse)
+├── TermFinanceBalanceFuse.sol        # NAV: per-servicer unsigned aggregation over 5 legs (the only balance fuse)
 │
 ├── TermFinanceOfferFuse.sol          # LENDER  enter=lockOffers / exit=unlockOffers (pre-reveal cancel)
 ├── TermFinanceOfferRevealFuse.sol    # LENDER  enter=revealOffers
@@ -65,7 +65,8 @@ Tests: `test/unitTest/fuses/term_finance/**` (unit + harnesses + mocks) and
 | **Repo Locker** | `TermRepoLocker` — the contract token approvals target (NOT the offer/bid locker). |
 | **Redemption Value** | PV factor of one repo-token unit at maturity (`TermRepoToken.redemptionValue()`). |
 | **Discount Rate** | Pre-maturity yield used to discount face → PV; sourced from Adapter-B. |
-| **Haircut** | `repoRedemptionHaircut` (lender shortfall, post-maturity) / `shortfallHaircutMantissa`. Borrower debt PV takes **no** haircut (Convention B). |
+| **Haircut** | `repoRedemptionHaircut` (lender shortfall, post-maturity). Borrower debt PV takes **no** haircut (Convention B). |
+| **Recovery ratio** | `shortfallHaircutMantissa` is Term's *recovery ratio*, not a haircut: the share of a repo token's redemption value that a redemption pays (`value × mantissa / 1e18`). `0` means unset. |
 | **Face value** | Notional principal fixed at clearing; PV discounts it back to today. |
 
 ---
@@ -236,26 +237,35 @@ anti-griefing caps below).
 
 `balanceOf()` returns the vault's net Term Finance value in **WAD-USD**. It iterates the
 market's `SERVICER` substrates (TYPE `0x00`; collateral-token substrates are skipped — they
-are pure allowlist entries) and sums one **signed `int256`** per servicer:
+are pure allowlist entries) and sums one **unsigned** value per servicer:
 
 ```
-leg = +heldRepoTokenPV          (≥0, lender)
-      +pendingOffersValue       (≥0, lender — flat lockedAmount, no synthetic accrual)
-      +pendingBidsCollateral    (≥0, borrower)
-      +lockedCollateralValue    (≥0, borrower)
-      −outstandingDebtPV        (≤0, borrower — returned already negated)
+servicerValue = pendingOffersValue          (≥0, lender — flat lockedAmount, no synthetic accrual)
+              + pendingBidsCollateral       (≥0, borrower)
+              + max(0,  heldRepoTokenPV         (≥0, lender)
+                      + lockedCollateralValue   (≥0, borrower)
+                      − outstandingDebtPV)      (≥0, borrower)
 ```
 
-The debt leg is **added** (`collateral + debt`) because debt is returned as a negative
-`int256`. The signed sum is `SafeCast.toUint256()` at the end → **reverts on net-negative**
-(insolvency signal; matches `AaveV3BalanceFuse` / `MorphoBalanceFuse`, prevents the ERC4626
-share-mint window).
+Every servicer is its own isolated position (limited liability of a Term Repo): an underwater servicer is worth `0`
+and never lowers the value of another servicer. The servicer values are summed as unsigned numbers, so there is no
+net-negative revert. Pending offers and pending-bid collateral stay outside the floor: a default seizes only locked
+collateral, never offers or bids.
 
-**Per-leg saturation:** each `leg` is clamped to `±MAX_VALUE_PER_LEG = 1e36` WAD-USD
-(= `1e18` USD) before summing, so `int256` arithmetic cannot overflow under adversarial
-oracle returns. `1e36` is unreachable by any real position; the clamp is a pure overflow
-guard. (`MAX_VALUE_PER_LEG_UINT` is the unsigned mirror used inside the debt leg before
-negation; keep both in sync.)
+**Repo tokens are netted with the debt of the same servicer.** `burnCollapseExposure` lets a borrower cancel its own
+debt with repo tokens of the same servicer at par until the repurchase window ends, so held repo tokens and own debt
+of one servicer are valued as one position: the value is never overstated, and after the window it can be
+understated (the tokens keep a recovery value, see below, while the floor has already absorbed the shortfall).
+Repo tokens of *another* servicer are untouched by an underwater servicer.
+
+**"Not seized" does not mean "unchanged".** `batchDefault` / `batchLiquidation*` debit only the borrower's locked
+collateral; repo tokens, pending offers and pending-bid collateral are not seized. Repo tokens nevertheless keep
+their own present value, which after maturity includes the recovery ratio (`shortfallHaircutMantissa`, see
+*Post-maturity value of repo tokens*): a default can lower the value of repo tokens the vault holds.
+
+**Per-servicer saturation:** each servicer value is clamped to `MAX_VALUE_PER_LEG_UINT = 1e36` WAD-USD
+(= `1e18` USD) before summing, so the sum cannot overflow under adversarial oracle returns. `1e36` is unreachable
+by any real position; the clamp is a pure overflow guard. Every fail-closed gate and error below is unchanged.
 
 ### Why per-call `try/catch` instead of one outer catch
 
@@ -361,7 +371,6 @@ every other tracked servicer healthy; an oracle price for the returned collatera
 - a balance-refreshing pre-hook on `execute`;
 - a missing oracle price for the returned collateral;
 - a donated balance of a market-7 token without a price;
-- a negative total for market 52;
 - the same servicer also held as a lender with `REPO_TOKEN_HOLDING` while its redemption haircut is non-zero.
 
 A third party cannot freeze market 52 of a pure borrower: a donated repo token without a `REPO_TOKEN_HOLDING`
@@ -369,7 +378,7 @@ grant is ignored, and only `msg.sender` can add collateral. It can still block t
 market 7 (`ERC20_VAULT_BALANCE`, refreshed together with 52 through the dependency graph): 1 wei of a token
 granted in market 7 without an oracle price makes `Erc20BalanceFuse.balanceOf` revert (IL-8834 residual).
 Keep a price for every token granted in market 7, or remove the substrate. The remaining triggers are Term-side
-failures (upgrade, proxy pause, adapter), vault configuration (oracle, pre-hook) and the negative total.
+failures (upgrade, proxy pause, adapter) and vault configuration (oracle, pre-hook).
 
 **Consequence.** Term accepts repayment until the end of the repurchase window; on a live
 servicer the window after maturity is only 23 h. After it, anyone can run `batchDefault`:
@@ -400,11 +409,41 @@ Pure library (derived from Yearn V3 `RepoTokenUtils`). `RATE_PRECISION = 1e18`, 
 |----------|--------------------|
 | `faceValue(repoBalance, redemptionValue, repoTokenPrec, purchasePrec)` | `redemptionValue · repoBalance · purchasePrec / (repoTokenPrec · 1e18)`; returns 0 if `redemptionValue > 1e22` (overflow guard) |
 | `presentValuePreMaturity(face, purchasePrec, secondsToMaturity, discountRate, adapterHaircut)` | `pv = face · purchasePrec / (purchasePrec + effRate · dayFrac / 1e18)`, capped at `face`. `effRate = discountRate · (1 + adapterHaircut)/1e18` (haircut amplifies the *rate*, not the face). Inputs clamped: `secondsToMaturity ≤ 100·360·86400`, `adapterHaircut ≤ 1e18`, `discountRate, effRate ≤ MAX_DISCOUNT_RATE = 1e20`. |
-| `presentValuePostMaturity(face, shortfallHaircut)` | `pv = face · (1e18 − shortfallHaircut)/1e18`; `shortfallHaircut` clamped to `1e18` |
+| `presentValueAtRecovery(face, recoveryMantissa)` | `pv = face · recovery/1e18`; `recovery` clamped to `1e18`. The argument is Term's recovery ratio (`shortfallHaircutMantissa`), **not** a haircut: never document or implement `face · (1e18 − mantissa)` |
 
 Borrower debt PV uses `presentValuePreMaturity` with `adapterHaircut = 0` (**Convention B** —
 the redemption haircut is lender-only). Post-window debt collapses to `pv = face` via an
 explicit zero-floor on `secondsToMaturity` (avoids 0.8.x underflow).
+
+### Post-maturity value of repo tokens
+
+After maturity a held repo token is worth `face × recovery` (`presentValueAtRecovery`). The recovery ratio of a
+servicer is read from the servicer with checked `staticcall`s:
+
+| State of the servicer | Recovery |
+|-----------------------|----------|
+| `shortfallHaircutMantissa > 0` (set by the first pro-rata redemption after `redemptionTimestamp`) | the mantissa, clamped to `1e18` |
+| mantissa unset (`0`), nothing outstanding | `1e18` (par) |
+| mantissa unset (`0`), exposure outstanding | `collected / (collected + outstanding)` |
+
+A stored `0` always means unset: a total loss (nothing collected) stays unset, because a zero redemption would fail
+the servicer's balance assertion, and the ratio above is then `0`. A failed counter read, or a counter above `1e36`,
+fires the tracked gate (a tracked servicer reverts, an untracked one degrades to `0`).
+
+**Pre-default window (conservative by design).** Between `redemptionTimestamp` (1 h after the end of the repurchase
+window on the live servicer) and `batchDefault`, an
+underwater loan still has debt outstanding and nothing collected, so the ratio is `0` and a holder's repo tokens
+are valued at `0` (observed on a live servicer at `redemptionTimestamp`); the collateral that will back the
+recovery is not counted until it is in `collected`. NAV therefore dips in this window and steps up once
+`batchDefault` has moved the collateral into `collected` (and again with every later collection). The window starts at
+`redemptionTimestamp`, not at the end of the repurchase window: before it the pre-maturity branch values held repo
+tokens at discounted present value (about par). No fuse calls `batchDefault`; anyone can run it, so the step-up can be
+timed by any third party, and the keeper or ALPHA can shorten the dip by calling it promptly after `redemptionTimestamp`.
+
+**Known limitation: liquidated damages.** A default after the window takes `debt × (1 + liquidated damages)`
+(8 % on the live servicer), so the collateral that survives is `C − D · (1 + LD)`, not `C − D`. This applies to every
+Term borrower and is not modelled in the valuation: a borrower's NAV can be overstated by up to the liquidated
+damages on its debt after a default.
 
 ---
 
@@ -447,7 +486,7 @@ tests: USDC `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`, WETH, USR.
 
 | Anchor | Meaning |
 |--------|---------|
-| **Aggregation** | Balance-fuse signed-int aggregation + debt-leg failure semantics (share-mint window rationale) |
+| **Aggregation** | Balance-fuse per-servicer unsigned aggregation (each servicer floored at 0) + debt-leg failure semantics (share-mint window rationale) |
 | **Oracle gate** | Tracked-vs-untracked oracle gate: untracked price-zero degrades to 0, tracked re-raises |
 | **Debt read** | Debt-read-failed-on-tracked-servicer must propagate (freeze share math) |
 | **Proxy state** | Paused/upgraded servicer or adapter proxy must not silently zero a tracked leg |

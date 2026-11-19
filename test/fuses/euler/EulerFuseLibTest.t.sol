@@ -2,10 +2,10 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {EulerFuseLib} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
+import {EulerFuseLib, EulerSubstrate} from "../../../contracts/fuses/euler/EulerFuseLib.sol";
 
 /// @title EulerFuseLibTest
-/// @dev Test contract for EulerFuseLib.generateSubAccountAddress function
+/// @dev Test contract for EulerFuseLib.generateSubAccountAddress and the substrate bit layout
 contract EulerFuseLibTest is Test {
     /// @notice Test that generateSubAccountAddress produces the correct result using XOR operation
     function test_generateSubAccountAddress_BasicXOR() public {
@@ -191,5 +191,48 @@ contract EulerFuseLibTest is Test {
         // All results should be identical
         assertEq(result1, result2, "Pure function should return same result for same inputs");
         assertEq(result2, result3, "Pure function should return same result for same inputs");
+    }
+
+    /// @notice Pins the documented substrate layout: vault << 96 | isCollateral << 88 | canBorrow << 80 | subAccounts << 72
+    function test_substrateToBytes32_PinsDocumentedLayout() public {
+        address eulerVault = 0xe0a80d35bB6618CBA260120b279d357978c42BCE;
+
+        bytes32 encoded = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: eulerVault, isCollateral: true, canBorrow: false, subAccounts: 0x05})
+        );
+        assertEq(
+            encoded,
+            bytes32(
+                (uint256(uint160(eulerVault)) << 96) | (uint256(1) << 88) | (uint256(0) << 80) | (uint256(5) << 72)
+            ),
+            "substrate layout should match the documented bit positions"
+        );
+        assertEq(
+            encoded,
+            bytes32(0xe0a80d35bb6618cba260120b279d357978c42bce010005000000000000000000),
+            "substrate layout should match the literal constant"
+        );
+
+        bytes32 borrowOnly = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: eulerVault, isCollateral: false, canBorrow: true, subAccounts: 0x00})
+        );
+        assertEq(borrowOnly, bytes32((uint256(uint160(eulerVault)) << 96) | (uint256(1) << 80)), "canBorrow bit is 80");
+    }
+
+    /// @notice The encoding round-trips through bytes32ToSubstrate
+    function test_substrateToBytes32_Roundtrip() public {
+        EulerSubstrate memory original = EulerSubstrate({
+            eulerVault: 0xe0a80d35bB6618CBA260120b279d357978c42BCE,
+            isCollateral: true,
+            canBorrow: true,
+            subAccounts: 0xA5
+        });
+
+        EulerSubstrate memory decoded = EulerFuseLib.bytes32ToSubstrate(EulerFuseLib.substrateToBytes32(original));
+
+        assertEq(decoded.eulerVault, original.eulerVault, "eulerVault");
+        assertEq(decoded.isCollateral, original.isCollateral, "isCollateral");
+        assertEq(decoded.canBorrow, original.canBorrow, "canBorrow");
+        assertEq(decoded.subAccounts, original.subAccounts, "subAccounts");
     }
 }

@@ -21,6 +21,8 @@ jobs:
             BASE_PROVIDER_URL: ${{ secrets.BASE_PROVIDER_URL }}
             TAC_PROVIDER_URL: ${{ secrets.TAC_PROVIDER_URL }}
             INK_PROVIDER_URL: ${{ secrets.INK_PROVIDER_URL }}
+            SEPOLIA_PROVIDER_URL: ${{ secrets.SEPOLIA_PROVIDER_URL }}
+            HOODI_PROVIDER_URL: ${{ secrets.HOODI_PROVIDER_URL }}
         with:
             sizes-enabled: false
             sizes-options: "--skip test --skip script"

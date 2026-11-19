@@ -5,6 +5,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
+import {IBorrowing} from "./ext/IBorrowing.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {IporMath} from "../../libraries/math/IporMath.sol";
@@ -49,14 +50,16 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @notice Emitted when assets are successfully withdrawn from an Euler V2 vault
     /// @param version The address of this fuse contract version
     /// @param eulerVault The address of the Euler V2 vault from which assets are withdrawn
-    /// @param withdrawnAssets The amount of underlying assets withdrawn from the vault (NOT shares)
+    /// @param withdrawnAssets The amount of underlying assets withdrawn from the vault (NOT shares); on the instant
+    ///        withdraw path this is the amount after the position and EVault cash caps
     /// @param subAccount The sub-account address used for the withdrawal
     event EulerV2SupplyExitFuse(address version, address eulerVault, uint256 withdrawnAssets, address subAccount);
 
     /// @notice Emitted when an instant withdrawal from an Euler V2 vault fails
     /// @param version The address of this fuse contract version
     /// @param eulerVault The address of the Euler V2 vault from which withdrawal was attempted
-    /// @param amount The amount of assets that failed to withdraw
+    /// @param amount The amount of assets that failed to withdraw; on the instant withdraw path this is the amount
+    ///        after the position and EVault cash caps
     /// @param subAccount The sub-account address used for the withdrawal attempt
     event EulerV2SupplyFuseExitFailed(address version, address eulerVault, uint256 amount, address subAccount);
 
@@ -65,12 +68,23 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param subAccount The sub-account identifier that is not supported
     /// @custom:error EulerV2SupplyFuseUnsupportedEnterAction
     error EulerV2SupplyFuseUnsupportedEnterAction(address vault, bytes1 subAccount);
+    /// @dev No longer thrown: the instant path skips unsupported pairs (returns 0) instead of reverting. Kept for ABI
+    ///      compatibility.
     error EulerV2SupplyFuseUnsupportedVault(address vault, bytes1 subAccount);
     error EulerV2SupplyFuseInvalidParams();
 
     /// @notice Address of this fuse contract version
     /// @dev Immutable value set in constructor, used for tracking and versioning
     address public immutable VERSION;
+
+    /// @notice Gas forwarded to `EVC.call` on the instant withdraw path (IL-9719)
+    /// @dev `EVC.call` forwards all gas it gets, so a paused or otherwise gas-hungry Euler vault would make the
+    ///      `try/catch` below consume the whole gas budget of the user's `redeem` before the catch runs. 500,000 comes
+    ///      from a measurement on a mainnet fork (worst case: sub-account with debt, cold access, about 143,000 gas)
+    ///      with a margin of about 3.5x, which covers vaults with more collaterals and a more expensive oracle, so a
+    ///      healthy vault is never cut off, and it is low enough that a failing vault leaves gas for the other fuses
+    ///      of the instant withdraw list. The regular `exit` is not bounded.
+    uint256 private constant INSTANT_WITHDRAW_EVC_CALL_GAS_LIMIT = 500_000;
 
     /// @notice Market ID this fuse operates on
     /// @dev Immutable value set in constructor, used to retrieve market substrates (Euler V2 vault addresses)
@@ -164,6 +178,9 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     ///      This follows ERC-4626 withdraw semantics where withdraw() specifies asset amount.
     ///      Note: No substrate validation is performed in exit() by design - if a position exists
     ///      in a vault, it should always be withdrawable regardless of current substrate configuration.
+    ///      The amount is NOT capped at the EVault's free cash: when the amount after the position cap
+    ///      (min(request, share value)) exceeds `cash()`, the call reverts (EVault `E_InsufficientCash`)
+    ///      instead of being silently reduced.
     /// @param data_ The data structure containing the parameters for exiting the Euler V2 Supply Fuse
     /// @return withdrawnAssets The amount of underlying assets withdrawn (NOT shares burned)
     /// @custom:security No substrate validation by design - allows withdrawal from any existing position
@@ -173,11 +190,20 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     /// @notice Instant withdraw assets from Euler V2 vault
+    /// @dev The requested amount is capped at the sub-account's position value and then at the EVault's free cash
+    ///      (`cash()`), so a partially liquid venue pays what it can and the remainder is left to the next fuse in the
+    ///      instant withdraw list. When the free cash is zero no withdraw is attempted (no `EVC.call`) and no event is emitted; the
+    ///      fuse still reads `balanceOf`, `convertToAssets` and `cash()`. A failing
+    ///      `EVC.call` is still caught and reported with `EulerV2SupplyFuseExitFailed` carrying the capped amount.
     /// @param params_ Array of parameters encoded as bytes32:
     ///        params_[0] - amount in underlying asset (uint256 cast to bytes32)
     ///        params_[1] - euler vault address (address left-padded with zeros to bytes32)
     ///        params_[2] - subAccount identifier (bytes1 right-padded with zeros to bytes32)
-    /// @dev Only allowed when substrate has isCollateral == false AND canBorrow == false
+    /// @dev Only allowed when at least one substrate entry matches and no matching entry has isCollateral == true or
+    ///      canBorrow == true; otherwise the fuse withdraws nothing: it returns without `EVC.call`, event or revert
+    ///      (skip, so a user withdrawal is never blocked by a flagged or missing entry). When the EVC reports the Euler vault as enabled collateral of the
+    ///      sub-account (`EVC.isCollateralEnabled`) the fuse withdraws nothing: it returns without `EVC.call`, event
+    ///      or revert, leaving the remainder to the next fuse in the instant withdraw list
     /// @dev Parameter encoding examples:
     ///      - amount: bytes32(uint256(1000e18))
     ///      - eulerVault: bytes32(uint256(uint160(vaultAddress)))
@@ -200,6 +226,14 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     }
 
     /// @notice Internal exit function with optional exception handling
+    /// @dev On the instant withdraw path (`catchExceptions_ == true`) the amount is the minimum of the request, the
+    ///      position value (`convertToAssets(balanceOf(subAccount))`) and, applied after the position cap and only
+    ///      when the amount is still non-zero, the EVault's free cash (`IBorrowing.cash()`). `cash()` is read outside
+    ///      the try/catch, like `balanceOf` and `convertToAssets`. It never uses `maxWithdraw`: EVK returns 0 when a
+    ///      controller is enabled for the account, and the supply sub-account may share its id with a borrow
+    ///      position or an EulerSwap pool. The normal ALPHA `exit` does not read `cash()`.
+    ///      On the instant path a pair that fails `canInstantWithdraw` is skipped (returns 0, no revert), and so is a
+    ///      position whose vault is enabled as collateral of the sub-account in the EVC.
     /// @param data_ Exit data structure
     /// @param catchExceptions_ If true, validates instant withdraw eligibility and catches exceptions
     /// @return withdrawnAssets The amount of underlying assets withdrawn
@@ -207,11 +241,12 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         EulerV2SupplyFuseExitData memory data_,
         bool catchExceptions_
     ) internal returns (uint256 withdrawnAssets) {
-        // Validate canInstantWithdraw if catchExceptions_ is true
-        if (catchExceptions_) {
-            if (!EulerFuseLib.canInstantWithdraw(MARKET_ID, data_.eulerVault, data_.subAccount)) {
-                revert EulerV2SupplyFuseUnsupportedVault(data_.eulerVault, data_.subAccount);
-            }
+        // Instant path: a pair that is not instant-withdrawable (not granted, or a matching entry carries
+        // isCollateral / canBorrow) is skipped, not reverted: PlasmaVault built before IL-9659 has no try/catch around
+        // the instant withdraw fuses (since IL-9659 an entry that reverts with error data is skipped), so on such a vault a
+        // revert would block every user withdrawal that reaches this entry
+        if (catchExceptions_ && !EulerFuseLib.canInstantWithdraw(MARKET_ID, data_.eulerVault, data_.subAccount)) {
+            return 0;
         }
         if (data_.maxAmount == 0) {
             return 0;
@@ -220,12 +255,22 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         address plasmaVault = address(this);
         address subAccount = EulerFuseLib.generateSubAccountAddress(plasmaVault, data_.subAccount);
 
+        // The vault is enabled as collateral of the sub-account in the EVC: the position backs other exposure, so
+        // the instant path leaves it alone (skip, not revert: a revert would block every user withdrawal)
+        if (catchExceptions_ && EVC.isCollateralEnabled(subAccount, data_.eulerVault)) {
+            return 0;
+        }
+
         uint256 finalVaultAssetAmount = IporMath.min(
             data_.maxAmount,
             ERC4626Upgradeable(data_.eulerVault).convertToAssets(
                 ERC4626Upgradeable(data_.eulerVault).balanceOf(subAccount)
             )
         );
+
+        if (catchExceptions_ && finalVaultAssetAmount > 0) {
+            finalVaultAssetAmount = IporMath.min(finalVaultAssetAmount, IBorrowing(data_.eulerVault).cash());
+        }
 
         if (finalVaultAssetAmount == 0) {
             return 0;
@@ -257,7 +302,7 @@ contract EulerV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         if (catchExceptions_) {
             /* solhint-disable avoid-low-level-calls */
-            try EVC.call(eulerVault_, subAccount_, 0, withdrawCall) {
+            try EVC.call{gas: INSTANT_WITHDRAW_EVC_CALL_GAS_LIMIT}(eulerVault_, subAccount_, 0, withdrawCall) {
                 emit EulerV2SupplyExitFuse(VERSION, eulerVault_, amount_, subAccount_);
                 return amount_;
             } catch {

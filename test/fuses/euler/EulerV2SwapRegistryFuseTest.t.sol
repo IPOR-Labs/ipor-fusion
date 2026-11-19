@@ -173,6 +173,50 @@ contract EulerV2SwapRegistryFuseTest is Test {
         _exit(data);
     }
 
+    function test_unregisterRevertsInvalidPool() public {
+        address otherPool = address(0xBEEF);
+        registry.setPoolByEulerAccount(eulerAccount, otherPool);
+
+        EulerV2SwapRegistryFuseExitData memory data = EulerV2SwapRegistryFuseExitData({
+            pool: address(pool),
+            subAccount: SUB_ACCOUNT
+        });
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapRegistryFuse.EulerV2SwapRegistryFuseInvalidPool.selector,
+                address(pool),
+                otherPool
+            )
+        );
+        _exit(data);
+
+        assertEq(registry.unregisterCallCount(), 0, "unregisterPool not called");
+        assertEq(registry.poolByEulerAccount(eulerAccount), otherPool, "registration untouched");
+    }
+
+    function test_exitTransientRevertsInvalidPool() public {
+        address otherPool = address(0xBEEF);
+        registry.setPoolByEulerAccount(eulerAccount, otherPool);
+
+        EulerV2SwapRegistryFuseExitData memory data = EulerV2SwapRegistryFuseExitData({
+            pool: address(pool),
+            subAccount: SUB_ACCOUNT
+        });
+        harness.setTransientInputs(address(fuse), _toChunks(abi.encode(data)));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapRegistryFuse.EulerV2SwapRegistryFuseInvalidPool.selector,
+                address(pool),
+                otherPool
+            )
+        );
+        harness.delegateExecute(address(fuse), abi.encodeCall(EulerV2SwapRegistryFuse.exitTransient, ()));
+
+        assertEq(registry.unregisterCallCount(), 0, "unregisterPool not called");
+    }
+
     // ============================================
     // Transient entry points
     // ============================================

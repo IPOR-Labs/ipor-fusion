@@ -353,6 +353,7 @@ contract CcipAttestationAnchorNetPrincipalTest is Test {
                 rescueDelay: RESCUE_DELAY,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: MIN_UPDATE_INTERVAL,
                 transferStalenessMax: 1 days
             })
@@ -438,20 +439,21 @@ contract CcipAttestationAnchorNetPrincipalTest is Test {
         executor.requestAssetsFromDispatcher(REMOTE_CHAIN, amount_, 0, 0, address(0), 500_000);
     }
 
-    function _expectBandRevertAt(uint256 proposed_, uint256 principal_) internal {
+    /// @dev IL-9720: a value above the band is no longer refused by a revert: the approval writes nothing, closes the
+    ///      proposal and blocks the chain (as `rejectBalanceAndBlock`). The pin of these tests, that the value is outside the
+    ///      band around `principal_`, is unchanged: the same anchor is asserted and the settled balance must stay as it was.
+    function _expectAboveBandBlockAt(uint256 proposed_, uint256 principal_) internal {
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
+        uint256 settledBefore = executor.settledRemoteBalance(REMOTE_CHAIN);
+        assertEq(executor.attestationAnchorPrincipal(REMOTE_CHAIN), principal_, "anchor the value is measured against");
+        assertGt(proposed_, principal_ + (principal_ * 2_000) / 10_000, "the value is above the band");
         uint256 proposalId = _propose(proposed_);
+        vm.expectEmit(address(executor));
+        emit CcipCrosschainExecutor.BalanceRejectedAndBlocked(proposalId, REMOTE_CHAIN);
         vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                principal_,
-                proposed_,
-                2_000
-            )
-        );
         executor.approveBalance(proposalId);
+        assertTrue(executor.chainBlocked(REMOTE_CHAIN), "the chain is blocked");
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), settledBefore, "nothing was written");
     }
 
     function _inflateToBandTop() internal {
@@ -472,7 +474,7 @@ contract CcipAttestationAnchorNetPrincipalTest is Test {
         assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 120e18, "settled 1.2V");
         assertEq(_net(), V);
         assertEq(_anchor(), V, "anchor capped at net principal, not 7V/6");
-        _expectBandRevertAt(130e18, V);
+        _expectAboveBandBlockAt(130e18, V);
     }
 
     function testFiveRoundTripsShouldKeepAnchorFlat() public {
@@ -484,7 +486,7 @@ contract CcipAttestationAnchorNetPrincipalTest is Test {
             assertLe(_net(), V, "net never exceeds V");
         }
         assertEq(_anchor(), V);
-        _expectBandRevertAt(130e18, V);
+        _expectAboveBandBlockAt(130e18, V);
     }
 
     function testHonestYieldResidueAfterFullRecallShouldStayAttestable() public {
@@ -511,7 +513,7 @@ contract CcipAttestationAnchorNetPrincipalTest is Test {
         assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 120e18);
         assertEq(_net(), V);
         assertEq(_anchor(), V, "anchor capped at net principal");
-        _expectBandRevertAt(130e18, V);
+        _expectAboveBandBlockAt(130e18, V);
     }
 
     function testForceSetShouldRebaseNetPrincipal() public {
@@ -573,7 +575,7 @@ contract CcipAttestationAnchorNetPrincipalTest is Test {
         assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 120e18, "settled 1.2V");
         assertEq(_net(), V, "net is the verifiably placed principal");
         assertEq(_anchor(), V, "anchor capped at net principal, not 7V/6");
-        _expectBandRevertAt(130e18, V);
+        _expectAboveBandBlockAt(130e18, V);
     }
 
     /// @notice The force-resolve credit (`applyForceResolveOutbound` site, `creditToSettled = true`) is capped.
@@ -653,7 +655,7 @@ contract CcipAttestationAnchorNetPrincipalTest is Test {
         _supply(V);
         assertEq(_net(), V, "net is the verifiably placed principal");
         assertEq(_anchor(), V, "anchor capped at net principal, not inflated");
-        _expectBandRevertAt(130e18, V);
+        _expectAboveBandBlockAt(130e18, V);
     }
 
     /// @notice Documented limitation (IL-8578 review): a realised loss stays in `netPrincipal` after the bucket

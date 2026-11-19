@@ -27,6 +27,14 @@ Compared with `UpdateBalancesPreHook`, which refreshes every active market on ev
 | A large market's balance fuse reads 0 once (paused venue, oracle failure, try/catch-to-0 branch) | back to the real value on the next hooked call | cached 0 is treated as dust and never re-read by the hook: NAV understated until one of the refreshes above |
 | Threshold set far above every market (wrong decimals) | n/a | hook refreshes nothing, silently: gains **and losses** are not reflected before entries and exits |
 
+## Nesting
+
+This hook cannot be nested in `ExchangeRateValidatorPreHook`: it needs its own threshold substrate, and a
+nested hook never receives one (substrates are stored per registered implementation and selector; only hooks
+without their own substrates, such as `UpdateBalancesPreHook`, can be nested). Register it directly on the
+selector with `setPreHookImplementations`; a nested instance reverts with `InvalidSubstratesLength` while any
+balance-fuse market is active.
+
 ## Required operations
 
 1. **Periodic full refresh.** Every vault using this hook needs a periodic `updateMarketsBalances`
@@ -47,7 +55,26 @@ Compared with `UpdateBalancesPreHook`, which refreshes every active market on ev
    (`threshold / 10^decimals * assetPriceUsd`) and flag anything above a few dollars. Also flag a
    threshold that is above the vault's largest market balance: the hook then refreshes nothing.
 
-4. **Changing the threshold** is done with `setPreHookImplementations` (same hook address, new
+4. **Vaults with a live EulerSwap pool (IL-9331).** Do not let this hook, or any hook, refresh the
+   `EULER_V2` market (11) from a user operation on such a vault. The hook refreshes every market whose
+   cached balance is `>=` the threshold, plus the dependency graphs of those markets (expanded
+   recursively), so market 11 is reachable when its own cache reaches the threshold or when it is in
+   the closure of another refreshed market. A cache below the threshold today is no permanent
+   protection: the cache grows. This hook cannot be nested in `ExchangeRateValidatorPreHook`: it needs
+   its own threshold substrate, and a nested hook never receives one (substrates are stored per
+   registered implementation and selector; only hooks without their own substrates, such as
+   `UpdateBalancesPreHook`, can be nested). On such a vault market 11 should be refreshed only by the
+   keeper or the alpha.
+   See the Euler fuses README, section "Live EulerSwap pools and user-triggered refreshes".
+
+5. **Vaults that hold a child Plasma Vault (IL-9743).** On such a vault the hook turns a hooked user
+   operation into a read of the child's share price, which can be temporarily wrong while the child runs
+   its `execute` batch or an instant withdrawal. The dust filter is no lasting protection: the child's
+   market is refreshed once its cache is `>=` the threshold, or when it is in the dependency graph of a
+   refreshed market. Known limitation, no code guard (owner decision); see
+   [Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)](../../../vaults/README.md#transient-share-price-views-during-execute-and-instant-withdrawal-il-9631-il-9743).
+
+6. **Changing the threshold** is done with `setPreHookImplementations` (same hook address, new
    substrate). Before enabling effective refreshes on a vault created from a PlasmaVault
    implementation that predates IL-8310, note that relayed user calls through ContextManager on
    hooked selectors start to revert once the hook actually calls `updateMarketsBalances` (see the

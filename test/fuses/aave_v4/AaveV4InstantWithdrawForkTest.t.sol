@@ -13,6 +13,12 @@ import {AaveV4ForkTestBase} from "./AaveV4ForkTestBase.sol";
 contract AaveV4InstantWithdrawForkTest is AaveV4ForkTestBase {
     uint256 private constant USDC_SUPPLY = 50_000e6;
 
+    /// @dev Selector of AaveV4SupplyFuse.AaveV4SupplyFuseInstantWithdrawNotAllowed(address,uint256)
+    bytes4 private constant INSTANT_WITHDRAW_NOT_ALLOWED_SELECTOR = 0x86c62fc3;
+
+    /// @dev Mirrors PlasmaVaultMarketsLib.InstantWithdrawalFuseFailed (IL-9659), emitted by the vault
+    event InstantWithdrawalFuseFailed(address fuse, uint256 index, bytes4 errorSelector);
+
     /// @dev USDC (Prime hub) as plain supply -> instant-withdrawable; WETH as collateral
     function _defaultGrants() internal pure override returns (bytes32[] memory grants) {
         grants = new bytes32[](2);
@@ -65,16 +71,11 @@ contract AaveV4InstantWithdrawForkTest is AaveV4ForkTestBase {
         _grantReserves(_defaultGrants());
         _configureInstantWithdraw(BLUECHIP_SPOKE, USDC, BLUECHIP_USDC_PRIME);
 
-        // when/then - on-chain collateral status blocks the instant-withdraw path
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AaveV4SupplyFuse.AaveV4SupplyFuseInstantWithdrawNotAllowed.selector,
-                BLUECHIP_SPOKE,
-                BLUECHIP_USDC_PRIME
-            )
-        );
-        vm.prank(user);
-        plasmaVault.withdraw(80_000e6, user, user);
+        // when/then - on-chain collateral status still blocks the Aave V4 leg: the fuse refuses with
+        // AaveV4SupplyFuseInstantWithdrawNotAllowed, the vault skips that entry (IL-9659) and the withdraw fails on the shortfall
+        uint256 suppliedBefore = _supplied(BLUECHIP_SPOKE, BLUECHIP_USDC_PRIME);
+        _expectAaveV4EntrySkippedAndWithdrawFails(80_000e6);
+        assertEq(_supplied(BLUECHIP_SPOKE, BLUECHIP_USDC_PRIME), suppliedBefore, "Aave position untouched");
 
         // and after the alpha disables collateral the same withdrawal succeeds
         _executeOne(_disableCollateralAction(BLUECHIP_SPOKE, BLUECHIP_USDC_PRIME));
@@ -97,19 +98,29 @@ contract AaveV4InstantWithdrawForkTest is AaveV4ForkTestBase {
         grants[1] = AaveV4SubstrateLib.encodeReserve(BLUECHIP_SPOKE, BLUECHIP_USDC_PRIME, true, false);
         _grantReserves(grants);
 
-        // when/then - the instant-withdraw path refuses a collateral-capable reserve
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AaveV4SupplyFuse.AaveV4SupplyFuseInstantWithdrawNotAllowed.selector,
-                BLUECHIP_SPOKE,
-                BLUECHIP_USDC_PRIME
-            )
-        );
-        vm.prank(user);
-        plasmaVault.withdraw(80_000e6, user, user);
+        // when/then - the Aave V4 fuse refuses a collateral-capable reserve (the guard still blocks the unsafe withdraw);
+        // since IL-9659 the vault skips that entry and the withdraw fails on the shortfall
+        uint256 suppliedBefore = _supplied(BLUECHIP_SPOKE, BLUECHIP_USDC_PRIME);
+        _expectAaveV4EntrySkippedAndWithdrawFails(80_000e6);
+        assertEq(_supplied(BLUECHIP_SPOKE, BLUECHIP_USDC_PRIME), suppliedBefore, "Aave position untouched");
 
         // and the alpha can still unwind through the regular exit
         _executeOne(_withdrawAction(BLUECHIP_SPOKE, USDC, BLUECHIP_USDC_PRIME, type(uint256).max, 0));
         assertLe(_supplied(BLUECHIP_SPOKE, BLUECHIP_USDC_PRIME), 1);
+    }
+
+    /// @dev IL-9659: the reverting Aave V4 entry (index 0) is skipped with InstantWithdrawalFuseFailed carrying the Aave V4
+    ///      error selector; nothing else serves the shortfall, so the user withdraw reverts with the ERC20 shortfall error
+    function _expectAaveV4EntrySkippedAndWithdrawFails(uint256 amount_) private {
+        assertEq(
+            INSTANT_WITHDRAW_NOT_ALLOWED_SELECTOR,
+            AaveV4SupplyFuse.AaveV4SupplyFuseInstantWithdrawNotAllowed.selector,
+            "selector constant matches the Aave V4 error"
+        );
+        vm.expectEmit(true, true, true, true, address(plasmaVault));
+        emit InstantWithdrawalFuseFailed(supplyFuse, 0, INSTANT_WITHDRAW_NOT_ALLOWED_SELECTOR);
+        vm.expectRevert(bytes("ERC20: transfer amount exceeds balance"));
+        vm.prank(user);
+        plasmaVault.withdraw(amount_, user, user);
     }
 }

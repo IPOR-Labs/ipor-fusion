@@ -13,8 +13,8 @@ pragma solidity 0.8.30;
 /// @param balanceApprover Two-step attestation approver.
 /// @param stalenessMax Max observation age before NAV blocks (seconds). Bounded to
 ///        `[MIN_PROPOSAL_APPROVAL_WINDOW, MAX_STALENESS_WINDOW]` at construction (IL-8049).
-/// @param bigChangeBps Big-change threshold in basis points. Bounded to `[1, ATTESTATION_ANCHOR_BAND_BPS]`
-///        at construction (IL-8049).
+/// @param bigChangeBps Big-change threshold in basis points. Bounded to `[1, anchorBandBps]` at construction
+///        (IL-8049, IL-9720).
 /// @param minUpdateInterval Minimum interval between confirmed attestations (seconds). Bounded to
 ///        `[1, stalenessMax)` at construction (IL-8049).
 /// @param deploymentTtl Lifetime of a dispatcher deployment ticket (seconds): the destination refuses to deploy
@@ -22,6 +22,9 @@ pragma solidity 0.8.30;
 ///        (IL-8623). Bounded to `[MIN_DEPLOYMENT_TTL, MAX_DEPLOYMENT_TTL]` at construction (IL-8049).
 /// @param transferStalenessMax Max in-flight transfer record age before NAV blocks (seconds). Bounded to
 ///        `[1, MAX_STALENESS_WINDOW]` at construction (IL-8049).
+/// @param anchorBandBps Attestation anchor band in basis points around `anchorPrincipal` (IL-9720). Bounded to
+///        `[bigChangeBps, MAX_ATTESTATION_ANCHOR_BAND_BPS]` at construction; immutable afterwards. 2_000 is the
+///        reference band for an unlevered leg; a levered leg needs a wider one (see the README).
 struct ExecutorInitParams {
     bytes32 assetId;
     address manager;
@@ -35,6 +38,7 @@ struct ExecutorInitParams {
     uint256 minUpdateInterval;
     uint256 deploymentTtl;
     uint256 transferStalenessMax;
+    uint256 anchorBandBps;
 }
 
 /// @notice A dispatcher deployment request passed from a registered executor to its local factory. The

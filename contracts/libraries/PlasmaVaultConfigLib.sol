@@ -7,6 +7,14 @@ import {PlasmaVaultStorageLib} from "./PlasmaVaultStorageLib.sol";
 library PlasmaVaultConfigLib {
     event MarketSubstratesGranted(uint256 marketId, bytes32[] substrates);
 
+    /// @notice Thrown when a substrate list passed to a grant function contains the same bytes32 value more than once
+    /// @dev Balance fuses that walk the substrate list count every entry, so a repeated substrate would make the vault
+    /// count its position more than once (IL-9642). Only exact duplicates are detected; aliases of one position with
+    /// different encodings (for example dirty upper bits of an address) remain the configurator's responsibility.
+    /// @param marketId The market whose substrates were being granted
+    /// @param substrate The substrate that appears more than once in the supplied list
+    error MarketSubstrateDuplicate(uint256 marketId, bytes32 substrate);
+
     /// @notice Checks if a given asset address is granted as a substrate for a specific market
     /// @dev This function is part of the Plasma Vault's substrate management system that controls which assets can be used in specific markets
     ///
@@ -148,6 +156,10 @@ library PlasmaVaultConfigLib {
     /// - Atomic operation - either all substrates are granted or none
     /// - Emits MarketSubstratesGranted event for tracking changes
     /// - Critical for market security and access control
+    /// - Reverts with MarketSubstrateDuplicate when the same bytes32 value appears twice in the list (IL-9642), because
+    ///   balance fuses that walk the list count every entry; the check is O(n) against the allowances cleared above
+    /// - Stores the list otherwise verbatim: no format check and no alias check (IL-8029, IL-8290); two encodings of
+    ///   one position (for example an address with dirty upper bits) are not detected and stay the configurator's duty
     ///
     /// @custom:context The function is used for:
     /// - Initial market setup by governance
@@ -175,7 +187,7 @@ library PlasmaVaultConfigLib {
     ///
     /// @custom:permissions
     /// - Should only be called by authorized governance functions
-    /// - Typically restricted to ATOMIST_ROLE
+    /// - Restricted to FUSE_MANAGER_ROLE by the access manager
     /// - Critical for vault security
     ///
     /// @custom:related-functions
@@ -192,8 +204,15 @@ library PlasmaVaultConfigLib {
 
         bytes32[] memory list = new bytes32[](substrates_.length);
         for (uint256 i; i < substrates_.length; ++i) {
-            marketSubstrates.substrateAllowances[substrates_[i]] = 1;
+            // allowance 2 marks "seen in this list"; a stale allowance 1 (list entry rewritten in place by a hook) is not a duplicate
+            if (marketSubstrates.substrateAllowances[substrates_[i]] == 2) {
+                revert MarketSubstrateDuplicate(marketId_, substrates_[i]);
+            }
+            marketSubstrates.substrateAllowances[substrates_[i]] = 2;
             list[i] = substrates_[i];
+        }
+        for (uint256 i; i < list.length; ++i) {
+            marketSubstrates.substrateAllowances[list[i]] = 1;
         }
 
         marketSubstrates.substrates = list;
@@ -211,6 +230,7 @@ library PlasmaVaultConfigLib {
     /// - Revokes all existing substrate grants before applying new ones
     /// - Converts addresses to bytes32 for storage efficiency
     /// - Atomic operation - either all assets are granted or none
+    /// - Reverts with MarketSubstrateDuplicate when the same address appears more than once (IL-9642)
     /// - Emits MarketSubstratesGranted event with converted addresses
     /// - Critical for market asset access control
     ///
@@ -237,7 +257,7 @@ library PlasmaVaultConfigLib {
     ///
     /// @custom:permissions
     /// - Should only be called by authorized governance functions
-    /// - Typically restricted to ATOMIST_ROLE
+    /// - Restricted to FUSE_MANAGER_ROLE by the access manager
     /// - Critical for vault security and asset management
     ///
     /// @custom:related-functions
@@ -255,8 +275,16 @@ library PlasmaVaultConfigLib {
         bytes32[] memory list = new bytes32[](substratesAsAssets_.length);
 
         for (uint256 i; i < substratesAsAssets_.length; ++i) {
-            marketSubstrates.substrateAllowances[addressToBytes32(substratesAsAssets_[i])] = 1;
-            list[i] = addressToBytes32(substratesAsAssets_[i]);
+            bytes32 substrate = addressToBytes32(substratesAsAssets_[i]);
+            // allowance 2 marks "seen in this list"; a stale allowance 1 (list entry rewritten in place by a hook) is not a duplicate
+            if (marketSubstrates.substrateAllowances[substrate] == 2) {
+                revert MarketSubstrateDuplicate(marketId_, substrate);
+            }
+            marketSubstrates.substrateAllowances[substrate] = 2;
+            list[i] = substrate;
+        }
+        for (uint256 i; i < list.length; ++i) {
+            marketSubstrates.substrateAllowances[list[i]] = 1;
         }
 
         marketSubstrates.substrates = list;

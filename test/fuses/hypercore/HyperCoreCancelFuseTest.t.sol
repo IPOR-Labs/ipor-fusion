@@ -17,6 +17,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
@@ -194,7 +195,7 @@ contract HyperCoreCancelFuseTest is Test {
         substrates[0] = HyperCoreSubstrateLib.encodePerpMarket(ASSET, 10_000, false);
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SettlementMode, 257);
         substrates[2] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowOrderSeconds, 0);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         core.setL1BlockNumber(100);
         _executeCancelByOid(ASSET, 1);
@@ -227,7 +228,7 @@ contract HyperCoreCancelFuseTest is Test {
         vm.prank(TestAddresses.FUSE_MANAGER);
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodePerpMarket(ASSET, 10_000, false);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _executeCancelByOid(uint32 asset_, uint64 oid_) private {

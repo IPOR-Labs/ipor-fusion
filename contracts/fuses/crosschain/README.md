@@ -25,22 +25,48 @@ low 160 bits; type `0` is invalid):
 
 The allowlist of remote vaults is also enforced on the destination dispatcher.
 
+### Valuation dependency for a non-underlying executor asset (IL-9688)
+
+When an executor's `ASSET()` is not the vault's underlying, a claim moves that token into the vault and removes its value
+from the CROSSCHAIN market (54). The token is valued again only through an `ERC20_VAULT_BALANCE` (7) market refreshed in
+the same batch. The FUSE_MANAGER must grant the token in market 7 (with its price feed) and add the dependency edge
+`CROSSCHAIN (54) -> ERC20_VAULT_BALANCE (7)`; the fuses do not check this. Otherwise NAV is understated until market 7
+is refreshed.
+
+### Recovery marker scopes (IL-9655)
+
+Recovery fuses (claim, supply `exit`, the recovery-marked commands) mark the `(market, executor)` scope they drive in
+transient storage, and the balance fuse serves a fallback value only for a marked executor whose `getBalance()`
+reverted. Several executors can be marked in one transaction: each recovery action adds its own scope (marking the
+same scope again changes nothing). A scope stays marked until the transaction ends, so a scope marked in an earlier
+`execute()` batch still applies to later batches of the same transaction. The marker layout changed, so the six
+crosschain fuses (`CrosschainBalanceFuse`, `CrosschainClaimFuse` and the supply and command fuses of both transports)
+are redeployed and re-granted together. See the transport READMEs ("Cached-NAV fallback with several executors").
+
 ## Contents
 
 | Path | Role |
 |---|---|
-| `CrosschainBalanceFuse.sol` | Balance fuse. Sums `getBalance()` of every granted `EXECUTOR`, each priced in its own `ASSET()` and returned in USD WAD. `getBalance()` is fail-closed (staleness, blocked chain), so NAV updates revert while a chain is stale. In a recovery batch it falls back to the cached market value (single executor) or to the marked executor's `getBalanceUnchecked()` (several executors, staleness reverts only). |
+| `CrosschainBalanceFuse.sol` | Balance fuse. Sums `getBalance()` of every granted `EXECUTOR`, each priced in its own `ASSET()` and returned in USD WAD. `getBalance()` is fail-closed (staleness, blocked chain), so NAV updates revert while a chain is stale. In a recovery batch it falls back to the cached market value (single executor) or to the `getBalanceUnchecked()` of each marked executor (several executors, staleness reverts only; several executors can be marked in one transaction, IL-9655). |
 | `CrosschainClaimFuse.sol` | Claims settled idle executor assets back to the vault (`min(amount, idle ledger)`). Requires a granted `EXECUTOR` and `MANAGER()` equal to the vault; reports the received amount to the recovery context. |
 | `stargate/StargateCrosschainSupplyFuse.sol` | `enter` bridges capital to a remote dispatcher; `exit` only requests a recall (no tokens arrive in the same transaction, so it must not be in the instant-withdraw order). |
-| `stargate/StargateCrosschainCommandFuse.sol` | Forwards manager operations to a Stargate executor: register chain, create dispatcher, update remote vault allowlist, send/cancel/retry commands. |
+| `stargate/StargateCrosschainCommandFuse.sol` | Forwards manager operations to a Stargate executor: register chain, create dispatcher, update remote vault allowlist, send/cancel/retry commands. `enterWithSweepFloors` sends `UPDATE_PLASMA_VAULTS` with per-vault sweep floors (`minAssets` in shared decimals, IL-9629); `enter` is unchanged. |
 | `ccip/CcipCrosschainSupplyFuse.sol` | Supply fuse for CCIP executors. |
-| `ccip/CcipCrosschainCommandFuse.sol` | Command fuse for CCIP executors (commands, retry, cancel). |
+| `ccip/CcipCrosschainCommandFuse.sol` | Command fuse for CCIP executors (commands, retry, cancel). `enterWithSweepFloors` sends `UPDATE_VAULTS` with per-vault sweep floors (`minAssets` in local asset decimals, IL-9629); `enter` is unchanged. |
 | `lib/CrosschainSubstrateLib.sol` | Substrate encoding and the `validate*Granted` checks. |
-| `lib/CrosschainRecoveryLib.sol` | Transient recovery marker and recovered-value accumulator shared by the recovery fuses and the balance fuse. |
+| `lib/CrosschainRecoveryLib.sol` | Transient recovery marker (a set of `(market, executor)` scopes, IL-9655) and recovered-value accumulator shared by the recovery fuses and the balance fuse. |
 
 The pre-hook `CrosschainNavValidationPreHook` (`contracts/handlers/pre_hooks/pre_hooks/`) gates the share-price-sensitive
 vault selectors on the freshness and non-blocked state of every granted executor. Wiring and exclusions are described in
 its NatSpec and in the transport READMEs.
+
+A vault that holds shares of a CROSSCHAIN vault (an index, a pair) has no executor of its own. It registers the same hook directly
+on `deposit`, `mint`, `depositWithPermit`, `withdraw`, `redeem` and `redeemFromRequest` and passes the CROSSCHAIN vaults of its
+tree as the pre-hook substrates of each of those selectors (one `bytes32` per vault, the address in the low 160 bits, the same list
+on all six, one `setPreHookImplementations` call); the hook then probes `isNavHealthy` of each watched vault and reverts
+`CrosschainNavValidationPreHookWatchedVaultUnhealthy` when one fails. Registering the hook replaces the previous hook of the selector
+(for example a rate validator with its nested hooks), so inventory the six selectors first. Procedure, the nine limits and the gas
+cost: "Vaults that hold shares of a CROSSCHAIN vault" in the CCIP and Stargate READMEs.
 
 ## Grant risks (documented, not enforced by the fuses)
 

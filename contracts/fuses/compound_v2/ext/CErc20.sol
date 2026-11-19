@@ -19,6 +19,12 @@ interface CErc20 {
     function underlying() external view returns (address);
 
     /**
+     * @notice Get the underlying balance held by the cToken (the liquidity available for redemptions)
+     * @return The quantity of underlying asset owned by this contract
+     */
+    function getCash() external view returns (uint256);
+
+    /**
      * @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to redeem

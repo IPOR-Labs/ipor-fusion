@@ -165,6 +165,7 @@ abstract contract StargateForkBase is Test {
             balanceApprover: approver,
             stalenessMax: 1 days,
             bigChangeBps: 1000,
+            anchorBandBps: 2_000,
             minUpdateInterval: 10 minutes,
             deploymentTtl: 1 days,
             transferStalenessMax: 2 days

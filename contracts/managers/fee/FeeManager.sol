@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {AccessManagedUpgradeable} from "../access/AccessManagedUpgradeable.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {FeeAccount} from "./FeeAccount.sol";
 import {PlasmaVaultGovernance} from "../../vaults/PlasmaVaultGovernance.sol";
@@ -76,16 +77,33 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @notice Thrown when trying to set an invalid high water mark
     error InvalidHighWaterMark();
 
+    /// @notice Thrown when the manual high water mark reset would raise the stored high water mark (IL-9667)
+    /// @param currentHighWaterMark Current share rate of the vault in the high water mark unit
+    /// @param storedHighWaterMark High water mark stored before the reset
+    error HighWaterMarkResetAboveStored(uint256 currentHighWaterMark, uint256 storedHighWaterMark);
+
     /// @notice Thrown when trying to call a function from a non-plasma vault contract
     error NotPlasmaVault();
 
     /// @notice Thrown when the deposit fee exceeds DEPOSIT_MAX_FEE_IN_PERCENTAGE
     error InvalidDepositFee(uint256 fee);
 
+    /// @notice Thrown when the management fee is changed while a realization would still mint fee shares
+    /// @param unrealizedManagementFee Unrealized management fee of the plasma vault, in underlying asset units
+    error FeeManagerUnrealizedManagementFee(uint256 unrealizedManagementFee);
+
     uint64 private constant INITIALIZED_VERSION = 10;
 
     /// @dev Hard CAP for the deposit fee, WAD-scaled (1e18 = 100%) - 10%
     uint256 public constant DEPOSIT_MAX_FEE_IN_PERCENTAGE = 1e17;
+
+    /// @notice Scale of the share rate and of the high-water mark (IL-9601)
+    /// @dev The vault passes the rate as assets per 10 ** decimals() shares multiplied by this scale, and the
+    ///      high-water mark is stored in the same unit: on a 6-decimal asset one unit is 1e-18 of the share price
+    ///      instead of 1e-6, so the floored post-fee mark no longer charges the same asset unit again (Olympix M11).
+    ///      A FeeManager without this constant stores asset units per 10 ** decimals() shares; it must be paired
+    ///      only with a vault built before IL-9601, and this one only with a vault that passes the scaled rate.
+    uint256 public constant HIGH_WATER_MARK_SCALE = FeeManagerStorageLib.HIGH_WATER_MARK_SCALE;
 
     /// @notice Address of the plasma vault contract
     address public immutable PLASMA_VAULT;
@@ -316,16 +334,30 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @notice Updates management fees for all recipients
     /// @dev Only callable by ATOMIST_ROLE (role id: 100)
     /// @dev Harvests existing management fees before updating
-    /// @dev The harvest covers only shares already minted to the management fee account; the fee accrued since the
-    /// last realization is still pending in the vault and is minted later, then split by the NEW recipients.
-    /// Realize the pending fee first (any deposit, mint, withdraw or redeem in the same batch) to pay the old
-    /// period to the old recipients. With a new total of 0 shares already minted wait in the account until a
-    /// non-zero fee is configured.
+    /// @dev The harvest covers only shares already minted to the management fee account. A fee accrued since the
+    /// last realization that would mint at least one share blocks the update (see the revert below), so the old
+    /// period is paid to the old recipients. Only a remainder that mints no share (dust) stays pending and is split
+    /// by the NEW recipients when it is minted later. With a new total of 0 shares already minted wait in the
+    /// account until a non-zero fee is configured.
+    /// @dev Reverts with FeeManagerUnrealizedManagementFee while the vault has shares and assets and its unrealized
+    /// management fee would still mint at least one fee share (same convertToShares as the vault's realization), so
+    /// the old period is always split by the old recipients. Realize the fee first (any deposit, mint, withdraw or
+    /// redeem in the same batch). Vaults without shares or without assets are skipped, as in the vault's checkpoint.
+    /// If none of deposit, mint, withdraw or redeem can run (supply cap reached, reverting deposit pre-hook, users
+    /// paused, atomist without deposit access), every update reverts, also a cut to 0 or a recipient removal: restore
+    /// one of these paths first in the same batch (raise the supply cap, grant the deposit role or whitelist, unpause),
+    /// then realize the fee, then change it.
     /// @dev Total management fee will be the sum of all recipient fees + DAO fee
     /// @dev Reverts with DuplicateFeeRecipientAddress if recipientFees contains a repeated recipient address
     /// @param recipientFees Array of recipient fees containing address and new fee value, no duplicate addresses allowed
     /// @custom:access Restricted to ATOMIST_ROLE
     function updateManagementFee(RecipientFee[] calldata recipientFees) external restricted {
+        if (IERC4626(PLASMA_VAULT).totalSupply() != 0 && IERC4626(PLASMA_VAULT).totalAssets() != 0) {
+            uint256 unrealizedManagementFee = IPlasmaVault(PLASMA_VAULT).getUnrealizedManagementFee();
+            if (IERC4626(PLASMA_VAULT).convertToShares(unrealizedManagementFee) != 0) {
+                revert FeeManagerUnrealizedManagementFee(unrealizedManagementFee);
+            }
+        }
         harvestManagementFee();
         _updateFees(
             recipientFees,
@@ -339,11 +371,23 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @notice Updates performance fees for all recipients
     /// @dev Only callable by ATOMIST_ROLE (role id: 100)
     /// @dev Harvests existing performance fees before updating
+    /// @dev IL-9632 (Olympix L01): first crystallizes the performance fee at the old rate
+    ///      (PlasmaVault.realizePerformanceFee), then harvests the performance fee account with the old recipient
+    ///      split, then writes the new recipients and total. The gain above the high-water mark earned before the
+    ///      change is therefore charged at the old rate and paid to the old recipients, and the new rate applies only
+    ///      to the gain above the high-water mark after this call. The crystallization is the vault's regular one: it
+    ///      prices the stored market balances (refresh the markets first in the same batch so that an unbooked gain
+    ///      is charged at the old rate too), lowers the high-water mark after the update interval when the rate is
+    ///      below it, and sets the mark only to the rate after the fee mint, never to a stored mark above the rate
+    ///      (no conflict with the manual reset rule of updateHighWaterMarkPerformanceFee, IL-9667). Needs a vault
+    ///      built with IL-9632 (the pair from the factory); on a vault without realizePerformanceFee the call reverts.
     /// @dev Total performance fee will be the sum of all recipient fees + DAO fee
     /// @dev Reverts with DuplicateFeeRecipientAddress if recipientFees contains a repeated recipient address
     /// @param recipientFees Array of recipient fees containing address and new fee value, no duplicate addresses allowed
     /// @custom:access Restricted to ATOMIST_ROLE
     function updatePerformanceFee(RecipientFee[] calldata recipientFees) external restricted {
+        /// @dev IL-9632: crystallize at the old rate before the harvest, so the minted shares go to the old split
+        IPlasmaVault(PLASMA_VAULT).realizePerformanceFee();
         harvestPerformanceFee();
         _updateFees(
             recipientFees,
@@ -492,13 +536,35 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// @dev This function should be called to synchronize the HWM with the current vault state.
     ///      The HWM is used to ensure that performance fees are only charged on new profits above the HWM (the share price after the last performance fee).
     ///      Only callable by addresses with the `restricted` modifier (e.g., governance or automation).
-    ///      The new HWM is set to the current asset value per share (exchange rate) of the vault.
-    ///      Reverts if the current exchange rate is zero (prevents setting an invalid HWM).
+    ///      The new HWM is set to the current asset value per share (exchange rate) of the vault, in the unit of the
+    ///      rate the vault passes: `convertToAssets(10 ** decimals() * HIGH_WATER_MARK_SCALE)` (IL-9601).
+    ///      Reverts if the current exchange rate is zero (prevents setting an invalid HWM), and with the SafeCast
+    ///      error if the scaled rate does not fit uint128 (the vault skips the performance fee in that range).
     /// @custom:security Only callable by authorized roles to prevent manipulation.
     /// @custom:security Ensures HWM cannot be set to zero, which would allow fee abuse.
+    /// @custom:security Lowering (IL-9637, Olympix L06): the reset also sets the HWM below the stored mark. This is the
+    ///      "Reset high watermark" feature (IL-6921), so that a vault accrues performance fees again after a large
+    ///      drop of the share price; the recovery from the current rate back to the old mark is then charged again.
+    ///      Depositors are protected by the execution delay of the OWNER_ROLE grant, the role the IPOR Fusion
+    ///      initializer maps to this function: an owner granted with a non-zero delay has to schedule the reset in the
+    ///      access manager and can execute it only after the delay, GUARDIAN_ROLE can cancel it in between. The
+    ///      initializer grants OWNER_ROLE with a zero delay, so by default the reset takes effect immediately.
+    /// @custom:security Raising (IL-9667, Olympix L36): reverts with HighWaterMarkResetAboveStored when the stored HWM
+    ///      is not zero and the current rate is above it. A rate above the HWM is a gain that is not crystallized
+    ///      yet: the next execute, updateMarketsBalances, withdraw or redeem charges the performance fee on it, the
+    ///      IPOR DAO share included, and moves the HWM itself, so raising the HWM by hand could only waive that fee
+    ///      (IL-8120). Crystallize first, then reset. A rate equal to or below the HWM is stored as before, and a
+    ///      zero stored HWM (not initialized) is set to any non-zero rate.
     /// @custom:see EIP-4626 for vault fee patterns and best practices.
     function updateHighWaterMarkPerformanceFee() external restricted {
+        uint256 storedHighWaterMark = FeeManagerStorageLib.getPlasmaVaultHighWaterMarkPerformanceFee().highWaterMark;
         _updateHighWaterMarkPerformanceFee();
+        /// @dev IL-9667: checked on the stored result, so the rate is converted once, in the unit the HWM is kept in;
+        ///      the revert undoes the write
+        uint256 newHighWaterMark = FeeManagerStorageLib.getPlasmaVaultHighWaterMarkPerformanceFee().highWaterMark;
+        if (storedHighWaterMark != 0 && newHighWaterMark > storedHighWaterMark) {
+            revert HighWaterMarkResetAboveStored(newHighWaterMark, storedHighWaterMark);
+        }
     }
 
     /// @notice Updates the minimum interval between high water mark (HWM) updates for performance fee calculation
@@ -549,7 +615,9 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     ///      where fees are only charged on gains above the HWM (the share price after the last performance fee).
     ///      The function can only be called by the plasma vault contract.
     ///
-    /// @param actualExchangeRate_ Current exchange rate between shares and assets (assets per 1 unit of share (10**shareDecimals))
+    /// @param actualExchangeRate_ Current exchange rate between shares and assets: assets per 10 ** shareDecimals
+    ///        shares multiplied by HIGH_WATER_MARK_SCALE (IL-9601), the unit of the stored HWM. The vault computes it
+    ///        in one mulDiv from the terms of its net share price, not by scaling an already rounded rate.
     /// @param totalSupply_ Total supply of vault shares
     /// @param performanceFee_ Performance fee percentage with 2 decimal precision (10000 = 100%)
     /// @param assetDecimals_ Decimals of the underlying asset (share decimals minus the vault decimals offset).
@@ -564,11 +632,15 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
     /// 2. If current rate is below HWM:
     ///    - If updateInterval is 0 (disabled): no automatic HWM update, returns 0 fee
     ///    - If updateInterval > 0 and interval not yet passed: returns 0 fee
+    ///      (IL-9636: `lastUpdate + updateInterval` is summed in uint256, so a large interval cannot overflow)
     ///    - If updateInterval > 0 and interval has passed: updates HWM to current rate and returns 0 fee
     /// 3. If current rate is above HWM:
-    ///    - Calculates fee based on the gain above HWM
+    ///    - Calculates the fee shares that are worth performanceFee_ of the gain above HWM after their own mint
+    ///      (IL-8870): totalSupply_ * f / (10000 * rate - f) with f = performanceFee_ * (rate - HWM)
     ///    - Sets HWM to the share price after the fee mint (IL-8744); if no fee shares result, to the current rate
     ///    - Returns fee recipient and calculated shares
+    /// 4. The rate, the HWM and the price after the mint are all in the HIGH_WATER_MARK_SCALE unit (IL-9601). The
+    ///    fee share formula is a ratio of rates, so the scale changes only the precision of rate - HWM.
     ///
     /// @custom:security Uses SafeCast for uint256 to uint128 conversion
     /// @custom:security Implements reentrancy protection via plasma vault pattern
@@ -594,7 +666,8 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         if (actualExchangeRate_ <= highWaterMarkStorage.highWaterMark) {
             if (
                 highWaterMarkStorage.updateInterval != 0 &&
-                block.timestamp >= highWaterMarkStorage.lastUpdate + highWaterMarkStorage.updateInterval
+                block.timestamp >=
+                    uint256(highWaterMarkStorage.lastUpdate) + uint256(highWaterMarkStorage.updateInterval)
             ) {
                 FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(actualExchangeRate_);
             }
@@ -602,8 +675,14 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
 
         uint256 delta = actualExchangeRate_ - uint256(highWaterMarkStorage.highWaterMark);
-        uint256 sharesToHarvest = Math.mulDiv(totalSupply_, delta, uint256(actualExchangeRate_));
-        feeShares = Math.mulDiv(sharesToHarvest, performanceFee_, 10000);
+        /// @dev IL-8870: the fee shares are worth performanceFee_ of the gain after their own mint. With
+        ///      x = performanceFee_ * delta / (10000 * actualExchangeRate_), the fee as a part of the vault value,
+        ///      the shares are x / (1 - x) of the supply: feeShares / (totalSupply_ + feeShares) = x, and the share
+        ///      price after the mint is the rate less performanceFee_ of the gain. x of the supply (shares priced
+        ///      before their own mint) is worth only x / (1 + x) after it. delta is below the rate and the vault
+        ///      caps performanceFee_ at 50%, so the denominator is positive and the result is below totalSupply_.
+        uint256 feeValue = delta * performanceFee_;
+        feeShares = Math.mulDiv(totalSupply_, feeValue, uint256(actualExchangeRate_) * 10000 - feeValue);
 
         /// @dev IL-8744: the HWM is the share price after the fee shares are minted (the vault mints right after this
         ///      call), not the pre-mint rate; otherwise the recovery from the diluted price back to the pre-mint rate
@@ -614,21 +693,58 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         return (PERFORMANCE_FEE_ACCOUNT, feeShares);
     }
 
+    /// @notice Performance fee shares that calculateAndUpdatePerformanceFee sizes for the same inputs now, without
+    ///         writing anything
+    /// @dev IL-9624 (Olympix M34): the vault's previewRedeem, previewWithdraw, maxWithdraw and, with released request
+    ///      shares (IL-9624 follow-up), maxRedeem call this to price the performance fee that withdraw and redeem
+    ///      crystallize before they pay, so the views equal the results on fresh market balances (ERC-4626: a
+    ///      preview must not promise more than the call gives). Mirrors
+    ///      calculateAndUpdatePerformanceFee branch by branch: 0 while the high-water mark is not set (the first
+    ///      crystallization only stores it) and when the rate is at or below the mark (also after the update
+    ///      interval, where the crystallization lowers the mark without a fee); above the mark the same IL-8870
+    ///      formula, totalSupply_ * f / (10000 * rate - f) with f = performanceFee_ * (rate - HWM). The formula is
+    ///      repeated here rather than shared through a private function, so the crystallization path keeps its gas;
+    ///      PlasmaVaultPreviewPerformanceFeeTest asserts that both size the same shares.
+    /// @dev Gas: the selector (0xa6d84657) sorts after calculateAndUpdatePerformanceFee (0x9617bcca); with the linear
+    ///      selector dispatch of the repository profile (optimizer runs 2) the new function adds nothing to the
+    ///      crystallization call of execute, updateMarketsBalances, withdraw and redeem.
+    /// @dev The PlasmaVault and the FeeManager are a pair from the factory: a PlasmaVault built with IL-9624 calls this
+    ///      function in those views (maxRedeem only with released request shares), which revert on a FeeManager built
+    ///      before it.
+    /// @param actualExchangeRate_ Share rate in the HIGH_WATER_MARK_SCALE unit, the value the vault would pass to
+    ///        calculateAndUpdatePerformanceFee
+    /// @param totalSupply_ Share supply the fee is sized on: the minted supply plus the virtual management fee shares
+    /// @param performanceFee_ Performance fee percentage with 2 decimal precision (10000 = 100%)
+    /// @return feeShares Performance fee shares the vault would mint on top of totalSupply_
+    function pendingPerformanceFeeShares(
+        uint128 actualExchangeRate_,
+        uint256 totalSupply_,
+        uint256 performanceFee_
+    ) external view returns (uint256 feeShares) {
+        uint256 highWaterMark = FeeManagerStorageLib.getPlasmaVaultHighWaterMarkPerformanceFee().highWaterMark;
+        if (highWaterMark == 0 || actualExchangeRate_ <= highWaterMark) {
+            return 0;
+        }
+        uint256 feeValue = (actualExchangeRate_ - highWaterMark) * performanceFee_;
+        feeShares = Math.mulDiv(totalSupply_, feeValue, uint256(actualExchangeRate_) * 10000 - feeValue);
+    }
+
     /// @notice Share price right after fee shares were minted on top of the current supply
-    /// @dev Mirrors PlasmaVault.convertToAssets(10 ** decimals()) evaluated with supply = supplyAfterMint_ (Floor):
-    ///      mulDiv(10 ** shareDecimals, totalAssets + 1, supplyAfterMint_ + 10 ** (shareDecimals - assetDecimals)),
-    ///      where 10 ** (shareDecimals - assetDecimals) is the vault share scale multiplier. Minting fee shares
-    ///      does not change totalAssets, so the value is exact. The result never exceeds the pre-mint rate,
-    ///      which the vault guarantees fits uint128.
+    /// @dev Mirrors PlasmaVault.convertToAssets(10 ** decimals() * HIGH_WATER_MARK_SCALE) evaluated with
+    ///      supply = supplyAfterMint_ (Floor): mulDiv(10 ** shareDecimals * HIGH_WATER_MARK_SCALE, totalAssets + 1,
+    ///      supplyAfterMint_ + 10 ** (shareDecimals - assetDecimals)), where 10 ** (shareDecimals - assetDecimals)
+    ///      is the vault share scale multiplier. Minting fee shares does not change totalAssets, so the value is
+    ///      exact; with the scale (IL-9601) the floor drops less than 1e-12 of an asset unit per share. The result
+    ///      never exceeds the pre-mint rate, which the vault guarantees fits uint128.
     /// @param supplyAfterMint_ Vault share supply including the performance fee shares about to be minted
     /// @param assetDecimals_ Decimals of the underlying asset (share decimals minus the vault decimals offset)
-    /// @return Assets per 1 unit of share (10 ** shareDecimals) after the mint, as stored in the HWM
+    /// @return Assets per 10 ** shareDecimals shares times HIGH_WATER_MARK_SCALE after the mint, as stored in the HWM
     function _rateAfterFeeMint(uint256 supplyAfterMint_, uint256 assetDecimals_) private view returns (uint128) {
         uint256 shareDecimals = IERC20Metadata(PLASMA_VAULT).decimals();
         return
             Math
                 .mulDiv(
-                    10 ** shareDecimals,
+                    10 ** shareDecimals * HIGH_WATER_MARK_SCALE,
                     IERC4626(PLASMA_VAULT).totalAssets() + 1,
                     supplyAfterMint_ + 10 ** (shareDecimals - assetDecimals_)
                 )
@@ -681,6 +797,11 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         return FeeManagerStorageLib.getPlasmaVaultDepositFee();
     }
 
+    /// @notice Returns the high-water mark, its last update time and the update interval
+    /// @dev `highWaterMark` is assets per 10 ** decimals() vault shares multiplied by HIGH_WATER_MARK_SCALE (1e12),
+    ///      IL-9601. Divide by HIGH_WATER_MARK_SCALE for asset units per 10 ** decimals() shares. A FeeManager
+    ///      without HIGH_WATER_MARK_SCALE (built before IL-9601) returns asset units per 10 ** decimals() shares.
+    /// @return The high-water mark storage
     function getPlasmaVaultHighWaterMarkPerformanceFee()
         external
         view
@@ -790,9 +911,12 @@ contract FeeManager is AccessManagedUpgradeable, ContextClient {
         }
     }
 
+    /// @notice Sets the HWM to the vault's current share rate in the HWM unit
+    /// @dev One conversion in the vault, convertToAssets(10 ** decimals() * HIGH_WATER_MARK_SCALE): the same mulDiv
+    ///      and the same net terms as the rate the vault passes to calculateAndUpdatePerformanceFee (IL-9601).
     function _updateHighWaterMarkPerformanceFee() private {
         uint256 highWaterMark = IERC4626(PLASMA_VAULT).convertToAssets(
-            10 ** uint256(IERC20Metadata(PLASMA_VAULT).decimals())
+            10 ** uint256(IERC20Metadata(PLASMA_VAULT).decimals()) * HIGH_WATER_MARK_SCALE
         );
         if (highWaterMark > 0) {
             FeeManagerStorageLib.updateHighWaterMarkPerformanceFee(highWaterMark.toUint128());

@@ -20,6 +20,10 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
     address public constant BASE_CURRENCY = 0x0000000000000000000000000000000000000348;
     uint256 public constant BASE_CURRENCY_DECIMALS = 8;
+    /// @dev Pendle market V3 factory (Ethereum) that deployed the markets used in this test
+    address private constant PENDLE_MARKET_FACTORY_V3 = 0x6fcf753f2C67b83f7B09746Bbc4FA0047b35D050;
+    /// @dev Earlier Pendle market V3 factory (Ethereum) that deployed the last market of _getTestItems
+    address private constant PENDLE_MARKET_FACTORY_V3_LEGACY = 0x27b1dAcd74688aF24a64BD3C9C1B143118740784;
     address public constant ADMIN = 0xD92E9F039E4189c342b4067CC61f5d063960D248;
 
     PriceOracleMiddlewareWithRoles private priceOracleMiddlewareProxy;
@@ -48,6 +52,11 @@ contract PriceOracleMiddlewareWithRolesPTTokensTest is Test {
 
         vm.startPrank(ADMIN);
         priceOracleMiddlewareProxy.grantRole(priceOracleMiddlewareProxy.ADD_PT_TOKEN_PRICE(), ADMIN);
+        priceOracleMiddlewareProxy.grantRole(priceOracleMiddlewareProxy.SET_ASSETS_PRICES_SOURCES(), ADMIN);
+        address[] memory factories = new address[](2);
+        factories[0] = PENDLE_MARKET_FACTORY_V3;
+        factories[1] = PENDLE_MARKET_FACTORY_V3_LEGACY;
+        priceOracleMiddlewareProxy.setPendleMarketFactories(factories, true);
         vm.stopPrank();
     }
     function testShouldCreateAndAddPtTokenPriceFeed() public activeItem {

@@ -61,7 +61,7 @@ contract TermFinanceBalanceFuseTest is Test {
 
     /// @dev Build a complete USDC-purchase Term Repo wired up with mocks.
     /// @dev The balance fuse reads `IExtTermRepoServicer.termRepoCollateralManager()` as the
-    ///      FIRST foreign call inside `_signedValueForServicerInternal` (cap check via
+    ///      FIRST foreign call inside `_valueForServicerInternal` (cap check via
     ///      `numOfAcceptedCollateralTokens()`). Without a wired-up collateral manager, the
     ///      `_tryReadCollateralManager` probe fails and the leg degrades to 0 — masking every
     ///      lender-side assertion. We wire a CM with 0 accepted tokens by default so the
@@ -222,7 +222,11 @@ contract TermFinanceBalanceFuseTest is Test {
         assertApproxEqAbs(nav, expected, 100 * 1e4, "PV pre-maturity ~ principal");
     }
 
-    function test_balanceOf_heldRepoToken_postMaturity_returnsFaceMinusHaircut() public {
+    /// @notice IL-9553 (D-017): Term's `shortfallHaircutMantissa` is the proportion of redemption value paid on
+    ///         redemption (`TermRepoServicer._proRataRedemption` pays `value * mantissa`), i.e. a recovery ratio.
+    ///         A 3% shortfall is stored as 0.97e18 and the held leg is worth 97% of face (the base read the
+    ///         mantissa as a haircut and valued it at 3%).
+    function test_balanceOf_heldRepoToken_postMaturity_returnsFaceTimesRecovery() public {
         uint256 tred = block.timestamp;
         Term memory t = _deployUsdcTerm(tred);
         _grantSubstrate(address(t.servicer));
@@ -230,17 +234,153 @@ contract TermFinanceBalanceFuseTest is Test {
         t.repoToken.mint(address(harness), 1_000_000);
         t.repoToken.setRedemptionValue(1_003_889e12);
 
-        // 3% shortfall.
-        t.servicer.setShortfallHaircutMantissa(3e16);
+        // 3% shortfall: Term pays 97% of the redemption value.
+        t.servicer.setShortfallHaircutMantissa(97e16);
 
         // Warp so block.timestamp >= tred.
         vm.warp(tred + 1);
 
         uint256 nav = harness.balanceOf();
-        // face = 1_003_889 USDC, post-haircut = face * 0.97 ≈ 973_772.
-        uint256 expectedUsdc = (1_003_889 * (WAD - 3e16)) / WAD;
+        // face = 1_003_889 USDC, recovered = face * 0.97 ≈ 973_772.
+        uint256 expectedUsdc = (1_003_889 * 97e16) / WAD;
         uint256 expectedWad = _convertUsdcToWad(expectedUsdc);
         assertApproxEqAbs(nav, expectedWad, 100 * 1e4);
+    }
+
+    /// @notice IL-9553 (D-017): a recovery mantissa of 1e18 (everything collected) is worth full face.
+    function test_balanceOf_heldRepoToken_postMaturity_fullRecoveryMantissa_returnsFace() public {
+        uint256 tred = block.timestamp;
+        Term memory t = _deployUsdcTerm(tred);
+        _grantSubstrate(address(t.servicer));
+
+        t.repoToken.mint(address(harness), 1_000_000);
+        t.repoToken.setRedemptionValue(1_003_889e12);
+        t.servicer.setShortfallHaircutMantissa(1e18);
+
+        vm.warp(tred + 1);
+
+        assertEq(harness.balanceOf(), _convertUsdcToWad(1_003_889), "recovery 1e18 -> face");
+    }
+
+    /// @notice IL-9553 (D-017): a mantissa above 1e18 (corrupted proxy) is clamped to full face, never above.
+    function test_balanceOf_heldRepoToken_postMaturity_recoveryMantissaAboveOne_clampedToFace() public {
+        uint256 tred = block.timestamp;
+        Term memory t = _deployUsdcTerm(tred);
+        _grantSubstrate(address(t.servicer));
+
+        t.repoToken.mint(address(harness), 1_000_000);
+        t.repoToken.setRedemptionValue(1_003_889e12);
+        t.servicer.setShortfallHaircutMantissa(2e18);
+
+        vm.warp(tred + 1);
+
+        assertEq(harness.balanceOf(), _convertUsdcToWad(1_003_889), "mantissa clamped to 1e18");
+    }
+
+    /// @notice IL-9553 (D-017): while the mantissa is unset (0) and nothing is outstanding, Term redeems at par
+    ///         (`redeemTermRepoTokens` takes the `_parRedemption` branch): full face.
+    function test_balanceOf_heldRepoToken_postMaturity_unsetRecovery_fullyCollected_returnsFace() public {
+        uint256 tred = block.timestamp;
+        Term memory t = _deployUsdcTerm(tred);
+        _grantSubstrate(address(t.servicer));
+
+        t.repoToken.mint(address(harness), 1_000_000);
+        t.repoToken.setRedemptionValue(1_003_889e12);
+        t.servicer.setTotalRepurchaseCollected(1_003_889);
+        t.servicer.setTotalOutstandingRepurchaseExposure(0);
+
+        vm.warp(tred + 1);
+
+        assertEq(harness.balanceOf(), _convertUsdcToWad(1_003_889), "unset mantissa, nothing outstanding -> par");
+    }
+
+    /// @notice IL-9553 (D-017): while the mantissa is unset (0) but debt is still outstanding after the repurchase
+    ///         window, the first pro-rata redemption will set it to collected / (collected + outstanding). The
+    ///         held leg is valued at that ratio now (60%), not at full face as on the base.
+    function test_balanceOf_heldRepoToken_postMaturity_unsetRecovery_shortfallPending_returnsCollectedShare() public {
+        uint256 tred = block.timestamp;
+        Term memory t = _deployUsdcTerm(tred);
+        _grantSubstrate(address(t.servicer));
+
+        t.repoToken.mint(address(harness), 1_000_000);
+        t.repoToken.setRedemptionValue(1_003_889e12);
+        t.servicer.setTotalRepurchaseCollected(600_000);
+        t.servicer.setTotalOutstandingRepurchaseExposure(400_000);
+
+        vm.warp(tred + 1);
+
+        uint256 expectedUsdc = (1_003_889 * 6e17) / WAD;
+        assertEq(harness.balanceOf(), _convertUsdcToWad(expectedUsdc), "unset mantissa -> collected share");
+    }
+
+    /// @notice IL-9553 (D-017): an unreadable `totalRepurchaseCollected` while the mantissa is unset leaves a
+    ///         tracked held position unpriced: NAV freezes (same gate as an unreadable mantissa).
+    function test_balanceOf_heldRepoToken_postMaturity_unsetRecovery_collectedReadReverts_reverts() public {
+        uint256 tred = block.timestamp;
+        Term memory t = _deployUsdcTerm(tred);
+        _grantSubstrate(address(t.servicer));
+
+        t.repoToken.mint(address(harness), 1_000_000);
+        t.repoToken.setRedemptionValue(1_003_889e12);
+
+        vm.warp(tred + 1);
+        vm.mockCallRevert(address(t.servicer), abi.encodeWithSignature("totalRepurchaseCollected()"), bytes("revert"));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TermFinanceBalanceFuse.TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked.selector,
+                address(t.servicer)
+            )
+        );
+        harness.balanceOf();
+    }
+
+    /// @notice IL-9553 (D-017): same gate for an unreadable `totalOutstandingRepurchaseExposure`.
+    function test_balanceOf_heldRepoToken_postMaturity_unsetRecovery_outstandingReadReverts_reverts() public {
+        uint256 tred = block.timestamp;
+        Term memory t = _deployUsdcTerm(tred);
+        _grantSubstrate(address(t.servicer));
+
+        t.repoToken.mint(address(harness), 1_000_000);
+        t.repoToken.setRedemptionValue(1_003_889e12);
+
+        vm.warp(tred + 1);
+        vm.mockCallRevert(
+            address(t.servicer),
+            abi.encodeWithSignature("totalOutstandingRepurchaseExposure()"),
+            bytes("revert")
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TermFinanceBalanceFuse.TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked.selector,
+                address(t.servicer)
+            )
+        );
+        harness.balanceOf();
+    }
+
+    /// @notice IL-9553 (D-017): repurchase counters above the per-leg bound are corrupted proxy state: NAV
+    ///         freezes for a tracked held position instead of overflowing or guessing a ratio.
+    function test_balanceOf_heldRepoToken_postMaturity_unsetRecovery_corruptedCounters_reverts() public {
+        uint256 tred = block.timestamp;
+        Term memory t = _deployUsdcTerm(tred);
+        _grantSubstrate(address(t.servicer));
+
+        t.repoToken.mint(address(harness), 1_000_000);
+        t.repoToken.setRedemptionValue(1_003_889e12);
+        t.servicer.setTotalRepurchaseCollected(type(uint256).max);
+        t.servicer.setTotalOutstandingRepurchaseExposure(1);
+
+        vm.warp(tred + 1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TermFinanceBalanceFuse.TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked.selector,
+                address(t.servicer)
+            )
+        );
+        harness.balanceOf();
     }
 
     /// @notice A discount-rate adapter revert on a tracked held position must FREEZE share
@@ -597,10 +737,13 @@ contract TermFinanceBalanceFuseTest is Test {
         assertEq(nav, 0, "dust-rounded held PV -> genuine 0, no revert");
     }
 
-    /// @notice Semantics-pinning test (passes both before and after the IL-7974 fix): a fully
-    ///         defaulted post-maturity position (100% shortfall haircut) is a genuine total
-    ///         loss, not a read failure, and must NOT revert.
-    function test_balanceOf_postMaturity_fullShortfallHaircut_noRevert() public {
+    /// @notice Semantics-pinning test: a fully defaulted post-maturity repo (nothing collected, debt
+    ///         outstanding) is a genuine total loss, not a read failure, and must NOT revert.
+    /// @dev IL-9553 (D-017): Term keeps the recovery mantissa unset (0) in that state — a pro-rata redemption
+    ///      would compute collected / (collected + outstanding) = 0 and then fail the servicer's balance
+    ///      assertion, so nothing is redeemable. The fuse mirrors that ratio (0). Before IL-9553 the test set the
+    ///      mantissa to 1e18, which Term defines as full recovery.
+    function test_balanceOf_postMaturity_nothingCollected_returnsZero_noRevert() public {
         uint256 tred = block.timestamp;
         Term memory t = _deployUsdcTerm(tred);
         _grantSubstrate(address(t.servicer));
@@ -608,13 +751,14 @@ contract TermFinanceBalanceFuseTest is Test {
         t.repoToken.mint(address(harness), 1_000_000);
         t.repoToken.setRedemptionValue(1_003_889e12);
 
-        // 100% shortfall — total loss.
-        t.servicer.setShortfallHaircutMantissa(1e18);
+        // Total loss: nothing repaid, the whole repo exposure still outstanding, mantissa unset.
+        t.servicer.setTotalRepurchaseCollected(0);
+        t.servicer.setTotalOutstandingRepurchaseExposure(1_003_889);
 
         vm.warp(tred + 1);
 
         uint256 nav = harness.balanceOf();
-        assertEq(nav, 0, "100% shortfall haircut -> genuine 0, no revert");
+        assertEq(nav, 0, "nothing collected -> genuine 0, no revert");
     }
 
     /// @notice A non-zero adapter `repoRedemptionHaircut` on a held pre-maturity
@@ -765,7 +909,7 @@ contract TermFinanceBalanceFuseTest is Test {
     /// @notice The held-RepoToken leg signals tracked exposure (the
     ///         vault holds repo tokens). When the IPOR oracle returns `price == 0` for the
     ///         purchase token, the `_heldTermRepoTokenPv` helper returns `ok == false` with
-    ///         `hasAnyPosition == true`; `_signedValueForServicerImpl` then re-raises
+    ///         `hasAnyPosition == true`; `_valueForServicerImpl` then re-raises
     ///         `TermFinanceBalanceFusePurchaseTokenPriceZeroForTracked(servicer)`.
     /// @dev NAV-blocking convention: the IPOR oracle is owner-controlled
     ///      configuration, not adversarial input — a zero price for a tracked servicer is a
@@ -1600,8 +1744,8 @@ contract TermFinanceBalanceFuseTest is Test {
         vm.warp(tred + 1); // strictly past endOfRepurchaseWindow.
 
         // Wire some collateral so the servicer leg is tracked AND positive sufficient to
-        // offset the debt (avoids `SafeCast.toUint256` net-negative revert which is exercised
-        // in a separate test).
+        // offset the debt (an underwater servicer floors at 0 and would hide the debt PV, see the
+        // per-servicer floor tests).
         address[] memory accepted = new address[](1);
         accepted[0] = address(t.purchaseToken);
         t.collateralManager.setAcceptedTokens(accepted);
@@ -1670,7 +1814,7 @@ contract TermFinanceBalanceFuseTest is Test {
 
     /// @notice Cap check: a servicer with `numOfAcceptedCollateralTokens() = 9` (one above
     ///         `MAX_COLLATERAL_TOKENS_PER_SERVICER = 8`) is silently degraded to a 0 leg by
-    ///         `_signedValueForServicerInternal` (the cap check returns 0 directly). A
+    ///         `_valueForServicerInternal` (the cap check returns 0 directly). A
     ///         second well-formed servicer still contributes.
     function testBalanceOfDegradesServicerLegToZeroWhenCollateralTokensExceedsMax() public {
         // Capped-out servicer.
@@ -1735,7 +1879,7 @@ contract TermFinanceBalanceFuseTest is Test {
 
     /// @notice Generic non-debt revert is caught and degraded — exercised here by forcing the
     ///         servicer's `termRepoCollateralManager()` to revert (the very first external
-    ///         read inside `_signedValueForServicerInternal`). Mirror of the proxy-breakage
+    ///         read inside `_valueForServicerInternal`). Mirror of the proxy-breakage
     ///         scenario; the local `_tryReadCollateralManager` try/catch swallows the revert
     ///         and the leg degrades to 0.
     function test_balanceOf_otherRevertsAreCaught() public {
@@ -1794,13 +1938,13 @@ contract TermFinanceBalanceFuseTest is Test {
         harness.balanceOf();
     }
 
-    // ============ borrower side — signed aggregation invariants ============
+    // ============ borrower side — per-servicer floor (IL-9553) ============
 
-    /// @notice `SafeCast.toUint256` invariant: a single servicer where debt > collateral
-    ///         yields a negative signed leg. The net total is converted via
-    ///         `SafeCast.toUint256(...)` which reverts on a negative value — the documented
-    ///         "ERC4626 insolvency signal" path.
-    function test_balanceOf_negativeServicerLeg_revertsViaSafeCast() public {
+    /// @notice IL-9553: a single servicer whose debt exceeds its collateral contributes 0 — a Term
+    ///         Repo is an isolated position and its default seizes only that servicer's locked
+    ///         collateral. Before IL-9553 the signed total was converted with `SafeCast.toUint256`
+    ///         and this scenario reverted, freezing market 52.
+    function test_balanceOf_negativeServicerLeg_floorsAtZero() public {
         // Post-maturity scenario so secondsToMaturity == 0 → pv == face (predictable).
         uint256 tred = block.timestamp + 1;
         Term memory t = _deployUsdcTerm(tred);
@@ -1810,19 +1954,16 @@ contract TermFinanceBalanceFuseTest is Test {
         // Debt 5_000_000 USDC; NO collateral, NO held repo, NO pending offers/bids.
         t.servicer.setBorrowerRepurchaseObligation(address(harness), 5_000_000);
 
-        // SafeCast.toUint256 reverts the net-negative as a panic 0x11 (under/overflow).
-        vm.expectRevert();
-        harness.balanceOf();
+        assertEq(harness.balanceOf(), 0, "underwater servicer floors at 0, no revert");
     }
 
-    /// @notice Debt saturation: `_debtPvWad` returns `-MAX_VALUE_PER_LEG` directly when the
-    ///         uint256 mantissa exceeds `MAX_VALUE_PER_LEG_UINT` (1e36). With NO offsetting
-    ///         positive leg, the entire `balanceOf` net is `-MAX_VALUE_PER_LEG` and
-    ///         `SafeCast.toUint256` reverts — the documented insolvency-signal path.
+    /// @notice Debt saturation: `_debtValueWadForServicer` saturates the debt PV at
+    ///         `MAX_VALUE_PER_LEG_UINT` (1e36). With NO offsetting leg the servicer's credit leg
+    ///         floors at 0, so `balanceOf` reports 0 instead of reverting (IL-9553).
     /// @dev With purchasePrec = 1e6 and oracle price 1e8 (8-dec), combined decimals = 14, so
     ///      `IporMath.convertToWad(face * price, 14) = face * 1e8 * 1e4 = face * 1e12`.
     ///      Saturation at 1e36 is triggered for face > 1e24.
-    function test_balanceOf_debtExceedsMaxValue_saturates() public {
+    function test_balanceOf_debtExceedsMaxValue_floorsAtZero() public {
         uint256 tred = block.timestamp + 1;
         Term memory t = _deployUsdcTerm(tred);
         _grantSubstrate(address(t.servicer));
@@ -1832,9 +1973,7 @@ contract TermFinanceBalanceFuseTest is Test {
         // Face must exceed 1e24 (raw purchase-token units) to hit the WAD saturation cap.
         t.servicer.setBorrowerRepurchaseObligation(address(harness), 1e25);
 
-        // -MAX_VALUE_PER_LEG → SafeCast reverts.
-        vm.expectRevert();
-        harness.balanceOf();
+        assertEq(harness.balanceOf(), 0, "saturated debt with no credit floors at 0, no revert");
     }
 
     // ============ borrower side — mixed legs ============
