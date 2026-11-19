@@ -20,7 +20,8 @@ import {
     CrosschainMessages,
     Command,
     UpdateVaults,
-    OutboundTransfer
+    OutboundTransfer,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
 
@@ -78,7 +79,8 @@ contract RescueContextManagerFenceTest is Test {
                     sequence: 0,
                     newConfigEpoch: 1,
                     minExecutionGas: DEFAULT_COMMAND_BUDGET,
-                    vaults: vaults
+                    vaults: vaults,
+                    floors: new SweepFloor[](0)
                 })
             )
         );

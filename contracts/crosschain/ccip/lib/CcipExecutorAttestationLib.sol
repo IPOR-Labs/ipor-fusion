@@ -37,7 +37,7 @@ struct CcipAttestationState {
     // zero while `settled <= ATTESTATION_ZERO_DUST_SD`: the anchor is zeroed together with a bucket that is
     // already dust, so it can never be raised or moved elsewhere). The attester pair otherwise never writes
     // it. `approve` bounds every approved
-    // balance to within `CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS` of this value.
+    // balance to within the executor's `anchorBandBps` (`anchorBandBps` below) of this value.
     mapping(uint256 => uint256) anchorPrincipal;
     // Net principal (IL-8578 / TP-H-02): credits from peer-authenticated settles, debited by the
     // authenticated amount the dispatcher sent back on each recall (floored at zero), rebased to
@@ -67,6 +67,13 @@ struct CcipAttestationState {
     ///      proposal's version or the force-set's observed version, both equal to the frontier at that write). Only a
     ///      late settlement whose version is not above it can be contained in that write. Appended last.
     mapping(uint256 => uint64) repairSettleVersion;
+    /// @dev IL-9720: the per-executor attestation anchor band in basis points, written once by the executor constructor
+    ///      (`0 < bigChangeBps <= anchorBandBps <= MAX_ATTESTATION_ANCHOR_BAND_BPS`) and read by `approve`, the
+    ///      `applyReturnDebit` clamp, the `creditAnchor` floor and the `AttestationOutsideAnchorBand` revert. Never
+    ///      written afterwards. Appended last: the executor variables declared after `_attestationState` move down one slot
+    ///      (harmless: constructor-deployed, not upgradeable). A state that was never given a band (0) rejects every
+    ///      non-zero attestation, so any host or test harness that builds this state must set it.
+    uint256 anchorBandBps;
 }
 
 library CcipExecutorAttestationLib {
@@ -106,7 +113,7 @@ library CcipExecutorAttestationLib {
     error MinUpdateIntervalNotMet(uint64 previous, uint256 current, uint256 minimum);
     error UnanchoredAttestation(uint256 chainId, uint256 proposed);
     error PendingTransfersExist(uint256 chainId, uint256 pending);
-    /// @notice Thrown when an approved attestation would move `settled` outside `ATTESTATION_ANCHOR_BAND_BPS`
+    /// @notice Thrown when an approved attestation would move `settled` outside the executor's `anchorBandBps`
     ///         of the per-chain accounting anchor (`anchorPrincipal`) — CCIP transport (audit
     ///         `no_cumulative_bound_on_attested_balance_ratchet`, IL-7967).
     error AttestationOutsideAnchorBand(uint256 chainId, uint256 principal, uint256 proposed, uint256 bandBps);
@@ -218,12 +225,45 @@ library CcipExecutorAttestationLib {
         }
     }
 
-    /// @dev True when `v_` lies strictly outside `+-ATTESTATION_ANCHOR_BAND_BPS` of `anchor_`. `>` reverts and
+    /// @dev True when `v_` lies strictly outside `+-bandBps_` (the executor's `anchorBandBps`) of `anchor_`. `>` reverts and
     ///      `==` passes, the same convention as `BigChangeExceeded`. `anchor_ == 0` is outside for every
     ///      non-zero `v_`.
-    function _outsideAnchorBand(uint256 v_, uint256 anchor_) private pure returns (bool) {
+    function _outsideAnchorBand(uint256 v_, uint256 anchor_, uint256 bandBps_) private pure returns (bool) {
         uint256 d = v_ > anchor_ ? v_ - anchor_ : anchor_ - v_;
-        return d * 10_000 > anchor_ * CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS;
+        return d * 10_000 > anchor_ * bandBps_;
+    }
+
+    /// @dev Reverts `AttestationOutsideAnchorBand(chainId_, anchor_, value_, anchorBandBps)` when `value_` lies
+    ///      strictly outside the executor's band around `anchor_` (kept out of `approve` to stay below the stack limit).
+    function _requireWithinAnchorBand(
+        CcipAttestationState storage self,
+        uint256 chainId_,
+        uint256 value_,
+        uint256 anchor_
+    ) private view {
+        uint256 bandBps = self.anchorBandBps;
+        if (_outsideAnchorBand(value_, anchor_, bandBps)) {
+            revert AttestationOutsideAnchorBand(chainId_, anchor_, value_, bandBps);
+        }
+    }
+
+    /// @dev True when `value_` lies strictly above the upper edge of the executor's band around a non-zero anchor.
+    function _aboveAnchorBand(
+        CcipAttestationState storage self,
+        uint256 chainId_,
+        uint256 value_
+    ) private view returns (bool) {
+        uint256 anchor = self.anchorPrincipal[chainId_];
+        return anchor != 0 && value_ > anchor && _outsideAnchorBand(value_, anchor, self.anchorBandBps);
+    }
+
+    /// @dev Reverts `AttestationOutsideAnchorBand` for `value_` against the chain's anchor and the executor's band.
+    function _revertOutsideAnchorBand(
+        CcipAttestationState storage self,
+        uint256 chainId_,
+        uint256 value_
+    ) private view {
+        revert AttestationOutsideAnchorBand(chainId_, self.anchorPrincipal[chainId_], value_, self.anchorBandBps);
     }
 
     function approve(
@@ -234,7 +274,7 @@ library CcipExecutorAttestationLib {
         uint256 stalenessMax_,
         uint256 bigChangeBps_,
         uint256 minUpdateInterval_
-    ) public returns (uint256 chainId, uint256 balance) {
+    ) public returns (uint256 chainId, uint256 balance, bool outOfBand) {
         CcipBalanceProposal storage p = self.proposals[id_];
         chainId = p.chainId;
         if (p.status != PROPOSAL_PENDING || self.activeProposalId[chainId] != id_) revert ProposalNotActive(id_);
@@ -252,8 +292,8 @@ library CcipExecutorAttestationLib {
             revert ObservationOlderThanApproved(chainId, p.remoteTimestamp, self.lastApprovedObservedAt[chainId]);
         }
         if (p.accountingEpoch != self.accountingEpoch[chainId]) revert ProposalEpochChanged(chainId);
-        uint64 current = versions_[chainId];
-        if (p.stateVersion != current) revert ProposalVersionMismatch(current, p.stateVersion);
+        // (no local for the frontier: the stack of this function is at its limit, IL-9720)
+        if (p.stateVersion != versions_[chainId]) revert ProposalVersionMismatch(versions_[chainId], p.stateVersion);
         _requireObservedAfterReceipt(self, chainId, p.remoteTimestamp);
         uint256 old = settled_[chainId];
         if (old == 0) {
@@ -283,15 +323,7 @@ library CcipExecutorAttestationLib {
             if (p.balance != 0) {
                 uint256 anchor = self.anchorPrincipal[chainId];
                 if (anchor == 0) revert UnanchoredAttestation(chainId, p.balance);
-                uint256 anchorDiff = p.balance > anchor ? p.balance - anchor : anchor - p.balance;
-                if (anchorDiff * 10_000 > anchor * CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS) {
-                    revert AttestationOutsideAnchorBand(
-                        chainId,
-                        anchor,
-                        p.balance,
-                        CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS
-                    );
-                }
+                _requireWithinAnchorBand(self, chainId, p.balance, anchor);
             }
         } else if (p.balance == 0 && old <= CrosschainConstants.ATTESTATION_ZERO_DUST_SD) {
             // IL-8499 / IL-8424 #6: rounding dust left by a full recall (dispatcher already reports 0)
@@ -313,17 +345,19 @@ library CcipExecutorAttestationLib {
             // pair with `net > 0` (an approved loss): the credit cap `min(R, net) + c` gives `(c, min(R, net) + c)`.
             // `old` is below the band iff `c < 4 * min(R, net)`; the `BigChangeExceeded` window around `old` and
             // the band are disjoint (the pre-fix freeze) iff `c * (1 + bigChangeBps_ / 10_000) < 0.8 * (min(R, net)
-            // + c)`, e.g. `c < 2 * min(R, net)` at 20%. Then NO value would be approvable (NAV frozen
+            // + c)`, e.g. `c < 2 * min(R, net)` at 20% (the reference band; in general `c < ((1 - b) / b) * min(R, net)`
+            // with `b = anchorBandBps / 10_000`, so never at `b >= 1`). Then NO value would be approvable (NAV frozen
             // at `BALANCE_STALENESS_MAX` until a recall of the whole bucket or a force-set). Such an `old` is
             // not a baseline, exactly like `old == 0` (IL-8606), so the band alone bounds the approval. The
-            // band still caps a single approval at `1.2 * anchor`, and the anchor only grows from
+            // band still caps a single approval at `(1 + b) * anchor` (`1.2 * anchor` at the reference band), and the anchor only grows from
             // authenticated credits (IL-8578), so no attester gains more than the zero-baseline path already
             // gives. After the first band approval the pair is band-legal again and the relative check
             // returns. `principal == 0` keeps the relative check (it cannot occur with `old != 0`).
             //
             // The earlier induction ("the pair is band-legal after every write, so `settled` itself is an
             // approvable value") held for every write except an anchor CREDIT on a `(0, R)` pair: the credit
-            // floor keeps `settledAfter <= 1.2 * anchor` but nothing keeps `settledAfter >= 0.8 * anchor`.
+            // floor keeps `settledAfter <= (1 + b) * anchor` but nothing keeps `settledAfter >= (1 - b) * anchor`
+            // (the numbers 1.2 and 0.8 are the reference band of 2_000 bps).
             // Approve and `forceSetSettled` leave the pair in the band, and the clamped debit preserves band-
             // legality of an in-band pair. Once such a credit puts the pair below the band it stays there
             // (further credits, partial debits) until the next approval.
@@ -338,20 +372,22 @@ library CcipExecutorAttestationLib {
             // MINIMUM band-restoring value, which that induction bounds by the pre-debit principal, so it
             // cannot be used to walk the anchor upward.
             uint256 principal = self.anchorPrincipal[chainId];
-            if (principal == 0 || !_outsideAnchorBand(old, principal)) {
+            // IL-9720: a TRUE value above the band is a value the attester pair cannot be allowed to approve, and
+            // refusing it with a revert would only leave the stale `settled` in place (and the proposal pending).
+            // The band is checked FIRST here and the attestation is NOT written: the caller (`approveWithRepair`)
+            // rejects the proposal and blocks the chain (`rejectAndBlock`, the same outcome as the approver's own
+            // `rejectBalanceAndBlock`), or reverts as before when the chain is already blocked. Only values above the
+            // upper edge take this path (below the lower edge keeps the revert), only with an anchor to measure against,
+            // and the early return skips `MinUpdateIntervalNotMet`, which `rejectBalanceAndBlock` does not apply either.
+            // The zero-baseline branch above is unchanged.
+            if (_aboveAnchorBand(self, chainId, p.balance)) return (chainId, p.balance, true);
+            if (principal == 0 || !_outsideAnchorBand(old, principal, self.anchorBandBps)) {
                 uint256 diff = p.balance > old ? p.balance - old : old - p.balance;
                 if (diff * 10_000 > old * bigChangeBps_) {
                     revert BigChangeExceeded(old, p.balance, bigChangeBps_);
                 }
             }
-            if (_outsideAnchorBand(p.balance, principal)) {
-                revert AttestationOutsideAnchorBand(
-                    chainId,
-                    principal,
-                    p.balance,
-                    CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS
-                );
-            }
+            _requireWithinAnchorBand(self, chainId, p.balance, principal);
         }
         uint64 previous = self.lastApprovalAt[chainId];
         if (previous != 0 && block.timestamp - previous < minUpdateInterval_) {
@@ -396,9 +432,10 @@ library CcipExecutorAttestationLib {
     ///      one place, `CcipCrosschainExecutor.approveBalance`, and only under `frontierRepairPending`,
     ///      which only the `ADVANCE_FRONTIER` chain rescue ever sets. A chain blocked by the circuit breaker was
     ///      therefore unreachable by any number of honest approvals, and since `balanceByChain` reverts
-    ///      `ChainBlocked`, `totalAssets()` reverted with it and froze the WHOLE vault — deposits and
-    ///      exits alike. The only escape was to misuse the frontier repair, which permanently discards a
-    ///      legitimate remote `stateVersion`.
+    ///      `ChainBlocked`, the executor's `getBalance()` reverted with it, so the NAV pre-hook froze the gated
+    ///      deposits and exits of the WHOLE vault and the CROSSCHAIN market could not be refreshed, while
+    ///      `totalAssets()` and the share conversions kept returning the cached value. The only escape was to
+    ///      misuse the frontier repair, which permanently discards a legitimate remote `stateVersion`.
     ///
     ///      Deliberately NOT fixed by making `approve` clear the block: Stargate behaves the same way on
     ///      purpose, and the role that tripped the breaker should not be able to lift it by itself. What
@@ -448,7 +485,11 @@ library CcipExecutorAttestationLib {
     ///      `lastApprovedObservedAt`. NAV is stale right after execute exactly when
     ///      `executeTime - observedRemoteTimestamp > BALANCE_STALENESS_MAX` (`ObservationStale`): an observation
     ///      older than `BALANCE_STALENESS_MAX - RESCUE_DELAY` at schedule is sufficient but not necessary (a late
-    ///      execution also ages it), and every force-set is stale when `RESCUE_DELAY >= BALANCE_STALENESS_MAX`.
+    ///      execution also ages it), and every non-zero force-set is stale when
+    ///      `RESCUE_DELAY >= BALANCE_STALENESS_MAX`. The freshness gate runs only for a non-zero settled bucket
+    ///      (a zero bucket returns 0 without it), so a force-set to exactly zero is never stale: it reopens NAV
+    ///      at execute under any settings, and the vault cache still holds the pre-block value (see the README
+    ///      section "Pricing window between propose and approve").
     ///      An ordinary attestation restores freshness; the next ordinary observation must be at least this
     ///      timestamp (IL-8648).
     /// @dev IL-8648 R1: the force-set must not move that clock backwards either. Unless `allowOlderThanApproved_`
@@ -598,13 +639,13 @@ library CcipExecutorAttestationLib {
             // Restore the band by the MINIMUM raise — the smallest anchor for which `settledAfter` sits
             // inside it, `ceil(settledAfter * 10_000 / (10_000 + bandBps))`. NOT `settledAfter` itself:
             // that adopts an ATTESTED figure as principal and lets a 1-unit recall from the top of the band
-            // carry the anchor to ~1.2x, compounding into the ratchet this ticket closes. The minimum
+            // carry the anchor to ~(1 + b)x (1.2x at the reference band), compounding into the ratchet this ticket closes. The minimum
             // raise cannot: the pre-debit pair is band-legal, so `settledAfter <= settled <=
             // principal * (10_000 + bandBps) / 10_000` and the raised value is <= the pre-debit
             // `principal` — the anchor is non-increasing under debits (the residual rule below is capped to
             // keep it so). It also subsumes a floor at 1: with `remaining == 0` and `settledAfter != 0` the
             // raise yields at least 1. Clamp, never revert.
-            uint256 bandBps = CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS;
+            uint256 bandBps = self.anchorBandBps;
             if (settledAfter > remaining && (settledAfter - remaining) * 10_000 > remaining * bandBps) {
                 remaining = Math.mulDiv(settledAfter, 10_000, 10_000 + bandBps, Math.Rounding.Ceil);
             }
@@ -657,31 +698,32 @@ library CcipExecutorAttestationLib {
     ///      the anchor is at most `max(netPrincipal, the pre-recall anchor)`, up to one shared-decimal
     ///      unit of `Ceil` rounding per credit (a cycle costs two bridge round trips and an attestation
     ///      to gain one unit, so it is not economically exploitable). The floor term keeps the
-    ///      pair below the band ceiling (`settled <= 1.2 * anchor`): an honest yield residue left
+    ///      pair below the band ceiling (`settled <= (1 + b) * anchor`, 1.2 at the reference band): an honest yield residue left
     ///      remote after a full recall (net 0), followed by a small top-up, must stay attestable. The floor
     ///      is the same minimum raise `applyReturnDebit` uses, so it cannot be used to walk the anchor up.
-    ///      IL-8737: the floor only bounds `settledAfter <= 1.2 * anchor`; nothing bounds it from below. On a
+    ///      IL-8737: the floor only bounds `settledAfter <= (1 + b) * anchor`; nothing bounds it from below. On a
     ///      `(settled 0, anchor R, net N > 0)` pair a top-up `c` gives `(c, min(R, N) + c)`, which is below the
     ///      band iff `c < 4 * min(R, N)`; the windows were disjoint (pre-fix freeze) iff
-    ///      `c * (1 + bigChangeBps / 10_000) < 0.8 * (min(R, N) + c)`, e.g. `c < 2 * min(R, N)` at 20%.
+    ///      `c * (1 + bigChangeBps / 10_000) < 0.8 * (min(R, N) + c)`, e.g. `c < 2 * min(R, N)` at 20% (the reference band;
+    ///      the case does not exist at `anchorBandBps >= 10_000`).
     ///      `approve` then treats that `settled` as no baseline (band alone, like
     ///      zero, IL-8606), so an approvable value always exists.
+    ///      IL-9625: a zero credit (a zero delivery, IL-8635) returns before any write or event. It adds no value,
+    ///      so the pair it finds stays as it is; the formula would cap the anchor at `netPrincipal` and wipe the
+    ///      residual anchor of a full recall (`settled 0, anchor R, net 0`, IL-8606), leaving R unattestable
+    ///      without `FORCE_SET_SETTLED`. A credit above zero is unchanged (the IL-8578 cap stays).
     function creditAnchor(
         CcipAttestationState storage self,
         mapping(uint256 => uint256) storage settled_,
         uint256 chainId_,
         uint256 credited_
     ) public {
+        if (credited_ == 0) return;
         uint256 net = self.netPrincipal[chainId_] + credited_;
         self.netPrincipal[chainId_] = net;
         uint256 anchor = self.anchorPrincipal[chainId_] + credited_;
         if (anchor > net) anchor = net;
-        uint256 floor_ = Math.mulDiv(
-            settled_[chainId_],
-            10_000,
-            10_000 + CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS,
-            Math.Rounding.Ceil
-        );
+        uint256 floor_ = Math.mulDiv(settled_[chainId_], 10_000, 10_000 + self.anchorBandBps, Math.Rounding.Ceil);
         if (anchor < floor_) anchor = floor_;
         self.anchorPrincipal[chainId_] = anchor;
         emit AttestationAnchorUpdated(chainId_, anchor);
@@ -730,7 +772,7 @@ library CcipExecutorAttestationLib {
         if (frontierRepairPending_[repairChainId] && outboundInFlight_[repairChainId] != 0) {
             revert FrontierRepairBlockedByOpenTransfers(repairChainId, outboundInFlight_[repairChainId]);
         }
-        (uint256 chainId, uint256 balance) = approve(
+        (uint256 chainId, uint256 balance, bool outOfBand) = approve(
             self,
             versions_,
             settled_,
@@ -739,6 +781,15 @@ library CcipExecutorAttestationLib {
             bigChangeBps_,
             minUpdateInterval_
         );
+        if (outOfBand) {
+            // IL-9720: the value is above the band; nothing was written. An already blocked chain keeps the revert (the
+            // frontier-repair latch stays armed); otherwise the proposal is rejected and the chain blocked.
+            if (chainBlocked_[chainId]) {
+                _revertOutsideAnchorBand(self, chainId, balance);
+            }
+            rejectAndBlock(self, chainBlocked_, frontierRepairPending_, id_);
+            return;
+        }
         if (frontierRepairPending_[chainId]) {
             // IL-8619: only the latch-clearing approval can contain a delivered amount whose settlement is still
             // deliverable (its version is not above the approved one); a routine version-bound approval never does.

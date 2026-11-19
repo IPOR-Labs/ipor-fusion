@@ -9,6 +9,8 @@ import {IPriceOracleMiddleware} from "../../contracts/price_oracle/IPriceOracleM
 
 contract PriceOracleMiddlewareWithRolesIntegerDivisionTest is Test {
     address private constant CHAINLINK_FEED_REGISTRY = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
+    /// @dev Pendle market V3 factory (Ethereum) that deployed the markets used in this test
+    address private constant PENDLE_MARKET_FACTORY_V3 = 0x6fcf753f2C67b83f7B09746Bbc4FA0047b35D050;
     address public constant ADMIN = 0xD92E9F039E4189c342b4067CC61f5d063960D248;
 
     PriceOracleMiddlewareWithRoles private priceOracleMiddlewareProxy;
@@ -29,6 +31,10 @@ contract PriceOracleMiddlewareWithRolesIntegerDivisionTest is Test {
 
         vm.startPrank(ADMIN);
         priceOracleMiddlewareProxy.grantRole(priceOracleMiddlewareProxy.ADD_PT_TOKEN_PRICE(), ADMIN);
+        priceOracleMiddlewareProxy.grantRole(priceOracleMiddlewareProxy.SET_ASSETS_PRICES_SOURCES(), ADMIN);
+        address[] memory factories = new address[](1);
+        factories[0] = PENDLE_MARKET_FACTORY_V3;
+        priceOracleMiddlewareProxy.setPendleMarketFactories(factories, true);
         vm.stopPrank();
     }
 

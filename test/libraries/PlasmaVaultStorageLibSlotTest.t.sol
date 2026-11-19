@@ -206,4 +206,11 @@ contract PlasmaVaultStorageLibSlotTest is Test {
         bytes32 actualSlot = 0x9a54c2c1797818ee85d1850742208f80368867ad13d3e45052e701201fa4af00;
         assertEq(actualSlot, expectedSlot, "PLASMA_VAULT_VOTES_PLUGIN_SLOT mismatch");
     }
+
+    /// @notice Verifies REQUEST_CAPS_SLOT (IL-9531)
+    function testRequestCapsSlotValue() public pure {
+        bytes32 expectedSlot = _computeSlot("io.ipor.fusion.RequestCaps");
+        bytes32 actualSlot = 0xebbb2050971f21db5042539f8a5d2aa5ae17e8d2f857abd9e158a73e07cc2200;
+        assertEq(actualSlot, expectedSlot, "REQUEST_CAPS_SLOT mismatch");
+    }
 }

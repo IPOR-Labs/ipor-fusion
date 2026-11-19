@@ -78,6 +78,7 @@ abstract contract FactoryTestBase is Test {
             balanceApprover: approver,
             stalenessMax: 1 hours,
             bigChangeBps: 1000,
+            anchorBandBps: 2_000,
             minUpdateInterval: 10 minutes,
             deploymentTtl: 1 days,
             transferStalenessMax: 2 hours

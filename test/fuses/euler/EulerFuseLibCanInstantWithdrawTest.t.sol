@@ -121,6 +121,57 @@ contract EulerFuseLibCanInstantWithdrawTest is Test {
         assertFalse(result, "Should return false when market has no substrates");
     }
 
+    // ============ IL-9644 (L13): any matching entry with a blocking flag disables instant withdraw ============
+
+    function testCanInstantWithdrawReturnsFalseWhenFlaggedEntryFollowsUnflaggedEntry() public {
+        // given - unflagged entry first, then the same pair re-granted with isCollateral
+        _setupSubstrate(EULER_VAULT_1, SUB_ACCOUNT_1, false, false);
+        _setupSubstrate(EULER_VAULT_1, SUB_ACCOUNT_1, true, false);
+
+        // when
+        bool result = EulerFuseLib.canInstantWithdraw(MARKET_ID, EULER_VAULT_1, SUB_ACCOUNT_1);
+
+        // then
+        assertFalse(result, "A later isCollateral entry of the same pair must block");
+    }
+
+    function testCanInstantWithdrawReturnsFalseWhenCanBorrowEntryFollowsUnflaggedEntry() public {
+        // given
+        _setupSubstrate(EULER_VAULT_1, SUB_ACCOUNT_1, false, false);
+        _setupSubstrate(EULER_VAULT_1, SUB_ACCOUNT_1, false, true);
+
+        // when
+        bool result = EulerFuseLib.canInstantWithdraw(MARKET_ID, EULER_VAULT_1, SUB_ACCOUNT_1);
+
+        // then
+        assertFalse(result, "A later canBorrow entry of the same pair must block");
+    }
+
+    function testCanInstantWithdrawReturnsFalseWhenFlaggedEntryPrecedesUnflaggedEntry() public {
+        // given
+        _setupSubstrate(EULER_VAULT_1, SUB_ACCOUNT_1, true, true);
+        _setupSubstrate(EULER_VAULT_1, SUB_ACCOUNT_1, false, false);
+
+        // when
+        bool result = EulerFuseLib.canInstantWithdraw(MARKET_ID, EULER_VAULT_1, SUB_ACCOUNT_1);
+
+        // then
+        assertFalse(result, "A flagged entry listed first must block");
+    }
+
+    function testCanInstantWithdrawIgnoresFlaggedEntriesOfOtherPairs() public {
+        // given - flagged entries of another sub-account and another vault do not block this pair
+        _setupSubstrate(EULER_VAULT_1, SUB_ACCOUNT_2, true, true);
+        _setupSubstrate(EULER_VAULT_2, SUB_ACCOUNT_1, true, true);
+        _setupSubstrate(EULER_VAULT_1, SUB_ACCOUNT_1, false, false);
+
+        // when
+        bool result = EulerFuseLib.canInstantWithdraw(MARKET_ID, EULER_VAULT_1, SUB_ACCOUNT_1);
+
+        // then
+        assertTrue(result, "Entries of other pairs must not block");
+    }
+
     // ============ Fuzz Tests ============
 
     function testFuzzCanInstantWithdrawWithVariousAddresses(

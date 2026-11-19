@@ -369,11 +369,12 @@ contract ERC4626SupplyFuseMorphoVaultsV2BaseTest is Test {
         actions[0] = FuseAction({
             fuse: address(_supplyFuse),
             data: abi.encodeWithSignature(
-                "exit((address,uint256,uint256))",
+                "exit((address,uint256,uint256,uint256))",
                 Erc4626SupplyFuseExitData({
                     vault: MORPHO_VAULT,
                     vaultAssetAmount: PARTIAL_EXIT_AMOUNT,
-                    maxSharesBurned: expectedBurn - 1
+                    maxSharesBurned: expectedBurn - 1,
+                    minAssetsOut: 0
                 })
             )
         });
@@ -477,7 +478,8 @@ contract ERC4626SupplyFuseMorphoVaultsV2BaseTest is Test {
         );
     }
 
-    /// @dev The revert of the Morpho `withdraw` is mocked on purpose: the behaviour under test is the `catch` of the
+    /// @dev The reverts of the Morpho `withdraw` and `redeem` are both mocked on purpose (the fuse retries through
+    ///      `redeem` when `withdraw` reverts, IL-9643): the behaviour under test is the `catch` of the
     ///      fuse in `instantWithdraw` (emit `Erc4626SupplyFuseExitFailed`, let the Plasma Vault go on with the next
     ///      instant-withdrawal fuse), not Morpho's liquidity or pause logic, which cannot be forced on a fork.
     ///      The second source is a standard ERC4626 vault (`maxWithdraw` works), served by the same fuse and market.
@@ -515,6 +517,7 @@ contract ERC4626SupplyFuseMorphoVaultsV2BaseTest is Test {
         assertLt(requested, standardVault.maxWithdraw(address(_plasmaVault)), "the standard vault should cover it");
 
         vm.mockCallRevert(MORPHO_VAULT, abi.encodeWithSelector(IERC4626.withdraw.selector), "");
+        vm.mockCallRevert(MORPHO_VAULT, abi.encodeWithSelector(IERC4626.redeem.selector), "");
 
         // when
         vm.recordLogs();
@@ -704,17 +707,20 @@ contract ERC4626SupplyFuseMorphoVaultsV2BaseTest is Test {
 
     function _exit(PlasmaVault plasmaVault_, address fuse_, uint256 assets_, uint256 maxSharesBurned_) private {
         FuseAction[] memory actions = new FuseAction[](1);
-        actions[0] = FuseAction({
-            fuse: fuse_,
-            data: abi.encodeWithSignature(
-                "exit((address,uint256,uint256))",
+        /// @dev The published fuse is a deployed older build with the 3-field `exit` struct; the fuse under test
+        ///      takes the 4-field struct (`minAssetsOut`, IL-9619)
+        bytes memory exitCall = fuse_ == PUBLISHED_FUSE
+            ? abi.encodeWithSignature("exit((address,uint256,uint256))", MORPHO_VAULT, assets_, maxSharesBurned_)
+            : abi.encodeWithSignature(
+                "exit((address,uint256,uint256,uint256))",
                 Erc4626SupplyFuseExitData({
                     vault: MORPHO_VAULT,
                     vaultAssetAmount: assets_,
-                    maxSharesBurned: maxSharesBurned_
+                    maxSharesBurned: maxSharesBurned_,
+                    minAssetsOut: 0
                 })
-            )
-        });
+            );
+        actions[0] = FuseAction({fuse: fuse_, data: exitCall});
 
         vm.prank(TestAddresses.ALPHA);
         plasmaVault_.execute(actions);

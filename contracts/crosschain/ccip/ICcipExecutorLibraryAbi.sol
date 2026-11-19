@@ -101,6 +101,7 @@ interface ICcipExecutorLibraryAbi {
     error RealignStateMoved(
         uint256 chainId, uint64 expectedSequence, uint64 actualSequence, uint64 expectedEpoch, uint64 actualEpoch
     );
+    error RealignNewEpochZero(uint256 chainId);
     error TransferStale(uint256 chainId, uint256 createdAt);
     error UnanchoredAttestation(uint256 chainId, uint256 proposed);
     error UnknownCommand(bytes32 commandId);

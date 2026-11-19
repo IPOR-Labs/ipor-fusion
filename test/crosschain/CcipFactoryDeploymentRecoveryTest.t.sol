@@ -21,8 +21,9 @@ import {MockCcipRouter} from "./mocks/MockCcipRouter.sol";
 /// @dev By design (see the factory's `DeploymentTicket`): the ticket carries no nonce, so its hash is a pure
 ///      function of salt, executor, chains, asset, decimals, `vaults` (order included) and the rescue
 ///      admin / guardian / delay. A re-request with byte-identical inputs therefore has the SAME hash as the
-///      cancelled one, and the late response completes it; any change yields a different hash, so the late
-///      response never matches and the destination answers NACK(1) for the occupied address.
+///      cancelled one, and the late ACK completes it; any change yields a different hash, so the late
+///      response never matches and the destination answers NACK(1) for the occupied address. Since IL-9685 a NACK
+///      also echoes the request's `expiresAt`, so a late NACK no longer closes an identical re-request.
 ///      Harness: `MockCcipRouter.setAutoDeliver(false)` plus hand delivery, like `CcipFactoryBudgetPolicyTest`.
 ///      A message that reverts on the receiver stays executable (the OffRamp's FAILED state), so "the late
 ///      response is executed later" is modelled by delivering the SAME payload and message id again after the
@@ -108,6 +109,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
                 rescueDelay: 3 days,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             });
@@ -177,8 +179,8 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         return abi.encode(executor_, REMOTE_CHAIN, ticketHash_);
     }
 
-    function _nackData(address executor_, bytes32 ticketHash_) private view returns (bytes memory) {
-        return abi.encode(executor_, REMOTE_CHAIN, ticketHash_, uint8(1));
+    function _nackData(address executor_, bytes32 ticketHash_, uint256 expiresAt_) private pure returns (bytes memory) {
+        return abi.encode(executor_, REMOTE_CHAIN, ticketHash_, uint8(1), expiresAt_);
     }
 
     /// @dev Request #1, wait past the TTL, cancel it permissionlessly. Returns its ticket hash.
@@ -324,32 +326,46 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), bytes32(0), "third party cancelled");
     }
 
-    /// @notice A late NACK for the cancelled ticket reverts; after an identical re-request the SAME NACK closes
-    ///         it (the executor stays without a dispatcher, and a further request is possible).
-    /// @dev For reason 1 the NACK is still true: another ticket occupies the destination address, so the fresh
-    ///      one would be refused too. For reasons 2 and 3 nothing was deployed and the fresh ticket may well have
-    ///      been; the outcome is benign only because the cancelled-ticket record still accepts its late ACK
-    ///      (`DeploymentLateAcked`), but the `DeploymentNack` event is misleading (IL-8637 R3). A reason-4
-    ///      (TICKET_EXPIRED) NACK is NOT replayable this way: it is refused until the fresh request's own TTL has
-    ///      elapsed (`testShouldRefuseStaleExpiredNackWhileFreshReRequestIsPending`).
-    ///      Negative: NACKs accepted without a pending ticket -> the first delivery does not revert -> fails.
-    function testShouldRevertLateNackAfterCancelThenCloseIdenticalReRequest() public {
+    /// @notice A late NACK for the cancelled ticket reverts; after an identical re-request the SAME NACK still
+    ///         reverts (`StaleDeploymentNack`) and the re-request stays pending. Only a NACK carrying the re-request's
+    ///         own `expiresAt` closes it (the executor stays without a dispatcher, and a further request is possible).
+    /// @dev IL-9685 changed this expectation on purpose (formerly `...ThenCloseIdenticalReRequest`): the stale NACK
+    ///      used to close the identical re-request, misleadingly for reasons 2 and 3, where nothing was deployed and
+    ///      the fresh ticket may well be (IL-8637 R3). The NACK now echoes the ticket's `expiresAt`, which differs
+    ///      between the two requests although the ticket hash does not.
+    ///      Negative: NACKs accepted without a pending ticket -> the first delivery does not revert -> fails;
+    ///      `expiresAt` not compared on the source -> the second delivery closes the re-request -> fails.
+    function testShouldRevertLateNackAfterCancelAndKeepIdenticalReRequestPending() public {
         address executor = _createExecutor(bytes32("late-nack"));
+        uint256 expiresAt1 = block.timestamp + factory.DEPLOYMENT_TTL();
         bytes32 hash1 = _requestAndCancel(executor, _vaultsA());
         CcipCrosschainExecutor exec = CcipCrosschainExecutor(payable(executor));
 
-        bytes memory nack = _nackData(executor, hash1);
+        bytes memory nack = _nackData(executor, hash1, expiresAt1);
         vm.expectRevert(_unknown(executor, hash1));
         _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, nack, "late-nack");
 
         bytes32 hash2 = _request(executor, _vaultsA());
         assertEq(hash2, hash1, "identical re-request has the identical ticket hash");
+        uint256 expiresAt2 = block.timestamp + factory.DEPLOYMENT_TTL();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CcipCrosschainFactory.StaleDeploymentNack.selector,
+                executor,
+                REMOTE_CHAIN,
+                expiresAt2,
+                expiresAt1
+            )
+        );
+        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, nack, "late-nack");
+        assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), hash1, "re-request still pending");
 
         vm.expectEmit(true, true, true, true, address(factory));
         emit CcipCrosschainFactory.DeploymentNack(executor, REMOTE_CHAIN, hash1, 1);
-        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, nack, "late-nack");
+        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, _nackData(executor, hash1, expiresAt2), "fresh-nack");
 
-        assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), bytes32(0), "re-request closed by NACK");
+        assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), bytes32(0), "re-request closed by its NACK");
         assertFalse(exec.hasDispatcher(REMOTE_CHAIN), "a NACK never marks the dispatcher ready");
         // The manager can ask again straight away.
         _request(executor, _vaultsA());
@@ -441,7 +457,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         assertEq(router.heldCount(), heldBefore + 1, "one answer sent");
         (CcipMsgType type3, bytes memory data3) = _decodeHeld(router.heldCount() - 1);
         assertEq(uint8(type3), uint8(CcipMsgType.DEPLOYMENT_NACK), "changed ticket is NACKed");
-        assertEq(data3, abi.encode(ticketB.executor, REMOTE_CHAIN, hashB, uint8(1)), "NACK(1) for ticket B");
+        assertEq(data3, abi.encode(ticketB.executor, REMOTE_CHAIN, hashB, uint8(1), _expiry()), "NACK(1) for ticket B");
         assertFalse(factory.consumedTicket(hashB), "changed ticket never consumed");
 
         // The NACK is permanent for that hash: re-delivery answers NACK(1) again.
@@ -492,11 +508,12 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         CcipCrosschainFactory.DeploymentTicket memory ticket_,
         CcipMsgType answerType_,
         bytes memory answer_,
-        uint8 reason_
+        uint8 reason_,
+        uint256 expiresAt_
     ) private view {
         bytes32 hash = keccak256(abi.encode(ticket_));
         assertEq(uint8(answerType_), uint8(CcipMsgType.DEPLOYMENT_NACK), "answer is a NACK");
-        assertEq(answer_, abi.encode(ticket_.executor, REMOTE_CHAIN, hash, reason_), "NACK reason");
+        assertEq(answer_, abi.encode(ticket_.executor, REMOTE_CHAIN, hash, reason_, expiresAt_), "NACK reason");
         assertFalse(factory.consumedTicket(hash), "ticket not consumed");
         assertFalse(factory.isDispatcher(ticket_.executor), "no dispatcher registered");
         assertEq(ticket_.executor.code.length, 0, "nothing deployed");
@@ -513,7 +530,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
             new address[](0)
         );
         (CcipMsgType t, bytes memory a) = _deliverToDestination(ticket);
-        _assertNacked(ticket, t, a, 2);
+        _assertNacked(ticket, t, a, 2, _expiry());
         assertFalse(factory.assetFrozen(keccak256("DAI")), "asset not frozen by a rejected ticket");
     }
 
@@ -525,7 +542,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
             new address[](0)
         );
         (CcipMsgType t, bytes memory a) = _deliverToDestination(ticket);
-        _assertNacked(ticket, t, a, 2);
+        _assertNacked(ticket, t, a, 2, _expiry());
         assertFalse(factory.assetFrozen(ASSET_ID), "asset not frozen by a rejected ticket");
     }
 
@@ -534,7 +551,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         vaults[0] = address(0xDEAD);
         CcipCrosschainFactory.DeploymentTicket memory ticket = _ticketWith(bytes32("no-code"), ASSET_ID, 6, vaults);
         (CcipMsgType t, bytes memory a) = _deliverToDestination(ticket);
-        _assertNacked(ticket, t, a, 3);
+        _assertNacked(ticket, t, a, 3, _expiry());
     }
 
     /// @notice TP-L-08: the vault was valid when the ticket was sent, its `asset()` changed before delivery.
@@ -563,7 +580,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         assertFalse(factory.isDispatcher(executor), "no dispatcher registered");
         (CcipMsgType t, bytes memory a) = _decodeHeld(router.heldCount() - 1);
         assertEq(uint8(t), uint8(CcipMsgType.DEPLOYMENT_NACK));
-        assertEq(a, abi.encode(executor, REMOTE_CHAIN, hash, uint8(3)), "NACK reason 3");
+        assertEq(a, abi.encode(executor, REMOTE_CHAIN, hash, uint8(3), _expiry()), "NACK reason 3");
 
         // The NACK reaches the source: pending ticket cleared, event carries the reason.
         vm.expectEmit(address(factory));
@@ -677,9 +694,9 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
             new address[](0)
         );
         (CcipMsgType t1, bytes memory a1) = _deliverToDestination(ticket);
-        _assertNacked(ticket, t1, a1, 2);
+        _assertNacked(ticket, t1, a1, 2, _expiry());
         (CcipMsgType t2, bytes memory a2) = _deliverToDestination(ticket, "create-2");
-        _assertNacked(ticket, t2, a2, 2);
+        _assertNacked(ticket, t2, a2, 2, _expiry());
         assertEq(a1, a2, "same NACK both times");
     }
 
@@ -688,7 +705,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         CcipCrosschainFactory.DeploymentTicket memory ticket = _ticket(executor, _vaultsA());
         (CcipMsgType t, bytes memory a) = _deliverToDestination(ticket);
         assertEq(uint8(t), uint8(CcipMsgType.DEPLOYMENT_NACK));
-        assertEq(a, abi.encode(executor, REMOTE_CHAIN, keccak256(abi.encode(ticket)), uint8(1)), "reason 1");
+        assertEq(a, abi.encode(executor, REMOTE_CHAIN, keccak256(abi.encode(ticket)), uint8(1), _expiry()), "reason 1");
     }
 
     function testShouldRejectOversizedVaultListAtRequest() public {
@@ -819,7 +836,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         vm.warp(expiresAt);
 
         (CcipMsgType t, bytes memory a) = _deliverWithExpiry(ticket, expiresAt);
-        _assertNacked(ticket, t, a, 4);
+        _assertNacked(ticket, t, a, 4, expiresAt);
         assertFalse(factory.assetFrozen(ASSET_ID), "asset not frozen by an expired ticket");
     }
 
@@ -939,16 +956,35 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
     // ---------------------------------------------------------------------
 
     /// @notice An identical re-request is pending; the NACK(4) answering the PREVIOUS request is replayed. It reverts
-    ///         (retryable) and the pending request stays; once the fresh TTL has elapsed it is consumed.
-    /// @dev Negative: without the guard the first delivery closes the fresh request -> the revert expectation fails.
+    ///         `StaleDeploymentNack` (it echoes the previous request's `expiresAt`) and the pending request stays, also
+    ///         after the fresh TTL has elapsed (IL-9685). A NACK(4) carrying the fresh `expiresAt` that arrives before
+    ///         that time has passed here (a destination clock ahead of this chain's) reverts `PrematureExpiredNack`
+    ///         (retryable); once the fresh TTL has elapsed it is consumed.
+    /// @dev Before IL-9685 the stale NACK(4) itself was refused only until the fresh TTL and then closed the fresh
+    ///      request; the timing guard is now pinned with the matching `expiresAt`.
+    ///      Negative: timing guard removed -> the early fresh NACK(4) closes the request -> the revert expectation
+    ///      fails; `expiresAt` not compared -> the stale NACK(4) closes it after the fresh TTL -> fails.
     function testShouldRefuseStaleExpiredNackWhileFreshReRequestIsPending() public {
         address executor = _createExecutor(bytes32("stale-4"));
+        uint256 staleExpiresAt = block.timestamp + factory.DEPLOYMENT_TTL();
         bytes32 hash1 = _requestAndCancel(executor, _vaultsA());
         bytes32 hash2 = _request(executor, _vaultsA());
         assertEq(hash2, hash1, "identical re-request has the identical ticket hash");
         uint256 notBefore = block.timestamp + factory.DEPLOYMENT_TTL();
 
-        bytes memory nack4 = abi.encode(executor, REMOTE_CHAIN, hash1, uint8(4));
+        bytes memory staleNack4 = abi.encode(executor, REMOTE_CHAIN, hash1, uint8(4), staleExpiresAt);
+        bytes memory staleError = abi.encodeWithSelector(
+            CcipCrosschainFactory.StaleDeploymentNack.selector,
+            executor,
+            REMOTE_CHAIN,
+            notBefore,
+            staleExpiresAt
+        );
+        vm.expectRevert(staleError);
+        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, staleNack4, "stale-4");
+        assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), hash1, "fresh request stays pending");
+
+        bytes memory freshNack4 = abi.encode(executor, REMOTE_CHAIN, hash1, uint8(4), notBefore);
         vm.expectRevert(
             abi.encodeWithSelector(
                 CrosschainErrors.PrematureExpiredNack.selector,
@@ -957,7 +993,7 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
                 notBefore
             )
         );
-        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, nack4, "stale-4");
+        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, freshNack4, "fresh-4");
         assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), hash1, "fresh request stays pending");
 
         vm.warp(notBefore - 1);
@@ -969,12 +1005,16 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
                 notBefore
             )
         );
-        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, nack4, "stale-4");
+        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, freshNack4, "fresh-4");
 
         vm.warp(notBefore);
+        vm.expectRevert(staleError);
+        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, staleNack4, "stale-4");
+        assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), hash1, "stale NACK never closes it");
+
         vm.expectEmit(true, true, true, true, address(factory));
         emit CcipCrosschainFactory.DeploymentNack(executor, REMOTE_CHAIN, hash1, 4);
-        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, nack4, "stale-4");
+        _deliver(REMOTE_SELECTOR, CcipMsgType.DEPLOYMENT_NACK, freshNack4, "fresh-4");
         assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), bytes32(0), "consumed after the TTL");
     }
 
@@ -1058,16 +1098,20 @@ contract CcipFactoryDeploymentRecoveryTest is Test {
         assertGt(ticket.executor.code.length, 0, "deploys once every commitment is cancelled");
     }
 
-    /// @notice A frozen asset cannot be migrated, so a stale commitment on it must not hold a fresh ticket.
+    /// @notice A frozen asset cannot be migrated, so it holds no commitment and does not gate a fresh ticket.
+    /// @dev Since IL-9641 `createExecutor` is gated too, so a commitment can no longer be pending when an asset is
+    ///      frozen: freeze first, scheduling then reverts, and the ticket still deploys.
     function testShouldSkipMigrationGateOnceTheAssetIsFrozen() public {
         CcipCrosschainFactory.DeploymentTicket memory ticket = _orphanTicket(bytes32("mig-frozen"), new address[](0));
-        _scheduleMigration();
         _createExecutor(bytes32("freezer")); // freezes ASSET_ID
         assertTrue(factory.assetFrozen(ASSET_ID), "frozen by createExecutor");
-        assertEq(factory.scheduledAssetCount(ASSET_ID), 1, "stale commitment remains");
+        address newToken = address(new MockERC20("USD Coin 2", "USDC2", 6));
+        vm.expectRevert(abi.encodeWithSelector(CcipCrosschainFactory.AssetConfigFrozen.selector, ASSET_ID));
+        factory.scheduleAsset(ASSET_ID, newToken, 6);
+        assertEq(factory.scheduledAssetCount(ASSET_ID), 0, "no commitment on a frozen asset");
 
         _deliverRaw(ticket);
-        assertGt(ticket.executor.code.length, 0, "deploys despite the stale commitment");
+        assertGt(ticket.executor.code.length, 0, "deploys on the frozen asset");
     }
 
     /// @notice A zero asset id cannot be scheduled (it would leak `scheduledAssetCount`).

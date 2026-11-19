@@ -34,11 +34,18 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 /// - Prevents exchange rate manipulation attacks
 ///
 /// Nested hooks and ContextManager:
-/// - Nested pre/post hooks run via delegatecall in the vault context. A nested UpdateBalancesPreHook or
-///   UpdateBalancesIgnoreDustPreHook self-calls PlasmaVault.updateMarketsBalances; on vaults created from
+/// - Nested pre/post hooks run via delegatecall in the vault context. A nested UpdateBalancesPreHook
+///   self-calls PlasmaVault.updateMarketsBalances; on vaults created from
 ///   a PlasmaVault implementation that predates IL-8310 that self-call is authorized against the
 ///   ContextManager context sender, so relayed calls on the hooked selector revert with
-///   AccessManagedUnauthorized. See the ContextManager notes in those hooks.
+///   AccessManagedUnauthorized. See the ContextManager notes in that hook.
+///
+/// Which hooks can be nested:
+/// - Only hooks without their own substrates, such as UpdateBalancesPreHook, can be nested. Pre-hook substrates
+///   are stored per registered implementation and selector (PreHooksLib.setPreHookImplementations) and are
+///   deleted when the validator is installed on the selector, so a nested hook never receives substrates.
+/// - UpdateBalancesIgnoreDustPreHook (needs its threshold substrate) and EIP7702DelegateValidationPreHook
+///   (needs its whitelist substrates) must be registered directly on the selector, not nested here.
 contract ExchangeRateValidatorPreHook is IPreHook {
     /// @notice Market identifier associated with this pre-hook implementation
     /// @dev Mirrors fuse pattern: immutable MARKET_ID set at construction

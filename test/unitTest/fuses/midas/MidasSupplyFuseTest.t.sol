@@ -9,7 +9,12 @@ import {IporMath} from "../../../../contracts/libraries/math/IporMath.sol";
 import {MidasSupplyFuseHarness} from "./mocks/supply_fuse/MidasSupplyFuseHarness.sol";
 import {MockERC20ForSupplyFuse} from "./mocks/supply_fuse/MockERC20ForSupplyFuse.sol";
 import {MockMidasDepositVaultForSupplyFuse} from "./mocks/supply_fuse/MockMidasDepositVaultForSupplyFuse.sol";
-import {MockMidasRedemptionVaultForSupplyFuse} from "./mocks/supply_fuse/MockMidasRedemptionVaultForSupplyFuse.sol";
+import {
+    MockRevertingMidasDataFeed,
+    MockMidasRedemptionVaultWithoutDailyLimits,
+    MockMidasRedemptionVaultForSupplyFuse
+} from "./mocks/supply_fuse/MockMidasRedemptionVaultForSupplyFuse.sol";
+import {MockMidasDataFeedForBalance} from "./mocks/MockMidasDataFeedForBalance.sol";
 
 /// @title MidasSupplyFuseTest
 /// @notice Unit tests for MidasSupplyFuse — 100% branch coverage target
@@ -108,6 +113,43 @@ contract MidasSupplyFuseTest is Test {
             tokenOut: address(tokenOut),
             instantRedemptionVault: address(redemptionVault)
         });
+    }
+
+    bytes32 private constant _EXIT_TOPIC = keccak256("MidasSupplyFuseExit(address,address,uint256,address,address)");
+
+    /// @dev instantWithdraw params as the withdraw router builds them: word 0 = missing tokenOut (tokenOut decimals)
+    function _instantWithdrawParams(
+        uint256 missingTokenOut_,
+        uint256 minTokenOut_
+    ) internal view returns (bytes32[] memory params) {
+        params = new bytes32[](5);
+        params[0] = bytes32(missingTokenOut_);
+        params[1] = bytes32(uint256(uint160(address(mToken))));
+        params[2] = bytes32(uint256(uint160(address(tokenOut))));
+        params[3] = bytes32(uint256(uint160(address(redemptionVault))));
+        params[4] = bytes32(minTokenOut_);
+    }
+
+    /// @dev Expects the skip/failure event of the instant withdraw path for `amount_`
+    function _expectExitFailed(uint256 amount_) internal {
+        vm.expectEmit(true, true, true, true, address(harness));
+        emit MidasSupplyFuse.MidasSupplyFuseExitFailed(
+            fuse.VERSION(),
+            address(mToken),
+            amount_,
+            address(tokenOut),
+            address(redemptionVault)
+        );
+    }
+
+    function _ceilDiv(uint256 a_, uint256 b_) internal pure returns (uint256) {
+        return (a_ + b_ - 1) / b_;
+    }
+
+    function _countLogs(Vm.Log[] memory logs_, bytes32 topic_) internal pure returns (uint256 count) {
+        for (uint256 i; i < logs_.length; ++i) {
+            if (logs_[i].topics[0] == topic_) ++count;
+        }
     }
 
     // ============================================================
@@ -720,33 +762,30 @@ contract MidasSupplyFuseTest is Test {
         assertEq(mToken.approveAmounts(1), 0, "Second approve (catch): must clear to 0");
     }
 
-    /// @notice IW3 — revert when slippage fails inside try block (slippage check not caught)
-    function test_instantWithdraw_ShouldRevert_WhenSlippageExceeded_InTryBlock() public {
+    /// @notice IW3 (IL-9617) — a payout below word 4 does not end the user's exit: the instant path no longer re-checks
+    ///         the received tokenOut after `redeemInstant` (Midas enforces `minReceiveAmount` itself, inside the try).
+    ///         On the audited base the fuse reverted with MidasSupplyFuseInsufficientTokenOutReceived outside the catch.
+    function test_instantWithdraw_ShouldNotRevert_WhenTokenOutBelowMin() public {
         // given
         _grantExitSubstrates();
-        uint256 amount = 1000e18;
+        uint256 missingTokenOut = 1000e6;
         uint256 minTokenOut = 1000e6;
         uint256 actualTransferred = 999e6; // less than min
-        _setMTokenBalance(amount);
+        _setMTokenBalance(2000e18);
         _setTokenOutBalanceOnVault(actualTransferred);
         redemptionVault.setTokenOutToTransfer(actualTransferred);
 
-        bytes32[] memory params = new bytes32[](5);
-        params[0] = bytes32(amount);
-        params[1] = bytes32(uint256(uint160(address(mToken))));
-        params[2] = bytes32(uint256(uint160(address(tokenOut))));
-        params[3] = bytes32(uint256(uint160(address(redemptionVault))));
-        params[4] = bytes32(minTokenOut);
+        bytes32[] memory params = _instantWithdrawParams(missingTokenOut, minTokenOut);
 
-        // when/then — slippage check inside try block → revert (not caught by catch)
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MidasSupplyFuse.MidasSupplyFuseInsufficientTokenOutReceived.selector,
-                minTokenOut,
-                actualTransferred
-            )
-        );
+        // when — must not revert
+        vm.recordLogs();
         harness.instantWithdraw(params);
+
+        // then — the redemption counts, word 4 went to Midas as minReceiveAmount, approval cleared
+        assertEq(_countLogs(vm.getRecordedLogs(), _EXIT_TOPIC), 1, "MidasSupplyFuseExit emitted");
+        assertEq(tokenOut.balanceOf(address(harness)), actualTransferred, "Harness keeps the received tokenOut");
+        assertEq(redemptionVault.lastMinReceiveAmount(), minTokenOut, "word 4 passed to Midas as minReceiveAmount");
+        assertEq(mToken.allowance(address(harness), address(redemptionVault)), 0, "mToken approval cleared");
     }
 
     /// @notice IW2 — successful instantWithdraw with event emitted
@@ -773,6 +812,305 @@ contract MidasSupplyFuseTest is Test {
         // Approval cleared
         assertEq(mToken.allowance(address(harness), address(redemptionVault)), 0, "mToken approval should be cleared after success");
         assertEq(tokenOut.balanceOf(address(harness)), minTokenOut, "Harness should receive tokenOut");
+    }
+
+    // ============================================================
+    // 4b. InstantWithdraw sizing (IL-9617): word 0 is the missing tokenOut
+    // ============================================================
+
+    /// @notice Word 0 is converted from tokenOut to mTokens with the Midas rate and the instant fee, rounded up
+    ///         (mTBILL-like: rate 1.0775, instant fee 7 bps, stable USDC): 1,000 USDC missing -> ~928.72 mTBILL
+    function test_instantWithdraw_ShouldConvertMissingTokenOutToMTokens() public {
+        // given
+        _grantExitSubstrates();
+        uint256 missingTokenOut = 1000e6;
+        uint256 rate = 1.0775e18;
+        uint256 feeBps = 7;
+        redemptionVault.setMTokenRate(rate);
+        redemptionVault.setInstantFee(feeBps);
+        _setMTokenBalance(10_000e18);
+
+        // ceil(1000e18 * 1e18 * 10_000 / (rate * (10_000 - 7)))
+        uint256 expectedMTokens = _ceilDiv(missingTokenOut * 1e12 * 1e18 * 10_000, rate * (10_000 - feeBps));
+
+        // when
+        harness.instantWithdraw(_instantWithdrawParams(missingTokenOut, 0));
+
+        // then
+        assertEq(redemptionVault.lastAmountMTokenIn(), expectedMTokens, "mTokens = missing tokenOut grossed up by fee");
+        assertEq(expectedMTokens, 928724352986765910152, "about 928.72 mTBILL for 1,000 USDC");
+        assertGe(redemptionVault.midasPayout(expectedMTokens), missingTokenOut, "Midas pays the missing amount");
+    }
+
+    /// @notice Non-stable tokenOut: its own data feed rate and the token fee are part of the conversion
+    function test_instantWithdraw_ShouldUseTokenOutRateAndTokenFee() public {
+        // given
+        _grantExitSubstrates();
+        MockMidasDataFeedForBalance tokenOutFeed = new MockMidasDataFeedForBalance();
+        tokenOutFeed.setPrice(0.998e18);
+        uint256 missingTokenOut = 2500e6;
+        uint256 rate = 1.2e18;
+        redemptionVault.setMTokenRate(rate);
+        redemptionVault.setInstantFee(10);
+        redemptionVault.setTokenConfig(address(tokenOutFeed), 15, type(uint256).max, false);
+        _setMTokenBalance(10_000e18);
+
+        uint256 expectedMTokens = _ceilDiv(missingTokenOut * 1e12 * 0.998e18 * 10_000, rate * (10_000 - 25));
+
+        // when
+        harness.instantWithdraw(_instantWithdrawParams(missingTokenOut, 0));
+
+        // then
+        assertEq(redemptionVault.lastAmountMTokenIn(), expectedMTokens, "tokenOut rate and both fees applied");
+        assertGe(redemptionVault.midasPayout(expectedMTokens), missingTokenOut, "Midas pays the missing amount");
+    }
+
+    /// @notice The request is capped at the rest of the instant daily limit (in mTokens)
+    function test_instantWithdraw_ShouldCapAtRemainingDailyLimit() public {
+        // given
+        _grantExitSubstrates();
+        redemptionVault.setInstantDailyLimit(1000e18);
+        redemptionVault.setDailyLimitUsed(block.timestamp / 1 days, 600e18);
+        _setMTokenBalance(10_000e18);
+
+        // when — 5,000 USDC missing at rate 1.0 would need 5,000 mTokens
+        harness.instantWithdraw(_instantWithdrawParams(5000e6, 0));
+
+        // then
+        assertEq(redemptionVault.lastAmountMTokenIn(), 400e18, "capped at limit - used of today");
+    }
+
+    /// @notice A daily limit used up for today means no call at all (no revert, no event)
+    function test_instantWithdraw_ShouldSkip_WhenDailyLimitUsedUp() public {
+        // given
+        _grantExitSubstrates();
+        redemptionVault.setInstantDailyLimit(1000e18);
+        redemptionVault.setDailyLimitUsed(block.timestamp / 1 days, 1000e18);
+        _setMTokenBalance(10_000e18);
+
+        // when / then
+        _expectExitFailed(5000e6);
+        harness.instantWithdraw(_instantWithdrawParams(5000e6, 0));
+        assertEq(redemptionVault.redeemInstantCallCount(), 0, "redeemInstant not called");
+    }
+
+    /// @notice The request is capped at the token allowance (tokenOut, base 18) converted to mTokens
+    function test_instantWithdraw_ShouldCapAtTokenAllowance() public {
+        // given
+        _grantExitSubstrates();
+        uint256 rate = 1.25e18;
+        redemptionVault.setMTokenRate(rate);
+        redemptionVault.setTokenConfig(address(0), 0, 500e18, true);
+        _setMTokenBalance(10_000e18);
+
+        // when — 2,000 USDC missing; the allowance covers 500 USDC = 400 mTokens at 1.25
+        harness.instantWithdraw(_instantWithdrawParams(2000e6, 0));
+
+        // then
+        assertEq(redemptionVault.lastAmountMTokenIn(), (500e18 * 1e18) / rate, "capped at allowance in mTokens");
+    }
+
+    /// @notice Below the Midas minimum the entry is skipped without a call (Midas would revert the redemption)
+    function test_instantWithdraw_ShouldSkipBelowMinAmount() public {
+        // given
+        _grantExitSubstrates();
+        redemptionVault.setMinAmount(1e18);
+        _setMTokenBalance(10_000e18);
+        mToken.clearApproveHistory();
+
+        // when — 0.5 USDC missing -> 0.5 mTokens at rate 1.0; the skip is reported with the mToken amount
+        _expectExitFailed(0.5e18);
+        harness.instantWithdraw(_instantWithdrawParams(0.5e6, 0));
+
+        // then
+        assertEq(redemptionVault.redeemInstantCallCount(), 0, "redeemInstant not called");
+        assertEq(mToken.approveCallCount(), 0, "no approval");
+    }
+
+    /// @notice At the minimum the redemption goes ahead
+    function test_instantWithdraw_ShouldRedeem_WhenAtMinAmount() public {
+        // given
+        _grantExitSubstrates();
+        redemptionVault.setMinAmount(1e18);
+        _setMTokenBalance(10_000e18);
+
+        // when — 1 USDC missing -> exactly 1 mToken at rate 1.0
+        harness.instantWithdraw(_instantWithdrawParams(1e6, 0));
+
+        // then
+        assertEq(redemptionVault.lastAmountMTokenIn(), 1e18, "redeems the minimum");
+    }
+
+    /// @notice A zero mToken rate or a fee of 100 % gives no request (no division by zero, no revert)
+    function test_instantWithdraw_ShouldSkip_WhenRateIsZeroOrFeeIsFull() public {
+        // given
+        _grantExitSubstrates();
+        _setMTokenBalance(10_000e18);
+        redemptionVault.setMTokenRate(0);
+
+        // when / then — rate 0
+        _expectExitFailed(1000e6);
+        harness.instantWithdraw(_instantWithdrawParams(1000e6, 0));
+        assertEq(redemptionVault.redeemInstantCallCount(), 0, "no call at rate 0");
+
+        // when / then — fee 100 %
+        redemptionVault.setMTokenRate(1e18);
+        redemptionVault.setInstantFee(10_000);
+        _expectExitFailed(1000e6);
+        harness.instantWithdraw(_instantWithdrawParams(1000e6, 0));
+        assertEq(redemptionVault.redeemInstantCallCount(), 0, "no call at fee 100 %");
+    }
+
+    /// @notice IL-9590 #1 — a non-stable tokenOut that Midas does not list (feed address(0)) is skipped, not reverted
+    function test_instantWithdraw_ShouldSkipAndEmit_WhenTokenOutFeedIsZero() public {
+        // given — tokensConfig zeroed for tokenOut, not stable: the feed call would hit a code-less address
+        _grantExitSubstrates();
+        redemptionVault.setTokenConfig(address(0), 0, 0, false);
+        _setMTokenBalance(10_000e18);
+
+        // when / then — no revert, ExitFailed, no redemption
+        _expectExitFailed(1000e6);
+        harness.instantWithdraw(_instantWithdrawParams(1000e6, 0));
+        assertEq(redemptionVault.redeemInstantCallCount(), 0, "redeemInstant not called");
+    }
+
+    /// @notice IL-9590 #1 — an mToken data feed that reverts with a reason does not end the user's withdraw
+    function test_instantWithdraw_ShouldSkipAndEmit_WhenMTokenFeedReverts() public {
+        // given
+        _grantExitSubstrates();
+        redemptionVault.setMTokenDataFeed(address(new MockRevertingMidasDataFeed()));
+        _setMTokenBalance(10_000e18);
+
+        // when / then
+        _expectExitFailed(1000e6);
+        harness.instantWithdraw(_instantWithdrawParams(1000e6, 0));
+        assertEq(redemptionVault.redeemInstantCallCount(), 0, "redeemInstant not called");
+    }
+
+    /// @notice IL-9590 #1 — a tokenOut data feed that reverts (non-stable payment token) is skipped
+    function test_instantWithdraw_ShouldSkipAndEmit_WhenTokenOutFeedReverts() public {
+        // given
+        _grantExitSubstrates();
+        redemptionVault.setTokenConfig(address(new MockRevertingMidasDataFeed()), 0, type(uint256).max, false);
+        _setMTokenBalance(10_000e18);
+
+        // when / then
+        _expectExitFailed(1000e6);
+        harness.instantWithdraw(_instantWithdrawParams(1000e6, 0));
+    }
+
+    /// @notice IL-9590 #1 — a redemption vault without the `dailyLimits` view (older Midas version) is skipped
+    function test_instantWithdraw_ShouldSkipAndEmit_WhenLimitsViewIsMissing() public {
+        // given
+        MockMidasRedemptionVaultWithoutDailyLimits oldVault = new MockMidasRedemptionVaultWithoutDailyLimits(
+            address(redemptionVault)
+        );
+        harness.grantExitSubstrates(MARKET_ID, address(mToken), address(oldVault), address(tokenOut));
+        _setMTokenBalance(10_000e18);
+
+        // when / then
+        vm.expectEmit(true, true, true, true, address(harness));
+        emit MidasSupplyFuse.MidasSupplyFuseExitFailed(
+            fuse.VERSION(),
+            address(mToken),
+            1000e6,
+            address(tokenOut),
+            address(oldVault)
+        );
+        harness.instantWithdraw(_withdrawParamsFor(1000e6, address(oldVault)));
+    }
+
+    /// @notice IL-9590 #1 — a redemption vault address with no code is skipped, not reverted
+    function test_instantWithdraw_ShouldSkipAndEmit_WhenVaultHasNoCode() public {
+        // given
+        address ghost = address(0xdead0001);
+        harness.grantExitSubstrates(MARKET_ID, address(mToken), ghost, address(tokenOut));
+        _setMTokenBalance(10_000e18);
+
+        // when / then
+        vm.expectEmit(true, true, true, true, address(harness));
+        emit MidasSupplyFuse.MidasSupplyFuseExitFailed(
+            fuse.VERSION(),
+            address(mToken),
+            1000e6,
+            address(tokenOut),
+            ghost
+        );
+        harness.instantWithdraw(_withdrawParamsFor(1000e6, ghost));
+    }
+
+    /// @notice IL-9590 #1 — with no mToken balance the fuse returns before any Midas read, even when Midas reads fail
+    function test_instantWithdraw_ShouldReturnWithoutReads_WhenMTokenBalanceIsZero() public {
+        // given — reads would revert, balance is zero
+        _grantExitSubstrates();
+        redemptionVault.setTokenConfig(address(0), 0, 0, false);
+
+        // when
+        vm.recordLogs();
+        harness.instantWithdraw(_instantWithdrawParams(1000e6, 0));
+
+        // then — silent return
+        assertEq(vm.getRecordedLogs().length, 0, "no events");
+        assertEq(redemptionVault.redeemInstantCallCount(), 0, "redeemInstant not called");
+    }
+
+    function _withdrawParamsFor(
+        uint256 missingTokenOut_,
+        address vault_
+    ) internal view returns (bytes32[] memory params) {
+        params = _instantWithdrawParams(missingTokenOut_, 0);
+        params[3] = bytes32(uint256(uint160(vault_)));
+    }
+
+    /// @notice The ALPHA exit is unchanged: `amount` is an mToken amount and the limit views are not used
+    function test_exit_ShouldKeepAmountInMTokens_AndIgnoreInstantLimits() public {
+        // given — limits that would block or reshape an instant request
+        _grantExitSubstrates();
+        redemptionVault.setMTokenRate(1.5e18);
+        redemptionVault.setInstantFee(50);
+        redemptionVault.setMinAmount(1000e18);
+        redemptionVault.setInstantDailyLimit(0);
+        _setMTokenBalance(100e18);
+
+        // when
+        harness.exit(_exitData(100e18, 0));
+
+        // then
+        assertEq(redemptionVault.lastAmountMTokenIn(), 100e18, "exit redeems the given mToken amount");
+    }
+
+    /// @notice With a Midas-like payout the vault receives at least the missing amount and at most 1 unit more
+    function testFuzz_instantWithdraw_PayoutCoversMissingAmount(
+        uint256 missing_,
+        uint256 mTokenRate_,
+        uint256 instantFee_,
+        uint256 tokenFee_,
+        uint256 tokenOutRate_,
+        bool stable_
+    ) public {
+        // given
+        uint256 missing = bound(missing_, 1, 10_000_000e6);
+        uint256 rate = bound(mTokenRate_, 1e15, 1e21);
+        uint256 instantFeeBps = bound(instantFee_, 0, 300);
+        uint256 tokenFeeBps = bound(tokenFee_, 0, 300);
+        MockMidasDataFeedForBalance tokenOutFeed = new MockMidasDataFeedForBalance();
+        tokenOutFeed.setPrice(bound(tokenOutRate_, 0.9e18, 1.1e18));
+
+        _grantExitSubstrates();
+        redemptionVault.setMTokenRate(rate);
+        redemptionVault.setInstantFee(instantFeeBps);
+        redemptionVault.setTokenConfig(address(tokenOutFeed), tokenFeeBps, type(uint256).max, stable_);
+        redemptionVault.setSimulateMidasPayout(true);
+        _setMTokenBalance(1e30);
+        _setTokenOutBalanceOnVault(1e30);
+
+        // when
+        harness.instantWithdraw(_instantWithdrawParams(missing, 0));
+
+        // then
+        uint256 received = tokenOut.balanceOf(address(harness));
+        assertGe(received, missing, "covers the missing amount");
+        assertLe(received, missing + 1, "no material over-redemption");
     }
 
     // ============================================================

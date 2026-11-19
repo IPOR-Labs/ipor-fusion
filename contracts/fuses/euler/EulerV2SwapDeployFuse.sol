@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {IEVC} from "ethereum-vault-connector/src/interfaces/IEthereumVaultConnector.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IFuseCommon} from "../IFuseCommon.sol";
 import {Errors} from "../../libraries/errors/Errors.sol";
 import {EulerFuseLib} from "./EulerFuseLib.sol";
@@ -64,10 +65,17 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
     /// @notice Thrown when a supply/borrow vault is not granted on the EULER_V2 market for the sub-account, or a
     ///         supply vault the pool enables as collateral lacks the `isCollateral` flag
     error EulerV2SwapDeployFuseUnsupportedVault(address vault, bytes1 subAccount);
+    /// @notice Thrown when the EULER_V2 market has no pool entry for the predicted pool and sub-account, so the pool
+    ///         would be deployed unseen by the market's balance fuse
+    error EulerV2SwapDeployFusePoolNotGranted(address pool, bytes1 subAccount);
     /// @notice Thrown when the predicted pool address does not match the factory computation / deployment
     error EulerV2SwapDeployFusePoolAddressMismatch(address predicted, address computed);
     /// @notice Thrown when feeRecipient is not address(0) (fees must compound into the supply vault)
     error EulerV2SwapDeployFuseInvalidFeeRecipient(address feeRecipient);
+    /// @notice Thrown when the pool is on sub-account 0x00 (the vault itself) and a supply vault is the vault's
+    ///         `asset()`: that leg of the pool would be the vault's idle balance, which the fair point cannot value
+    /// @param vault The PlasmaVault (the address of the delegatecall context)
+    error EulerV2SwapDeployFuseSubAccountZeroUsesVaultAsset(address vault);
     /// @notice Thrown when dynamic parameters fail sanity bounds (fee, expiration) or request a swap hook
     error EulerV2SwapDeployFuseInvalidParams();
 
@@ -116,6 +124,17 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
             revert EulerV2SwapDeployFuseInvalidFeeRecipient(data_.staticParams.feeRecipient);
         }
 
+        // On sub-account 0x00 the pool's eulerAccount is the vault itself. A supply vault equal to the vault's
+        // asset() makes that leg of the pool the vault's idle balance, which totalAssets() reads live outside
+        // market 11 and the balance fuse's fair point cannot value. Only the action's own parameters are checked
+        // (supply vaults, not borrow vaults); pools deployed earlier are unchanged.
+        if (data_.subAccount == 0x00) {
+            address vaultAsset = IERC4626(address(this)).asset();
+            if (data_.staticParams.supplyVault0 == vaultAsset || data_.staticParams.supplyVault1 == vaultAsset) {
+                revert EulerV2SwapDeployFuseSubAccountZeroUsesVaultAsset(address(this));
+            }
+        }
+
         // Dynamic parameter sanity bounds, mirrored in EulerV2SwapReconfigureFuse (both bound-checks and the
         // curve pricing guard below are shared via EulerV2SwapCurveLib). A swap hook is rejected outright: it
         // would let an external contract execute arbitrary state-changing code in the swap context of
@@ -131,8 +150,9 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
         }
 
         // Permissioning against EULER_V2 substrates. This simultaneously guarantees that every position
-        // the pool can open is counted by EulerV2BalanceFuse (NAV), so a pool whose positions are
-        // invisible to NAV cannot be deployed.
+        // the pool can open is counted at the next market-11 refresh (EulerV2BalanceFuse), so a pool whose
+        // positions are invisible to NAV cannot be deployed. It does not guarantee freshness: NAV is a
+        // cache, and between refreshes pool fees and arbitrage losses are not yet reflected in it.
         _requireSupply(data_.staticParams.supplyVault0, data_.subAccount);
         _requireSupply(data_.staticParams.supplyVault1, data_.subAccount);
         // EulerSwap allows borrowVault0/1 == address(0) (supply-only / non-JIT pools). A non-zero borrow
@@ -151,6 +171,12 @@ contract EulerV2SwapDeployFuse is IFuseCommon {
         }
         if (data_.staticParams.borrowVault0 != address(0)) {
             _requireCollateral(data_.staticParams.supplyVault1, data_.subAccount);
+        }
+
+        // The pool itself must be listed as a pool entry on this market for this sub-account, otherwise the
+        // market's balance fuse cannot value it by its fair point and a new pool would start unseen.
+        if (!EulerFuseLib.isSwapPoolGranted(MARKET_ID, data_.predictedPool, data_.subAccount)) {
+            revert EulerV2SwapDeployFusePoolNotGranted(data_.predictedPool, data_.subAccount);
         }
 
         // Curve pricing guard (shared with EulerV2SwapReconfigureFuse): priceX/priceY must sit within

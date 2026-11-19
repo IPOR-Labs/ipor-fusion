@@ -188,6 +188,13 @@ contract FusionStorageSlotsTest is Test {
         assertEq(actual, expected, "CONTEXT_SENDER_STORAGE_SLOT mismatch");
     }
 
+    /// @dev Transient slot (TSTORE/TLOAD only) of the context setter, IL-9533
+    function testContextClient_SetterTransientSlot() public pure {
+        bytes32 expected = _computeSlot("io.ipor.context.client.setter.transient");
+        bytes32 actual = 0x32da880bae19f8deb5d12b6b7797c7d78f9aeaf8a96898db43e4901c904c3a00;
+        assertEq(actual, expected, "CONTEXT_SETTER_TRANSIENT_SLOT mismatch");
+    }
+
     // ============================================
     // PriceOracleMiddlewareStorageLib
     // ============================================
@@ -425,5 +432,15 @@ contract FusionStorageSlotsTest is Test {
         bytes32 expected = _computeSlot("io.ipor.tac.StakingDelegator");
         bytes32 actual = 0x2c7f2e6443b388f1a6df5abedafcea539a6d91285825504444df1286873de000;
         assertEq(actual, expected, "TAC_STAKING_DELEGATOR_SLOT mismatch");
+    }
+
+    // ============================================
+    // VaultRoleRegistryStorageLib
+    // ============================================
+
+    function testVaultRoleRegistry_StorageSlot() public pure {
+        bytes32 expected = _computeSlot("io.ipor.vaultRoleRegistry.Storage");
+        bytes32 actual = 0x5ea9c53d8dbbe442286aa23917d66e3ded631a7f9848e3b653994ce3000c9e00;
+        assertEq(actual, expected, "VaultRoleRegistryStorageLib.STORAGE_SLOT mismatch");
     }
 }

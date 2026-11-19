@@ -145,6 +145,12 @@ abstract contract CcipAppBase is ICcipMessageReceiver, IERC165 {
     ///      sender is that route's peer (`CcipUnauthorizedPeer`). The message is marked processed before
     ///      `_handleCcipMessage` runs, so a reentrant redelivery of the same id reverts. If the handler reverts, the
     ///      mark is reverted with it and the message stays retryable.
+    ///      The route's `enabled` flag is NOT checked here: replies and settlements must keep arriving on a disabled
+    ///      route. `enabled = false` stops sending, and on the dispatcher it also stops new work (COMMAND,
+    ///      UPDATE_VAULTS, RETRY_COMMAND revert `CcipUnknownChain`, see `CcipCrosschainDispatcher`). It is not a fast
+    ///      kill switch: the change is timelocked (24 h) and the dispatcher sees it only after `syncCcipRoutePolicy`.
+    ///      A refused command stays failed on the OffRamp and `CANCEL_COMMAND` cannot close it (`CommandNotFailed`);
+    ///      its slot frees by manual execution after the route is re-enabled, or by `ABANDON_COMMAND`.
     function ccipReceive(CcipClient.Any2EVMMessage calldata message_) public virtual override {
         if (msg.sender != CCIP_ROUTER) revert CcipInvalidRouter(msg.sender);
         if (processedCcipMessage[message_.messageId]) revert CcipMessageAlreadyProcessed(message_.messageId);

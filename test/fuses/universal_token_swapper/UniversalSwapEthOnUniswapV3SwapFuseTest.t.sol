@@ -1109,7 +1109,7 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         marketConfigs_ = new MarketSubstratesConfig[](1);
 
         // Using new substrate encoding format with Token and Target types
-        bytes32[] memory universalSwapSubstrates = new bytes32[](20);
+        bytes32[] memory universalSwapSubstrates = new bytes32[](19);
         // Token substrates
         universalSwapSubstrates[0] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(USDC);
         universalSwapSubstrates[1] = UniversalTokenSwapperSubstrateLib.encodeTokenSubstrate(USDT);
@@ -1136,10 +1136,9 @@ contract UniversalSwapEthOnUniswapV3SwapFuseTest is Test {
         );
         // Slippage substrate - using 100% slippage for testing (same as original 1e18)
         universalSwapSubstrates[16] = UniversalTokenSwapperSubstrateLib.encodeSlippageSubstrate(1e18);
-        // Unused slots can be zero
+        // Unused slot can be zero (IL-9642: grants reject duplicates, so only one bytes32(0) entry)
         universalSwapSubstrates[17] = UniversalTokenSwapperSubstrateLib.encodeTargetSubstrate(NET_DELTA_CLAIM_TARGET); // IL-8767 tests
         universalSwapSubstrates[18] = bytes32(0);
-        universalSwapSubstrates[19] = bytes32(0);
 
         marketConfigs_[0] = MarketSubstratesConfig(IporFusionMarkets.UNIVERSAL_TOKEN_SWAPPER, universalSwapSubstrates);
     }

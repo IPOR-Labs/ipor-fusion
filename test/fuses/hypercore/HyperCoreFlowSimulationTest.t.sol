@@ -32,6 +32,7 @@ import {
 } from "../../../contracts/fuses/hypercore/HyperCoreSendFuse.sol";
 import {HyperCoreBuilderFeeFuse} from "../../../contracts/fuses/hypercore/HyperCoreBuilderFeeFuse.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 
@@ -174,7 +175,7 @@ contract HyperCoreFlowSimulationTest is Test {
         substrates[5] = HyperCoreSubstrateLib.encodeSendCap(USDC_TOKEN, type(uint128).max);
         substrates[6] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, 2);
         substrates[7] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.MaxUsdClassTransferUsd6, 1_000_000e6);
-        PlasmaVaultHelper.addSubstratesToMarket(_vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(_vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         vm.stopPrank();
 
         // --- fund the vault via a real deposit ---

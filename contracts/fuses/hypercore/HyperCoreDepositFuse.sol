@@ -79,7 +79,8 @@ contract HyperCoreDepositFuse is IFuseCommon {
     ///         reverts; fails closed rather than assuming availability
     error HyperCoreDepositFuseDepositWalletUnavailable();
 
-    /// @notice Thrown when the configured transfer-class window is zero or exceeds `type(uint64).max`
+    /// @notice Thrown when the configured transfer-class window is below `MIN_WINDOW_TRANSFER_SECONDS` (2) or exceeds
+    ///         `type(uint64).max`
     error HyperCoreDepositFuseInvalidWindow(uint240 value);
 
     /// @notice Thrown when the configured transfer timeout is below `MIN_TRANSFER_TIMEOUT_SECONDS` (60) or exceeds
@@ -268,7 +269,9 @@ contract HyperCoreDepositFuse is IFuseCommon {
         return IporMath.convertToWad(roundedAmount_ * price, tokenDecimals + priceDecimals);
     }
 
-    /// @dev Reads the configured transfer-class settlement window; defaults to 2 seconds when unset.
+    /// @dev Reads the configured transfer-class settlement window; defaults to 2 seconds when unset. A configured value
+    ///      below `HyperCorePendingLib.MIN_WINDOW_TRANSFER_SECONDS` (2) reverts (IL-9529), as in every HyperCore fuse
+    ///      that reads `Config{WindowTransferSeconds}`.
     function _windowTransfer() internal view returns (uint64) {
         (bool set, uint240 value) = HyperCoreSubstrateLib.getConfig(
             MARKET_ID,
@@ -277,7 +280,7 @@ contract HyperCoreDepositFuse is IFuseCommon {
         if (!set) {
             return 2;
         }
-        if (value == 0 || value > type(uint64).max) {
+        if (value < HyperCorePendingLib.MIN_WINDOW_TRANSFER_SECONDS || value > type(uint64).max) {
             revert HyperCoreDepositFuseInvalidWindow(value);
         }
         return uint64(value);

@@ -20,9 +20,12 @@ struct ClaimData {
 }
 
 /// @title RewardEulerTokenClaimFuse
-/// @notice Stub contract to enable reward claims from the Euler token rewards system.
-/// @dev Implement claim() in derived contracts for specific reward-handling logic.
-/// Security: Consider access control (e.g. onlyVault), reentrancy protection, and event emission.
+/// @notice Fuse that withdraws vested EUL from the vault's rEUL locks into the RewardsClaimManager.
+/// @dev Final contract (no derived contracts). It is executed by `PlasmaVault.claimRewards` via delegatecall, so the
+/// rEUL locks belong to the vault and the RewardsClaimManager address is read from the vault storage. Access control
+/// comes from the CLAIM_REWARDS role of `RewardsClaimManager.claimRewards`, and reentrancy protection from the vault
+/// lock of `PlasmaVault.claimRewards`. Every claim emits `RewardEulerTokenClaimFuseClaimed` with the EUL amount
+/// received by the RewardsClaimManager.
 contract RewardEulerTokenClaimFuse {
     error RewardEulerTokenClaimFuseInvalidAddress();
     error RewardEulerTokenClaimFuseRewardsClaimManagerNotSet();
@@ -46,8 +49,9 @@ contract RewardEulerTokenClaimFuse {
         rEUL = rEUL_;
         EUL = EUL_;
     }
-    /// @notice Claims accrued rewards from the Euler reward system.
-    /// @dev This function should be overridden by child contracts to implement actual claim logic.
+    /// @notice Claims accrued rewards from the Euler reward system for the given lock timestamps.
+    /// @dev Withdraws exactly the locks listed in `data_.lockTimestamps` to the RewardsClaimManager. With
+    /// `data_.allowRemainderLoss` false, rEUL reverts if any listed lock still has an unvested remainder.
     function claim(ClaimData calldata data_) external {
         _claim(data_.lockTimestamps, data_.allowRemainderLoss);
     }

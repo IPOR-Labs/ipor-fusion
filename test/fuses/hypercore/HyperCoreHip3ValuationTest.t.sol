@@ -8,6 +8,7 @@ import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.
 import {HyperCoreSupportedDexLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSupportedDexLib.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCoreValuationLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreValuationLib.sol";
 import {HyperCoreTestHelper} from "./HyperCoreTestHelper.sol";
 import {HyperCoreMockState} from "./mocks/MockHyperCorePrecompiles.sol";
@@ -155,7 +156,7 @@ contract HyperCoreHip3ValuationTest is Test {
         bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
         substrates[1] = _configSubstrate(CONFIG_XYZ_ONLY);
-        vault.grantMarketSubstrates(MARKET_ID, substrates);
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         _setSpotBalance(2e8, 15e7); // $3.00 total (see HyperCoreBalanceFuseTest for the same numbers)
         oracle.setAssetPriceWithDecimals(spotAsset, 15e7, 8);
@@ -292,7 +293,7 @@ contract HyperCoreHip3ValuationTest is Test {
         withPerpMarket[0] = _configSubstrate(CONFIG_XYZ_ONLY);
         withPerpMarket[1] = HyperCoreSubstrateLib.encodePerpMarket(110002, 0, false);
         withPerpMarket[2] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
-        vault.grantMarketSubstrates(MARKET_ID, withPerpMarket);
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(withPerpMarket));
         assertEq(vault.balanceOf(), 2e18);
 
         _grantConfig(CONFIG_XYZ_ONLY); // replaces the full substrate list, revoking the PerpMarket grant
@@ -428,7 +429,7 @@ contract HyperCoreHip3ValuationTest is Test {
         _activate();
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = _configSubstrate(CONFIG_XYZ_ONLY); // replaces the setUp list: no SpotToken(0) grant
-        vault.grantMarketSubstrates(MARKET_ID, substrates);
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         _setNativeValue(1_000_000); // 1 USDC
         _setDexValue(HyperCoreSupportedDexLib.XYZ_PERP_DEX, 2_000_000); // 2 USDC
 
@@ -453,13 +454,13 @@ contract HyperCoreHip3ValuationTest is Test {
         bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = _configSubstrate(bitmap);
         substrates[1] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
-        vault.grantMarketSubstrates(MARKET_ID, substrates);
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _grantSpotUsdcOnly() private {
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
-        vault.grantMarketSubstrates(MARKET_ID, substrates);
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _setSpotBalance(uint64 total, uint64 hold) private {

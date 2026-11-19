@@ -12,7 +12,8 @@ import {
     CrosschainMessages,
     UpdateVaults,
     Command,
-    OutboundTransfer
+    OutboundTransfer,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 
 import {MockFaultyVault} from "./mocks/MockFaultyVault.sol";
@@ -114,7 +115,8 @@ contract StargateUpdateVaultsSingleCallTest is Test {
                     sequence: dispatcher.nextCommandSequence(),
                     newConfigEpoch: newConfigEpoch_,
                     minExecutionGas: DEFAULT_COMMAND_BUDGET,
-                    vaults: vaults_
+                    vaults: vaults_,
+                    floors: new SweepFloor[](0)
                 })
             )
         );

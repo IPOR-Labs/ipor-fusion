@@ -234,11 +234,46 @@ contract MorphoSupplyWithCallBackDataFuse is IFuseCommon, IFuseInstantWithdraw {
         asset = marketParams.loanToken;
         market = data_.morphoMarketId;
 
-        if (data_.amount >= assetsMax) {
-            amount = _performWithdraw(marketParams, data_.morphoMarketId, 0, shares, catchExceptions_);
-        } else {
-            amount = _performWithdraw(marketParams, data_.morphoMarketId, data_.amount, 0, catchExceptions_);
+        amount = _withdrawWithinLiquidity(
+            catchExceptions_,
+            data_.morphoMarketId,
+            data_.amount,
+            marketParams,
+            assetsMax,
+            shares
+        );
+    }
+
+    /// @notice Withdraws all shares when the request covers the position, else the requested assets
+    /// @dev Instant withdraw path only: Morpho Blue reverts a withdrawal that leaves less supply than borrows, so the
+    ///      request is capped at the market's free liquidity (`totalSupplyAssets - totalBorrowAssets`, both after the
+    ///      interest accrual in `_exit`). A partly liquid market then pays what it has, by assets, and the next instant
+    ///      withdraw fuse pays the rest; a market without liquidity is skipped without calling Morpho. The reads are
+    ///      outside the try (fail closed). The ALPHA exit (`catchExceptions_ == false`) stays uncapped.
+    function _withdrawWithinLiquidity(
+        bool catchExceptions_,
+        bytes32 morphoMarketId_,
+        uint256 amount_,
+        MarketParams memory marketParams_,
+        uint256 assetsMax_,
+        uint256 shares_
+    ) internal returns (uint256) {
+        if (catchExceptions_) {
+            Id id = marketParams_.id();
+            uint256 totalSupplyAssets = MORPHO.totalSupplyAssets(id);
+            uint256 totalBorrowAssets = MORPHO.totalBorrowAssets(id);
+            uint256 liquidity = totalSupplyAssets > totalBorrowAssets ? totalSupplyAssets - totalBorrowAssets : 0;
+            if (liquidity < (amount_ < assetsMax_ ? amount_ : assetsMax_)) {
+                if (liquidity == 0) {
+                    return 0;
+                }
+                return _performWithdraw(marketParams_, morphoMarketId_, liquidity, 0, catchExceptions_);
+            }
         }
+        if (amount_ >= assetsMax_) {
+            return _performWithdraw(marketParams_, morphoMarketId_, 0, shares_, catchExceptions_);
+        }
+        return _performWithdraw(marketParams_, morphoMarketId_, amount_, 0, catchExceptions_);
     }
 
     /**

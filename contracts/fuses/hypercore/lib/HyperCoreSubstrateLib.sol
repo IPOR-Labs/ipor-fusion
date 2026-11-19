@@ -35,7 +35,8 @@ library HyperCoreSubstrateLib {
         ActivationFeeAllowanceUsdcWei,
         MaxNavJumpBps,
         MaxMarkOracleDeviationBps,
-        NavJumpFloorUsd6
+        NavJumpFloorUsd6,
+        NavZeroBaselineCapUsd6
     }
 
     /// @dev Width of the PerpDexIds config bitmap (uint240); dex indices at or above it are unsupported
@@ -130,7 +131,7 @@ library HyperCoreSubstrateLib {
     }
 
     function encodeConfig(ConfigKey key_, uint240 value_) internal pure returns (bytes32) {
-        if (key_ == ConfigKey.Undefined || uint8(key_) > uint8(ConfigKey.NavJumpFloorUsd6)) {
+        if (key_ == ConfigKey.Undefined || uint8(key_) > uint8(ConfigKey.NavZeroBaselineCapUsd6)) {
             revert HyperCoreInvalidConfigKey(uint8(key_));
         }
         return _word(SubstrateType.Config, (uint256(uint8(key_)) << 240) | uint240(value_));
@@ -140,7 +141,7 @@ library HyperCoreSubstrateLib {
         _checkType(substrate_, SubstrateType.Config);
         uint256 data = uint256(substrate_) & _DATA_MASK;
         uint8 rawKey = uint8(data >> 240);
-        if (rawKey == uint8(ConfigKey.Undefined) || rawKey > uint8(ConfigKey.NavJumpFloorUsd6)) {
+        if (rawKey == uint8(ConfigKey.Undefined) || rawKey > uint8(ConfigKey.NavZeroBaselineCapUsd6)) {
             revert HyperCoreInvalidConfigKey(rawKey);
         }
         key_ = ConfigKey(rawKey);

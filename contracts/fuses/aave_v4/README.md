@@ -32,7 +32,7 @@ The integration uses a single market for all Spokes:
 | `AaveV4SupplyFuse` | `supply` / `withdraw` on a reserve; `instantWithdraw` path for user withdrawals |
 | `AaveV4BorrowFuse` | `borrow` / `repay` on a reserve |
 | `AaveV4CollateralFuse` | enable / disable a reserve as collateral of the vault |
-| `AaveV4BalanceFuse` | NAV: `Σ (supplied − total debt) × price` over granted reserves, in USD (WAD) |
+| `AaveV4BalanceFuse` | NAV: per Spoke `F + max(0, C − D)` over granted reserves, in USD (WAD); see *Balance Calculation* |
 | `AaveV4SubstrateLib` | reserve substrate encoding + permission checks |
 | `ext/IAaveV4Spoke` | subset of the real `ISpoke` (struct layouts identical) |
 
@@ -93,6 +93,7 @@ check ties a grant change to existing positions). The atomist must respect the f
 | Situation | Effect | Rule |
 |---|---|---|
 | Reserve with **outstanding debt** loses its grant | the debt disappears from the balance fuse → **NAV overstated**, share price inflated | never revoke a reserve (or its Spoke) while the vault borrows it — repay first |
+| Collateral reserve of a Spoke that carries debt loses its grant | the Spoke then shows only its debt and is valued at `F` (its non-collateral supply): NAV is understated, never overstated | keep the grant while the Spoke carries debt; re-grant to restore the value |
 | Reserve with **supply** loses its grant | supply disappears from NAV (understated) and cannot be withdrawn until re-granted | withdraw first, or re-grant to recover |
 | Reserve enabled as collateral is re-granted **without** `isCollateral` | collateral stays enabled on the Spoke; enabling again is refused, disabling still works; instant withdraw stays blocked by the on-chain status | disable collateral before downgrading the grant |
 | Reserve with debt is re-granted **without** `canBorrow` | new borrows refused, repay still works, debt still counted | intended way to wind a position down |
@@ -127,6 +128,12 @@ struct AaveV4SupplyFuseExitData  { address spoke; address asset; uint256 reserve
 - **Instant withdraw** params: `[0] amount` (set by the vault), `[1] asset`, `[2] spoke`, `[3] reserveId`, `[4] minAmount`.
   Reverts `AaveV4SupplyFuseInstantWithdrawNotAllowed` when the reserve may be collateral; Spoke failures
   are caught and reported with `AaveV4SupplyFuseExitFailed`.
+  After the position cap, for a non-zero amount, the instant request is also capped at the Hub liquidity of the
+  reserve (`Hub.getAssetLiquidity(assetId)`), so a partly liquid reserve pays what it holds and the next
+  instant-withdraw entry pays the rest. At liquidity 0 the fuse returns without calling the Spoke and without an
+  event. The Hub read is a guarded `staticcall`: if the Hub has no code, the call reverts or the answer is shorter
+  than 32 bytes, no cap applies and only the position cap is used. The ALPHA `exit` is not capped and reverts above
+  the liquidity.
 - ABI: `enter((address,address,uint256,uint256,uint256))`, `exit((address,address,uint256,uint256,uint256))`.
 - Transient inputs: `0 spoke, 1 asset, 2 reserveId, 3 amount, 4 minShares|minAmount`; outputs `[asset, amount]`.
 
@@ -182,10 +189,29 @@ on the Spoke yet — `reserveId >= getReserveCount()` — are skipped so a pre-g
 2. `debt = spoke.getUserTotalDebt(reserveId, vault)` — **always** queried, regardless of `canBorrow`,
    so a revoked borrow permission can never hide existing debt (includes the accrued risk premium)
 3. skip if both are zero; otherwise price `spoke.getReserve(reserveId).underlying` via `PriceOracleMiddleware`
-4. `net += (supplied − debt) × price`, normalized to WAD
+4. group the granted reserves by Spoke and value every Spoke on its own as `F + max(0, C − D)`, normalized to WAD:
+   `C` = supply of reserves the vault has enabled as collateral (`getUserReserveStatus(...).usingAsCollateral`),
+   `F` = all other supply, `D` = debt of every granted reserve of that Spoke
 
-Reverts `AaveV4BalanceFuseNegativeBalance` if total debt exceeds total supply value and
-`Errors.UnsupportedQuoteCurrencyFromOracle` on a zero price.
+Each Spoke is an isolated account: a liquidation seizes only collateral reserves, non-collateral supply stays
+withdrawable below health factor 1, and a debt left after the collateral is gone becomes a Hub deficit, not a
+claim on the vault. So the shortfall of one Spoke is never charged to another Spoke or to its own `F`; the
+result is unsigned and the fuse does not revert on an underwater Spoke. It reverts only with
+`Errors.UnsupportedQuoteCurrencyFromOracle` on a zero price. Health factor is not part of NAV: monitor it
+off-chain (`getUserAccountData` per Spoke).
+
+**Known limitation: liquidation bonus.** For a liquidatable Spoke with `C > D`, a liquidation also takes the bonus
+on the repaid debt, so `F + C − D` is above what survives. The valuation does not model the bonus.
+
+**Rounding boundary.** Supply values are rounded down and debt values up. A healthy Spoke is therefore at most
+2 wei (WAD) per reserve below the former nearest-rounding result of the net, and never above it.
+
+**Collateral factor 0.** A reserve enabled as collateral with a collateral factor of 0 still counts as `C`; this
+can understate the value, never overstate it.
+
+**Replacing an older balance fuse.** A vault whose Spoke is already underwater (or that holds free supply next to
+underwater collateral) is valued higher by the new fuse than by the old one, which netted the shortfall. NAV steps up
+once when the new `AaveV4BalanceFuse` is swapped in: review live positions before the swap.
 
 ## Security Considerations
 

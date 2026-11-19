@@ -36,6 +36,15 @@ contract MockPermissiveAuthority {
     function canCall(address, address, bytes4) external pure returns (bool immediate, uint32 delay) {
         return (true, 0);
     }
+
+    /// @dev Redemption-lock getters the WithdrawManager reads in requestShares (IL-9531): nobody is locked
+    function getAccountLockTime(address) external pure returns (uint256) {
+        return 0;
+    }
+
+    function isRedemptionDelayExempt(address) external pure returns (bool) {
+        return false;
+    }
 }
 
 /// @title MockRemotePlasmaVault
@@ -52,6 +61,9 @@ contract MockPermissiveAuthority {
 ///      minus the event) instead of a plain state variable, so the dispatcher's `UniversalReader.read`
 ///      cross-check reads the same slot a real vault would answer with — this mocks the STORAGE, never the
 ///      check itself.
+///      IL-9531: also keeps the request caps like a real PlasmaVault (`setRequestCap` for the WithdrawManager only,
+///      `getRequestCap`, every debit lowers the cap to the balance left, in the real ERC-7201 slot) and answers
+///      `authority()` with the WithdrawManager's authority, as a real vault shares its access manager.
 contract MockRemotePlasmaVault is MockRemoteVault, UniversalReader {
     constructor(IERC20 asset_, string memory name_, string memory symbol_) MockRemoteVault(asset_, name_, symbol_) {}
 
@@ -76,6 +88,40 @@ contract MockRemotePlasmaVault is MockRemoteVault, UniversalReader {
         bool canWithdraw = WithdrawManager(withdrawManager()).canWithdrawFromRequest(owner_, shares_);
         require(canWithdraw, "cannot withdraw from request");
         return redeem(shares_, receiver_, owner_);
+    }
+
+    /// @dev True turns the mock into a vault deployed before IL-9531, without request caps
+    bool public requestCapsDisabled;
+
+    function disableRequestCaps() external {
+        requestCapsDisabled = true;
+    }
+
+    function setRequestCap(address account_, uint256 shares_) external {
+        require(!requestCapsDisabled, "no request caps");
+        require(msg.sender == withdrawManager(), "not withdraw manager");
+        PlasmaVaultStorageLib.getRequestCaps().caps[account_] = shares_;
+    }
+
+    function getRequestCap(address account_) external view returns (uint256) {
+        require(!requestCapsDisabled, "no request caps");
+        return PlasmaVaultStorageLib.getRequestCaps().caps[account_];
+    }
+
+    function authority() external view returns (address) {
+        return WithdrawManager(withdrawManager()).authority();
+    }
+
+    /// @dev Mirrors PlasmaVaultBase._update: a debit lowers the sender's request cap to the balance left
+    function _update(address from_, address to_, uint256 value_) internal override {
+        super._update(from_, to_, value_);
+        if (from_ != address(0) && from_ != to_ && value_ > 0) {
+            mapping(address => uint256) storage caps = PlasmaVaultStorageLib.getRequestCaps().caps;
+            uint256 balance = balanceOf(from_);
+            if (caps[from_] > balance) {
+                caps[from_] = balance;
+            }
+        }
     }
 }
 

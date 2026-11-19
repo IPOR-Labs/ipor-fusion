@@ -4,9 +4,8 @@ pragma solidity 0.8.30;
 import {IPreHook} from "../IPreHook.sol";
 import {PlasmaVault} from "../../../vaults/PlasmaVault.sol";
 import {IporFusionMarkets} from "../../../libraries/IporFusionMarkets.sol";
-import {HyperCorePendingLib} from "../../../fuses/hypercore/lib/HyperCorePendingLib.sol";
-import {HyperCoreValuationLib} from "../../../fuses/hypercore/lib/HyperCoreValuationLib.sol";
 import {HyperCoreHookWiringLib} from "../../../fuses/hypercore/lib/HyperCoreHookWiringLib.sol";
+import {HyperCoreCapitalFlowGatesLib} from "./HyperCoreCapitalFlowGatesLib.sol";
 
 /// @title HyperCoreCapitalFlowPreHook
 /// @notice Blocks share-priced capital flows while HyperCore state is pending (or, until the next Core L1 block,
@@ -33,6 +32,9 @@ import {HyperCoreHookWiringLib} from "../../../fuses/hypercore/lib/HyperCoreHook
 ///      (`HyperCoreValuationLib.checkMarkOracleBand`): share-priced flows revert while a held perp market's mark
 ///      deviates from the Core oracle by more than `MaxMarkOracleDeviationBps`. Execute, refreshes, TIMING
 ///      orders and cancels are not gated, so the manager can de-risk while prices diverge.
+///      The shared gates live in `HyperCoreCapitalFlowGatesLib` (IL-9628). This hook refreshes market 55 only; on a
+///      vault that mixes HyperCore with other markets use `HyperCoreCapitalFlowFullRefreshPreHook`, which refreshes
+///      every active market so that share pricing does not read stale caches of the other markets.
 ///      The hook exposes the marker `HYPERCORE_CAPITAL_FLOW_PRE_HOOK_ID()`. A missing or foreign hook on a flow
 ///      selector runs no HyperCore code, so hook code cannot detect it; the HyperCore action fuses catch it instead
 ///      (`HyperCoreHookWiringLib.requireCapitalFlowWired`, IL-8529).
@@ -50,10 +52,7 @@ contract HyperCoreCapitalFlowPreHook is IPreHook {
         if (selector_ == PlasmaVault.execute.selector || selector_ == PlasmaVault.updateMarketsBalances.selector) {
             revert HyperCorePreHookWrongSelector(selector_);
         }
-        HyperCorePendingLib.settleIfReady();
-        HyperCorePendingLib.requireNotPendingAction();
-        HyperCorePendingLib.requireNoOrderInFlight();
-        HyperCoreValuationLib.checkMarkOracleBand(IporFusionMarkets.HYPERCORE);
+        HyperCoreCapitalFlowGatesLib.enforcePricingGates();
 
         uint256[] memory markets_ = new uint256[](1);
         markets_[0] = IporFusionMarkets.HYPERCORE;

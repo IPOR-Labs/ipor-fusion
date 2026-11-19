@@ -13,7 +13,7 @@ import {IPlasmaVault} from "../../interfaces/IPlasmaVault.sol";
 import {CrosschainErrors} from "../lib/CrosschainErrors.sol";
 import {CrosschainVaultActionLib} from "../lib/CrosschainVaultActionLib.sol";
 import {TrackedVaultPricingLib} from "../lib/TrackedVaultPricingLib.sol";
-import {StargateDispatcherLib} from "./lib/StargateDispatcherLib.sol";
+import {StargateDispatcherLib, BusinessOutcome} from "./lib/StargateDispatcherLib.sol";
 import {PlasmaVaultStorageLib} from "../../libraries/PlasmaVaultStorageLib.sol";
 import {
     MsgType,
@@ -98,8 +98,10 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
     mapping(address vault => bool allowed) public isAllowedVault;
 
     /// @notice The tracked-position set (vaults with live shares). A vault that leaves the allowlist via
-    ///         `UPDATE_VAULTS` is swept (best effort) and ALWAYS untracked (IL-8784); a residual is outside NAV
-    ///         until the vault is allowlisted again.
+    ///         `UPDATE_VAULTS` is swept (best effort) and untracked (IL-8784); a residual is outside NAV
+    ///         until the vault is allowlisted again. Exception (IL-9629): a vault whose non-zero `SweepFloor` is not
+    ///         reached stays tracked (and in NAV) off the allowlist until a REDEEM empties it or a later
+    ///         `UPDATE_VAULTS` names it in a `SweepFloor` entry.
     address[] public trackedPositionVaults;
 
     /// @notice Whether a vault is in the tracked-position set.
@@ -111,7 +113,7 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
 
     /// @notice Tracked remote idle ASSET (shared decimals). Only authenticated compose credits, measured
     ///         business-action and recall-send deltas, and the timelocked admin recall (IL-8251) mutate this —
-    ///         NEVER `balanceOf`.
+    ///         NEVER `balanceOf`. `balanceOf` only caps a compose credit at the not-yet-booked balance (IL-9630).
     uint256 public trackedIdle;
 
     /// @notice Next expected business-command sequence (strict `sequence == nextCommandSequence`).
@@ -179,6 +181,11 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
     ///         command id (IL-7979).
     event StaleCommandResolutionIgnored(bytes32 commandId, uint64 sequence, uint64 nextCommandSequence);
     event InboundTransferSettled(bytes32 transferId, uint256 amountSD, uint64 stateVersion);
+    /// @notice The compose of `transferId` credited `creditedSD` instead of its codec amount `amountSD` (IL-9630): only
+    ///         the ASSET balance not yet booked in `trackedIdle` was credited, because the pool delivery had already
+    ///         been booked by a measured business-action or sweep delta (a nested delivery inside that window).
+    ///         Emitted only when the cap binds; the transfer still settles and its receipt reports `amountSD`.
+    event InboundTransferCreditCapped(bytes32 transferId, uint256 amountSD, uint256 creditedSD);
     event ReturnAssetsSent(bytes32 requestId, bytes32 guid, uint256 amountSentSD, uint256 amountReceivedSD);
     event ReturnAssetsRejected(bytes32 requestId, uint8 reason);
     /// @notice A tracked vault was removed from the tracked set by the timelocked admin write-off (IL-8602),
@@ -347,9 +354,16 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
         bytes32 transferId = CrosschainMessages.decodeOutboundTransfer(data_).transferId;
         if (transferSettled[transferId]) return; // idempotent
 
-        // Only the codec-reported, four-fold-authenticated compose amount enters tracked idle.
+        // Only the codec-reported, four-fold-authenticated compose amount enters tracked idle, capped at the ASSET
+        // balance (floored to SD) not yet in `trackedIdle` (IL-9630): a pool delivery executed inside a measured
+        // business-action or sweep window was already booked by that delta. Never reverts (the tokens are already
+        // here): the transfer still settles, and the receipt keeps the full codec amount so the executor stays exact.
         uint256 amountSD = _toSD(amountLD_);
-        trackedIdle += amountSD;
+        uint256 idleSD = trackedIdle;
+        uint256 freeSD = _toSD(_assetBalance());
+        freeSD = freeSD > idleSD ? freeSD - idleSD : 0;
+        if (freeSD < amountSD) emit InboundTransferCreditCapped(transferId, amountSD, freeSD);
+        trackedIdle = idleSD + _min(amountSD, freeSD);
         transferSettled[transferId] = true;
         unchecked {
             ++stateVersion;
@@ -528,8 +542,9 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
         } else if (msgType_ == uint8(MsgType.UPDATE_VAULTS)) {
             // The next epoch is stored first: `applyUpdateVaults` reverts this whole self-call unless the payload
             // carries exactly `epoch + 1`, which rolls the write back. Vaults that left the allowlist are swept into
-            // idle and untracked in the same linked call (IL-8784); the redeemed assets become idle, so the
-            // executor's settled bucket is unchanged (value-neutral, delta stays 0).
+            // idle and untracked in the same linked call (IL-8784; a vault below its sweep floor stays tracked,
+            // IL-9629); the redeemed assets become idle, so the executor's settled bucket is unchanged (value-neutral,
+            // delta stays 0).
             uint64 epoch = commandConfigEpoch;
             commandConfigEpoch = epoch + 1;
             trackedIdle += _toSD(
@@ -541,7 +556,8 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
                     epoch,
                     stateVersion,
                     _assetImm(),
-                    data_
+                    data_,
+                    _toLD(1)
                 )
             );
             return 0;
@@ -549,23 +565,47 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
         revert CrosschainErrors.UnexpectedMessageType(msgType_);
     }
 
+    /// @notice The floored redeem of a vault-removal sweep, in its own call frame (IL-9629).
+    /// @dev Self-call only (`OnlySelf`): `CrosschainVaultActionLib.sweepShares` calls it through `this` with the sweep
+    ///      gas cap when the vault has a non-zero `SweepFloor`. It redeems `shares_` of `vault_` and reverts
+    ///      `SweepBelowMinimum` when the measured ASSET received is below `minAssetsLD_`, which rolls the redeem back.
+    /// @param vault_ The vault being removed.
+    /// @param shares_ The shares to redeem.
+    /// @param minAssetsLD_ The sweep floor, local ASSET decimals.
+    function sweepRedeemSelf(address vault_, uint256 shares_, uint256 minAssetsLD_) external {
+        if (msg.sender != address(this)) revert CrosschainErrors.OnlySelf(msg.sender);
+        CrosschainVaultActionLib.redeemAtLeast(vault_, shares_, minAssetsLD_);
+    }
+
     function _runBusinessAction(uint8 action_, bytes memory actionData_) private returns (int256) {
-        if (action_ == uint8(BusinessAction.DEPOSIT)) {
-            (address vault, uint256 amountSD, uint256 minShares) = CrosschainMessages.decodeDepositAction(actionData_);
-            _deposit(vault, amountSD, minShares);
-        } else if (action_ == uint8(BusinessAction.REDEEM)) {
-            (address vault, uint256 shares, uint256 minAssets) = CrosschainMessages.decodeRedeemAction(actionData_);
-            _redeem(vault, shares, minAssets);
-        } else if (action_ == uint8(BusinessAction.REQUEST_SHARES)) {
+        if (action_ == uint8(BusinessAction.REQUEST_SHARES)) {
             (address wm, address plasmaVault, uint256 shares, uint256 maxFeeShares) = CrosschainMessages
                 .decodeRequestSharesAction(actionData_);
             _requestShares(wm, plasmaVault, shares, maxFeeShares);
-        } else if (action_ == uint8(BusinessAction.REDEEM_FROM_REQUEST)) {
-            (address wm, address plasmaVault, uint256 shares, uint256 minAssets, address receiver) = CrosschainMessages
-                .decodeRedeemFromRequestAction(actionData_);
-            _redeemFromRequest(wm, plasmaVault, shares, minAssets, receiver);
         } else {
-            revert CrosschainErrors.UnexpectedMessageType(action_);
+            // DEPOSIT, REDEEM and REDEEM_FROM_REQUEST run in the linked library; any other action reverts there.
+            BusinessOutcome memory out = StargateDispatcherLib.runBusinessAction(
+                isAllowedVault,
+                isTrackedVault,
+                trackedPositionVaults,
+                trackedIdle,
+                _assetImm(),
+                _toLD(1),
+                action_,
+                actionData_
+            );
+            // Stored before the untrack check's `balanceOf`, as the former private bodies did.
+            trackedIdle = out.idle;
+            if (out.kind != 0) {
+                StargateDispatcherLib.finishRedeem(
+                    isTrackedVault,
+                    trackedPositionVaults,
+                    out.kind,
+                    out.vault,
+                    out.shares,
+                    out.deltaSD
+                );
+            }
         }
         // Business actions rearrange remote value (idle <-> position) without moving it cross-chain, so
         // the executor's settled bucket is unchanged; attestation re-marks yield periodically (§9/§10).
@@ -575,59 +615,6 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
     // ============================================================
     // Business actions (measured deltas)
     // ============================================================
-
-    function _deposit(address vault_, uint256 amountSD_, uint256 minShares_) private {
-        if (!isAllowedVault[vault_]) revert CrosschainErrors.VaultNotAllowed(vault_);
-        _assertVaultAsset(vault_);
-        uint256 amountLD = _min(_toLD(amountSD_), _toLD(trackedIdle));
-        if (amountLD == 0) revert CrosschainErrors.ZeroAmount();
-
-        uint256 assetBefore = IERC20(_assetImm()).balanceOf(address(this));
-
-        uint256 sharesDelta = CrosschainVaultActionLib.depositScoped(_assetImm(), vault_, amountLD);
-
-        uint256 assetSpent = assetBefore - IERC20(_assetImm()).balanceOf(address(this));
-        if (sharesDelta < minShares_) revert CrosschainErrors.InsufficientShares(sharesDelta, minShares_);
-
-        // Debit the tracked ledger conservatively: round the measured spend UP (as the CCIP dispatcher does) so
-        // truncation can never leave `trackedIdle` claiming value the dispatcher no longer holds. Cannot exceed
-        // `trackedIdle`: `assetSpent <= amountLD <= _toLD(trackedIdle)` and `amountLD` is a whole SD multiple.
-        uint256 spentSD = _toSD(assetSpent + _toLD(1) - 1);
-        trackedIdle -= spentSD;
-        _addTrackedVault(vault_);
-        emit DepositExecuted(vault_, spentSD, sharesDelta);
-    }
-
-    /// @dev IL-8645: admission checked `asset()` once; an upgradeable vault can change it later. Re-assert before any
-    ///      approval. Redeems are deliberately not gated so a drifted position can always be exited.
-    function _assertVaultAsset(address vault_) private view {
-        address actual = IERC4626(vault_).asset();
-        if (actual != _assetImm()) revert CrosschainErrors.VaultAssetDrifted(vault_, actual);
-    }
-
-    function _redeem(address vault_, uint256 shares_, uint256 minAssets_) private {
-        if (!isTrackedVault[vault_]) revert CrosschainErrors.VaultNotTracked(vault_);
-        uint256 redeemShares = _min(shares_, IERC20(vault_).balanceOf(address(this)));
-        if (redeemShares == 0) revert CrosschainErrors.ZeroAmount();
-
-        uint256 assetBefore = IERC20(_assetImm()).balanceOf(address(this));
-        IERC4626(vault_).redeem(redeemShares, address(this), address(this));
-        emit RedeemExecuted(vault_, redeemShares, _creditRedeemed(vault_, assetBefore, minAssets_));
-    }
-
-    /// @dev Credits the measured asset delta to the tracked idle ledger and untracks the vault if it is now empty.
-    function _creditRedeemed(
-        address vault_,
-        uint256 assetBefore_,
-        uint256 minAssets_
-    ) private returns (uint256 deltaSD) {
-        uint256 assetsDelta = IERC20(_assetImm()).balanceOf(address(this)) - assetBefore_;
-        uint256 minAssetsLD = _toLD(minAssets_); // IL-8609: wire floor is SD, receipts are LD
-        if (assetsDelta < minAssetsLD) revert CrosschainErrors.InsufficientAssets(assetsDelta, minAssetsLD);
-        deltaSD = _toSD(assetsDelta);
-        trackedIdle += deltaSD;
-        _maybeUntrack(vault_);
-    }
 
     function _requestShares(
         address withdrawManager_,
@@ -652,29 +639,13 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
         }
         uint256 afterShares = IWithdrawManagerLike(withdrawManager_).requestInfo(address(this)).shares;
 
-        // The WithdrawManager REPLACES its stored request on every `requestShares` and takes the fee out of this
+        // The WithdrawManager REPLACES its stored request on `requestShares`, except that it refuses (IL-9652,
+        // `WithdrawManagerReleasedRequestPending`) a repeat while the previous request is released and inside its
+        // window: REDEEM_FROM_REQUEST first. It takes the fee out of this
         // contract's shares, so the event reports the manager's read-back outstanding request. The dispatcher
         // keeps no copy (IL-8410): the manager bounds REDEEM_FROM_REQUEST and `balanceOf` alone proves a live
         // position.
         emit SharesRequested(plasmaVault_, afterShares, deducted);
-    }
-
-    function _redeemFromRequest(
-        address withdrawManager_,
-        address plasmaVault_,
-        uint256 shares_,
-        uint256 minAssets_,
-        address receiver_
-    ) private {
-        if (receiver_ != address(this)) revert CrosschainErrors.ReceiverMustBeSelf(receiver_);
-        if (!isTrackedVault[plasmaVault_]) revert CrosschainErrors.VaultNotTracked(plasmaVault_);
-        // Consistency check only — the vault executes the redeem against its own manager; see
-        // `_requireVaultWithdrawManager`.
-        _requireVaultWithdrawManager(plasmaVault_, withdrawManager_);
-        // The request bound is enforced by the vault's WithdrawManager (`canWithdrawFromRequest`).
-        uint256 assetBefore = IERC20(_assetImm()).balanceOf(address(this));
-        IPlasmaVault(plasmaVault_).redeemFromRequest(shares_, address(this), address(this));
-        emit RedeemedFromRequest(plasmaVault_, shares_, _creditRedeemed(plasmaVault_, assetBefore, minAssets_));
     }
 
     // ============================================================
@@ -1006,32 +977,6 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
         CrosschainVaultActionLib.requireVaultWithdrawManager(plasmaVault_, withdrawManager_);
     }
 
-    /// @dev Add a vault to the tracked-position set on first live position (cap-checked before growth).
-    function _addTrackedVault(address vault_) private {
-        if (isTrackedVault[vault_]) return;
-        if (trackedPositionVaults.length >= CrosschainConstants.MAX_TRACKED_POSITION_VAULTS) {
-            revert CrosschainErrors.VaultsCapReached(CrosschainConstants.MAX_TRACKED_POSITION_VAULTS);
-        }
-        isTrackedVault[vault_] = true;
-        trackedPositionVaults.push(vault_);
-    }
-
-    /// @dev Remove a vault from the tracked-position set only when its share balance is zero (a request cannot be
-    ///      exercised without shares).
-    function _maybeUntrack(address vault_) private {
-        if (!isTrackedVault[vault_]) return;
-        if (IERC20(vault_).balanceOf(address(this)) != 0) return;
-        isTrackedVault[vault_] = false;
-        uint256 len = trackedPositionVaults.length;
-        for (uint256 i; i < len; ++i) {
-            if (trackedPositionVaults[i] == vault_) {
-                trackedPositionVaults[i] = trackedPositionVaults[len - 1];
-                trackedPositionVaults.pop();
-                return;
-            }
-        }
-    }
-
     /// @dev Canonical tracked-position-set hash bound by attestations:
     ///      `keccak256(abi.encode(address(this), block.chainid, trackedPositionVaults))`. Body in the linked library
     ///      (EIP-170).
@@ -1041,6 +986,12 @@ contract StargateCrosschainDispatcher is StargateOAppBase, ICrosschainDispatcher
 
     /// @dev Pre-call ASSET snapshot for the non-worsening floor (IL-8640).
     function _beforeRescueExecuted() internal view override returns (uint256) {
+        return _assetBalance();
+    }
+
+    /// @dev This contract's ASSET balance (local decimals), shared by the rescue snapshot and the compose credit cap
+    ///      (IL-9630) so the cap adds no second inlined external call (EIP-170).
+    function _assetBalance() private view returns (uint256) {
         return IERC20(_assetImm()).balanceOf(address(this));
     }
 

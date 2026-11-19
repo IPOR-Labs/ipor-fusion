@@ -32,6 +32,8 @@ contract HyperCoreCapitalFlowPerformanceFeeTest is HyperCoreEffectSettlementBase
     /// @dev Vault shares have 8 decimals over the 6-decimals USDC, so `10 ** 2` is the vault share scale multiplier
     uint256 internal constant ONE_SHARE = 1e8;
     uint256 internal constant SHARE_SCALE = 100;
+    /// @dev IL-9601: the HWM and the fee rate are assets per ONE_SHARE shares times this scale
+    uint256 internal constant HWM_SCALE = 1e12;
     uint256 internal constant USER_DEPOSIT = 100_000e6;
 
     FeeManager internal _feeManager;
@@ -67,28 +69,34 @@ contract HyperCoreCapitalFlowPerformanceFeeTest is HyperCoreEffectSettlementBase
         // the first Core credit loses 1 USDC to the Core account activation fee
         assertEq(navBefore, 999_999e6, "precondition: NAV is 1,000,000 USDC minus the activation fee");
         assertEq(_vault.balanceOf(_feeAccount), 0, "precondition: no fee shares yet");
-        assertEq(hwmBefore, 1e6, "precondition: HWM is the starting rate");
+        assertEq(hwmBefore, 1e6 * HWM_SCALE, "precondition: HWM is the starting rate (scaled)");
 
         // Core profit that nobody has refreshed: the vault NAV is still the cached one
         _addCoreGain(CORE_GAIN);
         assertEq(_vault.totalAssets(), navBefore, "the gain is not refreshed yet");
 
-        // Independent expectation (FeeManager.calculateAndUpdatePerformanceFee, FeeManager.sol:604-606; ERC4626
-        // convertToAssets of PlasmaVault with the vault share scale multiplier)
+        // Independent expectation (FeeManager.calculateAndUpdatePerformanceFee; ERC4626 convertToAssets of PlasmaVault
+        // with the vault share scale multiplier). IL-8870: the fee shares are sized on the price after their own mint,
+        // S * f / (10000 * rate - f) with f = fee * (rate - HWM), so they are worth 20% of the gain.
         uint256 navAfterRefresh = navBefore + CORE_GAIN;
-        uint256 preMintRate = Math.mulDiv(ONE_SHARE, navAfterRefresh + 1, supplyBefore + SHARE_SCALE);
-        uint256 harvested = Math.mulDiv(supplyBefore, preMintRate - hwmBefore, preMintRate);
-        uint256 expectedFeeShares = Math.mulDiv(harvested, PERFORMANCE_FEE, 10000);
+        uint256 preMintRate = Math.mulDiv(ONE_SHARE * HWM_SCALE, navAfterRefresh + 1, supplyBefore + SHARE_SCALE);
+        uint256 feeValue = (preMintRate - hwmBefore) * PERFORMANCE_FEE;
+        uint256 expectedFeeShares = Math.mulDiv(supplyBefore, feeValue, preMintRate * 10000 - feeValue);
         uint256 expectedHwm = Math.mulDiv(
-            ONE_SHARE,
+            ONE_SHARE * HWM_SCALE,
             navAfterRefresh + 1,
             supplyBefore + expectedFeeShares + SHARE_SCALE
         );
-        // Pinned literals of the same computation (S = 1e14, NAV = 1,009,999 USDC, H = 1e6)
-        assertEq(preMintRate, 1_009_998, "pre-mint share price");
-        assertEq(harvested, 989_902_950_302, "shares worth the gain above the HWM");
-        assertEq(expectedFeeShares, 197_980_590_060, "20% of the harvested shares");
-        assertEq(expectedHwm, 1_008_003, "post-mint share price");
+        // Pinned literals of the same computation (S = 1e14, NAV = 1,009,999 USDC, H = 1e6 * 1e12, IL-9601 scale; before
+        // the scale: rate 1_009_998, f 19_996_000, fee shares 198_373_330_751, HWM 1_007_999 in whole price units)
+        assertEq(preMintRate, 1_009_998_999_999_990_001, "pre-mint share price");
+        assertEq(
+            feeValue,
+            19_997_999_999_980_002_000,
+            "20% of the rise of 9_998_999_999_990_001 price units, times 10000"
+        );
+        assertEq(expectedFeeShares, 198_393_014_597, "1e14 * f / (10000 * rate - f)");
+        assertEq(expectedHwm, 1_007_999_199_999_998_360, "post-mint share price: the rate less 20% of the rise");
         uint256 expectedUserShares = Math.mulDiv(
             USER_DEPOSIT,
             supplyBefore + expectedFeeShares + SHARE_SCALE,
@@ -104,10 +112,10 @@ contract HyperCoreCapitalFlowPerformanceFeeTest is HyperCoreEffectSettlementBase
             "fee shares minted exactly once by the hook refresh"
         );
         assertEq(_hwm(), expectedHwm, "HWM is the post-mint share price (IL-8744)");
-        assertEq(userShares, 9_920_601_960_007, "pinned user shares");
+        assertEq(userShares, 9_920_642_794_160, "pinned user shares");
         assertApproxEqRel(
             _hwm(),
-            _vault.convertToAssets(ONE_SHARE),
+            _vault.convertToAssets(ONE_SHARE * HWM_SCALE),
             1e9,
             "HWM is the price of one share after the mint (the deposit is price-neutral up to dust)"
         );
@@ -134,11 +142,21 @@ contract HyperCoreCapitalFlowPerformanceFeeTest is HyperCoreEffectSettlementBase
         uint256 hwmAfterDeposit = _hwm();
         assertGt(feeSharesAfterDeposit, 0, "precondition: the deposit minted fee shares");
 
+        // IL-9601: the HWM unit is 1e12 finer, so the rounding of the deposit is visible in it. The deposit mints
+        // floor(D * (S + V) / (N + 1)) shares, less than exact by under one share, which lifts the price by at most
+        // P / (S' + V) with P the price before the deposit (the HWM, up to one unit of its own floor) and S' the supply
+        // after it; the redeem then finds a rate above the HWM by that dust, earns zero fee shares (below) and stores
+        // that rate as the HWM.
+        uint256 rateBeforeRedeem = _vault.convertToAssets(ONE_SHARE * HWM_SCALE);
+        uint256 maxDust = Math.ceilDiv(hwmAfterDeposit, _vault.totalSupply() + SHARE_SCALE) + 1;
+
         vm.prank(_user);
         _vault.redeem(userShares, _user, _user);
 
         assertEq(_vault.balanceOf(_feeAccount), feeSharesAfterDeposit, "no second fee in the same block");
-        assertEq(_hwm(), hwmAfterDeposit, "HWM unchanged by the redeem");
+        assertGe(_hwm(), hwmAfterDeposit, "the redeem never lowers the HWM");
+        assertLe(_hwm() - hwmAfterDeposit, maxDust, "HWM moves by at most the rounding dust of the deposit");
+        assertEq(_hwm(), rateBeforeRedeem, "HWM follows the rate the redeem found when no fee shares are minted");
     }
 
     function _approveUserDeposit() internal {

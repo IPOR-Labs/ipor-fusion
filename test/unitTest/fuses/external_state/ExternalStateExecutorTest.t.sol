@@ -447,15 +447,24 @@ contract ExternalStateExecutorTest is Test {
     function test_syncSubstrates_revertsOnDuplicateBAInSubstrates() public {
         // Duplicate BALANCE_ACCOUNT substrates always indicate a governance misconfiguration —
         // `syncSubstrates` must refuse to repopulate the cache rather than silently tolerate the
-        // duplicate.
+        // duplicate. IL-9642: the grant itself now rejects duplicates, so the duplicate is planted
+        // directly into the substrates list storage to keep the executor's own check covered.
         bytes32[] memory subs = new bytes32[](6);
         subs[0] = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccount1);
-        subs[1] = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccount1);
+        subs[1] = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccount2);
         subs[2] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianA);
         subs[3] = ExternalStateSubstrateLib.encodeCustodianSubstrate(custodianB);
         subs[4] = ExternalStateSubstrateLib.encodeStalenessMaxSubstrate(STALENESS_MAX_S);
         subs[5] = ExternalStateSubstrateLib.encodeBigChangeBpsSubstrate(BIG_CHANGE_BPS_DEFAULT);
         vault.grantMarketSubstrates(MARKET_ID, subs);
+
+        // MarketSubstratesStruct: slot 0 = allowances mapping, slot 1 = substrates array (length), data at keccak(slot 1).
+        bytes32 structSlot = keccak256(
+            abi.encode(MARKET_ID, bytes32(0x78e40624004925a4ef6749756748b1deddc674477302d5b7fe18e5335cde3900))
+        );
+        bytes32 dataSlot = keccak256(abi.encode(uint256(structSlot) + 1));
+        vm.store(address(vault), bytes32(uint256(dataSlot) + 1), subs[0]);
+        assertEq(vault.getMarketSubstrates(MARKET_ID)[1], subs[0], "duplicate planted in storage");
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -464,6 +473,16 @@ contract ExternalStateExecutorTest is Test {
             )
         );
         executor.syncSubstrates();
+    }
+
+    function test_grantMarketSubstrates_revertsOnDuplicateBalanceAccount() public {
+        // IL-9642: a duplicate substrate is rejected already at grant time.
+        bytes32 dup = ExternalStateSubstrateLib.encodeBalanceAccountSubstrate(balanceAccount1);
+        bytes32[] memory subs = new bytes32[](2);
+        subs[0] = dup;
+        subs[1] = dup;
+        vm.expectRevert(abi.encodeWithSignature("MarketSubstrateDuplicate(uint256,bytes32)", MARKET_ID, dup));
+        vault.grantMarketSubstrates(MARKET_ID, subs);
     }
 
     function test_syncSubstrates_reGrantedBalanceAccountStartsClean() public {

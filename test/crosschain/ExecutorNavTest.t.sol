@@ -479,11 +479,17 @@ contract ExecutorNavTest is CrosschainTestBase {
         _deployExecutor(address(factory), p);
     }
 
-    function testShouldAcceptMinUpdateIntervalJustBelowStalenessMax() public {
+    /// @dev IL-9664: the highest admissible interval leaves exactly `MIN_PROPOSAL_APPROVAL_WINDOW` below the
+    ///      freshness window (the former bound, `stalenessMax - 1`, is now rejected).
+    function testShouldAcceptMinUpdateIntervalAtMaxAdmissibleBelowStalenessMax() public {
         ExecutorInitParams memory p = _params();
-        p.minUpdateInterval = p.stalenessMax - 1;
+        p.minUpdateInterval = p.stalenessMax - CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW;
         StargateCrosschainExecutor e = _deployExecutor(address(factory), p);
-        assertEq(e.MIN_UPDATE_INTERVAL(), p.stalenessMax - 1, "min update interval set");
+        assertEq(
+            e.MIN_UPDATE_INTERVAL(),
+            p.stalenessMax - CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW,
+            "min update interval set"
+        );
     }
 
     function testShouldRejectZeroBigChangeBps() public {

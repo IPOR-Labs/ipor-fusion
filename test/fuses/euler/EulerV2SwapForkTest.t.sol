@@ -21,9 +21,11 @@ import {
     EulerV2SwapReconfigureFuse,
     EulerV2SwapReconfigureFuseEnterData
 } from "../../../contracts/fuses/euler/EulerV2SwapReconfigureFuse.sol";
+import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
 import {IEulerV2Swap} from "../../../contracts/fuses/euler/ext/IEulerV2Swap.sol";
 import {IEulerV2SwapFactory} from "../../../contracts/fuses/euler/ext/IEulerV2SwapFactory.sol";
 import {EulerV2SwapCurveLib} from "../../../contracts/fuses/euler/EulerV2SwapCurveLib.sol";
+import {EulerSwapCurveReference} from "./mocks/EulerSwapCurveReference.sol";
 import {IporFusionMarkets} from "../../../contracts/libraries/IporFusionMarkets.sol";
 import {PlasmaVaultConfigLib} from "../../../contracts/libraries/PlasmaVaultConfigLib.sol";
 import {ERC20BalanceFuse} from "../../../contracts/fuses/erc20/Erc20BalanceFuse.sol";
@@ -300,7 +302,13 @@ contract EulerV2SwapForkTest is Test {
     }
 
     function _grantMarketSubstratesForEuler(bool includeBorrow_, bool isCollateral_) private {
-        bytes32[] memory substrates = new bytes32[](2);
+        _grantMarketSubstratesForEuler(includeBorrow_, isCollateral_, address(0));
+    }
+
+    /// @dev Substrate grants replace the whole list, so the pool entry is granted together with the two eVault rows.
+    /// @param pool_ Predicted pool address whose entry (pool, sub-account) is added; address(0) grants no pool entry.
+    function _grantMarketSubstratesForEuler(bool includeBorrow_, bool isCollateral_, address pool_) private {
+        bytes32[] memory substrates = new bytes32[](pool_ == address(0) ? 2 : 3);
         // cbETH eVault: collateral + borrowable
         substrates[0] = EulerFuseLib.substrateToBytes32(
             EulerSubstrate({
@@ -319,6 +327,10 @@ contract EulerV2SwapForkTest is Test {
                 subAccounts: _SUB_ACCOUNT
             })
         );
+        if (pool_ != address(0)) {
+            // IL-9706: EulerV2SwapDeployFuse.enter requires the entry for exactly (predictedPool, subAccount).
+            substrates[2] = EulerFuseLib.swapPoolSubstrateToBytes32(pool_, _SUB_ACCOUNT);
+        }
 
         vm.startPrank(_ATOMIST);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.EULER_V2, substrates);
@@ -435,6 +447,14 @@ contract EulerV2SwapForkTest is Test {
         revert("salt mining failed");
     }
 
+    /// @dev Mines the salt and grants the pool entry (with the eVault rows) for the predicted pool address.
+    function _mineSaltAndGrantPool(
+        IEulerV2Swap.StaticParams memory sp
+    ) private returns (bytes32 salt, address predictedPool) {
+        (salt, predictedPool) = _mineSalt(sp);
+        _grantMarketSubstratesForEuler(true, true, predictedPool);
+    }
+
     function _deployPoolAction(bytes32 salt, address predictedPool) private view returns (FuseAction memory action) {
         action = _deployPoolAction(salt, predictedPool, _dynamicParams(), _initialState());
     }
@@ -485,7 +505,7 @@ contract EulerV2SwapForkTest is Test {
 
     function _supplyAndDeploy() private returns (address pool) {
         IEulerV2Swap.StaticParams memory sp = _staticParams();
-        (bytes32 salt, address predictedPool) = _mineSalt(sp);
+        (bytes32 salt, address predictedPool) = _mineSaltAndGrantPool(sp);
 
         FuseAction[] memory actions = new FuseAction[](3);
         FuseAction[] memory supply = _supplyCollateralActions();
@@ -521,6 +541,15 @@ contract EulerV2SwapForkTest is Test {
         address pool = _supplyAndDeploy();
 
         uint256 navBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
+        // IL-9706: the market value of a live pool is the sub-account state minus the displacement of the reserves
+        // (the fixture curve is ~0.097% off the oracle, so the displacement is above the tolerance and is really tested).
+        assertGt(_poolDisplacementWeth(pool), _NAV_TOLERANCE, "pending arbitrage loss is booked at the deploy");
+        assertApproxEqAbs(
+            navBefore,
+            _expectedPoolMarketValue(pool),
+            _NAV_TOLERANCE,
+            "NAV before the swap equals sub-account state - displacement"
+        );
 
         // Fund the (external) swapper and perform a modest swap WETH -> cbETH through the periphery.
         address swapper = address(0xBEEF);
@@ -545,29 +574,189 @@ contract EulerV2SwapForkTest is Test {
 
         uint256 navAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
 
+        // IL-9706: the swap moves the sub-account holdings and the pool reserves by the same amounts, so the
+        // displacement absorbs the move of the sub-account value and only the LP fee stays in the market value.
+        assertApproxEqAbs(
+            navAfter,
+            _expectedPoolMarketValue(pool),
+            _NAV_TOLERANCE,
+            "NAV after the swap equals sub-account state - displacement"
+        );
         // feeRecipient == address(0): fees compound into the supply vault, so net LP NAV must not drop and,
         // because the swapper overpays the fee into the pool, should increase.
         assertGe(navAfter, navBefore, "NAV must not decrease after swap");
         assertGt(navAfter, navBefore, "NAV should increase with compounded fee");
+        // The increase is the fee on 0.1 WETH (0.3% = 3e14), not a value swing of the swap itself.
+        assertApproxEqAbs(navAfter - navBefore, 3e14, 1e13, "NAV increase equals the LP fee");
+    }
+
+    /// @dev Supplies only `cbEthSupply_` cbETH (and 10 WETH) so that a WETH -> cbETH swap can exceed the
+    ///      cbETH deposit and force the pool to borrow the shortfall just-in-time, then deploys the pool.
+    function _supplyThinCbEthAndDeploy(uint256 cbEthSupply_) private returns (address pool) {
+        (bytes32 salt, address predictedPool) = _mineSaltAndGrantPool(_staticParams());
+        FuseAction[] memory actions = new FuseAction[](3);
+        actions[0] = FuseAction({
+            fuse: _eulerSupplyFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,bytes1))",
+                EulerV2SupplyFuseEnterData({
+                    eulerVault: _EVAULT_CBETH,
+                    maxAmount: cbEthSupply_,
+                    subAccount: _SUB_ACCOUNT
+                })
+            )
+        });
+        actions[1] = FuseAction({
+            fuse: _eulerSupplyFuse,
+            data: abi.encodeWithSignature(
+                "enter((address,uint256,bytes1))",
+                EulerV2SupplyFuseEnterData({eulerVault: _EVAULT_WETH, maxAmount: 10e18, subAccount: _SUB_ACCOUNT})
+            )
+        });
+        actions[2] = _deployPoolAction(salt, predictedPool);
+        vm.prank(_ALPHA);
+        PlasmaVault(_plasmaVault).execute(actions);
+        pool = predictedPool;
+    }
+
+    /// @dev Independent NAV of the eulerAccount in WETH WAD: sum over both eVaults of
+    ///      (convertToAssets(shares) * oraclePrice) for collateral and (debtOf * oraclePrice) for debt.
+    function _independentNav() private view returns (uint256 collateralWeth, uint256 debtWeth) {
+        address[2] memory evaults = [_EVAULT_CBETH, _EVAULT_WETH];
+        for (uint256 i; i < 2; ++i) {
+            address asset = ERC4626(evaults[i]).asset();
+            (uint256 price, uint256 priceDecimals) = PriceOracleMiddleware(_priceOracle).getAssetPrice(asset);
+            uint256 shares = ERC4626(evaults[i]).balanceOf(_eulerAccount);
+            // both assets have 18 decimals
+            collateralWeth +=
+                (ERC4626(evaults[i]).convertToAssets(shares) * price * 1e18) / (1e18 * 10 ** priceDecimals);
+            debtWeth += (IBorrowing(evaults[i]).debtOf(_eulerAccount) * price * 1e18) / (1e18 * 10 ** priceDecimals);
+        }
+        // The market balance is reported in the vault underlying (WETH), so convert USD WAD to WETH.
+        (uint256 wethPrice, uint256 wethPriceDecimals) = PriceOracleMiddleware(_priceOracle).getAssetPrice(_WETH);
+        uint256 wethUsdWad = (wethPrice * 1e18) / 10 ** wethPriceDecimals;
+        collateralWeth = (collateralWeth * 1e18) / wethUsdWad;
+        debtWeth = (debtWeth * 1e18) / wethUsdWad;
+    }
+
+    // -----------------------------------------------------------------------
+    // Independent expectation of the pool market value (IL-9706): max(0, v - d)
+    // -----------------------------------------------------------------------
+
+    /// @dev Absolute tolerance for comparing the market value with the independent expectation. It is far below the
+    ///      swap fee of the swap tests (3e14 WETH), so a fee cannot hide behind it.
+    uint256 private constant _NAV_TOLERANCE = 1e9;
+
+    /// @dev Distance in base units between the two points compared by the search of the fair point.
+    uint256 private constant _SEARCH_STEP = 1e9;
+
+    /// @dev Oracle value of one whole cbETH in WETH, WAD, from the vault's price oracle.
+    function _cbEthInWethWad() private view returns (uint256) {
+        (uint256 priceCbEth, uint256 decimalsCbEth) = PriceOracleMiddleware(_priceOracle).getAssetPrice(_CBETH);
+        (uint256 priceWeth, uint256 decimalsWeth) = PriceOracleMiddleware(_priceOracle).getAssetPrice(_WETH);
+        return (priceCbEth * 10 ** decimalsWeth * 1e18) / (priceWeth * 10 ** decimalsCbEth);
+    }
+
+    /// @dev Value in WETH of the curve point reached by moving the own reserve to `own_` on one side of the curve.
+    ///      Uses the reference transcription of CurveLib.f, never the library under test. Overflowing points are
+    ///      priced at uint256.max so the search never selects them.
+    function _curvePointValueWeth(
+        IEulerV2Swap.DynamicParams memory dp_,
+        bool assetOneSide_,
+        uint256 own_,
+        uint256 cbEthInWeth_
+    ) private pure returns (uint256) {
+        if (assetOneSide_) {
+            uint256 reserve0 = EulerSwapCurveReference.f(
+                own_,
+                dp_.priceY,
+                dp_.priceX,
+                dp_.equilibriumReserve1,
+                dp_.equilibriumReserve0,
+                dp_.concentrationY
+            );
+            if (reserve0 == type(uint256).max) return type(uint256).max;
+            return (reserve0 * cbEthInWeth_) / 1e18 + own_;
+        }
+        uint256 reserve1 = EulerSwapCurveReference.f(
+            own_,
+            dp_.priceX,
+            dp_.priceY,
+            dp_.equilibriumReserve0,
+            dp_.equilibriumReserve1,
+            dp_.concentrationX
+        );
+        if (reserve1 == type(uint256).max) return type(uint256).max;
+        return (own_ * cbEthInWeth_) / 1e18 + reserve1;
+    }
+
+    /// @dev Lowest oracle value (WETH) among the points of one side of the curve, found by a search on the own reserve in
+    ///      [equilibrium / 10, equilibrium]; the value along a side is convex. The two values compared differ by
+    ///      `_SEARCH_STEP` base units, so the rounding of single base units cannot flip a comparison; the remaining
+    ///      window is below 2 * `_SEARCH_STEP` base units wide, which moves the value by a few base units at most.
+    function _cheapestPointValueWeth(
+        IEulerV2Swap.DynamicParams memory dp_,
+        bool assetOneSide_,
+        uint256 cbEthInWeth_
+    ) private pure returns (uint256) {
+        uint256 hi = assetOneSide_ ? dp_.equilibriumReserve1 : dp_.equilibriumReserve0;
+        uint256 lo = hi / 10;
+        while (hi - lo > 2 * _SEARCH_STEP) {
+            uint256 mid = (lo + hi) / 2;
+            if (
+                _curvePointValueWeth(dp_, assetOneSide_, mid + _SEARCH_STEP, cbEthInWeth_) <
+                _curvePointValueWeth(dp_, assetOneSide_, mid, cbEthInWeth_)
+            ) {
+                lo = mid + 1;
+            } else {
+                hi = mid + _SEARCH_STEP;
+            }
+        }
+        return _curvePointValueWeth(dp_, assetOneSide_, (lo + hi) / 2, cbEthInWeth_);
+    }
+
+    /// @dev Displacement d of the pool reserves from the oracle-fair point, WETH: oracle value of the reserves minus the
+    ///      lowest oracle value among the points the curve accepts (floored at 0).
+    function _poolDisplacementWeth(address pool_) private view returns (uint256) {
+        IEulerV2Swap.DynamicParams memory dp = IEulerV2Swap(pool_).getDynamicParams();
+        (uint112 reserve0, uint112 reserve1, ) = IEulerV2Swap(pool_).getReserves();
+        uint256 cbEthInWeth = _cbEthInWethWad();
+
+        uint256 reservesValue = (uint256(reserve0) * cbEthInWeth) / 1e18 + reserve1;
+        uint256 fairValue = _cheapestPointValueWeth(dp, false, cbEthInWeth);
+        uint256 otherSide = _cheapestPointValueWeth(dp, true, cbEthInWeth);
+        if (otherSide < fairValue) fairValue = otherSide;
+
+        return reservesValue > fairValue ? reservesValue - fairValue : 0;
+    }
+
+    /// @dev Expected market value: collateral - debt of the sub-account priced independently of the balance fuse, minus
+    ///      the displacement of the pool, both subtractions floored at 0.
+    function _expectedPoolMarketValue(address pool_) private view returns (uint256) {
+        (uint256 collateralWeth, uint256 debtWeth) = _independentNav();
+        uint256 value = collateralWeth > debtWeth ? collateralWeth - debtWeth : 0;
+        uint256 displacement = _poolDisplacementWeth(pool_);
+        return value > displacement ? value - displacement : 0;
     }
 
     function testShouldReflectJitBorrowInNav() public {
-        address pool = _supplyAndDeploy();
+        // Only 1 cbETH is deposited, so a swap paying out more than ~1 cbETH must borrow cbETH just-in-time.
+        address pool = _supplyThinCbEthAndDeploy(1e18);
 
+        uint256[] memory marketIds = new uint256[](1);
+        marketIds[0] = IporFusionMarkets.EULER_V2;
+        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
         uint256 navBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
+        assertEq(IBorrowing(_EVAULT_CBETH).debtOf(_eulerAccount), 0, "no debt before swap");
 
-        // A swap large enough that the pool must borrow cbETH (JIT) to deliver the output, creating debt
-        // on the eulerAccount. WETH -> cbETH, draining most of the cbETH reserve and forcing a borrow.
+        // WETH -> cbETH swap whose output exceeds the 1 cbETH deposit.
         address swapper = address(0xCAFE);
+        uint256 amountIn = 3e18;
         (uint256 limitIn, uint256 limitOut) = IEulerSwapPeriphery(_EULERSWAP_PERIPHERY).getLimits(pool, _WETH, _CBETH);
-        assertGt(limitOut, 0, "output limit available");
-
-        // Use a large fraction of the available input limit to push into borrow territory.
-        uint256 amountIn = limitIn / 2;
-        if (amountIn > 8e18) {
-            amountIn = 8e18;
-        }
-        assertGt(amountIn, 0, "amountIn > 0");
+        assertGe(limitIn, amountIn, "input limit allows the swap");
+        uint256 quoted = IEulerSwapPeriphery(_EULERSWAP_PERIPHERY).quoteExactInput(pool, _WETH, _CBETH, amountIn);
+        assertGt(quoted, 1e18, "output exceeds the cbETH deposit");
+        assertLe(quoted, limitOut, "output within limit");
 
         deal(_WETH, swapper, amountIn);
         vm.startPrank(swapper);
@@ -575,19 +764,29 @@ contract EulerV2SwapForkTest is Test {
         IEulerSwapPeriphery(_EULERSWAP_PERIPHERY).swapExactIn(pool, _WETH, _CBETH, amountIn, swapper, 0, 0);
         vm.stopPrank();
 
-        uint256[] memory marketIds = new uint256[](1);
-        marketIds[0] = IporFusionMarkets.EULER_V2;
-        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
+        // The pool really borrowed cbETH just-in-time.
+        uint256 cbEthDebt = IBorrowing(_EVAULT_CBETH).debtOf(_eulerAccount);
+        assertGt(cbEthDebt, 0, "JIT borrow created cbETH debt on the eulerAccount");
 
+        PlasmaVault(_plasmaVault).updateMarketsBalances(marketIds);
         uint256 navAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
 
-        // NAV is computed as collateral - debt across both eVaults. After a JIT borrow the eulerAccount
-        // holds extra WETH collateral but also cbETH debt; the BalanceFuse must net the two and stay solvent.
-        assertGt(navAfter, 0, "NAV remains positive (collateral - debt)");
-
-        // The eulerAccount should now carry cbETH debt (JIT borrow happened).
-        // We assert NAV moved (fee gain net of price drift) rather than an exact figure.
-        assertTrue(navAfter != navBefore || navAfter > 0, "NAV netting collateral - debt");
+        // IL-9706: NAV must equal (collateral - debt) priced independently of the balance fuse, minus the displacement
+        // of the pool reserves from the oracle-fair point (reserves and reference curve, not the fuse).
+        (uint256 collateralWeth, uint256 debtWeth) = _independentNav();
+        assertGt(debtWeth, 0, "debt priced in WETH");
+        uint256 displacement = _poolDisplacementWeth(pool);
+        assertGt(displacement, 0, "the JIT swap left the reserves away from the fair point");
+        assertApproxEqAbs(
+            navAfter,
+            collateralWeth - debtWeth - displacement,
+            _NAV_TOLERANCE,
+            "NAV equals collateral - debt - displacement"
+        );
+        // Ignoring the debt would overstate NAV by far more than the tolerance.
+        assertGt(collateralWeth, navAfter + 100 * _errorDelta, "gross collateral overstates NAV");
+        // Selling WETH for cbETH at ~oracle price plus fee: NAV does not collapse.
+        assertGt(navAfter, navBefore - 3e17, "NAV not materially reduced");
     }
 
     function testShouldReconfigurePoolAndReflectNewDynamicParams() public {
@@ -633,10 +832,10 @@ contract EulerV2SwapForkTest is Test {
     function testShouldRevertDeployWhenBorrowSubstrateRemoved() public {
         // Re-grant substrates WITHOUT canBorrow to model NAV-safety: positions that cannot be borrowed
         // are not counted, so the pool must not be deployable.
-        _grantMarketSubstratesForEuler(false);
-
         IEulerV2Swap.StaticParams memory sp = _staticParams();
         (bytes32 salt, address predictedPool) = _mineSalt(sp);
+        // The pool entry is granted too, so the revert below comes from the missing canBorrow flag and not from the entry.
+        _grantMarketSubstratesForEuler(false, true, predictedPool);
 
         FuseAction[] memory supply = _supplyCollateralActions();
         FuseAction[] memory actions = new FuseAction[](3);
@@ -659,10 +858,10 @@ contract EulerV2SwapForkTest is Test {
     /// @dev IL-8758: with borrow vaults set, the pool enables the supply vaults as collateral itself, so a
     ///      curator who granted them with isCollateral=false must not be bypassed.
     function testShouldRevertDeployWhenCollateralFlagRemoved() public {
-        _grantMarketSubstratesForEuler(true, false);
-
         IEulerV2Swap.StaticParams memory sp = _staticParams();
         (bytes32 salt, address predictedPool) = _mineSalt(sp);
+        // The pool entry is granted too, so the revert below comes from the missing isCollateral flag and not from the entry.
+        _grantMarketSubstratesForEuler(true, false, predictedPool);
 
         FuseAction[] memory supply = _supplyCollateralActions();
         FuseAction[] memory actions = new FuseAction[](3);
@@ -687,7 +886,7 @@ contract EulerV2SwapForkTest is Test {
     function testShouldEnableCollateralCrossWiseOnRealPool() public {
         IEulerV2Swap.StaticParams memory sp = _staticParams();
         sp.borrowVault1 = address(0);
-        (bytes32 salt, address predictedPool) = _mineSalt(sp);
+        (bytes32 salt, address predictedPool) = _mineSaltAndGrantPool(sp);
 
         FuseAction[] memory supply = _supplyCollateralActions();
         FuseAction[] memory actions = new FuseAction[](3);
@@ -762,7 +961,7 @@ contract EulerV2SwapForkTest is Test {
     ///      0.0172 WETH loss). After the fix it must revert before ever reaching the factory.
     function testShouldRevertDeployWhenCurvePriceOffMarket() public {
         IEulerV2Swap.StaticParams memory sp = _staticParams();
-        (bytes32 salt, address predictedPool) = _mineSalt(sp);
+        (bytes32 salt, address predictedPool) = _mineSaltAndGrantPool(sp);
 
         IEulerV2Swap.DynamicParams memory dp = _dynamicParams();
         dp.priceX = uint80(1e18); // 1:1 curve, off-market at this block
@@ -788,7 +987,7 @@ contract EulerV2SwapForkTest is Test {
     ///      exact on-curve y-value does not need to be reproduced here.
     function testShouldRevertDeployWhenInitialStateOffEquilibrium() public {
         IEulerV2Swap.StaticParams memory sp = _staticParams();
-        (bytes32 salt, address predictedPool) = _mineSalt(sp);
+        (bytes32 salt, address predictedPool) = _mineSaltAndGrantPool(sp);
 
         IEulerV2Swap.DynamicParams memory dp = _dynamicParams(); // oracle-consistent priceX, unchanged
         // The real factory's `activate` additionally requires the initial point to be EXACTLY on the

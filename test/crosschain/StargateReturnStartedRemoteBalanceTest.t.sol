@@ -15,7 +15,8 @@ import {
     UpdateVaults,
     OutboundTransfer,
     ReturnAssetsRequest,
-    ReturnStarted
+    ReturnStarted,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 
 import {MockLzEndpoint} from "./mocks/MockLzEndpoint.sol";
@@ -128,7 +129,14 @@ contract StargateReturnStartedRemoteBalanceTest is Test {
         vaults[0] = address(vault);
         _deliver(
             CrosschainMessages.encodeUpdateVaults(
-                UpdateVaults({commandId: keccak256("uv"), sequence: 0, newConfigEpoch: 1, minExecutionGas: DEFAULT_COMMAND_BUDGET, vaults: vaults})
+                UpdateVaults({
+                    commandId: keccak256("uv"),
+                    sequence: 0,
+                    newConfigEpoch: 1,
+                    minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                    vaults: vaults,
+                    floors: new SweepFloor[](0)
+                })
             )
         );
         _deliver(
@@ -165,7 +173,14 @@ contract StargateReturnStartedRemoteBalanceTest is Test {
         vaults[1] = address(faulty);
         _deliver(
             CrosschainMessages.encodeUpdateVaults(
-                UpdateVaults({commandId: keccak256("uv"), sequence: 0, newConfigEpoch: 1, minExecutionGas: DEFAULT_COMMAND_BUDGET, vaults: vaults})
+                UpdateVaults({
+                    commandId: keccak256("uv"),
+                    sequence: 0,
+                    newConfigEpoch: 1,
+                    minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                    vaults: vaults,
+                    floors: new SweepFloor[](0)
+                })
             )
         );
         _deliver(

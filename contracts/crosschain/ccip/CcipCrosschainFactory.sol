@@ -83,6 +83,8 @@ contract CcipCrosschainFactory is CcipAppBase {
 
     /// @notice Payload of a `CREATE_DISPATCHER` message: what the destination factory must deploy.
     /// @dev Its hash (`keccak256(abi.encode(ticket))`) identifies the deployment in ACK, NACK and cancel handling.
+    ///      The hash is identical across identical re-requests (IL-8486), so a NACK also carries the request's
+    ///      `expiresAt` (`createdAt + DEPLOYMENT_TTL`), which tells one request from another (IL-9685).
     /// @param salt CREATE3 salt of the executor on the source chain; the dispatcher reuses it on the destination.
     /// @param executor Executor address on the source chain; must equal the address derived from `salt`.
     /// @param srcChainId Chain of the executor and of the requesting factory.
@@ -139,6 +141,20 @@ contract CcipCrosschainFactory is CcipAppBase {
     ///      the dispatchers), whose selector differs.
     /// @param gasLeft `gasleft()` at the revert.
     error InsufficientGasForDeploymentNack(uint256 gasLeft);
+    /// @notice A `DEPLOYMENT_NACK` matches the pending ticket hash but answers another request: its `expiresAt` is
+    ///         not the pending request's `createdAt + DEPLOYMENT_TTL` (IL-9685). Such a NACK was sent for an earlier,
+    ///         identical request (same ticket hash) and must not close the fresh one. The pending request is
+    ///         untouched; the message stays failed on the OffRamp and is harmless.
+    /// @param executor The executor with the pending request.
+    /// @param dstChainId The destination chain id.
+    /// @param expectedExpiresAt `createdAt + DEPLOYMENT_TTL` of the pending request.
+    /// @param receivedExpiresAt The `expiresAt` carried by the NACK.
+    error StaleDeploymentNack(
+        address executor,
+        uint256 dstChainId,
+        uint256 expectedExpiresAt,
+        uint256 receivedExpiresAt
+    );
     error TooManyVaults(uint256 supplied, uint256 maximum);
     error InvalidVaultAddress(address vault);
     error DuplicateVault(address vault);
@@ -254,9 +270,9 @@ contract CcipCrosschainFactory is CcipAppBase {
 
     /// @notice Version of the factory interface.
     /// @dev Constant for off-chain tooling; no contract reads it.
-    /// @return Always 1.
+    /// @return Always 2 (`createExecutor` takes the ten-field `SafetyConfig` with `anchorBandBps`, IL-9720; 1 before).
     function factoryInterfaceVersion() external pure returns (uint32) {
-        return 1;
+        return 2;
     }
 
     /// @notice Recover native fee budget the owner previously funded.
@@ -447,6 +463,11 @@ contract CcipCrosschainFactory is CcipAppBase {
         AssetConfig memory asset = assetConfig[assetId_];
         if (!asset.enabled) revert AssetNotEnabled(assetId_);
         if (!creationCodesConfigured) revert CreationCodesNotConfigured();
+        // Migration gate (IL-8623, same as the ticket path): creating an executor freezes the asset, which would
+        // make a scheduled `executeAsset` revert for good. A frozen asset cannot be migrated, so it is not gated.
+        if (!assetFrozen[assetId_] && scheduledAssetCount[assetId_] != 0) {
+            revert CrosschainErrors.DestinationAssetMigrationScheduled(assetId_);
+        }
         assetFrozen[assetId_] = true;
         bytes32 salt = keccak256(abi.encode(msg.sender, userSalt_, uint8(7)));
         bytes memory creationCode = abi.encodePacked(
@@ -652,20 +673,27 @@ contract CcipCrosschainFactory is CcipAppBase {
             delete deploymentAttempts[executor][dstChainId];
             ICcipExecutorFactoryView(executor).markDispatcherReady(dstChainId);
         } else if (messageType == CcipMsgType.DEPLOYMENT_NACK) {
-            (address executor, uint256 dstChainId, bytes32 ticketHash, uint8 reason) =
-                abi.decode(data, (address, uint256, bytes32, uint8));
+            (address executor, uint256 dstChainId, bytes32 ticketHash, uint8 reason, uint256 expiresAt) = abi.decode(
+                data,
+                (address, uint256, bytes32, uint8, uint256)
+            );
             if (
                 !isExecutor[executor] || dstChainId != srcChainId_
                     || pendingDeploymentTicket[executor][dstChainId] != ticketHash
             ) revert UnknownDeploymentAck(executor, dstChainId, ticketHash);
-            // A TICKET_EXPIRED NACK is sent only by a destination that saw `expiresAt = createdAt + TTL` pass, so
-            // one arriving earlier belongs to a previous, identical request (same ticket hash across re-requests)
-            // and must not close the fresh one. Revert (retryable): it is harmless once the fresh TTL has elapsed.
-            if (reason == NACK_TICKET_EXPIRED) {
-                uint256 notBefore = uint256(pendingDeploymentCreatedAt[executor][dstChainId]) + DEPLOYMENT_TTL;
-                if (block.timestamp < notBefore) {
-                    revert CrosschainErrors.PrematureExpiredNack(executor, dstChainId, notBefore);
-                }
+            // The ticket hash is identical across identical re-requests, so the NACK names its request by the
+            // `expiresAt` the destination received with the ticket (IL-9685). A re-request is possible only after
+            // the previous one was cancelled (strictly after its own expiry plus the margin) or NACKed (a NACK
+            // clears the ticket too), so it always has a
+            // later `createdAt` and a NACK of any earlier request never matches. Revert: the pending request stays.
+            uint256 pendingExpiresAt = uint256(pendingDeploymentCreatedAt[executor][dstChainId]) + DEPLOYMENT_TTL;
+            if (expiresAt != pendingExpiresAt) {
+                revert StaleDeploymentNack(executor, dstChainId, pendingExpiresAt, expiresAt);
+            }
+            // A TICKET_EXPIRED NACK is sent only by a destination that saw this `expiresAt` pass; one arriving here
+            // earlier means a destination clock ahead of this chain's. Revert (retryable) until it has passed here.
+            if (reason == NACK_TICKET_EXPIRED && block.timestamp < pendingExpiresAt) {
+                revert CrosschainErrors.PrematureExpiredNack(executor, dstChainId, pendingExpiresAt);
             }
             delete pendingDeploymentTicket[executor][dstChainId];
             delete pendingDeploymentCreatedAt[executor][dstChainId];
@@ -693,14 +721,14 @@ contract CcipCrosschainFactory is CcipAppBase {
         if (predicted != ticket_.executor) revert TicketExecutorMismatch(ticket_.executor, predicted);
         bytes32 ticketHash = keccak256(abi.encode(ticket_));
         if (predicted.code.length != 0 && !consumedTicket[ticketHash]) {
-            _sendDeploymentNack(srcChainId_, ticket_, ticketHash, 1);
+            _sendDeploymentNack(srcChainId_, ticket_, ticketHash, 1, expiresAt_);
             return;
         }
         if (!consumedTicket[ticketHash]) {
             // Absolute expiry (IL-8623): never deploy a ticket delivered at or after `expiresAt`; the source drops
             // it only `DEPLOYMENT_CANCEL_MARGIN` later. An already consumed ticket is re-ACKed below as before.
             if (block.timestamp >= expiresAt_) {
-                _sendDeploymentNack(srcChainId_, ticket_, ticketHash, NACK_TICKET_EXPIRED);
+                _sendDeploymentNack(srcChainId_, ticket_, ticketHash, NACK_TICKET_EXPIRED, expiresAt_);
                 return;
             }
             // Migration gate (IL-8623): a deployment freezes the asset, which would make the owner's scheduled
@@ -720,7 +748,7 @@ contract CcipCrosschainFactory is CcipAppBase {
                 if (gasleft() < NACK_MIN_GAS || gasleft() * 10 < gasBefore) {
                     revert InsufficientGasForDeploymentNack(gasleft());
                 }
-                _sendDeploymentNack(srcChainId_, ticket_, ticketHash, _nackReason(reason));
+                _sendDeploymentNack(srcChainId_, ticket_, ticketHash, _nackReason(reason), expiresAt_);
                 return;
             }
         }
@@ -802,17 +830,24 @@ contract CcipCrosschainFactory is CcipAppBase {
     ///      occupied by another ticket; 2 = asset not enabled, shared-decimals mismatch, creation code missing
     ///      or CREATE3 failed; 3 = the dispatcher rejected the vault list (`InvalidVault`, `VaultsCapReached`);
     ///      4 = the ticket was delivered at or after its `expiresAt` and nothing was deployed (IL-8623).
+    /// @dev Payload: `(executor, dstChainId, ticketHash, reason, expiresAt)`. `expiresAt` is echoed from the
+    ///      `CREATE_DISPATCHER` payload and names the request the NACK answers (IL-9685); the source refuses a NACK
+    ///      whose `expiresAt` is not the pending request's (`StaleDeploymentNack`). The peer factory is always this
+    ///      factory's own CREATE3 address (`PeerMustBeSelf`), deployed per version on every chain, so both ends use
+    ///      this layout; a NACK in the former four-field layout does not decode here and reverts.
     function _sendDeploymentNack(
         uint256 srcChainId_,
         DeploymentTicket memory ticket_,
         bytes32 ticketHash_,
-        uint8 reason_
+        uint8 reason_,
+        uint256 expiresAt_
     ) private {
         CcipRouteConfig memory route = _ccipRoutes[srcChainId_];
         _sendCcip(
             srcChainId_,
             CcipMessages.encode(
-                CcipMsgType.DEPLOYMENT_NACK, abi.encode(ticket_.executor, block.chainid, ticketHash_, reason_)
+                CcipMsgType.DEPLOYMENT_NACK,
+                abi.encode(ticket_.executor, block.chainid, ticketHash_, reason_, expiresAt_)
             ),
             address(0),
             0,

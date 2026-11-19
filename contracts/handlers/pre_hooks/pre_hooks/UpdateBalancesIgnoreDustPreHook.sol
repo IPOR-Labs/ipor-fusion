@@ -50,6 +50,17 @@ import {PreHooksLib} from "../PreHooksLib.sol";
 /// - Validates substrate configuration
 /// - Protected by PlasmaVault's access control
 /// - Dust threshold can only be modified by governance
+/// - On a vault that holds a child PlasmaVault, the hook turns a hooked user operation into a read of the
+///   child's share price, which can be temporarily wrong while the child runs its `execute` batch or an instant
+///   withdrawal. The dust filter is no lasting protection: the child's market is refreshed once its cache is at
+///   or above the threshold, or when it is in the dependency graph of a refreshed market. Known limitation, no
+///   code guard (owner decision); see "Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)" in contracts/vaults/README.md.
+///
+/// Nesting:
+/// - This hook cannot be nested in `ExchangeRateValidatorPreHook`: it needs its own threshold substrate, and a
+///   nested hook never receives one (substrates are stored per registered implementation and selector; only hooks
+///   without their own substrates, such as `UpdateBalancesPreHook`, can be nested). Register it directly on the
+///   selector; a nested instance reverts with InvalidSubstratesLength while any balance-fuse market is active.
 ///
 /// ContextManager (runWithContext / runWithContextAndSignature):
 /// - The hook calls PlasmaVault(address(this)).updateMarketsBalances. PlasmaVault authorizes its own
@@ -57,8 +68,7 @@ import {PreHooksLib} from "../PreHooksLib.sol";
 /// - Vaults created from a PlasmaVault implementation that predates IL-8310 authorize this self-call
 ///   against the context sender instead. There, a relayed call on a hooked selector reverts with
 ///   AccessManagedUnauthorized unless the context sender itself holds UPDATE_MARKETS_BALANCES_ROLE;
-///   direct calls are not affected. The same applies when the hook is nested under
-///   ExchangeRateValidatorPreHook. Such vaults must treat relayed user operations on hooked selectors
+///   direct calls are not affected. Such vaults must treat relayed user operations on hooked selectors
 ///   as unsupported, or move users to a vault created from a fixed implementation. Do not remove the
 ///   vault from ContextManager's approved targets (admin batches rely on it) and do not make
 ///   updateMarketsBalances public as a workaround.

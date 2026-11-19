@@ -8,7 +8,10 @@ import {IPriceOracleMiddleware} from "../../price_oracle/IPriceOracleMiddleware.
 
 /// @title OracleSqrtPriceX96Lib
 /// @notice Derives a Uniswap V3 style `sqrtPriceX96` (Q64.96) of a token0/token1 pool from oracle prices
-/// @dev Shared by the Aerodrome and Velodrome Slipstream balance fuses. Supports the full Q64.96 range:
+/// @dev Shared by the Aerodrome and Velodrome Slipstream balance fuses and by the oracle-derived Uniswap V3 / V4 and
+///      Ramses V2 balance fuses (`UniswapV3OracleBalance`, `UniswapV4OracleBalance`, `RamsesV2OracleBalance`), which use it
+///      instead of the pool's spot `slot0` price. The result is only as manipulation-resistant as the oracle behind it,
+///      and it reverts when a token has no price feed. Supports the full Q64.96 range:
 ///      for realistic prices and decimals it reverts only when the oracle-implied raw
 ///      price `P = token1 / token0` is `>= 2^128` (i.e. `sqrt(P) * 2^96` no longer fits `uint160`).
 library OracleSqrtPriceX96Lib {

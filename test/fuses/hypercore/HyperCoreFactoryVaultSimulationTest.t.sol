@@ -31,6 +31,7 @@ import {
 } from "../../../contracts/fuses/hypercore/HyperCoreSendFuse.sol";
 import {HyperCoreBuilderFeeFuse} from "../../../contracts/fuses/hypercore/HyperCoreBuilderFeeFuse.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 import {
@@ -267,7 +268,10 @@ contract HyperCoreFactoryVaultSimulationTest is Test {
         substrates[6] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, 2);
         substrates[7] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.MaxUsdClassTransferUsd6, 1_000_000e6);
         vm.prank(_fuseManager);
-        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, substrates);
+        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(
+            MARKET_ID,
+            NavJumpFloorFixture.withFloor(substrates)
+        );
     }
 
     // PRODUCTION LIMITATION (M4-DEPLOYMENT.md §4, "Configure the vault's market-55 balance fuse and

@@ -59,6 +59,7 @@ contract FactoryDeploymentTtlFloorTest is FactoryTestBase {
                 balanceApprover: approver,
                 stalenessMax: 1 hours,
                 bigChangeBps: 1000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 10 minutes,
                 deploymentTtl: deploymentTtl_,
                 transferStalenessMax: 2 hours

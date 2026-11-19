@@ -395,19 +395,24 @@ contract ExternalStateDustDonationTest is Test {
         assertEq(usdc.balanceOf(executor), 3, "donation still on the executor");
     }
 
-    function test_duplicatedAssetGrant_isCachedOnce_outflowDebitsExactlyOnce() public {
+    // IL-9642: a duplicated ASSET grant is rejected at grant time, so the executor cache can never hold an asset twice.
+    function test_duplicatedAssetGrant_isRejectedAtGrant_cacheKeepsAssetOnce() public {
         address executor = _readExecutor();
 
-        // The vault accepts a duplicated ASSET grant; the executor cache must still hold the asset once.
         // `grantMarketSubstrates` replaces the whole set, so append the duplicate to the current one.
         bytes32[] memory current = PlasmaVaultGovernance(address(vault)).getMarketSubstrates(MARKET_ID);
+        bytes32 assetSubstrate = ExternalStateSubstrateLib.encodeAssetSubstrate(address(usdc));
         bytes32[] memory dup = new bytes32[](current.length + 1);
         for (uint256 i; i < current.length; ++i) {
             dup[i] = current[i];
         }
-        dup[current.length] = ExternalStateSubstrateLib.encodeAssetSubstrate(address(usdc));
+        dup[current.length] = assetSubstrate;
         vm.prank(atomist);
+        vm.expectRevert(
+            abi.encodeWithSignature("MarketSubstrateDuplicate(uint256,bytes32)", MARKET_ID, assetSubstrate)
+        );
         PlasmaVaultGovernance(address(vault)).grantMarketSubstrates(MARKET_ID, dup);
+
         IExternalStateExecutor(executor).syncSubstrates();
         assertEq(IExternalStateExecutor(executor).assetsLength(), 1, "asset cached once");
 

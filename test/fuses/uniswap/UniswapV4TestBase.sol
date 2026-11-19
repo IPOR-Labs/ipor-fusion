@@ -110,7 +110,7 @@ abstract contract UniswapV4TestBase is Test {
     PoolKey internal _usdcUngrantedToken1Key;
 
     function setUp() public virtual {
-        vm.createSelectFork(vm.envString("BASE_PROVIDER_URL"), FORK_BLOCK);
+        vm.createSelectFork(vm.envString("BASE_PROVIDER_URL"), _forkBlock());
 
         _wethUsdcKey = PoolKey({
             currency0: Currency.wrap(WETH),
@@ -164,6 +164,12 @@ abstract contract UniswapV4TestBase is Test {
     // ---------------------------------------------------------------------
     // setup helpers
     // ---------------------------------------------------------------------
+
+    /// @dev Base fork block used by `setUp`. Defaults to `FORK_BLOCK`; a suite that needs its own fork
+    /// block (fork isolation from the other V4 suites) overrides this hook.
+    function _forkBlock() internal view virtual returns (uint256) {
+        return FORK_BLOCK;
+    }
 
     /// @dev Creates the PlasmaVault (and its managers) via the on-chain FusionFactory, then grants the
     /// test contract the operational roles so it can configure the vault and call `execute` directly.

@@ -732,6 +732,7 @@ contract CcipAttestationAnchorBandTest is Test {
                 rescueDelay: RESCUE_DELAY,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000, // == ATTESTATION_ANCHOR_BAND_BPS, the constructor ceiling (IL-8058)
+                anchorBandBps: 2_000,
                 minUpdateInterval: MIN_UPDATE_INTERVAL,
                 transferStalenessMax: 1 days
             });
@@ -771,6 +772,22 @@ contract CcipAttestationAnchorBandTest is Test {
     function _bridge(uint256 amount_) internal {
         token.mint(address(executor), amount_);
         executor.sendAssetToDispatcher(REMOTE_CHAIN, amount_, 0, address(0), 500_000);
+    }
+
+    /// @dev IL-9720: an approval of a value above the anchor band no longer reverts `AttestationOutsideAnchorBand`:
+    ///      nothing is written, the proposal is rejected and the chain is blocked, as by `rejectBalanceAndBlock`.
+    ///      `anchor_` is the anchor the value is measured against (asserted from the getter), `proposed_` the value.
+    function _approveAboveBand(uint256 proposalId_, uint256 anchor_, uint256 proposed_) internal {
+        uint256 settledBefore = executor.settledRemoteBalance(REMOTE_CHAIN);
+        assertGt(proposed_, anchor_ + (anchor_ * 2_000) / 10_000, "the value is above the band");
+        assertEq(executor.attestationAnchorPrincipal(REMOTE_CHAIN), anchor_, "anchor the value is measured against");
+        vm.expectEmit(address(executor));
+        emit CcipCrosschainExecutor.BalanceRejectedAndBlocked(proposalId_, REMOTE_CHAIN);
+        vm.prank(APPROVER);
+        executor.approveBalance(proposalId_);
+        assertTrue(executor.chainBlocked(REMOTE_CHAIN), "the chain is blocked");
+        assertEq(executor.activeProposalId(REMOTE_CHAIN), 0, "the proposal is closed");
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), settledBefore, "nothing was written");
     }
 
     function _forceSetSettled(uint256 newSettledLD_) internal {
@@ -852,34 +869,21 @@ contract CcipAttestationAnchorBandTest is Test {
         _bridge(100e18);
 
         uint256 settled = 100e18;
-        uint256 reverts;
-        bool firstReasonChecked;
+        uint256 blockedAtRound;
         for (uint256 i; i < 60; ++i) {
             vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
             uint256 next = settled + settled / 10;
-            (bool ok, bytes memory reason) = _tryApprove(next);
-            if (ok) {
-                settled = next;
-            } else {
-                ++reverts;
-                if (!firstReasonChecked) {
-                    firstReasonChecked = true;
-                    assertEq(
-                        reason,
-                        abi.encodeWithSelector(
-                            CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                            REMOTE_CHAIN,
-                            100e18,
-                            121e18,
-                            2_000
-                        ),
-                        "first revert is the band, at round 2 (110 -> 121)"
-                    );
-                }
+            (bool ok, ) = _tryApprove(next);
+            assertTrue(ok, "IL-9720: an approval above the band does not revert, it blocks the chain");
+            if (executor.chainBlocked(REMOTE_CHAIN)) {
+                blockedAtRound = i + 1;
+                break;
             }
+            settled = next;
         }
-        assertGt(reverts, 0);
+        assertEq(blockedAtRound, 2, "the band blocks the chain at round 2 (110 -> 121), nothing is written");
         assertLe(executor.settledRemoteBalance(REMOTE_CHAIN), 120e18);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 110e18);
         assertEq(settled, 110e18);
     }
 
@@ -938,17 +942,7 @@ contract CcipAttestationAnchorBandTest is Test {
 
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
         uint256 proposalId = _propose(120e18 + 1);
-        vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                100e18,
-                120e18 + 1,
-                2_000
-            )
-        );
-        executor.approveBalance(proposalId);
+        _approveAboveBand(proposalId, 100e18, 120e18 + 1);
     }
 
     // ---------------------------------------------------------------------
@@ -968,17 +962,7 @@ contract CcipAttestationAnchorBandTest is Test {
 
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
         uint256 proposalId = _propose(240e18 + 1);
-        vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                200e18,
-                240e18 + 1,
-                2_000
-            )
-        );
-        executor.approveBalance(proposalId);
+        _approveAboveBand(proposalId, 200e18, 240e18 + 1);
     }
 
     // ---------------------------------------------------------------------
@@ -1008,17 +992,7 @@ contract CcipAttestationAnchorBandTest is Test {
 
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
         uint256 proposalId = _propose(cap + 1);
-        vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                principal,
-                cap + 1,
-                2_000
-            )
-        );
-        executor.approveBalance(proposalId);
+        _approveAboveBand(proposalId, principal, cap + 1);
     }
 
     // ---------------------------------------------------------------------
@@ -1041,17 +1015,7 @@ contract CcipAttestationAnchorBandTest is Test {
 
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
         uint256 proposalId = _propose(300e18 + 1);
-        vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                250e18,
-                300e18 + 1,
-                2_000
-            )
-        );
-        executor.approveBalance(proposalId);
+        _approveAboveBand(proposalId, 250e18, 300e18 + 1);
     }
 
     // ---------------------------------------------------------------------
@@ -1086,17 +1050,7 @@ contract CcipAttestationAnchorBandTest is Test {
 
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
         uint256 proposalId = _propose(120e18 + 1);
-        vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                100e18,
-                120e18 + 1,
-                2_000
-            )
-        );
-        executor.approveBalance(proposalId);
+        _approveAboveBand(proposalId, 100e18, 120e18 + 1);
     }
 
     // ---------------------------------------------------------------------
@@ -1144,17 +1098,7 @@ contract CcipAttestationAnchorBandTest is Test {
 
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
         uint256 proposalId = _propose(120e18 + 1);
-        vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                100e18,
-                120e18 + 1,
-                2_000
-            )
-        );
-        executor.approveBalance(proposalId);
+        _approveAboveBand(proposalId, 100e18, 120e18 + 1);
     }
 
     bytes32 internal constant ASSET_SENT_TOPIC = keccak256("AssetSent(uint256,bytes32,bytes32,uint256)");
@@ -1285,17 +1229,7 @@ contract CcipAttestationAnchorBandTest is Test {
 
         vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
         uint256 proposalId = _propose(120e18 + 1);
-        vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                100e18,
-                120e18 + 1,
-                2_000
-            )
-        );
-        executor.approveBalance(proposalId);
+        _approveAboveBand(proposalId, 100e18, 120e18 + 1);
     }
 }
 

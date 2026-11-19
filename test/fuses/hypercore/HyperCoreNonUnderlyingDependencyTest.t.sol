@@ -21,6 +21,7 @@ import {
 import {HyperCorePendingReader} from "../../../contracts/fuses/hypercore/HyperCorePendingReader.sol";
 import {ReadResult} from "../../../contracts/universal_reader/UniversalReader.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {CoreSimulatorLib} from "./simulation/CoreSimulatorLib.sol";
 import {PrecompileLib} from "./simulation/src/PrecompileLib.sol";
@@ -58,6 +59,8 @@ contract HyperCoreNonUnderlyingDependencyTest is HyperCoreEffectSettlementBase {
     uint256 internal constant PERFORMANCE_FEE = 2000;
     /// @dev Vault shares have 8 decimals over the 6-decimals USDC
     uint256 internal constant ONE_SHARE = 1e8;
+    /// @dev IL-9601: the HWM and the fee rate are assets per ONE_SHARE shares times this scale
+    uint256 internal constant HWM_SCALE = 1e12;
     uint256 internal constant SHARE_SCALE = 100;
 
     HyperCoreNonUnderlyingMockToken internal _token;
@@ -108,7 +111,11 @@ contract HyperCoreNonUnderlyingDependencyTest is HyperCoreEffectSettlementBase {
         uint256 navBefore = _vault.totalAssets();
         uint256 feeSharesBefore = _vault.balanceOf(_feeAccount);
         uint256 hwmBefore = _hwm();
-        assertEq(hwmBefore, _vault.convertToAssets(10 ** _vault.decimals()), "precondition: HWM is the share price");
+        assertEq(
+            hwmBefore,
+            _vault.convertToAssets(10 ** _vault.decimals() * HWM_SCALE),
+            "precondition: HWM is the share price"
+        );
 
         _enterDeposit();
 
@@ -147,16 +154,24 @@ contract HyperCoreNonUnderlyingDependencyTest is HyperCoreEffectSettlementBase {
         uint256 supplyBefore = _vault.totalSupply();
         uint256 feeSharesBefore = _vault.balanceOf(_feeAccount);
         uint256 hwmBefore = _hwm();
-        assertEq(hwmBefore, _vault.convertToAssets(10 ** _vault.decimals()), "precondition: HWM is the share price");
+        assertEq(
+            hwmBefore,
+            _vault.convertToAssets(10 ** _vault.decimals() * HWM_SCALE),
+            "precondition: HWM is the share price"
+        );
 
         // Independent expectation (FeeManager.calculateAndUpdatePerformanceFee; same formula as
         // HyperCoreCapitalFlowPerformanceFeeTest): the execute sees NAV + 40 USDC.
         uint256 phantomNav = navBefore + 40e6;
-        uint256 preMintRate = Math.mulDiv(ONE_SHARE, phantomNav + 1, supplyBefore + SHARE_SCALE);
+        uint256 preMintRate = Math.mulDiv(ONE_SHARE * HWM_SCALE, phantomNav + 1, supplyBefore + SHARE_SCALE);
         assertGt(preMintRate, hwmBefore, "the phantom NAV is above the HWM");
-        uint256 harvested = Math.mulDiv(supplyBefore, preMintRate - hwmBefore, preMintRate);
-        uint256 expectedFeeShares = Math.mulDiv(harvested, PERFORMANCE_FEE, 10000);
-        uint256 expectedHwm = Math.mulDiv(ONE_SHARE, phantomNav + 1, supplyBefore + expectedFeeShares + SHARE_SCALE);
+        uint256 feeValue = (preMintRate - hwmBefore) * PERFORMANCE_FEE;
+        uint256 expectedFeeShares = Math.mulDiv(supplyBefore, feeValue, preMintRate * 10000 - feeValue);
+        uint256 expectedHwm = Math.mulDiv(
+            ONE_SHARE * HWM_SCALE,
+            phantomNav + 1,
+            supplyBefore + expectedFeeShares + SHARE_SCALE
+        );
         assertGt(expectedFeeShares, 0, "the phantom gain earns a fee");
 
         _enterDeposit();
@@ -197,7 +212,11 @@ contract HyperCoreNonUnderlyingDependencyTest is HyperCoreEffectSettlementBase {
 
         assertEq(_vault.totalAssetsInMarket(ERC20_MARKET), 0, "market 7 corrected");
         assertEq(_vault.totalAssets(), navBefore + DEPOSIT, "NAV is the true NAV again");
-        assertLt(_vault.convertToAssets(10 ** _vault.decimals()), _hwm(), "the HWM stays above the real share price");
+        assertLt(
+            _vault.convertToAssets(10 ** _vault.decimals() * HWM_SCALE),
+            _hwm(),
+            "the HWM stays above the real share price"
+        );
     }
 
     // ------------------------------------------------------------------
@@ -259,7 +278,10 @@ contract HyperCoreNonUnderlyingDependencyTest is HyperCoreEffectSettlementBase {
         marketSevenSubstrates[0] = bytes32(uint256(uint160(address(_token))));
 
         vm.startPrank(_fuseManager);
-        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(MARKET_ID, substrates);
+        PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(
+            MARKET_ID,
+            NavJumpFloorFixture.withFloor(substrates)
+        );
         PlasmaVaultGovernance(address(_vault)).grantMarketSubstrates(ERC20_MARKET, marketSevenSubstrates);
         if (withDependency_) {
             uint256[] memory markets = new uint256[](1);

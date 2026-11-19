@@ -167,9 +167,11 @@ contract CrosschainRealVaultRecoveryTest is CrosschainTestBase {
         assertEq(vault.totalAssets(), USER_DEPOSIT - BRIDGED, "NAV unchanged by the failed restore");
     }
 
-    /// @notice With market limits active, the restore must also fit the CROSSCHAIN market limit. The
-    ///         write-off (value 0) always fits; the restore of 10% of NAV does not fit a 5% limit.
-    function testShouldRejectRestoreAboveActiveMarketLimit() public {
+    /// @notice IL-9612: with market limits active, the restore refresh stores the over-limit value (10% of NAV
+    ///         against a 5% limit) instead of reverting, so the restored NAV is not stuck at the written-off cache.
+    ///         The limit is still enforced where assets move: an `execute` through a crosschain fuse on that
+    ///         market reverts with `MarketLimitExceeded`.
+    function testShouldStoreRestoreAboveActiveMarketLimitAndStillRejectExecute() public {
         _bridgeAndSettle();
         _makeExecutorStale();
         _writeOff();
@@ -183,16 +185,44 @@ contract CrosschainRealVaultRecoveryTest is CrosschainTestBase {
 
         _attest(BRIDGED, 1);
         _grantExecutor();
-        vm.prank(ATOMIST);
-        vm.expectRevert(
-            abi.encodeWithSelector(
+        _refresh(MARKET);
+
+        assertEq(vault.totalAssetsInMarket(MARKET), BRIDGED, "restore stored above the 5% limit");
+        assertEq(vault.totalAssets(), USER_DEPOSIT, "NAV restored");
+
+        uint256 extra = 1e6;
+        StargateCrosschainSupplyFuseEnterData memory data = StargateCrosschainSupplyFuseEnterData({
+            executor: address(executor),
+            asset: address(usdc),
+            dstChainId: REMOTE_CHAIN,
+            amount: extra,
+            minAmountLD: 0,
+            options: ""
+        });
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = FuseAction({
+            fuse: address(supplyFuse),
+            data: abi.encodeCall(StargateCrosschainSupplyFuse.enter, (data))
+        });
+        vm.prank(ALPHA);
+        try vault.execute(actions) {
+            fail("execute on the over-limit crosschain market must revert");
+        } catch (bytes memory reason) {
+            assertEq(
+                bytes4(reason),
                 AssetDistributionProtectionLib.MarketLimitExceeded.selector,
-                MARKET,
-                BRIDGED,
-                (USER_DEPOSIT * 5) / 100
-            )
-        );
-        vault.updateMarketsBalances(_markets(MARKET));
+                "MarketLimitExceeded selector"
+            );
+            bytes memory args = new bytes(reason.length - 4);
+            for (uint256 i; i < args.length; ++i) {
+                args[i] = reason[i + 4];
+            }
+            (uint256 marketId, uint256 balanceInMarket, uint256 limit) = abi.decode(args, (uint256, uint256, uint256));
+            assertEq(marketId, MARKET, "limit of the crosschain market");
+            assertGe(balanceInMarket, BRIDGED, "checked balance above the stored one");
+            assertEq(limit, (USER_DEPOSIT * 5) / 100, "limit against the gross NAV");
+            assertGt(balanceInMarket, limit, "above the limit");
+        }
     }
 
     /// @notice Documents a runbook requirement: with no EXECUTOR granted the pre-hook has nothing to check,
@@ -350,9 +380,10 @@ contract CrosschainRealVaultRecoveryTest is CrosschainTestBase {
         _grantExecutor();
         _refresh(MARKET);
 
-        // Gain 900 -> 1000 = 10% of the restored rate; 10% fee on it = 1% of supply.
+        // Gain 900 -> 1000 = 10% of the restored rate; 10% fee on it = 1% of the vault value. The fee shares are sized
+        // on the price after their own mint (IL-8870): x / (1 - x) = 1/99 of the supply before the mint.
         uint256 feeShares = vault.balanceOf(feeAccount);
-        assertApproxEqRel(feeShares, supplyBefore / 100, 1e16, "fee minted on recovered principal");
+        assertApproxEqRel(feeShares, supplyBefore / 99, 1e16, "fee minted on recovered principal");
         assertLt(vault.convertToAssets(vault.balanceOf(USER)), USER_DEPOSIT, "LP diluted by the fee");
     }
 

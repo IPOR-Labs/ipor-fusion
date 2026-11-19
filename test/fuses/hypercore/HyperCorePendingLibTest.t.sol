@@ -11,6 +11,8 @@ import {
     HyperCoreCapitalFlowPreHook
 } from "../../../contracts/handlers/pre_hooks/pre_hooks/HyperCoreCapitalFlowPreHook.sol";
 import {PlasmaVault} from "../../../contracts/vaults/PlasmaVault.sol";
+import {PlasmaVaultLib} from "../../../contracts/libraries/PlasmaVaultLib.sol";
+import {VestingData} from "../../../contracts/interfaces/IRewardsClaimManager.sol";
 import {HyperCoreMockState, MockHyperCorePrecompiles} from "./mocks/MockHyperCorePrecompiles.sol";
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
 
@@ -354,6 +356,9 @@ contract HyperCorePendingLibTest is Test {
 
 /// @dev Harness exposing the effect-bound enqueue entry point and the appended struct fields.
 contract HyperCorePendingEffectHarness {
+    /// @dev Ordinary slot 0, independent of the namespaced pending slot.
+    address public asset;
+
     function enqueue(uint256 value_, uint64 window_, bytes32 payloadHash_) external {
         HyperCorePendingLib.enqueue(value_, window_, 7, payloadHash_);
     }
@@ -414,6 +419,85 @@ contract HyperCorePendingEffectHarness {
 
     function pendingUntil() external view returns (uint64) {
         return HyperCorePendingLib.get().pendingUntil;
+    }
+
+    function bindRewardsEffect(
+        address rewardsManager_,
+        uint256 rawSum_,
+        uint256 vestedSum_,
+        VestingData memory vesting_
+    ) external {
+        HyperCorePendingLib.bindRewardsEffect(rewardsManager_, rawSum_, vestedSum_, vesting_);
+    }
+
+    /// @dev Vault-side rewards manager address (`PlasmaVaultLib`), read by the gate to detect a manager change.
+    function setRewardsClaimManager(address rewardsManager_) external {
+        PlasmaVaultLib.setRewardsClaimManagerAddress(rewardsManager_);
+    }
+
+    /// @dev Stands in for `IERC4626.asset()` of the vault (read for an unbound record while a manager is set).
+    function setAsset(address asset_) external {
+        asset = asset_;
+    }
+
+    function rewardsVesting()
+        external
+        view
+        returns (uint32 updateBalanceTimestamp, uint128 transferredTokens, uint128 lastUpdateBalance)
+    {
+        HyperCorePendingLib.PendingAction storage p = HyperCorePendingLib.get();
+        return (
+            p.effectRewardsUpdateBalanceTimestamp,
+            p.effectRewardsTransferredTokens,
+            p.effectRewardsLastUpdateBalance
+        );
+    }
+
+    function recordTimingOrder() external {
+        HyperCorePendingLib.recordTimingOrder();
+    }
+
+    function lastOrderL1Block() external view returns (uint64) {
+        return HyperCorePendingLib.get().lastOrderL1Block;
+    }
+
+    function rewardsFields() external view returns (address manager, uint256 rawSum, uint256 vestedSum) {
+        HyperCorePendingLib.PendingAction storage p = HyperCorePendingLib.get();
+        return (p.effectRewardsManager, p.expectedRewardsRawSum, p.expectedRewardsVestedSum);
+    }
+}
+
+/// @dev Rewards manager stand-in: only the views the pending lib reads (`balanceOf()`, `getVestingData()`), each of
+///      which can be made to revert. Its raw token balance is set with `deal`.
+contract HyperCorePendingLibMockRewardsManager {
+    error HyperCorePendingLibMockRewardsManagerReverted();
+
+    uint256 public vested;
+    VestingData private _vesting;
+    bool public revertBalanceOf;
+    bool public revertVestingData;
+
+    function setVested(uint256 vested_) external {
+        vested = vested_;
+    }
+
+    function setVestingData(VestingData memory vesting_) external {
+        _vesting = vesting_;
+    }
+
+    function setReverts(bool balanceOf_, bool vestingData_) external {
+        revertBalanceOf = balanceOf_;
+        revertVestingData = vestingData_;
+    }
+
+    function balanceOf() external view returns (uint256) {
+        if (revertBalanceOf) revert HyperCorePendingLibMockRewardsManagerReverted();
+        return vested;
+    }
+
+    function getVestingData() external view returns (VestingData memory) {
+        if (revertVestingData) revert HyperCorePendingLibMockRewardsManagerReverted();
+        return _vesting;
     }
 }
 
@@ -628,5 +712,350 @@ contract HyperCorePendingLibEffectTest is Test {
         _h.enqueueWithEffect(1e18, 20, 0, 0, address(0), 1, 600);
         vm.expectRevert(abi.encodeWithSelector(HyperCorePendingLib.HyperCorePendingEffectInvalid.selector, uint8(3)));
         _h.enqueueWithEffect(1e18, 20, 3, 0, address(0), 1, 600);
+    }
+}
+
+/// @notice IL-9529: the rewards-manager binding of an `EFFECT_EVM_BALANCE` record (push counter, anchor, manager, the two
+///         D-004 sums) and the reset of the binding.
+/// @dev Scenario numbers: vault holds 1000, the manager holds 500 raw / 400 vested, the bridge credits A = 100, so the
+///      thresholds are expectedBalance 1100, rawSum 1000 + 500 + 100 = 1600, vestedSum 1000 + 400 + 100 = 1500. The
+///      manager's vesting data at send: anchor 77, transferredTokens 30, lastUpdateBalance 600 (`_vesting0`). The
+///      harness stands in for the vault: its `PlasmaVaultLib` rewards manager is `_rcm` and its `asset()` is `_usdc`.
+contract HyperCorePendingLibRewardsTest is Test {
+    uint256 private constant V0 = 1000;
+    uint256 private constant MANAGER_RAW = 500;
+    uint256 private constant MANAGER_VESTED = 400;
+    uint256 private constant A = 100;
+    uint32 private constant ANCHOR = 77;
+    uint128 private constant TRANSFERRED0 = 30;
+    uint128 private constant LAST_UPDATE_BALANCE = 600;
+    uint256 private constant PENDING_BASE_SLOT =
+        uint256(0xff3841d45e92b4b113213ebf16e5e18527d87d1b739008d460c4a8565edaf200);
+
+    HyperCoreMockState private _core;
+    HyperCorePendingEffectHarness private _h;
+    HyperCoreMockUsdc private _usdc;
+    HyperCorePendingLibMockRewardsManager private _rcm;
+
+    function setUp() public {
+        _core = HyperCoreTestHelper.etchPrecompiles(vm);
+        _core.setL1BlockNumber(100);
+        _h = new HyperCorePendingEffectHarness();
+        _usdc = new HyperCoreMockUsdc();
+        _rcm = new HyperCorePendingLibMockRewardsManager();
+        _h.setRewardsClaimManager(address(_rcm));
+        _h.setAsset(address(_usdc));
+        _setBalances(V0, MANAGER_RAW, MANAGER_VESTED);
+        _rcm.setVestingData(_vesting0());
+    }
+
+    function _vesting0() private pure returns (VestingData memory) {
+        return
+            VestingData({
+                vestingTime: 1000,
+                updateBalanceTimestamp: ANCHOR,
+                transferredTokens: TRANSFERRED0,
+                lastUpdateBalance: LAST_UPDATE_BALANCE
+            });
+    }
+
+    /// @dev The manager's vesting data after `pushed_` more was pushed (no re-anchor).
+    function _vestingAfterPush(uint128 pushed_) private pure returns (VestingData memory vesting_) {
+        vesting_ = _vesting0();
+        vesting_.transferredTokens = TRANSFERRED0 + pushed_;
+    }
+
+    function _setBalances(uint256 vault_, uint256 managerRaw_, uint256 managerVested_) private {
+        deal(address(_usdc), address(_h), vault_);
+        deal(address(_usdc), address(_rcm), managerRaw_);
+        _rcm.setVested(managerVested_);
+    }
+
+    function _enqueueBound() private {
+        _h.enqueueWithEffect(1e18, 20, 2, 0, address(_usdc), V0 + A, 600);
+        _h.bindRewardsEffect(address(_rcm), V0 + MANAGER_RAW + A, V0 + MANAGER_VESTED + A, _vesting0());
+    }
+
+    function _openGate() private {
+        vm.warp(block.timestamp + 20);
+        _core.setL1BlockNumber(_core.getL1BlockNumber() + 1);
+    }
+
+    /// @dev Moves to `timeoutAt` with a later L1 block, so the timing gates hold and the effect is waived.
+    function _reachTimeout() private {
+        (, , , uint64 timeoutAt, ) = _h.effect();
+        vm.warp(timeoutAt);
+        _core.setL1BlockNumber(_core.getL1BlockNumber() + 1);
+    }
+
+    function _slot(uint256 index_) private view returns (bytes32) {
+        return vm.load(address(_h), bytes32(PENDING_BASE_SLOT + index_));
+    }
+
+    function _assertBindingCleared(string memory where_) private view {
+        (address manager, uint256 rawSum, uint256 vestedSum) = _h.rewardsFields();
+        (uint32 anchor, uint128 transferred, uint128 last) = _h.rewardsVesting();
+        assertEq(manager, address(0), where_);
+        assertEq(rawSum, 0, where_);
+        assertEq(vestedSum, 0, where_);
+        assertEq(anchor, 0, where_);
+        assertEq(transferred, 0, where_);
+        assertEq(last, 0, where_);
+        assertEq(_slot(9), bytes32(uint256(_h.lastOrderL1Block())), "slot 9 keeps only lastOrderL1Block");
+        assertEq(_slot(10), bytes32(0), "slot 10 cleared");
+        assertEq(_slot(11), bytes32(0), "slot 11 cleared");
+        assertEq(_slot(12), bytes32(0), "slot 12 cleared");
+    }
+
+    function testBindStoresManagerSumsAndVestingSnapshotInSlots9To12() public {
+        _h.recordTimingOrder();
+        _enqueueBound();
+        (address manager, uint256 rawSum, uint256 vestedSum) = _h.rewardsFields();
+        assertEq(manager, address(_rcm));
+        assertEq(rawSum, 1600);
+        assertEq(vestedSum, 1500);
+        (uint32 anchor, uint128 transferred, uint128 last) = _h.rewardsVesting();
+        assertEq(anchor, ANCHOR);
+        assertEq(transferred, TRANSFERRED0);
+        assertEq(last, LAST_UPDATE_BALANCE);
+        assertEq(
+            _slot(9),
+            bytes32((uint256(ANCHOR) << 224) | (uint256(uint160(address(_rcm))) << 64) | 100),
+            "slot 9: lastOrderL1Block + manager + updateBalanceTimestamp"
+        );
+        assertEq(_slot(10), bytes32(uint256(1600)));
+        assertEq(_slot(11), bytes32(uint256(1500)));
+        assertEq(
+            _slot(12),
+            bytes32((uint256(LAST_UPDATE_BALANCE) << 128) | uint256(TRANSFERRED0)),
+            "slot 12: transferredTokens + lastUpdateBalance"
+        );
+    }
+
+    function testBindRevertsForNonEvmBalanceRecord() public {
+        _h.enqueue(1e18, 20, keccak256("plain"));
+        vm.expectRevert(abi.encodeWithSelector(HyperCorePendingLib.HyperCorePendingEffectInvalid.selector, uint8(0)));
+        _h.bindRewardsEffect(address(_rcm), 1, 1, _vesting0());
+
+        _openGate();
+        _h.clear();
+        _h.enqueueWithEffect(1e18, 20, 1, 0, address(0), 1, 600);
+        vm.expectRevert(abi.encodeWithSelector(HyperCorePendingLib.HyperCorePendingEffectInvalid.selector, uint8(1)));
+        _h.bindRewardsEffect(address(_rcm), 1, 1, _vesting0());
+    }
+
+    /// @dev The bridge credit raises only the vault balance: every condition holds.
+    function testCreditSatisfiesBothSums() public {
+        _enqueueBound();
+        _openGate();
+        assertTrue(_h.isActionPending(), "credit not landed");
+        _setBalances(V0 + A, MANAGER_RAW, MANAGER_VESTED);
+        assertTrue(_h.isEffectObserved());
+        assertFalse(_h.isActionPending(), "settled");
+    }
+
+    /// @dev Codex B1 at unit level: a counted push p = 200 (`transferredTokens` 30 -> 230), an unvested inflow of
+    ///      d = A to the manager and accrual of 300. Plain vault threshold 1200 >= 1100, raw sum
+    ///      1200 + (500 - 200 + 100) = 1600 >= 1600, vested sum 1200 + (400 - 200 + 300) = 1700 >= 1500: all the D-004
+    ///      checks hold. The vault balance net of the counted push is 1000 < 1100, so the record stays pending until
+    ///      the credit lands (1300 >= 1100 + 200).
+    function testCountedPushWithInflowAndAccrualStaysPendingUntilCredit() public {
+        _enqueueBound();
+        _openGate();
+        _rcm.setVestingData(_vestingAfterPush(200));
+        _setBalances(V0 + 200, MANAGER_RAW - 200 + A, MANAGER_VESTED - 200 + 300);
+        assertGe(_usdc.balanceOf(address(_h)), V0 + A, "plain vault threshold is met");
+        assertFalse(_h.isEffectObserved(), "counted push subtracted");
+        assertTrue(_h.isActionPending());
+
+        _setBalances(V0 + 200 + A, MANAGER_RAW - 200 + A, MANAGER_VESTED - 200 + 300);
+        assertTrue(_h.isEffectObserved(), "credit after the counted push");
+        assertFalse(_h.isActionPending());
+    }
+
+    /// @dev A counted push before the credit must not hold the gate after the credit (exact equality is enough).
+    function testCountedPushThenCreditSettles() public {
+        _enqueueBound();
+        _openGate();
+        _rcm.setVestingData(_vestingAfterPush(200));
+        _setBalances(V0 + 200 + A, MANAGER_RAW - 200, MANAGER_VESTED - 200);
+        assertTrue(_h.isEffectObserved());
+        assertFalse(_h.isActionPending());
+    }
+
+    /// @dev A push the counter does not see (e.g. a non-standard manager): 200 of vested underlying meets the vault
+    ///      threshold net of counted pushes (1200 >= 1100) but both sums stay flat, so the gate stays closed. The two
+    ///      D-004 sums are the defence in depth here.
+    function testPushMeetsThresholdButNotSums() public {
+        _enqueueBound();
+        _openGate();
+        _setBalances(V0 + 200, MANAGER_RAW - 200, MANAGER_VESTED - 200);
+        assertGe(_usdc.balanceOf(address(_h)), V0 + A, "plain vault threshold is met");
+        assertFalse(_h.isEffectObserved());
+        assertTrue(_h.isActionPending());
+    }
+
+    /// @dev Uncounted push plus an unvested inflow to the manager: only the raw sum rises.
+    function testOnlyRawSumRisesStaysPending() public {
+        _enqueueBound();
+        _openGate();
+        _setBalances(V0 + 200, MANAGER_RAW - 200 + 300, MANAGER_VESTED - 200);
+        assertFalse(_h.isEffectObserved());
+        assertTrue(_h.isActionPending());
+    }
+
+    /// @dev Uncounted push plus vesting accrual: only the vested sum rises.
+    function testOnlyVestedSumRisesStaysPending() public {
+        _enqueueBound();
+        _openGate();
+        _setBalances(V0 + 200, MANAGER_RAW - 200, MANAGER_VESTED - 200 + 300);
+        assertFalse(_h.isEffectObserved());
+        assertTrue(_h.isActionPending());
+    }
+
+    /// @dev D-034: a re-anchor of the vesting schedule inside the window (a new `updateBalanceTimestamp`, a new
+    ///      `lastUpdateBalance`, or `transferredTokens` reset below the snapshot) waits for `timeoutAt`, even with the
+    ///      credit landed and every balance condition met.
+    function testReanchorWaitsForTimeoutEvenAfterCredit() public {
+        _h.recordTimingOrder();
+        _enqueueBound();
+        _openGate();
+        _setBalances(V0 + A, MANAGER_RAW, MANAGER_VESTED);
+        assertTrue(_h.isEffectObserved(), "credit observed before any re-anchor");
+
+        VestingData memory moved = _vesting0();
+        moved.updateBalanceTimestamp = ANCHOR + 1;
+        _rcm.setVestingData(moved);
+        assertFalse(_h.isEffectObserved(), "new anchor timestamp");
+
+        moved = _vesting0();
+        moved.lastUpdateBalance = LAST_UPDATE_BALANCE + 1;
+        _rcm.setVestingData(moved);
+        assertFalse(_h.isEffectObserved(), "new lastUpdateBalance");
+
+        moved = _vesting0();
+        moved.transferredTokens = TRANSFERRED0 - 1;
+        _rcm.setVestingData(moved);
+        assertFalse(_h.isEffectObserved(), "push counter went down");
+        assertTrue(_h.isActionPending(), "pending until timeoutAt");
+
+        _reachTimeout();
+        assertFalse(_h.isActionPending(), "timeoutAt opens the gate");
+        assertTrue(_h.settleIfReady());
+        _assertBindingCleared("cleared at the timeout");
+    }
+
+    /// @dev D-034: the vault's rewards manager replaced or removed inside the window waits for `timeoutAt`.
+    function testRewardsManagerChangeWaitsForTimeout() public {
+        _enqueueBound();
+        _openGate();
+        _setBalances(V0 + A, MANAGER_RAW, MANAGER_VESTED);
+        assertTrue(_h.isEffectObserved(), "credit observed with the bound manager");
+
+        _h.setRewardsClaimManager(makeAddr("replacementManager"));
+        assertFalse(_h.isEffectObserved(), "manager replaced");
+        _h.setRewardsClaimManager(address(0));
+        assertFalse(_h.isEffectObserved(), "manager removed");
+        assertTrue(_h.isActionPending());
+
+        _reachTimeout();
+        assertFalse(_h.isActionPending(), "timeoutAt opens the gate");
+    }
+
+    /// @dev Without a rewards manager the record is not bound and the effect is the plain vault-balance threshold, as
+    ///      before IL-9529.
+    function testUnboundRecordUsesPlainVaultThreshold() public {
+        _h.setRewardsClaimManager(address(0));
+        _h.enqueueWithEffect(1e18, 20, 2, 0, address(_usdc), V0 + A, 600);
+        _openGate();
+        _setBalances(V0 + 200, MANAGER_RAW - 200, MANAGER_VESTED - 200);
+        assertTrue(_h.isEffectObserved());
+        assertFalse(_h.isActionPending());
+    }
+
+    /// @dev D-034: an unbound record of the underlying (sent without a rewards manager) is not observed while a
+    ///      manager is set, so a manager set inside the window waits for `timeoutAt`. A record of another token stays
+    ///      the plain threshold whatever the manager.
+    function testUnboundUnderlyingRecordWaitsWhileARewardsManagerIsSet() public {
+        _h.setRewardsClaimManager(address(0));
+        _h.enqueueWithEffect(1e18, 20, 2, 0, address(_usdc), V0 + A, 600);
+        _openGate();
+        _setBalances(V0 + A, MANAGER_RAW, MANAGER_VESTED);
+        assertTrue(_h.isEffectObserved(), "no manager: plain threshold");
+        _h.setRewardsClaimManager(address(_rcm));
+        assertFalse(_h.isEffectObserved(), "manager set inside the window");
+        assertTrue(_h.isActionPending());
+        _reachTimeout();
+        assertTrue(_h.settleIfReady(), "settles at timeoutAt");
+
+        HyperCoreMockUsdc other = new HyperCoreMockUsdc();
+        deal(address(other), address(_h), V0 + A);
+        _h.enqueueWithEffect(1e18, 20, 2, 0, address(other), V0 + A, 600);
+        _openGate();
+        assertTrue(_h.isEffectObserved(), "another token: plain threshold with a manager set");
+    }
+
+    /// @dev A gap 3: the manager reads are not guarded. Before `timeoutAt` a reverting `getVestingData()` or
+    ///      `balanceOf()` reverts the predicate; at `timeoutAt` the predicate is true without reading the manager and
+    ///      `settleIfReady` clears every rewards field.
+    function testRevertingManagerReadsRevertBeforeTimeoutAndAreSkippedAtTimeout() public {
+        _h.recordTimingOrder();
+        for (uint256 i; i < 2; ++i) {
+            _setBalances(V0, MANAGER_RAW, MANAGER_VESTED);
+            _enqueueBound();
+            _openGate();
+            _setBalances(V0 + A, MANAGER_RAW, MANAGER_VESTED);
+            _rcm.setReverts(i == 1, i == 0);
+
+            vm.expectRevert(
+                HyperCorePendingLibMockRewardsManager.HyperCorePendingLibMockRewardsManagerReverted.selector
+            );
+            _h.isActionSettled();
+
+            _reachTimeout();
+            assertTrue(_h.isActionSettled(), "timeoutAt: no manager read");
+            assertTrue(_h.settleIfReady());
+            _assertBindingCleared("cleared at the timeout");
+            _rcm.setReverts(false, false);
+        }
+    }
+
+    /// @dev Codex #10: a bound record that satisfied its condition but was never cleared must not leak the binding
+    ///      into the next record of any kind; `lastOrderL1Block` is not touched by the reset.
+    function testNextEnqueueZeroesBindingOfSettledUnclearedRecord() public {
+        _h.recordTimingOrder();
+        for (uint256 kind; kind < 3; ++kind) {
+            _setBalances(V0, MANAGER_RAW, MANAGER_VESTED);
+            _enqueueBound();
+            _openGate();
+            _setBalances(V0 + A, MANAGER_RAW, MANAGER_VESTED);
+            assertFalse(_h.isActionPending(), "bound record settled without clear");
+            (address manager, , ) = _h.rewardsFields();
+            assertEq(manager, address(_rcm), "binding still stored (no clear)");
+
+            if (kind == 0) {
+                _h.enqueueWithEffect(1e18, 20, 2, 0, address(_usdc), 1, 600); // EVM balance, no bind
+            } else if (kind == 1) {
+                _h.enqueueWithEffect(1e18, 20, 1, 0, address(0), 1, 600); // Core spot
+            } else {
+                _h.enqueue(1e18, 20, keccak256("timing")); // timing only
+            }
+
+            _assertBindingCleared("binding zeroed by the next enqueue");
+            assertEq(_h.lastOrderL1Block(), 100, "lastOrderL1Block untouched");
+            // move past the window and the effect timeout so the next iteration can enqueue
+            vm.warp(block.timestamp + 1000);
+            _core.setL1BlockNumber(_core.getL1BlockNumber() + 1);
+            assertFalse(_h.isActionPending());
+        }
+    }
+
+    function testClearDeletesBinding() public {
+        _h.recordTimingOrder();
+        _enqueueBound();
+        _openGate();
+        _setBalances(V0 + A, MANAGER_RAW, MANAGER_VESTED);
+        assertTrue(_h.settleIfReady());
+        _assertBindingCleared("cleared by settleIfReady");
     }
 }

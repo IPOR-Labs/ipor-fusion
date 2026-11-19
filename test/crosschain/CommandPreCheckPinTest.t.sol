@@ -225,6 +225,7 @@ contract CcipPreCheckPinTest is ColdGas {
                 rescueDelay: 3 days,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             })
@@ -395,9 +396,10 @@ contract CcipPreCheckPinTest is ColdGas {
     }
 
     /// @dev `laneGasFor(floor, words of the maximum UPDATE_VAULTS, no 1/64)`: the CCIP stored data is
-    ///      `(type, command, extra)` = 3 head words + 7 command words + 1 + (3 head + 1 length + 32 vaults) extra words.
+    ///      `(type, command, extra)` = 3 head words + 7 command words + 1 + (4 head + 1 length + 32 vaults + 1 floors
+    ///      length) extra words (IL-9629: the `extra` carries an empty `SweepFloor[]`; each floor adds two words).
     function _documentedRouteMinimum() internal pure returns (uint256) {
-        uint256 words = 3 + 7 + 1 + 3 + 1 + CrosschainConstants.MAX_ALLOWED_VAULTS;
+        uint256 words = 3 + 7 + 1 + 4 + 1 + CrosschainConstants.MAX_ALLOWED_VAULTS + 1;
         return CrosschainMessages.laneGasFor(CrosschainConstants.COMMAND_EXECUTION_MIN_GAS, words, false);
     }
 }

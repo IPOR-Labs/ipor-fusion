@@ -18,6 +18,7 @@ import {RewardsClaimManager} from "../../managers/rewards/RewardsClaimManager.so
 import {IporFusionAccessManager} from "../../managers/access/IporFusionAccessManager.sol";
 import {FeeManager} from "../../managers/fee/FeeManager.sol";
 import {WithdrawManager} from "../../managers/withdraw/WithdrawManager.sol";
+import {IWithdrawManagerReleaseFunds} from "../../managers/withdraw/IWithdrawManagerReleaseFunds.sol";
 import {ContextClient} from "../../managers/context/ContextClient.sol";
 import {ContextManager} from "../../managers/context/ContextManager.sol";
 import {PriceOracleMiddlewareManager} from "../../managers/price/PriceOracleMiddlewareManager.sol";
@@ -92,9 +93,9 @@ library IporFusionAccessManagerInitializerLibV1 {
     error InvalidAddress();
 
     uint256 private constant ADMIN_ROLES_ARRAY_LENGTH = 20;
-    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 43;
+    uint256 private constant ROLES_TO_FUNCTION_INITIAL_ARRAY_LENGTH = 45;
     uint256 private constant ROLES_TO_FUNCTION_CLAIM_MANAGER = 8;
-    uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 7;
+    uint256 private constant ROLES_TO_FUNCTION_WITHDRAW_MANAGER = 8;
     uint256 private constant ROLES_TO_FUNCTION_FEE_MANAGER = 6;
     uint256 private constant ROLES_TO_FUNCTION_CONTEXT_MANAGER = 2 + 2 + 2 + 2 + 2; // 2 for context manager functions, 2 for plasmaVault technical function, +2 for fee manager functions, 2 for withdraw manager functions + 2 for rewards claim manager functions
     uint256 private constant ROLES_TO_FUNCTION_PRICE_ORACLE_MIDDLEWARE_MANAGER = 9;
@@ -375,6 +376,13 @@ library IporFusionAccessManagerInitializerLibV1 {
 
         rolesToFunction[_next(iterator)] = RoleToFunction({
             target: plasmaVaultAddress_.plasmaVault,
+            roleId: Roles.ALPHA_ROLE,
+            functionSelector: IPlasmaVault.realizeManagementFee.selector,
+            minimalExecutionDelay: 0
+        });
+
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.plasmaVault,
             roleId: depositAndMintWithPermitRole,
             functionSelector: IERC4626.deposit.selector,
             minimalExecutionDelay: 0
@@ -484,6 +492,14 @@ library IporFusionAccessManagerInitializerLibV1 {
             target: plasmaVaultAddress_.plasmaVault,
             roleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
             functionSelector: PlasmaVaultGovernance.configurePerformanceFee.selector,
+            minimalExecutionDelay: 0
+        });
+
+        /// @dev IL-9632: FeeManager.updatePerformanceFee crystallizes the performance fee at the old rate first
+        rolesToFunction[_next(iterator)] = RoleToFunction({
+            target: plasmaVaultAddress_.plasmaVault,
+            roleId: Roles.TECH_PERFORMANCE_FEE_MANAGER_ROLE,
+            functionSelector: IPlasmaVault.realizePerformanceFee.selector,
             minimalExecutionDelay: 0
         });
 
@@ -733,7 +749,14 @@ library IporFusionAccessManagerInitializerLibV1 {
             rolesToFunction[_next(iterator)] = RoleToFunction({
                 target: plasmaVaultAddress_.withdrawManager,
                 roleId: Roles.ALPHA_ROLE,
-                functionSelector: WithdrawManager.releaseFunds.selector,
+                // Two overloads exist, so `WithdrawManager.releaseFunds.selector` is ambiguous (IL-9653)
+                functionSelector: bytes4(keccak256("releaseFunds(uint256,uint256)")),
+                minimalExecutionDelay: 0
+            });
+            rolesToFunction[_next(iterator)] = RoleToFunction({
+                target: plasmaVaultAddress_.withdrawManager,
+                roleId: Roles.ALPHA_ROLE,
+                functionSelector: IWithdrawManagerReleaseFunds.releaseFunds.selector,
                 minimalExecutionDelay: 0
             });
             rolesToFunction[_next(iterator)] = RoleToFunction({

@@ -19,7 +19,7 @@ import {
     CommandStatus,
     CrosschainConstants
 } from "../lib/CrosschainConstants.sol";
-import {CrosschainMessages, Command, OutboundTransfer} from "../lib/CrosschainMessages.sol";
+import {CrosschainMessages, Command, OutboundTransfer, SweepFloor} from "../lib/CrosschainMessages.sol";
 import {
     StargateExecutorState,
     ActiveCommand,
@@ -169,6 +169,12 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
     ///         shared decimals. Mirrors `CcipCrosschainExecutor.attestationAnchorPrincipal`.
     function attestationAnchorPrincipal(uint256 chainId_) external view returns (uint256) {
         return _s.anchorPrincipal[chainId_];
+    }
+
+    /// @notice The attestation anchor band in basis points this executor was constructed with (IL-9720).
+    ///         Mirrors `CcipCrosschainExecutor.attestationAnchorBandBps`.
+    function attestationAnchorBandBps() external view returns (uint256) {
+        return _s.anchorBandBps;
     }
 
     /// @notice Frontier-repair latch per chain: set by ADVANCE_STATE_FRONTIER unless a block raised for another
@@ -467,11 +473,17 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
         // The relative big-change step must be nonzero (zero admits only zero-delta approvals and pins NAV)
         // and must not exceed the anchor band, so that a single compliant relative step from `anchorPrincipal`
         // can never be rejected by the band alone. This is a deliberate tightening, not the removal of dead
-        // configuration: the band confines `newSettled` to [0.8P, 1.2P], which still permits a 50% relative
+        // configuration: the band (2_000 bps at the reference value) confines `newSettled` to [0.8P, 1.2P], which still permits a 50% relative
         // step, so the relative gate keeps binding on its own below 5_000 bps (at 5_000 the band alone binds).
-        if (p_.bigChangeBps == 0 || p_.bigChangeBps > CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS) {
+        // The band is a per-executor value (IL-9720):
+        // `0 < bigChangeBps <= anchorBandBps <= MAX_ATTESTATION_ANCHOR_BAND_BPS`.
+        if (p_.bigChangeBps == 0 || p_.bigChangeBps > p_.anchorBandBps) {
             revert CrosschainErrors.InvalidBigChangeBps(p_.bigChangeBps);
         }
+        if (p_.anchorBandBps > CrosschainConstants.MAX_ATTESTATION_ANCHOR_BAND_BPS) {
+            revert CrosschainErrors.InvalidAnchorBandBps(p_.anchorBandBps);
+        }
+        _s.anchorBandBps = p_.anchorBandBps;
         // Zero staleness windows would block NAV permanently; windows above the ceiling make the fail-closed
         // staleness gates unreachable. The endpoint is validated in the transport base.
         if (p_.stalenessMax == 0 || p_.transferStalenessMax == 0) revert CrosschainErrors.InvalidTimingParameter();
@@ -479,6 +491,14 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
             p_.stalenessMax > CrosschainConstants.MAX_STALENESS_WINDOW
                 || p_.transferStalenessMax > CrosschainConstants.MAX_STALENESS_WINDOW
         ) revert CrosschainErrors.InvalidTimingParameter();
+        // The same immutable value stamps every `RETURN_REQUEST` deadline; below the slowest two-leg recall it
+        // yields recalls that always expire (IL-9663).
+        if (p_.transferStalenessMax < CrosschainConstants.MIN_TRANSFER_STALENESS_WINDOW) {
+            revert CrosschainErrors.TransferStalenessBelowMinimum(
+                p_.transferStalenessMax,
+                CrosschainConstants.MIN_TRANSFER_STALENESS_WINDOW
+            );
+        }
         // The mandated minimum approval window must fit inside the freshness window, otherwise every aged
         // observation would be unapprovable and the window guarantee would be a dead letter (V2-02).
         if (p_.stalenessMax < CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW) {
@@ -490,8 +510,14 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
         // approval still lands inside the window only on the knife-edge where the observation timestamp equals
         // the approval block timestamp (freshness is `>` against `lastApprovedObservedAt`, cadence is `<`
         // against `lastApprovalAt`), so any real observation lag freezes NAV. Reject the endpoint too — the
-        // value is immutable and cannot be corrected afterwards.
-        if (p_.minUpdateInterval == 0 || p_.minUpdateInterval >= p_.stalenessMax) {
+        // value is immutable and cannot be corrected afterwards. IL-9664: an observation is approvable only while its
+        // age is at most `stalenessMax - minUpdateInterval`, so that difference must leave at least the documented
+        // `MIN_PROPOSAL_APPROVAL_WINDOW`.
+        if (
+            p_.minUpdateInterval == 0 ||
+            p_.minUpdateInterval >= p_.stalenessMax ||
+            p_.stalenessMax - p_.minUpdateInterval < CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW
+        ) {
             revert CrosschainErrors.InvalidTimingParameter();
         }
         // The deployment TTL is consumed by the factory per ticket (see DEPLOYMENT_TTL); both ends are unsafe.
@@ -558,18 +584,11 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
         if (pendingRequestByChain[dstChainId_] != 0) revert CrosschainErrors.DispatcherRequestPending(dstChainId_);
         StargateExecutorAccountingLib.validateVaultShape(plasmaVaults_);
 
-        StargateExecutorDeploymentLib.request(
+        StargateExecutorDeploymentLib.requestFromSelf(
             pendingRequestByChain,
             _deploymentRequests,
             _factory(),
-            StargateExecutorDeploymentLib.RequestParams({
-                assetId: ASSET_ID,
-                admin: ADMIN,
-                guardian: RESCUE_GUARDIAN,
-                rescueDelay: RESCUE_DELAY,
-                srcChainId: LOCAL_CHAIN_ID,
-                dstChainId: dstChainId_
-            }),
+            dstChainId_,
             plasmaVaults_
         );
     }
@@ -585,10 +604,25 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
 
     /// @inheritdoc ICrosschainExecutor
     function updatePlasmaVaults(uint256 dstChainId_, address[] calldata vaults_) external override onlyManager {
+        _checkUpdatePlasmaVaults(dstChainId_, vaults_);
+        _sendUpdateVaults(dstChainId_, vaults_, new SweepFloor[](0));
+    }
+
+    /// @inheritdoc ICrosschainExecutor
+    function updatePlasmaVaultsWithSweepFloors(
+        uint256 dstChainId_,
+        address[] calldata vaults_,
+        SweepFloor[] calldata floors_
+    ) external override onlyManager {
+        _checkUpdatePlasmaVaults(dstChainId_, vaults_);
+        _sendUpdateVaults(dstChainId_, vaults_, floors_);
+    }
+
+    /// @dev Checks shared by both manager update paths, run before anything is copied to memory (EIP-170).
+    function _checkUpdatePlasmaVaults(uint256 dstChainId_, address[] calldata vaults_) private view {
         _requireReady(dstChainId_);
         if (_s.activeCommand[dstChainId_].active) revert CrosschainErrors.ActiveCommandExists(dstChainId_);
         StargateExecutorAccountingLib.validateVaultShape(vaults_);
-        _sendUpdateVaults(dstChainId_, vaults_);
     }
 
     /// @inheritdoc ICrosschainExecutor
@@ -674,7 +708,7 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
         (bytes memory payload, bytes32 commandId, uint64 sequence, bytes memory extraOptions) =
             _s.buildBusinessCommand(dstChainId_, cmd_.action, cmd_.actionData, ++_commandNonce, cmd_.minExecutionGas);
         _sendLzMessage(dstChainId_, payload, MSG_OPTION_TYPE, extraOptions);
-        emit CommandSent(dstChainId_, commandId, sequence, cmd_.action);
+        _emitCommand(0, dstChainId_, commandId, sequence, cmd_.action);
     }
 
     /// @notice Retry a FAILED business command on the recall lane (same id, dispatcher re-executes).
@@ -698,7 +732,7 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
     function _retry(uint256 dstChainId_, uint256 budget_) private {
         (bytes memory payload, bytes32 commandId, bytes memory extraOptions) = _s.buildRetry(dstChainId_, budget_);
         _sendLzMessage(dstChainId_, payload, MSG_OPTION_TYPE, extraOptions);
-        emit CommandRetried(dstChainId_, commandId);
+        _emitCommand(1, dstChainId_, commandId, 0, 0);
     }
 
     /// @notice Cancel a FAILED business command on the recall lane; frees the slot on the ACK.
@@ -708,7 +742,7 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
     function cancelCommand(uint256 dstChainId_) external onlyManager {
         (bytes memory payload, bytes32 commandId) = _s.buildCancel(dstChainId_);
         _sendLzMessage(dstChainId_, payload, MSG_OPTION_TYPE, "");
-        emit CommandCancelRequested(dstChainId_, commandId);
+        _emitCommand(2, dstChainId_, commandId, 0, 0);
     }
 
     // ============================================================
@@ -824,7 +858,7 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
         // Auto-send the persisted initial allowlist as the first sequenced UPDATE_VAULTS command; the
         // business-command slot is necessarily free at this moment. If quoting/payment fails, this
         // reverts and the factory ACK delivery is retried.
-        _sendUpdateVaults(dstChainId_, vaults);
+        _sendUpdateVaults(dstChainId_, vaults, new SweepFloor[](0));
     }
 
     /// @inheritdoc ICrosschainExecutor
@@ -860,7 +894,9 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
     ///        `block.timestamp - STALENESS_MAX <= observedRemoteTimestamp_ <= block.timestamp` (and non-zero).
     ///        NAV is stale right after execute exactly when `executeTime - observedRemoteTimestamp_ >
     ///        STALENESS_MAX`: an observation older than `STALENESS_MAX - RESCUE_DELAY` at schedule is sufficient
-    ///        but not necessary (a late execution also ages it), and always stale if `RESCUE_DELAY >= STALENESS_MAX`.
+    ///        but not necessary (a late execution also ages it), and always stale for a non-zero
+    ///        force-set if `RESCUE_DELAY >= STALENESS_MAX`. A force-set to exactly zero is never stale (the freshness
+    ///        gate runs only for a non-zero settled bucket) and reopens NAV at execute under any settings.
     /// @param allowOlderThanApproved_ IL-8648 R1: `false` (the default choice) makes execute revert
     ///        `ForceSetOlderThanApproved` when `lastApprovedObservedAt` is then newer than `observedRemoteTimestamp_`
     ///        (e.g. an ordinary approval of a fresher observation landed during the delay), so the NAV freshness
@@ -1009,6 +1045,12 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
         _s.handleInboundMessage(msgType_, srcChainId_, data_);
     }
 
+    /// @dev Emits `CommandSent` (kind 0), `CommandRetried` (1) or `CommandCancelRequested` (2) through the linked
+    ///      command library, after the send (EIP-170).
+    function _emitCommand(uint8 kind_, uint256 chainId_, bytes32 commandId_, uint64 sequence_, uint8 action_) private {
+        StargateExecutorCommandLib.emitCommandEvent(kind_, chainId_, commandId_, sequence_, action_);
+    }
+
     /// @dev Pre-call ASSET snapshot for the non-worsening floor (IL-8640).
     function _beforeRescueExecuted() internal view override returns (uint256) {
         return IERC20(ASSET).balanceOf(address(this));
@@ -1027,12 +1069,17 @@ contract StargateCrosschainExecutor is StargateOAppBase, ICrosschainExecutor, IS
     // Resident internal helpers
     // ============================================================
 
-    /// @dev Allocate a sequenced UPDATE_VAULTS command and send it (shared by manager + factory callback).
-    function _sendUpdateVaults(uint256 chainId_, address[] memory vaults_) private {
-        (bytes memory payload, bytes32 commandId, uint64 sequence) =
-            _s.buildUpdateVaults(chainId_, vaults_, ++_commandNonce);
+    /// @dev Allocate a sequenced UPDATE_VAULTS command and send it (shared by manager + factory callback; the
+    ///      floors are validated in the library, IL-9629).
+    function _sendUpdateVaults(uint256 chainId_, address[] memory vaults_, SweepFloor[] memory floors_) private {
+        (bytes memory payload, bytes32 commandId, uint64 sequence) = _s.buildUpdateVaults(
+            chainId_,
+            vaults_,
+            floors_,
+            ++_commandNonce
+        );
         _sendLzMessage(chainId_, payload, MSG_OPTION_TYPE, "");
-        emit CommandSent(chainId_, commandId, sequence, UPDATE_VAULTS_COMMAND_ACTION);
+        _emitCommand(0, chainId_, commandId, sequence, UPDATE_VAULTS_COMMAND_ACTION);
     }
 
     /// @dev The `hasDispatcher` gate in one place: folded from the four sites that carried it inline

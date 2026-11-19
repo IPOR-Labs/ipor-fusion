@@ -16,6 +16,11 @@ import {IShareToken} from "./ext/IShareToken.sol";
 /// @notice Fuse for calculating the balance of assets in Silo V2 protocol
 /// @dev This fuse calculates the total balance of assets held in Silo V2 markets by the PlasmaVault,
 ///      accounting for both positive balances (protected and collateral shares) and negative balances (debt shares).
+///      Each SiloConfig (one isolated market made of two silos) is valued on its own: the signed value of its two
+///      silos is floored at zero and only then added to the other markets, so the shortfall of one underwater market
+///      is never charged to a healthy one and a negative net never reverts. Simplification: the vault's deposit in
+///      the debt silo of the same market is netted inside the same SiloConfig unit (it is not counted in full
+///      outside the market floor).
 contract SiloV2BalanceFuse is IMarketBalanceFuse {
     using SafeCast for int256;
 
@@ -41,19 +46,22 @@ contract SiloV2BalanceFuse is IMarketBalanceFuse {
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         address plasmaVault = address(this);
 
-        int256 totalBalance = 0;
+        uint256 totalBalance;
 
         for (uint256 i; i < len; ++i) {
             address siloConfig = PlasmaVaultConfigLib.bytes32ToAddress(siloConfigs[i]);
             (address silo0, address silo1) = ISiloConfig(siloConfig).getSilos();
 
-            totalBalance += _calculateSiloBalance(plasmaVault, siloConfig, silo0, priceOracleMiddleware);
-            totalBalance += _calculateSiloBalance(plasmaVault, siloConfig, silo1, priceOracleMiddleware);
+            /// @dev Floor each isolated market (SiloConfig) at zero before summing the markets
+            int256 marketBalance = _calculateSiloBalance(plasmaVault, siloConfig, silo0, priceOracleMiddleware) +
+                _calculateSiloBalance(plasmaVault, siloConfig, silo1, priceOracleMiddleware);
+
+            if (marketBalance > 0) {
+                totalBalance += marketBalance.toUint256();
+            }
         }
 
-        balance = totalBalance > 0 ? totalBalance.toUint256() : 0;
-
-        return balance;
+        balance = totalBalance;
     }
 
     function _calculateSiloBalance(

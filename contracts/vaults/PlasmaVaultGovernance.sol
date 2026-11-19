@@ -13,6 +13,8 @@ import {CallbackHandlerLib} from "../libraries/CallbackHandlerLib.sol";
 import {IPlasmaVaultGovernance} from "../interfaces/IPlasmaVaultGovernance.sol";
 import {IIporFusionAccessManager} from "../interfaces/IIporFusionAccessManager.sol";
 import {PreHooksLib} from "../handlers/pre_hooks/PreHooksLib.sol";
+import {IporFusionMarkets} from "../libraries/IporFusionMarkets.sol";
+import {HyperCoreHookWiringLib} from "../fuses/hypercore/lib/HyperCoreHookWiringLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IPlasmaVault} from "../interfaces/IPlasmaVault.sol";
@@ -817,6 +819,9 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     ///
     /// @param marketId_ The ID of the market
     /// @param fuse_ The address of the fuse to remove
+    /// @dev Before removing, take the market off the instant withdrawal list and out of every dependency graph that
+    /// names it; the removal does not touch them, and a graph that still names the market makes each refresh that
+    /// expands to it revert MarketWithoutBalanceFuse (IL-8312).
     /// @custom:access FUSE_MANAGER_ROLE restricted
     /// @custom:events Emits BalanceFuseRemoved when successful
     function removeBalanceFuse(uint256 marketId_, address fuse_) external override restricted {
@@ -848,8 +853,12 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     ///
     /// Security Considerations:
     /// - Only callable by _FUSE_MANAGER
-    /// - Validates substrate format
-    /// - Prevents duplicate grants
+    /// - Reverts with PlasmaVaultConfigLib.MarketSubstrateDuplicate when the same bytes32 value appears twice in the
+    ///   list (IL-9642): balance fuses that walk the list count every entry, so a repeated substrate would count its
+    ///   position more than once
+    /// - Otherwise stores the list verbatim: neither the substrate format nor non-canonical aliases (two encodings of
+    ///   one position, for example an address with dirty upper bits) are checked (IL-8029, IL-8290); each position
+    ///   must be encoded exactly once by the configurator
     /// - Critical for market access control
     ///
     /// Related Components:
@@ -861,7 +870,7 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// @param marketId_ The ID of the market
     /// @param substrates_ Array of substrates to grant
     /// @custom:access _FUSE_MANAGER restricted
-    /// @custom:events Emits MarketSubstrateGranted for each substrate
+    /// @custom:events Emits MarketSubstratesGranted once with the whole list
     function grantMarketSubstrates(uint256 marketId_, bytes32[] calldata substrates_) external override restricted {
         PlasmaVaultConfigLib.grantMarketSubstrates(marketId_, substrates_);
     }
@@ -905,6 +914,9 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Withdrawal Validation
     /// - Protocol Integration Layer
     ///
+    /// @dev The ids are not validated (only the array lengths are compared). A dependency on a market without a
+    /// balance fuse makes every refresh that expands the graph to it revert MarketWithoutBalanceFuse until the graph
+    /// is rewritten (fail-closed by design, IL-8312). Cycles are tolerated by the expansion.
     /// @param marketIds_ Array of market IDs to update
     /// @param dependencies_ Array of dependency arrays for each market
     /// @custom:access FUSE_MANAGER_ROLE restricted
@@ -961,7 +973,20 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Parameter Management
     /// - Liquidity Optimization
     ///
+    /// Fuse Support:
+    /// - Support of each fuse (FusesLib.isFuseSupported) is validated only when the list is written
+    /// - Removing a fuse later with removeFuses does not touch this list; the withdrawal path skips entries
+    ///   of fuses that are no longer supported, but the list still has to be rewritten to drop them
+    ///
     /// @param fuses_ Array of instant withdrawal fuse configurations
+    /// @dev Exit costs (IL-9407): a withdraw or redeem that exceeds idle assets pulls the missing amount from the
+    /// markets listed here, refreshes them and prices the payout on the post-exit total assets, so any exit fee,
+    /// slippage or rounding loss of those markets lowers the share price for ALL holders, the exiting account included
+    /// (it bears only its own fraction). The redeem path also pulls up to 2% more than needed; that surplus stays in
+    /// the vault as cash, but the exit cost paid on it is shared as well. Put only markets that exit at their booked
+    /// value on this list. A market with exit costs (an ERC-4626 vault with a withdrawal fee, a Yield Basis or LitePSM
+    /// exit with a slippage or fee tolerance) belongs here only as an explicit decision with a slippage limit set in
+    /// the entry's params.
     /// @custom:access CONFIG_INSTANT_WITHDRAWAL_FUSES_ROLE restricted
     /// @custom:security Critical for withdrawal path security
     function configureInstantWithdrawalFuses(
@@ -1052,6 +1077,15 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     ///   1. Update moved element mapping
     ///   2. Clear removed mapping
     ///   3. Pop array
+    ///
+    /// Instant Withdrawal List:
+    /// - Does not modify the instant withdrawal fuses list or its stored parameters
+    /// - An entry of a removed fuse stays in the list but is skipped by the withdrawal path
+    ///   (PlasmaVaultMarketsLib.withdrawFromMarkets checks FusesLib.isFuseSupported per entry)
+    /// - The stale entry occupies a list position until the list is rewritten
+    /// - Recommended order when replacing a fuse: addFuses(new), rewrite the list with
+    ///   configureInstantWithdrawalFuses (full list, same order, with params), then removeFuses(old)
+    /// - Vaults running a PlasmaVaultMarketsLib built before this check keep calling the stale entry
     ///
     /// @param fuses_ Array of fuse addresses to remove
     /// @custom:access FUSE_MANAGER_ROLE restricted
@@ -1168,6 +1202,13 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     ///
     /// @param feeAccount_ Address to receive performance fees
     /// @param feeInPercentage_ Fee percentage with 2 decimals (100 = 1%)
+    /// @dev Rate changes are not retroactive (IL-9632, Olympix L01) when they go through
+    ///      FeeManager.updatePerformanceFee: that call first crystallizes the performance fee at the old rate
+    ///      (PlasmaVault.realizePerformanceFee) and harvests the fee account to the old recipients, and only then
+    ///      calls this setter. This setter itself writes the new rate without crystallizing: a FeeManager built
+    ///      before IL-9632, or another holder of TECH_PERFORMANCE_FEE_MANAGER_ROLE calling it directly, applies the
+    ///      new rate to the gain above the high-water mark that is not crystallized yet. The crystallization prices
+    ///      the stored market balances, so refresh the markets before the change in the same batch.
     /// @custom:access TECH_PERFORMANCE_FEE_MANAGER_ROLE restricted
     /// @custom:security Critical for vault revenue model
     function configurePerformanceFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
@@ -1219,13 +1260,16 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// is moved into the pending management fee and the fee clock restarts, so a rate change never applies
     /// retroactively. The pending fee is minted by the next fee realization (deposit, mint, withdraw, redeem)
     /// to the management fee account and is then split by the recipient split in force at that moment.
-    /// @dev Operational rule: a recipient change sends the old period to the new split. With a new total of 0
-    /// (possible only when IPOR_DAO_MANAGEMENT_FEE is 0) FeeManager.harvestManagementFee returns early, so the
-    /// shares wait in the management fee account until a non-zero fee is configured and then go to the recipients
-    /// in force at that time. To pay the old period to the old recipients, realize the fee first: in the same
-    /// transaction batch, before FeeManager.updateManagementFee, make any deposit, mint, withdraw or redeem.
-    /// Shares already waiting can be released in one block with updateManagementFee([recipient, 1]),
-    /// harvestManagementFee(), updateManagementFee([]) (no new accrual in the same block).
+    /// @dev Operational rule (IL-9431): FeeManager.updateManagementFee reverts with FeeManagerUnrealizedManagementFee
+    /// while the vault's unrealized management fee would still mint fee shares, so the old period is always split by
+    /// the old recipients. To change the fee, realize it first: in the same transaction batch, before
+    /// FeeManager.updateManagementFee, make any deposit, mint, withdraw or redeem. A fee changed without that gate
+    /// (a direct call, or a FeeManager built before IL-9431) sends the old period to the new split.
+    /// @dev With a new total of 0 (possible only when IPOR_DAO_MANAGEMENT_FEE is 0)
+    /// FeeManager.harvestManagementFee returns early, so the shares wait in the management fee account until a
+    /// non-zero fee is configured and then go to the recipients in force at that time. Shares already waiting can be
+    /// released in one block with updateManagementFee([recipient, 1]), harvestManagementFee(),
+    /// updateManagementFee([]) (no new accrual in the same block).
     /// @custom:access TECH_MANAGEMENT_FEE_MANAGER_ROLE (held by FeeManager) restricted
     /// @custom:security Critical for vault revenue model
     function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external override restricted {
@@ -1600,10 +1644,10 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// @dev Configures timelock delays for role-based operations through IporFusionAccessManager
     ///
     /// Timelock System:
-    /// - Sets minimum delay between scheduling and execution
+    /// - Sets a per-role floor for the execution delay of NEW grants
     /// - Role-specific delay requirements
     /// - Critical for governance security
-    /// - Enforces operation timelocks
+    /// - The floor is checked only when a role is granted; it is not enforced at call time
     ///
     /// Configuration Components:
     /// - rolesIds_: Array of role identifiers
@@ -1635,6 +1679,16 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Access Control System
     /// - Governance Framework
     ///
+    /// @dev Existing role holders keep the execution delay they were granted with (0 for every factory grant) until
+    /// the role is granted to them again with a delay at or above the floor. The delay in force for a holder is read
+    /// with getAccess(roleId, account) on the access manager; getMinimalExecutionDelayForRole(roleId) returns only
+    /// the floor for future grants. Raise the floor first, then re-grant each holder with the new delay (IL-7607).
+    /// @dev Roles mapped to the access manager's own custom selectors, GUARDIAN_ROLE in particular (`updateTargetClosed`),
+    /// must be granted with execution delay 0 and must keep a floor of 0: for a holder with a non-zero delay the access
+    /// manager requires a scheduled operation, and OpenZeppelin `schedule()` rejects a custom selector of the manager
+    /// itself, so a delayed guardian can never pause or reopen a target (IL-8384, IL-8394, IL-9658). Do not raise the
+    /// floor of GUARDIAN_ROLE; if the vault is closed and no guardian with delay 0 remains, this function runs on the
+    /// closed vault and a 0-delay guardian cannot be re-granted while the floor is above 0.
     /// @param rolesIds_ Array of role IDs to configure
     /// @param delays_ Array of corresponding minimum delays
     /// @custom:access OWNER_ROLE restricted
@@ -1709,8 +1763,9 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// Exemption Semantics:
     /// - An exempt account is not subject to the redemption delay when withdrawing, redeeming, transferring or
     ///   transferring from
-    /// - BOTH parties are checked (the caller and the share owner / from): an exempt operator cannot move the shares
-    ///   of a locked owner, and a non-exempt operator of an exempt owner is still locked on its own deposit
+    /// - Only the share owner / from is checked for the lock (IL-9705): an exempt operator cannot move the shares
+    ///   of a locked owner, and a non-exempt operator of an exempt or unlocked owner is not blocked by its own
+    ///   deposit lock; the caller passes only the role check (new vaults only, existing vaults keep the old check)
     /// - Revoking an exemption re-locks the account from its own last deposit
     /// - Reverts with Errors.WrongAddress if any account is the zero address
     /// - The access manager emits RedemptionDelayExemptionUpdated(address,bool) for every address, also when the
@@ -1770,6 +1825,8 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Only callable by ATOMIST_ROLE
     /// - Validates array length matching
     /// - Prevents invalid selector configurations
+    /// - On a vault with a market-55 (HyperCore) balance fuse, reverts unless the six share-priced selectors stay
+    ///   wired to one HyperCore CapitalFlow hook after the call (IL-9677, see below)
     /// - Critical for execution security
     ///
     /// Integration Context:
@@ -1784,6 +1841,26 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
     /// - Vault Operations
     /// - Security Framework
     ///
+    /// @dev Never register a reverting hook (for example `PauseFunctionPreHook`, a fail-closed hook or an address
+    /// without code) on `setPreHookImplementations` itself or on another repair selector such as `grantMarketSubstrates`:
+    /// governance calls run the pre-hook of the called selector, so such a hook blocks every later hook change
+    /// (IL-8258, IL-9633). The core library does not guard against it.
+    /// @dev HyperCore wiring invariant (IL-9677): while the vault has a balance fuse for market 55
+    /// (`IporFusionMarkets.HYPERCORE`), the state after the call must have the six share-priced selectors (`deposit`,
+    /// `depositWithPermit`, `mint`, `withdraw`, `redeem`, `redeemFromRequest`) pointing at one hook that exposes the
+    /// CapitalFlow marker `HYPERCORE_CAPITAL_FLOW_PRE_HOOK_ID()` (`HyperCoreCapitalFlowPreHook` or
+    /// `HyperCoreCapitalFlowFullRefreshPreHook`); otherwise the call reverts with
+    /// `HyperCoreHookWiringLib.HyperCorePreHooksNotWired(selector, implementation)` for the first selector that breaks
+    /// it. The check runs once, after the whole batch: moving all six selectors to another marker hook in one call
+    /// passes, while removing, replacing or pausing (`PauseFunctionPreHook`) any of them reverts, also through a
+    /// duplicate selector in the batch. Unwiring HyperCore therefore needs `removeBalanceFuse(55)` first, which
+    /// reverts with `BalanceFuseNotReadyToRemove` while the market-55 position is above dust. Adding the market-55
+    /// balance fuse is not gated, so fuse and hooks can be configured in either order: the HyperCore action fuses keep
+    /// capital out of Core until the six selectors are wired, and on a vault with market 55 whose selectors are not
+    /// wired every hook change must wire all six in the same call. Selectors other than the six (for example
+    /// `execute` and `updateMarketsBalances`) are not checked. The hooks still do not check their own wiring (IL-8529).
+    /// Hooks V2 (IL-9490) replaces this setter and `PreHooksLib`: its setter must enforce the same invariant (with
+    /// `HyperCoreHookWiringLibV2`), otherwise the guard is lost.
     /// @param selectors_ Array of function selectors to configure
     /// @param implementations_ Array of pre-hook implementation addresses
     /// @param substrates_ Array of substrate configurations for each hook
@@ -1795,6 +1872,9 @@ abstract contract PlasmaVaultGovernance is IPlasmaVaultGovernance, AccessManaged
         bytes32[][] calldata substrates_
     ) external restricted {
         PreHooksLib.setPreHookImplementations(selectors_, implementations_, substrates_);
+        if (FusesLib.getBalanceFuse(IporFusionMarkets.HYPERCORE) != address(0)) {
+            HyperCoreHookWiringLib.requireCapitalFlowWired();
+        }
     }
 
     function getPreHookSelectors() external view returns (bytes4[] memory) {

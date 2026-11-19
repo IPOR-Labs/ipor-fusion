@@ -35,6 +35,20 @@ interface IPlasmaVault {
     /// @dev Method is granted only to the Alpha
     function execute(FuseAction[] calldata calls_) external;
 
+    /// @notice Realizes the accrued management fee now: mints the management fee shares to the fee account
+    /// @dev IL-8870. The same realization that deposit, mint, withdraw and redeem perform first. The share price
+    ///      (convertToAssets) already nets the accrued fee, so it is the same before and after this call.
+    ///      Method is granted to the Alpha (ALPHA_ROLE)
+    /// @return feeShares The number of management fee shares minted, 0 when nothing was minted
+    function realizeManagementFee() external returns (uint256 feeShares);
+
+    /// @notice Crystallizes the performance fee owed at the current net share price, at the rate in force now
+    /// @dev IL-9632. The same crystallization that execute, updateMarketsBalances, withdraw and redeem perform.
+    ///      FeeManager.updatePerformanceFee calls it before it writes a new rate or recipient split, so the gain
+    ///      above the high-water mark earned under the old settings is charged and paid under them.
+    ///      Method is granted to the FeeManager (TECH_PERFORMANCE_FEE_MANAGER_ROLE)
+    function realizePerformanceFee() external;
+
     /// @notice Claim rewards from the Plasma Vault via Rewards Fuses to claim rewards from connected protocols with the Plasma Vault
     /// @param calls_ The array of FuseActions to claim rewards
     /// @dev Method is granted only to the RewardsManager

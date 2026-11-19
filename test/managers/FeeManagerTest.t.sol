@@ -250,7 +250,10 @@ contract FeeManagerTest is Test {
         uint256 balanceAfter = PlasmaVault(_plasmaVault).balanceOf(managementAccount);
 
         assertEq(balanceBefore, 0, "balanceBefore should be 0");
-        assertEq(balanceAfter, 48767123200, "balanceAfter should be 48767123200");
+        // IL-8870 D-002: was 48767123200 (F·G/(G+F)), now 51267281008 (exact F).
+        // Independent check: F = floor(1e10·500·356d/(365d·1e4)) = 487671232 on G = 1e10, S = 1e12, scale = 100;
+        // V = floor(F·(S+100)/(G−F+1)) = 51267281008.
+        assertEq(balanceAfter, 51267281008, "balanceAfter should be 51267281008");
     }
 
     function testShouldHarvestManagementFee() external {
@@ -276,14 +279,19 @@ contract FeeManagerTest is Test {
         uint256 balanceFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 balanceDaoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        assertEq(balanceManagementAccountBefore, 48767123200, "balanceManagementAccountBefore should be 48767123200");
-        assertEq(balanceManagementAccountAfter, 0, "balanceManagementAccountAfter should be 0");
+        // IL-8870 D-002: was 48767123200 (F·G/(G+F)), now 51267281008 (exact F, see testShouldHaveSharesOnManagementFeeAccount)
+        assertEq(balanceManagementAccountBefore, 51267281008, "balanceManagementAccountBefore should be 51267281008");
+        // IL-8870 D-002: V = 51267281008 is not divisible by the 60 % / 40 % split, FeeManager floors both parts
+        // (30760368604 + 20506912403 = 51267281007), so 1 share stays on the fee account (the old V was divisible: 0 left)
+        assertEq(balanceManagementAccountAfter, 1, "balanceManagementAccountAfter should be the 1 share rounding dust");
 
         assertEq(balanceFeeRecipientBefore, 0, "balanceFeeRecipientBefore should be 0");
-        assertEq(balanceFeeRecipientAfter, 19506849280, "balanceFeeRecipientAfter should be 19506849280");
+        // IL-8870 D-002: was 19506849280, now 20506912403 = floor(51267281008 · 40 %)
+        assertEq(balanceFeeRecipientAfter, 20506912403, "balanceFeeRecipientAfter should be 20506912403");
 
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
-        assertEq(balanceDaoFeeRecipientAfter, 29260273920, "balanceDaoFeeRecipientAfter should be 29260273920");
+        // IL-8870 D-002: was 29260273920, now 30760368604 = floor(51267281008 · 60 %)
+        assertEq(balanceDaoFeeRecipientAfter, 30760368604, "balanceDaoFeeRecipientAfter should be 30760368604");
     }
 
     function testShouldHaveShearsOnPerformanceFeeAccount() external {
@@ -309,7 +317,22 @@ contract FeeManagerTest is Test {
         uint256 balanceAfter = PlasmaVault(_plasmaVault).balanceOf(performanceAccount);
 
         assertEq(balanceBefore, 0, "balanceBefore should be 0");
-        assertEq(balanceAfter, 68199072121, "balanceAfter should be 68199072121");
+        // IL-8870 D-002: was 68199072121 (F·G/(G+F)), now 64591979552 (exact F). The performance shares are priced on the supply
+        // that includes the virtual management fee shares V = floor(F·(S+100)/(G−F+1)); independent model (G = 1e10 idle +
+        // Aave aToken leg 5174414562, F = G·500·356d/(365d·1e4), 20 % of S'·(rate−1e6)/rate) gives 64592080460,
+        // within 2e-6 of the run value (residual = unmodelled Aave/oracle rounding in G).
+        // IL-8870 minted share: FeeManager returns p for the supply S + V; the fee is still accrued, so the vault mints
+        // ceil(p·(S+100)/(S+V+100)) (S = 1e12, the factor is (G−F+1)/(G+1) ≈ 0.95123): 61442014523 with the fee shares
+        // priced before their own mint (p = 64591979552).
+        // IL-8870 fee share sizing: the fee shares are sized on the price after their own mint, x/(1−x) of the supply
+        // instead of x. The minted share was x = 61442014523/1e12 of the minted supply, now it is
+        // S·x/(1−x) = 1e12·61442014523/(1e12−61442014523) = 65464271226.
+        // IL-9601: the rate and the HWM carry the 1e12 scale (HWM 1e18), so the fee is sized on the exact rate instead
+        // of the rate floored to one asset unit per share: 65464290226. Independent model (F, V, rate, p and the minted
+        // share as above, every floor kept): G = 15174403763 is the one gross value that reproduces both the old pin
+        // 65464271226 (one asset unit per share) and this value, and the same G gives the 10 % case of
+        // testShouldHarvestPerformanceWhenAtomistSetZero (old 31694700382, new 31694709289).
+        assertEq(balanceAfter, 65464290226, "balanceAfter should be 65464290226");
     }
 
     function testShouldHarvestPerformance() external {
@@ -340,14 +363,22 @@ contract FeeManagerTest is Test {
         uint256 balanceFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 balanceDaoFeeRecipientAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        assertEq(balancePerformanceAccountBefore, 68199072121, "balancePerformanceAccountBefore should be 68199072121");
+        // IL-8870: was 68199072121, then 65464271226; IL-9601 (1e12 rate scale): 65464290226 (see
+        // testShouldHaveShearsOnPerformanceFeeAccount for the model)
+        assertEq(balancePerformanceAccountBefore, 65464290226, "balancePerformanceAccountBefore should be 65464290226");
         assertApproxEqAbs(balancePerformanceAccountAfter, 0, 100, "balancePerformanceAccountAfter should be 0");
 
         assertEq(balanceFeeRecipientBefore, 0, "balanceFeeRecipientBefore should be 0");
-        assertEq(balanceFeeRecipientAfter, 34099536060, "balanceFeeRecipientAfter should be 34099536060");
+        // IL-8870: was 34099536060, then 32732135613; IL-9601: 32732145113 = 65464290226 / 2
+        assertEq(balanceFeeRecipientAfter, 32732145113, "balanceFeeRecipientAfter should be 32732145113");
 
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
-        assertEq(balanceDaoFeeRecipientAfter, 34099536060, "balanceDaoFeeRecipientAfter should be 34099536060");
+        assertApproxEqAbs(
+            balanceDaoFeeRecipientAfter,
+            32732145113,
+            1,
+            "balanceDaoFeeRecipientAfter should be 32732145113"
+        );
     }
 
     function testShouldHarvestPerformanceWhenAtomistSetZero() external {
@@ -386,9 +417,12 @@ contract FeeManagerTest is Test {
 
         assertApproxEqAbs(
             balancePerformanceAccountBefore,
-            34099536060,
+            // IL-8870: was 34099536060 (F·G/(G+F)), then 30721007262 (minted share, DAO fee of 10 % only), now
+            // 31694700382 = 1e12·30721007262/(1e12−30721007262) (fee shares sized on the price after their mint);
+            // IL-9601 (1e12 rate scale, see testShouldHaveShearsOnPerformanceFeeAccount): 31694709289
+            31694709289,
             100,
-            "balancePerformanceAccountBefore should be 34099536060"
+            "balancePerformanceAccountBefore should be 31694709289"
         );
         assertEq(balancePerformanceAccountAfter, 0, "balancePerformanceAccountAfter should be 0");
 
@@ -398,9 +432,9 @@ contract FeeManagerTest is Test {
         assertEq(balanceDaoFeeRecipientBefore, 0, "balanceDaoFeeRecipientBefore should be 0");
         assertApproxEqAbs(
             balanceDaoFeeRecipientAfter,
-            34099536060,
+            31694709289, // IL-8870: was 34099536060, then 31694700382; IL-9601: 31694709289 (see above)
             100,
-            "balanceDaoFeeRecipientAfter should be 34099536060"
+            "balanceDaoFeeRecipientAfter should be 31694709289"
         );
     }
 
@@ -544,11 +578,17 @@ contract FeeManagerTest is Test {
             "feeDataOnPlasmaVaultAfter.feeInPercentage should be 300"
         );
 
-        assertEq(feeRecipientBefore, 19506849280, "feeRecipientBefore should be 19506849280");
-        assertEq(daoFeeRecipientBefore, 29260273920, "daoFeeRecipientBefore should be 29260273920");
+        // IL-8870 D-002: first year V1 = 51267281008 (was 48767123200): recipient 40 % = 20506912403 (was 19506849280),
+        // DAO 60 % = 30760368604 (was 29260273920)
+        assertEq(feeRecipientBefore, 20506912403, "feeRecipientBefore should be 20506912403");
+        assertEq(daoFeeRecipientBefore, 30760368604, "daoFeeRecipientBefore should be 30760368604");
 
-        assertEq(feeRecipientAfter, 19506849280, "feeRecipientAfter should be 19506849280");
-        assertEq(daoFeeRecipientAfter, 63016208540, "daoFeeRecipientAfter should be 63016208540");
+        assertEq(feeRecipientAfter, 20506912403, "feeRecipientAfter should be 20506912403");
+        // IL-8870 D-002: was 63016208540, now 65616679255 = 30760368604 + 1 + V2 (the 1 share of
+        // rounding dust left on the fee account by the first harvest goes to the DAO with the second). Second year (300 bps, DAO only):
+        // S2 = 1e12 + V1 + floor(1e9·(1e12+V1+100)/(1e10+1)), G2 = 1.1e10, F2 = floor(G2·300·356d/(365d·1e4)),
+        // V2 = floor(F2·(S2+100)/(G2−F2+1)) = 34856310650
+        assertEq(daoFeeRecipientAfter, 65616679255, "daoFeeRecipientAfter should be 65616679255");
     }
 
     function testShouldNotUpdateManagementFeeWhenNotAtomist() external {
@@ -675,22 +715,28 @@ contract FeeManagerTest is Test {
         assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
         assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
 
-        // Updated expected values based on actual implementation
+        // No time passes, so only the performance fee is charged: 25 % (DAO 10 % + 10 % + 5 %) of the gain from the rate
+        // 1_000_000 to 1_499_999 on S = 1e12 shares. IL-8870 fee share sizing: the shares are worth the fee after their
+        // own mint, p = S·f/(10000·rate − f) with f = 2500·499_999, p = 90908958677 (before: S·delta/rate·25 % =
+        // 83333222222, recipients 33333288888 / 16666644444 / 33333288888).
+        // IL-9601: the rate and the HWM carry the 1e12 scale: rate = floor(1e20·(1.5e10 + 1)/(1e12 + 100)) =
+        // 1499999999950000000 and HWM 1e18, so f = 2500·499999999950000000 and p = 90909090902 (the floor of the rate
+        // to 1_499_999 dropped 0.99995 of a price unit); recipients 36363636360 / 18181818180 / 36363636360.
         assertApproxEqAbs(
             balanceRecipient1After,
-            33333288888, // ~9% performance + 0.85% management (after DAO fee)
+            36363636360, // 10/25 of p
             100,
             "recipient1 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceRecipient2After,
-            16666644444, // ~4.5% performance + 0.425% management (after DAO fee)
+            18181818180, // 5/25 of p
             100,
             "recipient2 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceDaoRecipientAfter,
-            33333288888, // Equal to recipient1 (matches actual implementation)
+            36363636360, // 10/25 of p, equal to recipient1
             100,
             "dao should receive correct fee share"
         );
@@ -755,22 +801,28 @@ contract FeeManagerTest is Test {
         assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
         assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
 
-        // Updated expected values based on actual implementation
+        // No time passes, so only the performance fee is charged: 25 % (DAO 10 % + 10 % + 5 %) of the gain from the rate
+        // 1_000_000 to 1_499_999 on S = 1e12 shares. IL-8870 fee share sizing: the shares are worth the fee after their
+        // own mint, p = S·f/(10000·rate − f) with f = 2500·499_999, p = 90908958677 (before: S·delta/rate·25 % =
+        // 83333222222, recipients 33333288888 / 16666644444 / 33333288888).
+        // IL-9601: the rate and the HWM carry the 1e12 scale: rate = floor(1e20·(1.5e10 + 1)/(1e12 + 100)) =
+        // 1499999999950000000 and HWM 1e18, so f = 2500·499999999950000000 and p = 90909090902 (the floor of the rate
+        // to 1_499_999 dropped 0.99995 of a price unit); recipients 36363636360 / 18181818180 / 36363636360.
         assertApproxEqAbs(
             balanceRecipient1After,
-            33333288888, // ~9% performance + 0.85% management (after DAO fee)
+            36363636360, // 10/25 of p
             100,
             "recipient1 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceRecipient2After,
-            16666644444, // ~4.5% performance + 0.425% management (after DAO fee)
+            18181818180, // 5/25 of p
             100,
             "recipient2 should receive correct fee share"
         );
         assertApproxEqAbs(
             balanceDaoRecipientAfter,
-            33333288888, // Equal to recipient1 (matches actual implementation)
+            36363636360, // 10/25 of p, equal to recipient1
             100,
             "dao should receive correct fee share"
         );
@@ -883,7 +935,12 @@ contract FeeManagerTest is Test {
         assertEq(balanceRecipient2Before, 0, "recipient2 balance before should be 0");
         assertEq(balanceDaoRecipientBefore, 0, "dao recipient balance before should be 0");
 
-        assertApproxEqAbs(balanceRecipient1After, 33333288888, 100, "recipient1 should receive only performance fee");
+        // 20 % (DAO 10 % + 10 % + 0 %) of the gain from the rate 1_000_000 to 1_499_999 on S = 1e12 shares, sized on the
+        // price after the mint (IL-8870): p = S·f/(10000·rate − f) with f = 2000·499_999, p = 71428469387, half each
+        // (before: 66666577777, 33333288888 each). IL-9601: with the 1e12 rate scale (rate 1499999999950000000, HWM
+        // 1e18, see testShouldHarvestFeesWithMultipleRecipientsWhenTransferSharesIsDisabled) p = 71428571423,
+        // 35714285711 each
+        assertApproxEqAbs(balanceRecipient1After, 35714285711, 100, "recipient1 should receive only performance fee");
 
         assertEq(
             balanceRecipient2After,
@@ -892,7 +949,7 @@ contract FeeManagerTest is Test {
         );
 
         // DAO gets both fees
-        assertApproxEqAbs(balanceDaoRecipientAfter, 33333288888, 100, "dao should receive correct fee share");
+        assertApproxEqAbs(balanceDaoRecipientAfter, 35714285711, 100, "dao should receive correct fee share");
     }
 
     function testShouldNotUpdateHighWaterMarkPerformanceFeeWhenNotOwner() external {
@@ -949,10 +1006,14 @@ contract FeeManagerTest is Test {
         address performanceAccount = PlasmaVaultGovernance(_plasmaVault).getPerformanceFeeData().feeAccount;
         FeeManager feeManager = FeeManager(FeeAccount(performanceAccount).FEE_MANAGER());
 
-        // Simulate a scenario where convertToAssets returns 0
+        // Simulate a scenario where convertToAssets returns 0 (the reset converts 10 ** decimals shares times the
+        // HWM scale, IL-9601)
         vm.mockCall(
             _plasmaVault,
-            abi.encodeWithSelector(IERC4626.convertToAssets.selector, 10 ** IERC20Metadata(_plasmaVault).decimals()),
+            abi.encodeWithSelector(
+                IERC4626.convertToAssets.selector,
+                10 ** IERC20Metadata(_plasmaVault).decimals() * feeManager.HIGH_WATER_MARK_SCALE()
+            ),
             abi.encode(0)
         );
 
@@ -1360,17 +1421,22 @@ contract FeeManagerTest is Test {
         uint256 balanceRecipient1After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_1);
         uint256 balanceRecipient2After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
 
-        assertEq(balanceManagementAccountAfter, 0, "Fee account should be fully drained");
-        assertEq(balanceDaoAfter - balanceDaoBefore, 29260273920, "DAO should receive 29260273920");
+        // IL-8870 D-002: V = 51267281008 (was 48767123200); the 60 / 30 / 10 % parts are floored by FeeManager
+        // (30760368604 + 15380184302 + 5126728100 = 51267281006), so 2 shares stay as rounding dust (was 0)
+        assertEq(balanceManagementAccountAfter, 2, "Fee account should keep only the 2 share rounding dust");
+        // IL-8870 D-002: was 29260273920, now floor(51267281008 · 60 %)
+        assertEq(balanceDaoAfter - balanceDaoBefore, 30760368604, "DAO should receive 30760368604");
+        // IL-8870 D-002: was 14630136960, now floor(51267281008 · 30 %)
         assertEq(
             balanceRecipient1After - balanceRecipient1Before,
-            14630136960,
-            "_FEE_RECIPIENT_1 should receive 14630136960"
+            15380184302,
+            "_FEE_RECIPIENT_1 should receive 15380184302"
         );
+        // IL-8870 D-002: was 4876712320, now floor(51267281008 · 10 %)
         assertEq(
             balanceRecipient2After - balanceRecipient2Before,
-            4876712320,
-            "_FEE_RECIPIENT_2 should receive 4876712320"
+            5126728100,
+            "_FEE_RECIPIENT_2 should receive 5126728100"
         );
     }
 
@@ -1417,7 +1483,8 @@ contract FeeManagerTest is Test {
         uint256 balanceRecipient2After = PlasmaVault(_plasmaVault).balanceOf(_FEE_RECIPIENT_2);
         uint256 balanceDaoAfter = PlasmaVault(_plasmaVault).balanceOf(_DAO_FEE_RECIPIENT);
 
-        assertEq(balanceManagementAccountAfter, 0, "Fee account should be fully drained");
+        // IL-8870 D-002: V = 51267281008 split 60 / 40 % floors to 30760368604 + 20506912403, 1 share stays as dust (was 0)
+        assertEq(balanceManagementAccountAfter, 1, "Fee account should keep only the 1 share rounding dust");
         assertEq(
             balanceRecipient1After,
             balanceRecipient1Before,
@@ -1426,9 +1493,10 @@ contract FeeManagerTest is Test {
         assertEq(balanceRecipient1After, 0, "Dropped recipient _FEE_RECIPIENT_1 balance should stay 0");
         assertEq(
             balanceRecipient2After - balanceRecipient2Before,
-            19506849280,
-            "_FEE_RECIPIENT_2 should receive 19506849280"
+            20506912403, // IL-8870 D-002: was 19506849280, now floor(51267281008 · 40 %)
+            "_FEE_RECIPIENT_2 should receive 20506912403"
         );
-        assertEq(balanceDaoAfter - balanceDaoBefore, 29260273920, "DAO should receive 29260273920");
+        // IL-8870 D-002: was 29260273920, now floor(51267281008 · 60 %)
+        assertEq(balanceDaoAfter - balanceDaoBefore, 30760368604, "DAO should receive 30760368604");
     }
 }

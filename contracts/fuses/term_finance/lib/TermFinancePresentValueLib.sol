@@ -114,16 +114,20 @@ library TermFinancePresentValueLib {
         return pv > faceInPurchase_ ? faceInPurchase_ : pv;
     }
 
-    /// @notice At/post-maturity present value: face minus realised default haircut.
+    /// @notice At/post-maturity present value: face times the recovery ratio Term pays on redemption.
+    /// @dev IL-9553 (IL-9566 D-017). `TermRepoServicer.shortfallHaircutMantissa` is the "proportion of
+    ///      redemption value for redemption": `_proRataRedemption` pays `redemptionValue * mantissa / 1e18`.
+    ///      The caller resolves the unset state (mantissa 0) to the ratio Term would apply, see
+    ///      `TermFinanceBalanceFuse._tryReadPostMaturityRecovery`.
     /// @param faceInPurchase_ Face value in purchase-token units
-    /// @param shortfallHaircut_ Realised haircut (18-dec mantissa; capped at 1e18 defensively)
-    /// @return Present value in purchase-token raw units
-    function presentValuePostMaturity(
+    /// @param recoveryMantissa_ Share of the face value paid on redemption (18-dec mantissa; capped at 1e18)
+    /// @return Present value in purchase-token raw units (rounded down)
+    function presentValueAtRecovery(
         uint256 faceInPurchase_,
-        uint256 shortfallHaircut_
+        uint256 recoveryMantissa_
     ) internal pure returns (uint256) {
         if (faceInPurchase_ == 0) return 0;
-        uint256 hcut = shortfallHaircut_ > RATE_PRECISION ? RATE_PRECISION : shortfallHaircut_;
-        return (faceInPurchase_ * (RATE_PRECISION - hcut)) / RATE_PRECISION;
+        uint256 recovery = recoveryMantissa_ > RATE_PRECISION ? RATE_PRECISION : recoveryMantissa_;
+        return (faceInPurchase_ * recovery) / RATE_PRECISION;
     }
 }

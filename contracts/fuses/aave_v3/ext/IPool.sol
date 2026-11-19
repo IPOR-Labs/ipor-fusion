@@ -28,6 +28,16 @@ interface IPool {
      */
     function withdraw(address asset, uint256 amount, address to) external returns (uint256);
 
+    /// @notice Configuration bitmap of the reserve (`DataTypes.ReserveConfigurationMap.data`)
+    /// @param asset The address of the underlying asset of the reserve
+    /// @return The configuration bitmap of the reserve
+    function getConfiguration(address asset) external view returns (uint256);
+
+    /// @notice Virtual underlying balance of the reserve (Aave >= 3.1 only)
+    /// @param asset The address of the underlying asset of the reserve
+    /// @return The virtual underlying balance of the reserve
+    function getVirtualUnderlyingBalance(address asset) external view returns (uint128);
+
     /**
      * @notice Allows users to borrow a specific `amount` of the reserve underlying asset, provided that the borrower
      * already supplied enough collateral, or he was given enough allowance by a credit delegator on the

@@ -36,6 +36,14 @@ contract HyperCorePendingReader {
     ///      struct keeps the encoder to one memory pointer instead of seven live return slots.
     ///      The wire-level ABI encoding is a tuple of the same types in the same order either way,
     ///      so callers decode `abi.decode(result.data, (PendingStateResult))`.
+    ///      Wire layout since IL-9529: a static tuple of 29 words (928 bytes). Words 0-23 are the 24 `PendingAction`
+    ///      fields in declaration order, ending with `lastOrderL1Block` (17) and the six appended rewards-manager
+    ///      fields `effectRewardsManager` (18), `effectRewardsUpdateBalanceTimestamp` (19), `expectedRewardsRawSum`
+    ///      (20), `expectedRewardsVestedSum` (21), `effectRewardsTransferredTokens` (22) and
+    ///      `effectRewardsLastUpdateBalance` (23); then `actionPending` (24), `actionSettled` (25), `currentL1Block`
+    ///      (26), `currentTimestamp` (27) and `l1BlockAvailable` (28). A reader deployed before IL-9529 returns 23
+    ///      words (no rewards-manager fields, `actionPending` at word 18), so off-chain decoders (SDK) must pick the
+    ///      layout per reader address or by the returned length instead of assuming one.
     struct PendingStateResult {
         HyperCorePendingLib.PendingAction state;
         bool actionPending;
@@ -48,6 +56,11 @@ contract HyperCorePendingReader {
     /// @notice Returns the full pending-action snapshot together with the derived predicates.
     /// @dev Field meanings (see `PendingStateResult`):
     ///      - `state`: the raw `HyperCorePendingLib.PendingAction` struct, as stored in the vault.
+    ///        The six `state.effectRewards*` / `state.expectedRewards*` fields are non-zero only for a Core -> EVM
+    ///        bridge of the vault's underlying sent while a rewards manager was set
+    ///        (`HyperCorePendingLib.bindRewardsEffect`): the two sums are thresholds, like `state.expectedBalance`, and
+    ///        `effectRewardsUpdateBalanceTimestamp`, `effectRewardsTransferredTokens` and `effectRewardsLastUpdateBalance`
+    ///        are the manager's `getVestingData()` at send (the gate subtracts the pushes counted since then).
     ///      - `actionPending`: whether `HyperCorePendingLib.isActionPending()` currently blocks ordinary vault calls.
     ///      - `actionSettled`: whether `HyperCorePendingLib.isActionSettled()` (the settlement-condition predicate).
     ///      - `currentL1Block`: the current HyperCore L1 block number, or 0 if unavailable.
@@ -61,7 +74,9 @@ contract HyperCorePendingReader {
     ///      The fallback covers 0x809 only. The effect read is evaluated only after the time and L1-block gates pass
     ///      and only before `timeoutAt` (once `timeoutAt` has passed the effect is not read). In that window it can
     ///      still revert `pendingState()` for both effect kinds: the 0x810/0x801 precompile reads of an
-    ///      `EFFECT_CORE_SPOT` record and the effect token's `balanceOf` of an `EFFECT_EVM_BALANCE` record.
+    ///      `EFFECT_CORE_SPOT` record and the effect token's `balanceOf` of an `EFFECT_EVM_BALANCE` record (for a
+    ///      record bound to the rewards manager also the manager's `getVestingData()`, the token's `balanceOf(manager)`
+    ///      and the manager's `balanceOf()`).
     function pendingState() external view returns (PendingStateResult memory result) {
         result.state = HyperCorePendingLib.get();
         result.currentTimestamp = uint64(block.timestamp);

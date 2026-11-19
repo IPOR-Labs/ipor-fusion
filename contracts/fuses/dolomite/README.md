@@ -53,15 +53,21 @@ The balance calculation aggregates positions across all configured substrates:
 1. **Get substrates**: Retrieve all configured (asset, subAccountId, canBorrow) tuples
 2. **Query Dolomite**: For each substrate, call `getAccountWei()` to get signed balance
 3. **Apply sign**:
-    - Positive (sign=true): Add to total (supply position)
-    - Negative (sign=false): Subtract from total (debt position)
+    - Positive (sign=true): Add to the net of its account number (supply position)
+    - Negative (sign=false): Subtract from the net of its account number (debt position)
 4. **Convert to USD**: Use price oracle for each asset
-5. **Sum all positions**: Return total USD value (reverts if negative)
+5. **Floor per account number**: Every account number (`subAccountId`, up to 256) is added once as `max(0, net)`;
+   the total is never negative and the fuse does not revert on an underwater account number
 
 ### Important Notes
 
 -   **Signed Wei Balance**: Dolomite uses `Wei { bool sign; uint256 value }` where sign=true means positive
--   **Net Balance**: Total can be negative if debt exceeds collateral (fuse reverts in this case)
+-   **Per-account-number floor**: A Dolomite account is keyed by `(owner, number)` and nothing links two numbers. A
+    liquidation of one number can take any held market of that number, and its debt is written off only after all
+    supply of that number is gone, so `max(0, supply - debt)` per number is what survives. The shortfall of one number
+    therefore never reduces the value of another
+-   **Limitation (unchanged)**: Duplicate `(asset, subAccountId)` substrates with different `canBorrow` flags are counted twice
+-   **Approximation**: The surplus a liquidation takes on top of the repaid debt (liquidation spread) is not deducted
 -   **Multi-Asset**: Each substrate can have different assets with different sub-accounts
 
 ## Substrate Configuration
@@ -244,7 +250,7 @@ priceOracle.setAssetsPricesSources(assets, sources);
 -   Slippage protection on all operations (`minAmountOut`, `minBalanceIncrease`, etc.)
 -   Debt existence check before repayment
 -   Source balance validation before collateral transfers
--   Negative total balance check in BalanceFuse
+-   Per-account-number floor in BalanceFuse: an underwater account number never reverts and is valued at 0
 
 ### Substrate Validation
 
@@ -274,6 +280,17 @@ Features:
 -   Try-catch wrapper for graceful failure handling
 -   Emits `DolomiteSupplyFuseExitFailed` on failure instead of reverting
 -   Returns (asset, 0) on failure to allow other withdrawals to proceed
+-   Liquidity cap: after the position cap, for a non-zero amount, the request is capped at
+    `IERC20(asset).balanceOf(DOLOMITE_MARGIN)`. The read is outside the `try` (fail closed). The ALPHA `exit` is not capped
+    and still reverts above the liquidity
+-   `minAmountOut` (word 4): on the instant path an empty position, a zero amount, or a capped amount below word 4 returns 0
+    without a Dolomite call, an event or a revert, and the vault asks the next entry. The success-branch check of the
+    received amount is unchanged (an unexpected short payment still reverts). The ALPHA `exit` keeps every `minAmountOut`
+    revert
+-   The token balance of DolomiteMargin can differ slightly from supplied minus borrowed (observed +204 USDC on 4.5M);
+    the cap uses the balance
+-   The vault asks the markets for assets plus a 10 wei offset, so a withdrawal that needs exactly the DolomiteMargin
+    balance should request 10 wei less
 
 ## Network
 

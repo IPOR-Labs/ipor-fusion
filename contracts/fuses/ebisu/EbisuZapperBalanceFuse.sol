@@ -46,11 +46,13 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
      *      Since interest fees automatically increase the entireDebt of the trove, we do not need to include it explicitly.
      *      This function iterates through all configured substrates, filters for ZAPPER type substrates,
      *      retrieves trove data for each zapper, calculates the total collateral and debt values,
-     *      and returns the net value (collateral - debt, minimum 0).
+     *      and returns the sum of the net values of the troves, each floored at zero on its own
+     *      (an underwater trove contributes 0 and does not reduce the value of the healthy ones).
      *      For every REGISTRY substrate the collateral surplus that liquidations credited to the vault in the
-     *      branch's CollSurplusPool (not yet claimed with EbisuClaimCollateralFuse) is added to the collateral value.
-     * @return The total balance of the vault in Ebisu protocol, calculated as the sum of all trove values
-     *         (collateral - debt) across all configured zapper substrates, plus the valued collateral surplus
+     *      branch's CollSurplusPool (not yet claimed with EbisuClaimCollateralFuse) is added to the total, outside the
+     *      per-trove floor.
+     * @return The total balance of the vault in Ebisu protocol, calculated as the sum of max(0, collateral - debt)
+     *         per trove across all configured zapper substrates, plus the valued collateral surplus
      *         of all configured registry substrates
      */
     function balanceOf() external view returns (uint256) {
@@ -61,14 +63,10 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
         uint256 substratesNumber = substrates.length;
 
         if (substratesNumber == 0) return 0;
-        address collToken;
-        uint256 collTokenPrice;
-        uint256 collTokenPriceDecimals;
         address ebusdAddress;
         uint256 ebusdPrice;
         uint256 ebusdPriceDecimals;
-        uint256 entireCollValue;
-        uint256 entireDebtValue;
+        uint256 totalValue;
         IPriceOracleMiddleware priceOracleMiddleware = IPriceOracleMiddleware(
             PlasmaVaultLib.getPriceOracleMiddleware()
         );
@@ -79,7 +77,7 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
             target = EbisuZapperSubstrateLib.bytes32ToSubstrate(substrates[i]);
 
             if (target.substrateType == EbisuZapperSubstrateType.REGISTRY) {
-                entireCollValue += _collSurplusValue(target.substrateAddress, priceOracleMiddleware);
+                totalValue += _collSurplusValue(target.substrateAddress, priceOracleMiddleware);
                 continue;
             }
 
@@ -93,27 +91,47 @@ contract EbisuZapperBalanceFuse is IMarketBalanceFuse {
 
             troveId = troveData.troveIds[target.substrateAddress];
             if (troveId == 0) continue;
-            /// @dev At this point, we expect the contract to have collToken and troveManager
-            collToken = ILeverageZapper(target.substrateAddress).collToken();
-            (collTokenPrice, collTokenPriceDecimals) = priceOracleMiddleware.getAssetPrice(collToken);
 
-            ITroveManager.LatestTroveData memory latestTroveData = ITroveManager(
-                ILeverageZapper(target.substrateAddress).troveManager()
-            ).getLatestTroveData(troveId);
-
-            entireCollValue += IporMath.convertToWad(
-                latestTroveData.entireColl * collTokenPrice,
-                IERC20Metadata(collToken).decimals() + collTokenPriceDecimals
-            );
-
-            entireDebtValue += IporMath.convertToWad(
-                latestTroveData.entireDebt * ebusdPrice,
-                IERC20Metadata(ebusdAddress).decimals() + ebusdPriceDecimals
+            totalValue += _troveValue(
+                target.substrateAddress,
+                troveId,
+                priceOracleMiddleware,
+                ebusdAddress,
+                ebusdPrice,
+                ebusdPriceDecimals
             );
         }
 
-        /// @dev max(coll - debt, 0)
-        return entireCollValue - IporMath.min(entireDebtValue, entireCollValue);
+        return totalValue;
+    }
+
+    /// @dev Net value (WAD) of one trove, floored at zero on its own: max(coll - debt, 0). Every trove is liquidated
+    ///      independently, so the shortfall of an underwater trove must not reduce the value of the healthy ones.
+    function _troveValue(
+        address zapper_,
+        uint256 troveId_,
+        IPriceOracleMiddleware priceOracleMiddleware_,
+        address ebusdAddress_,
+        uint256 ebusdPrice_,
+        uint256 ebusdPriceDecimals_
+    ) private view returns (uint256) {
+        /// @dev At this point, we expect the contract to have collToken and troveManager
+        address collToken = ILeverageZapper(zapper_).collToken();
+        (uint256 collTokenPrice, uint256 collTokenPriceDecimals) = priceOracleMiddleware_.getAssetPrice(collToken);
+
+        ITroveManager.LatestTroveData memory latestTroveData = ITroveManager(ILeverageZapper(zapper_).troveManager())
+            .getLatestTroveData(troveId_);
+
+        uint256 collValue = IporMath.convertToWad(
+            latestTroveData.entireColl * collTokenPrice,
+            IERC20Metadata(collToken).decimals() + collTokenPriceDecimals
+        );
+        uint256 debtValue = IporMath.convertToWad(
+            latestTroveData.entireDebt * ebusdPrice_,
+            IERC20Metadata(ebusdAddress_).decimals() + ebusdPriceDecimals_
+        );
+
+        return collValue - IporMath.min(debtValue, collValue);
     }
 
     /// @dev Value (WAD) of the collateral surplus the vault has in the CollSurplusPool of the branch; the collateral

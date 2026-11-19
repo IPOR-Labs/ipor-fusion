@@ -54,6 +54,13 @@ the cap rounds to 0 (dust shares whose `previewRedeem` is 0).
   (requested amount >= the cap) is `redeem(min(balanceOf, maxRedeem), plasmaVault, plasmaVault)`, using `balanceOf`
   when `maxRedeem` is 0 (Morpho Vaults V2), so a pending performance fee in a nested PlasmaVault cannot make
   `withdraw(maxWithdraw)` revert (IL-8489). `maxSharesBurned` applies to both paths.
+- `minAssetsOut` (0 = no minimum; fourth field of `Erc4626SupplyFuseExitData`, IL-9619) applies **only to the full exit**
+  (the `redeem` branch). When it is greater than 0 the fuse measures the change of the Plasma Vault's balance of
+  `vault.asset()` around `redeem` (the value returned by `redeem` is not trusted) and, if the received assets are
+  below it, reverts `Erc4626SupplyFuseInsufficientAssets(receivedAssets, minAssetsOut)`. The partial exit
+  (`withdraw` branch) pays exactly the requested amount and is not checked. The minimum is absolute for the call: when
+  the fuse clips the redeemed shares to the held balance or to `maxRedeem`, a minimum sized for a larger exit reverts.
+  With `minAssetsOut == 0` no extra balance read is made.
 - A full exit sized by `previewRedeem(shares)` and withdrawn (not redeemed) may leave share dust worth at most 1 wei of the underlying asset
   (about 1e12 share-wei for 18-decimal shares over a 6-decimal asset). The balance fuse values it at 0 and the fuse
   never exits it: a later exit of the dust is a no-op (see the gas note below).
@@ -64,7 +71,7 @@ the cap rounds to 0 (dust shares whose `previewRedeem` is 0).
 ### Transient variants
 
 - `enterTransient`: inputs `[vault, amount, minSharesOut]`; output `[suppliedAmount]`.
-- `exitTransient`: inputs `[vault, amount, maxSharesBurned]`; output `[sharesBurned]`.
+- `exitTransient`: inputs `[vault, amount, maxSharesBurned, minAssetsOut]`; output `[sharesBurned]`.
 
 Inputs and outputs go through `TransientStorageLib`, keyed by the fuse `VERSION`.
 
@@ -76,12 +83,20 @@ Inputs and outputs go through `TransientStorageLib`, keyed by the fuse `VERSION`
 | `instantWithdraw()` (user withdrawal path) | `withdraw` reverts and is caught | Emits `Erc4626SupplyFuseExitFailed(version, asset, vault, assets)`; the PlasmaVault continues with the next market |
 
 - The ALPHA must not request exits from vaults that cannot pay at that moment; one such exit reverts the batch.
-- The try/catch in `instantWithdraw` covers **only** the vault's `withdraw()` call. The substrate check and the
+- When the partial `withdraw` fails in `instantWithdraw`, the fuse retries once through `redeem` (IL-9643): it
+  redeems `min(previewWithdraw(amount), balanceOf)` shares, so a request just below the cap still pays when a nested
+  PlasmaVault crystallizes a pending performance fee inside `withdraw`. The payout can then be below the requested
+  amount by the vault's share of the fee; the Plasma Vault takes the rest from the next market. Only when the retry
+  fails too is `Erc4626SupplyFuseExitFailed` emitted. `exit()` has no retry: the ALPHA retries a failed exit itself
+  (for example with an amount at or above the cap, which redeems).
+- The try/catch in `instantWithdraw` covers **only** the vault's `withdraw()` call and the `redeem` retry
+  (`previewWithdraw` and `redeem`). The substrate check and the
   view reads (`maxWithdraw`, `balanceOf`, the `convertToAssets` fallback, `asset()`) are not caught, so an ungranted
   vault or a reverting view still reverts `instantWithdraw` (a reverting `previewRedeem` is caught and falls back to
   `convertToAssets`). The market refresh after a withdrawal calls the same views, so this adds no new failure mode.
 - `instantWithdraw` params: `[amount, vault]`; the Plasma Vault fills `params[0]` with the amount it still needs, so
-  the configured entry is `[bytes32(0), bytes32(uint256(uint160(vault)))]`. It passes `maxSharesBurned = 0` (no limit).
+  the configured entry is `[bytes32(0), bytes32(uint256(uint160(vault)))]`. It passes `maxSharesBurned = 0` (no limit) and
+  `minAssetsOut = 0` (no minimum).
 - Async / request-based vaults (ERC-7540, Agua) must not be wired through this fuse: `previewRedeem` reverts or the
   `withdraw` reverts, and on the user path the swallowed revert under-delivers silently — see
   `contracts/fuses/agua/README.md` and use a dedicated fuse family.
@@ -93,30 +108,61 @@ Inputs and outputs go through `TransientStorageLib`, keyed by the fuse `VERSION`
 `vault.asset()`, and converts to WAD using the asset decimals and price decimals. No granted vaults gives 0.
 
 - A price feed for every underlying asset must be configured in the Price Oracle Middleware.
+- A substrate equal to the Plasma Vault's own `asset()` is skipped (IL-9610): that balance is already counted as the
+  vault's idle underlying, so counting it here too would double-count it. Instances deployed from an earlier build do
+  not skip it: do not grant the vault's own underlying as a substrate of such an instance, and replace the balance
+  fuse (`addBalanceFuse` on the same market) before relying on a configuration that does. A base that predates
+  IL-6953 duplicates the market id on such a swap; rehearse it on a fork first.
 - `convertToAssets` is not capped by `maxWithdraw` and, per EIP-4626, excludes exit fees. For a fee-bearing or
   illiquid vault, NAV can therefore be higher than what an exit would pay.
+- **Child Plasma Vaults are read from their cache (IL-9703, known scenario).** For a substrate that is a Plasma Vault,
+  `convertToAssets` is computed from the child's idle balance and the market balances the child stored last. Refreshing
+  the parent (`updateMarketsBalances`, or `UpdateBalancesPreHook` on the parent's user selectors) does not refresh the
+  child, so a gain or loss that the child has not booked is missing from the parent's NAV until the child is refreshed.
+  The parent cannot force that (the child may have another atomist) and the fuse does not guard it. Hold only children
+  refreshed at least as often as the parent relies on their value. See "Nested Plasma Vaults" in the
+  [Plasma Vault README](../../vaults/README.md).
+- **Child Plasma Vaults can read too low or too high inside their own `execute` and instant withdrawal (IL-9631,
+  IL-9743, known limitation, no code guard: owner decision).** The child's `convertToAssets` has no gate: in `execute`
+  it can be off in both directions until the child's final refresh, in an instant withdrawal only too high (the idle
+  balance grows before the position cache is refreshed), and a parent refresh in that window stores the transient value.
+  Do not combine a parent whose child market a user operation can refresh (a refreshing pre-hook, an instant withdrawal
+  entry of the market, a dependency graph edge, or direct `updateMarketsBalances` access for non-trusted accounts) with a
+  child in whose batch or exit untrusted code can run, as described in
+  [Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)](../../vaults/README.md#transient-share-price-views-during-execute-and-instant-withdrawal-il-9631-il-9743).
 
 ## Known Limitations and Operational Notes
 
-- **Three builds of this fuse exist on-chain; only this one exits Morpho Vaults V2.**
+- **Four builds of this fuse exist; only the IL-8505 build and the one after it exit Morpho Vaults V2.**
 
   | Build | Exit cap | `enter`/`exit` ABI | Bytecode fingerprint |
   |---|---|---|---|
   | pre-clamp (4,013 B; the large majority of live installs) | `convertToAssets(balanceOf)`; never reads `maxWithdraw` | 2-field structs (`exit` selector `0x92876ac8`) | neither `ce96cb77` nor `4cdad506` |
   | clamp (6,048 B; published in ipor-abi since 2026-09-16; a handful of installs) | `maxWithdraw`, silent no-op at 0 — **cannot exit Morpho Vaults V2** | 3-field structs (`exit` selector `0x8467bd30`) | `ce96cb77` (`maxWithdraw`) only |
-  | IL-8505 (this code) | `maxWithdraw`, fallback `previewRedeem(balanceOf)` at 0 | 3-field structs | `ce96cb77` and `4cdad506` (`previewRedeem`) |
+  | IL-8505 | `maxWithdraw`, fallback `previewRedeem(balanceOf)` at 0 | 3-field structs (`exit` selector `0x8467bd30`) | `ce96cb77` and `4cdad506` (`previewRedeem`) |
+  | IL-9619 (this code) | as IL-8505, plus `minAssetsOut` on the full exit | `enter` 3-field, `exit` 4-field struct (selector `0x73ed602f`, error `Erc4626SupplyFuseInsufficientAssets(uint256,uint256)` `0x18fd350a`) | `ce96cb77` and `4cdad506`, and the `0x73ed602f` selector |
 
   Until the IL-8505 build replaces the published entries, do not wire a new Morpho Vaults V2 market through a fuse
   taken from ipor-abi: `enter` works, `exit` is a silent no-op and user redemptions through that market revert.
 - **Rollout from the pre-clamp build is a migration, not an address swap.** The ABI of `enter`/`exit` changes
-  (2-field → 3-field structs; off-chain callers that pin fuse addresses must switch the call format), and exits that
+  (2-field → 3-field structs, and 3-field → 4-field `exit` for the IL-9619 build; off-chain callers that pin fuse
+  addresses or encode `exit` by signature must switch the call format and add `minAssetsOut`), and exits that
   the pre-clamp build sized at `convertToAssets` are now capped at `maxWithdraw` (partial exits succeed silently
   where `0 < maxWithdraw < requested`; read the amount from the `Erc4626SupplyFuseExit` event). Per vault:
   `addFuses(new)` → `configureInstantWithdrawalFuses` (the full list in the same order, with params) →
-  `removeFuses(old)` → off-chain config. `removeFuses` does not touch the instant-withdrawal list, which is called
-  without an `isFuseSupported` check, so skipping the reconfiguration leaves user redemptions on the old fuse.
+  `removeFuses(old)` → off-chain config. `removeFuses` does not touch the instant-withdrawal list. From the
+  IL-9534 build on, `withdrawFromMarkets` skips an entry whose fuse is no longer supported (`isFuseSupported`, a
+  skipped entry contributes no market), so user redemptions no longer reach the old fuse, but they also stop
+  reaching this market until the list is rewritten: skipping the reconfiguration leaves the redemption path
+  without that venue. On a vault whose `PlasmaVaultMarketsLib` predates IL-9534 the stale entry is still called
+  without the check and user redemptions stay on the old fuse.
   Verify with `getInstantWithdrawalFuses` and the fingerprint above. Ship this build together with any redeem-based
-  full-exit change (IL-8489) as one deployment, not two migrations.
+  full-exit change (IL-8489) as one deployment, not two migrations. Moving a market from the IL-8505 build to the
+  IL-9619 build is the same sequence; the old instance keeps the 3-field `exit` selector `0x8467bd30`, so an ALPHA
+  integration must pick the selector per installed build.
+- **Exit fees and the allowlist (IL-8607, IL-9599).** `convertToAssets`, which the balance fuse uses, does not include
+  an exit fee, so NAV is higher than what a full exit pays. Grant only vaults without an exit fee, or knowingly accept
+  the NAV difference against the exit amount (`minAssetsOut` guards the received amount of a single full exit).
 - **No grant-time guard, on purpose.** Granting a vault does not check its `max*` values, exit liquidity or oracle
   price. These risks are documented here, not policed by the fuse.
 - **Over-reported `maxWithdraw` and partial exits.** A nested PlasmaVault with a pending performance fee (IL-8489)
@@ -143,6 +189,14 @@ Inputs and outputs go through `TransientStorageLib`, keyed by the fuse `VERSION`
   from Euler sub-account `0x00` (the Plasma Vault itself) down to the borrow limit. Do not list an EVK vault that
   serves as Euler collateral in an ERC4626 market's instant-withdrawal configuration; use the Euler fuse family,
   which marks collateral as not instant-withdrawable.
+- **Redemption delay of the child vault (IL-9695).** When the child is a `PlasmaVault`, its redemption lock sits on the
+  receiver of the shares and every deposit to the parent vault's position restarts it (IL-8736, by design), also a dust
+  deposit by a third party. While it lasts the child's `maxWithdraw` / `maxRedeem` read 0 (IL-9679) and `exit` reverts
+  with `AccountIsLocked` and `instantWithdraw` emits `Erc4626SupplyFuseExitFailed`. The owner of the child vault should exempt the parent vault from the
+  redemption delay (`PlasmaVaultGovernance.setRedemptionDelayExemption`, OWNER_ROLE), otherwise every top-up locks the
+  whole position; without the exemption the exit path is `requestShares` and `redeemFromRequest` on the child. The
+  exemption removes the same-block deposit-and-exit guard for the parent vault, so exempt only a trusted parent.
+- **Closed or reserve-capped child (IL-9624 follow-up).** A full exit from a closed child `PlasmaVault` falls back to `balanceOf`, and its `redeem` reverts (`exit` reverts, `instantWithdraw` emits `Erc4626SupplyFuseExitFailed`). A child capped by the released-request reserve is redeemed only up to `maxRedeem` (a silent partial exit in an ALPHA batch, so set `minAssetsOut`); see "Closed vault and released-request reserve in the max views (IL-9624 follow-up)" in `contracts/vaults/README.md`.
 - **Redeem-based full exits.** The `redeem(min(balanceOf, maxRedeem))` full-exit path (IL-8489) has the same
   fallback — `maxRedeem == 0` with shares held must use `balanceOf` — or Morpho Vaults V2 full exits become a silent
   no-op again. The invariants to keep in tests are the assets received and the shares left, not which vault
@@ -165,4 +219,8 @@ Inputs and outputs go through `TransientStorageLib`, keyed by the fuse `VERSION`
 - `test/fuses/erc4626/ERC4626SupplyFuseZeroMaxTest.t.sol`: zero-max mock (`maxWithdraw` = 0 while shares are held).
 - `test/fuses/erc4626/ERC4626SupplyFuseMorphoVaultsV2BaseTest.t.sol`: Base fork with Morpho Vaults V2; negative
   control through the published fuse.
+- `test/fuses/erc4626/Erc4626SupplyFuseMinAssetsOutTest.t.sol`: `minAssetsOut` (revert by selector with arguments, boundary,
+  zero without extra reads, partial exit and `instantWithdraw` unaffected, measured balance, transient).
 - `test/fuses/erc4626/ERC4626BalanceFuseTest.t.sol`: balance fuse.
+- `test/vaults/CachedNavNestedChildPinTest.t.sol`: nested child read from its own cache (parent refresh and parent pre-hook do not
+  refresh the child; a donation to the child's idle balance is visible).

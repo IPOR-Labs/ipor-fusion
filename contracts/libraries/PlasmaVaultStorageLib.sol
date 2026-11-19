@@ -769,6 +769,12 @@ library PlasmaVaultStorageLib {
         0x612d50d27ffbb749a9804ec5bba7933bff2377ff69afba55e14b5cf7180bff00;
 
     /**
+     * @dev Storage slot for the backed size of WithdrawManager requests (IL-9531). Computed as:
+     * keccak256(abi.encode(uint256(keccak256("io.ipor.fusion.RequestCaps")) - 1)) & ~bytes32(uint256(0xff))
+     */
+    bytes32 private constant REQUEST_CAPS_SLOT = 0xebbb2050971f21db5042539f8a5d2aa5ae17e8d2f857abd9e158a73e07cc2200;
+
+    /**
      * @notice Maps callback signatures to their handler contracts
      * @dev Stores routing information for protocol-specific callbacks
      * @custom:storage-location erc7201:io.ipor.callbackHandler
@@ -1026,6 +1032,18 @@ library PlasmaVaultStorageLib {
         address manager;
     }
 
+    /**
+     * @notice Upper bound on what each account's WithdrawManager request can redeem: the lowest balance since the
+     * last request, never above that request (IL-9531)
+     * @dev Written by the WithdrawManager in requestShares (PlasmaVault.setRequestCap), lowered in
+     * PlasmaVaultBase._update by every debit that leaves the account below it, never raised by a credit, not cleared
+     * when the request is used up. Read by the WithdrawManager in canWithdrawFromRequest (PlasmaVault.getRequestCap)
+     * @custom:storage-location erc7201:io.ipor.fusion.RequestCaps
+     */
+    struct RequestCaps {
+        mapping(address account => uint256 shares) caps;
+    }
+
     function getERC4626Storage() internal pure returns (ERC4626Storage storage $) {
         assembly {
             $.slot := ERC4626_STORAGE_LOCATION
@@ -1156,6 +1174,12 @@ library PlasmaVaultStorageLib {
         }
     }
 
+    function getRequestCaps() internal pure returns (RequestCaps storage requestCaps) {
+        assembly {
+            requestCaps.slot := REQUEST_CAPS_SLOT
+        }
+    }
+
     /// @notice Reads withdraw-manager address with legacy-slot fallback (IL-7407).
     /// @dev Returns the value of the corrected `WITHDRAW_MANAGER` slot (IL-6952).
     ///      If that slot is `address(0)`, falls back to the legacy slot
@@ -1165,7 +1189,8 @@ library PlasmaVaultStorageLib {
     ///      Intended exclusively for fuses that must run unchanged against both the
     ///      new and old PlasmaVault storage layouts (RequestFeeRefundFuse,
     ///      BurnRequestFeeFuse). The crosschain dispatchers' `plasmaVaultWithdrawManager()` readers (executed
-    ///      inside a REMOTE vault via UniversalReader, IL-8608) are the sanctioned exception.
+    ///      inside a REMOTE vault via UniversalReader, IL-8608) and `PlasmaVaultRequestSharesFuse.getWithdrawManager()`
+    ///      (executed inside the target vault via UniversalReader, IL-9424) are the sanctioned exceptions.
     ///      All other new code MUST keep using `getWithdrawManager().manager`.
     function getWithdrawManagerAddressWithLegacyFallback() internal view returns (address withdrawManager) {
         withdrawManager = getWithdrawManager().manager;

@@ -160,6 +160,17 @@ contract AaveV2SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             amountToWithdraw = aTokenBalance;
         }
 
+        /// @dev Instant withdraw path only: Aave pays a withdrawal in full or not at all, so cap the request at the
+        ///      reserve's free liquidity (the underlying held by the aToken). A partly liquid reserve then pays what
+        ///      it has and the next instant withdraw fuse pays the rest. The ALPHA exit stays uncapped. The read is
+        ///      outside the try block (fail closed).
+        if (catchExceptions_ && amountToWithdraw > 0) {
+            uint256 availableLiquidity = ERC20(data_.asset).balanceOf(reserveData.aTokenAddress);
+            if (availableLiquidity < amountToWithdraw) {
+                amountToWithdraw = availableLiquidity;
+            }
+        }
+
         if (amountToWithdraw == 0) {
             // @dev Return original requested amount when balance is insufficient to maintain consistency
             //      with the caller's expectations and allow proper handling of partial withdrawals

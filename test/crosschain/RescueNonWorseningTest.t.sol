@@ -274,6 +274,7 @@ abstract contract CcipRescueNonWorseningSetup is RescueNonWorseningBase {
                 rescueDelay: 3 days,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             })

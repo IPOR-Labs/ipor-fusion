@@ -54,6 +54,7 @@ contract CcipSafetyConfigTest is Test {
                 rescueDelay: REFERENCE_RESCUE_DELAY,
                 balanceStalenessMax: REFERENCE_STALENESS_MAX,
                 bigChangeBps: REFERENCE_BIG_CHANGE_BPS,
+                anchorBandBps: 2_000,
                 minUpdateInterval: REFERENCE_MIN_UPDATE_INTERVAL,
                 transferStalenessMax: REFERENCE_TRANSFER_STALENESS_MAX
             });
@@ -89,11 +90,18 @@ contract CcipSafetyConfigTest is Test {
         _deploy(cfg);
     }
 
-    function testShouldAcceptMinUpdateIntervalJustBelowBalanceStalenessMax() public {
+    /// @dev IL-9664: the highest admissible interval leaves exactly `MIN_PROPOSAL_APPROVAL_WINDOW` below the
+    ///      freshness window (the former bound, `balanceStalenessMax - 1`, is now rejected, see
+    ///      `ExecutorApprovalWindowConfigTest`).
+    function testShouldAcceptMinUpdateIntervalAtMaxAdmissibleBelowBalanceStalenessMax() public {
         CcipCrosschainExecutor.SafetyConfig memory cfg = _base();
-        cfg.minUpdateInterval = cfg.balanceStalenessMax - 1;
+        cfg.minUpdateInterval = cfg.balanceStalenessMax - CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW;
         CcipCrosschainExecutor e = _deploy(cfg);
-        assertEq(e.MIN_UPDATE_INTERVAL(), cfg.balanceStalenessMax - 1, "min update interval set");
+        assertEq(
+            e.MIN_UPDATE_INTERVAL(),
+            cfg.balanceStalenessMax - CrosschainConstants.MIN_PROPOSAL_APPROVAL_WINDOW,
+            "min update interval set"
+        );
     }
 
     // ---------------------------------------------------------------------

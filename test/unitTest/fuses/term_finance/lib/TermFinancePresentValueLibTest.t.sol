@@ -89,35 +89,17 @@ contract TermFinancePresentValueLibTest is Test {
 
     /// @dev face=1_003_889 (28d @5% after clearing), tau=28d. pv ~ 1_000_000.
     function test_presentValuePreMaturity_atClearing_equalsPrincipal_28d() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(
-            1_003_889,
-            USDC_PREC,
-            28 * 86_400,
-            5e16,
-            0
-        );
+        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(1_003_889, USDC_PREC, 28 * 86_400, 5e16, 0);
         assertApproxEqAbs(pv, 1_000_000, 2);
     }
 
     function test_presentValuePreMaturity_weeklyTenor_atClearing() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(
-            1_000_972,
-            USDC_PREC,
-            7 * 86_400,
-            5e16,
-            0
-        );
+        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(1_000_972, USDC_PREC, 7 * 86_400, 5e16, 0);
         assertApproxEqAbs(pv, 1_000_000, 2);
     }
 
     function test_presentValuePreMaturity_midTerm_partialAccrual() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(
-            1_003_889,
-            USDC_PREC,
-            14 * 86_400,
-            5e16,
-            0
-        );
+        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(1_003_889, USDC_PREC, 14 * 86_400, 5e16, 0);
         assertGt(pv, 1_000_000);
         assertLt(pv, 1_003_889);
         assertApproxEqAbs(pv, 1_001_941, 50);
@@ -206,29 +188,30 @@ contract TermFinancePresentValueLibTest is Test {
         assertEq(pv, face, "pv at most face");
     }
 
-    // ============ presentValuePostMaturity ============
+    // ============ presentValueAtRecovery ============
 
-    function test_presentValuePostMaturity_noHaircut_equalsFace() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePostMaturity(1_003_889, 0);
-        assertEq(pv, 1_003_889);
+    function test_presentValueAtRecovery_fullRecovery_equalsFace() public pure {
+        assertEq(TermFinancePresentValueLib.presentValueAtRecovery(1_003_889, WAD), 1_003_889);
     }
 
-    function test_presentValuePostMaturity_3pctHaircut() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePostMaturity(1_003_889, 3e16);
-        assertEq(pv, (1_003_889 * (WAD - 3e16)) / WAD);
-        assertApproxEqAbs(pv, 973_772, 2);
+    function test_presentValueAtRecovery_97pctRecovery() public pure {
+        uint256 pv = TermFinancePresentValueLib.presentValueAtRecovery(1_003_889, 97e16);
+        assertEq(pv, (1_003_889 * 97e16) / WAD);
+        assertEq(pv, 973_772);
     }
 
-    function test_presentValuePostMaturity_capsHaircutAt1e18() public pure {
-        uint256 pvOver = TermFinancePresentValueLib.presentValuePostMaturity(1_003_889, 2e18);
-        uint256 pvAt = TermFinancePresentValueLib.presentValuePostMaturity(1_003_889, 1e18);
-        assertEq(pvOver, pvAt);
-        assertEq(pvAt, 0);
+    function test_presentValueAtRecovery_zeroRecovery_returnsZero() public pure {
+        assertEq(TermFinancePresentValueLib.presentValueAtRecovery(1_003_889, 0), 0);
     }
 
-    function test_presentValuePostMaturity_zeroFace_returnsZero() public pure {
-        uint256 pv = TermFinancePresentValueLib.presentValuePostMaturity(0, 3e16);
-        assertEq(pv, 0);
+    function test_presentValueAtRecovery_capsRecoveryAt1e18() public pure {
+        uint256 pvOver = TermFinancePresentValueLib.presentValueAtRecovery(1_003_889, 2e18);
+        assertEq(pvOver, TermFinancePresentValueLib.presentValueAtRecovery(1_003_889, WAD));
+        assertEq(pvOver, 1_003_889);
+    }
+
+    function test_presentValueAtRecovery_zeroFace_returnsZero() public pure {
+        assertEq(TermFinancePresentValueLib.presentValueAtRecovery(0, 97e16), 0);
     }
 
     // ============ fuzz tests ============
@@ -394,13 +377,7 @@ contract TermFinancePresentValueLibTest is Test {
         uint256 face = 1_003_889;
         uint256 tau = 14 * 86_400;
 
-        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(
-            face,
-            USDC_PREC,
-            tau,
-            MAX_DISCOUNT_RATE,
-            0
-        );
+        uint256 pv = TermFinancePresentValueLib.presentValuePreMaturity(face, USDC_PREC, tau, MAX_DISCOUNT_RATE, 0);
         // PV must remain <= face (saturated divisor is huge); we only assert invariant + non-zero.
         assertLe(pv, face);
     }

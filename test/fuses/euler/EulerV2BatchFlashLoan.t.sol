@@ -200,7 +200,7 @@ contract EulerV2BatchFlashLoan is Test {
                     CallbackData({
                         asset: USDC,
                         addressToApprove: EULER_VAULT,
-                        amountToApprove: flashLoanAmount,
+                        amountToApprove: 2 * flashLoanAmount, // larger than the repayment: only the batch reset can clear the rest
                         actionData: abi.encode(callbackActions)
                     })
                 )
@@ -241,6 +241,9 @@ contract EulerV2BatchFlashLoan is Test {
             abi.encodeWithSelector(EulerV2BatchFuse.enter.selector, batchData)
         );
 
+        // The batch reset must clear the allowance left over by the oversized callback approval
+        vm.expectCall(USDC, abi.encodeWithSelector(ERC20.approve.selector, EULER_VAULT, uint256(0)));
+
         vm.startPrank(ALPHA);
         PlasmaVault(plasmaVault).execute(enterCalls);
         vm.stopPrank();
@@ -252,6 +255,13 @@ contract EulerV2BatchFlashLoan is Test {
 
         // Euler flash loan fully repaid — no outstanding debt on Euler
         assertEq(eulerDebtAfter, 0, "No debt should remain on Euler vault after repayment");
+
+        // The callback approved 2x the repayment (half stays unused after repay); the batch reset must leave no allowance behind
+        assertEq(
+            ERC20(USDC).allowance(plasmaVault, EULER_VAULT),
+            0,
+            "No USDC allowance to the Euler vault should remain after the batch"
+        );
 
         // No WETH left in vault — all swapped to USDC
         assertEq(wethBalanceAfter, 0, "No WETH should remain in PlasmaVault (all swapped to USDC)");
@@ -341,7 +351,7 @@ contract EulerV2BatchFlashLoan is Test {
     }
 
     function _registerCallbackHandler() private {
-        CallbackHandlerEuler callbackHandler = new CallbackHandlerEuler();
+        CallbackHandlerEuler callbackHandler = new CallbackHandlerEuler(EULER_V2_EVC);
 
         vm.startPrank(FUSE_MANAGER);
         PlasmaVaultGovernance(plasmaVault).updateCallbackHandler(

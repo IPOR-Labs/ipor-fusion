@@ -126,21 +126,23 @@ contract ResidualsBalanceFuse is IMarketBalanceFuse {
 }
 
 /// @title PlasmaVaultPreviewResidualsTest
-/// @notice Pins two documented residuals of maxWithdraw, previewRedeem and previewWithdraw (IL-8493, review item
-///         B-57). These tests PASS on the current code and DOCUMENT its behaviour; they are not bug reproductions.
-///         The views simulate only the pending management fee (IL-8319/IL-8343, see
-///         PlasmaVaultManagementFeeMaxPreviewTest), while withdraw and redeem do more before they check the limit
-///         and price the call. The residuals were accepted as known limitations in IL-8489 and are documented in
-///         the NatSpec of PlasmaVault.maxWithdraw, previewRedeem and previewWithdraw:
-///         1. Performance fee. withdraw and redeem crystallize a pending performance fee (_addPerformanceFee,
-///            rate above the high-water mark) first, so the views overestimate what the holder gets (and
-///            underestimate the shares withdraw burns) by the holder's pro-rata share of that fee.
-///         2. Stale market cache. The views price the cached market balances, withdraw and redeem refresh the
-///            markets they pull from, so a market loss since the last balance update makes the views
-///            over-promise by the holder's pro-rata share of the loss.
-///         Every test asserts that the gap exists (> 0) and that it is bounded by that pro-rata share, derived
-///         on-chain in the same state. If the views ever simulate the performance fee or the refresh (IL-8489
-///         option (a)), these tests must be updated: the gaps close and the assertions on them turn around.
+/// @notice The two residuals of maxWithdraw, previewRedeem and previewWithdraw documented in IL-8489 (IL-8493,
+///         review item B-57), against the views simulating the pending management fee (IL-8319/IL-8343, see
+///         PlasmaVaultManagementFeeMaxPreviewTest) while withdraw and redeem do more before they check the limit and
+///         price the call:
+///         1. Performance fee: CLOSED by IL-9624 (Olympix 2026-11-06 M34). withdraw and redeem crystallize a pending
+///            performance fee (_addPerformanceFee, rate above the high-water mark) first; the views now price the
+///            fee shares the FeeManager would size, so they equal the in-call results (up to the withdraw fee
+///            rounding of one share unit) and withdraw(maxWithdraw) succeeds. Before IL-9624 these tests pinned the
+///            gap (> 0, bounded by the holder's pro-rata share of the fee); they now assert that it is gone, with
+///            the fee still pending in the same scenarios (vesting rewards, withdraw fee burn).
+///         2. Stale market cache: still a residual. The views price the cached market balances, withdraw and redeem
+///            refresh the markets they pull from, so a market loss since the last balance update makes the views
+///            over-promise by the holder's pro-rata share of the loss. These tests PASS on the current code and
+///            DOCUMENT its behaviour: the gap exists (> 0) and is bounded by that share, derived on-chain in the same
+///            state. If the views ever simulate the refresh, they must be updated: the gaps close and the assertions
+///            on them turn around. With fresh balances the exit through the market matches the views also with a
+///            performance fee pending.
 contract PlasmaVaultPreviewResidualsTest is Test {
     address public atomist = address(this);
     address public alpha = address(0x1);
@@ -189,48 +191,43 @@ contract PlasmaVaultPreviewResidualsTest is Test {
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Residual 1: pending performance fee
+    // Residual 1: pending performance fee - closed by IL-9624, the views price it
     // ---------------------------------------------------------------------------------------------
 
-    /// @dev Trigger: rewards vesting. withdraw(maxWithdraw) reverts and the enforced limit is lower by the holder's
-    ///      pro-rata share of the pending performance fee
-    function testShouldOverestimateMaxWithdraw_whenPerformanceFeePendingFromVestingRewards() public {
+    /// @dev Trigger: rewards vesting. The fee is pending (another holder's exit would mint it), and maxWithdraw
+    ///      already equals the in-call limit, so withdraw(maxWithdraw) pays it. Before IL-9624 the limit was lower
+    ///      by the holder's pro-rata share of the fee and the call reverted
+    function testShouldPriceMaxWithdraw_whenPerformanceFeePendingFromVestingRewards() public {
         _deploy(PERFORMANCE_FEE, false);
         _setupVestingRewardsScenario();
 
-        uint256 userShares = plasmaVault.balanceOf(user);
         uint256 maxAssets = plasmaVault.maxWithdraw(user);
         CrystallizedFee memory fee = _crystallizedFeeByAnotherHolder();
+        assertGt(fee.feeShares, 0, "precondition: a performance fee is pending");
 
-        uint256 enforced = _enforcedWithdrawLimit(user, maxAssets);
-
-        uint256 gap = maxAssets - enforced;
-        uint256 bound = Math.mulDiv(fee.feeAssets, userShares, fee.baseSupply) + ROUNDING_SLACK;
-        assertGt(gap, 0, "maxWithdraw overestimates the in-call limit");
-        assertLe(gap, bound, "gap is at most the holder's share of the pending performance fee");
+        assertEq(_enforcedWithdrawLimit(user, maxAssets), maxAssets, "maxWithdraw equals the in-call limit");
+        _assertWithdrawsMaxWithdraw(maxAssets);
     }
 
     /// @dev Trigger: the withdraw fee burn of an earlier exit lifts the rate above the high-water mark. The withdraw
-    ///      fee branch of maxWithdraw prices the holder at shares * (1 - fee) (IL-8751)
-    function testShouldOverestimateMaxWithdraw_whenPerformanceFeePendingFromWithdrawFeeBurn() public {
+    ///      fee branch of maxWithdraw prices the holder at shares * (1 - fee) (IL-8751), on the supply with the
+    ///      pending performance fee shares (IL-9624)
+    function testShouldPriceMaxWithdraw_whenPerformanceFeePendingFromWithdrawFeeBurn() public {
         _deploy(PERFORMANCE_FEE, false);
         _setupWithdrawFeeBurnScenario();
 
-        uint256 effectiveShares = Math.mulDiv(plasmaVault.balanceOf(user), 1e18 - WITHDRAW_FEE, 1e18);
         uint256 maxAssets = plasmaVault.maxWithdraw(user);
         CrystallizedFee memory fee = _crystallizedFeeByAnotherHolder();
+        assertGt(fee.feeShares, 0, "precondition: a performance fee is pending");
 
-        uint256 enforced = _enforcedWithdrawLimit(user, maxAssets);
-
-        uint256 gap = maxAssets - enforced;
-        uint256 bound = Math.mulDiv(fee.feeAssets, effectiveShares, fee.baseSupply) + ROUNDING_SLACK;
-        assertGt(gap, 0, "maxWithdraw overestimates the in-call limit");
-        assertLe(gap, bound, "gap is at most the holder's share of the pending performance fee");
+        assertEq(_enforcedWithdrawLimit(user, maxAssets), maxAssets, "maxWithdraw equals the in-call limit");
+        _assertWithdrawsMaxWithdraw(maxAssets);
     }
 
-    /// @dev Once another holder crystallized the fee in the same block nothing is pending any more, so maxWithdraw
-    ///      equals the in-call limit exactly and withdraw(maxWithdraw) succeeds
-    function testShouldWithdrawMaxWithdraw_whenAnotherHolderCrystallizedPerformanceFeeInSameBlock() public {
+    /// @dev Another holder crystallizes the fee in the same block: maxWithdraw does not drop any more, because it
+    ///      priced the fee before (IL-9624; before, the crystallization lowered it to the real limit). The exit of
+    ///      the other holder rounds in the vault's favour, so the limit can only rise, by less than one asset unit
+    function testShouldKeepMaxWithdraw_whenAnotherHolderCrystallizedPerformanceFeeInSameBlock() public {
         _deploy(PERFORMANCE_FEE, false);
         _setupVestingRewardsScenario();
 
@@ -242,45 +239,78 @@ contract PlasmaVaultPreviewResidualsTest is Test {
         plasmaVault.withdraw(CRYSTALLIZER_ASSETS, other, other);
 
         uint256 maxAssets = plasmaVault.maxWithdraw(user);
-        assertLt(maxAssets, maxBefore, "the crystallization lowered maxWithdraw to the real limit");
+        assertGe(maxAssets, maxBefore, "the crystallization did not lower maxWithdraw");
+        assertLe(maxAssets - maxBefore, 1, "maxWithdraw already priced the fee");
         assertEq(_enforcedWithdrawLimit(user, maxAssets), maxAssets, "maxWithdraw equals the in-call limit");
-
-        uint256 balanceBefore = asset.balanceOf(user);
-        vm.prank(user);
-        plasmaVault.withdraw(maxAssets, user, user);
-        assertEq(asset.balanceOf(user) - balanceBefore, maxAssets, "user received maxWithdraw");
+        _assertWithdrawsMaxWithdraw(maxAssets);
     }
 
-    /// @dev Trigger: rewards vesting. redeem pays less than previewRedeem by the holder's pro-rata share
-    function testShouldOverestimatePreviewRedeem_whenPerformanceFeePendingFromVestingRewards() public {
+    /// @dev Trigger: rewards vesting. redeem pays previewRedeem
+    function testShouldPricePreviewRedeem_whenPerformanceFeePendingFromVestingRewards() public {
         _deploy(PERFORMANCE_FEE, false);
         _setupVestingRewardsScenario();
 
-        _assertPreviewRedeemOverestimates(plasmaVault.balanceOf(user) / 2, 0);
+        _assertPreviewRedeemPricesPendingFee(plasmaVault.balanceOf(user) / 2, 0);
     }
 
     /// @dev Trigger: withdraw fee burn, with the withdraw fee branch of previewRedeem
-    function testShouldOverestimatePreviewRedeem_whenPerformanceFeePendingFromWithdrawFeeBurn() public {
+    function testShouldPricePreviewRedeem_whenPerformanceFeePendingFromWithdrawFeeBurn() public {
         _deploy(PERFORMANCE_FEE, false);
         _setupWithdrawFeeBurnScenario();
 
-        _assertPreviewRedeemOverestimates(plasmaVault.balanceOf(user) / 2, WITHDRAW_FEE);
+        _assertPreviewRedeemPricesPendingFee(plasmaVault.balanceOf(user) / 2, WITHDRAW_FEE);
     }
 
-    /// @dev Trigger: rewards vesting. withdraw burns more shares than previewWithdraw by the holder's pro-rata share
-    function testShouldUnderestimatePreviewWithdraw_whenPerformanceFeePendingFromVestingRewards() public {
+    /// @dev Trigger: rewards vesting. withdraw burns previewWithdraw
+    function testShouldPricePreviewWithdraw_whenPerformanceFeePendingFromVestingRewards() public {
         _deploy(PERFORMANCE_FEE, false);
         _setupVestingRewardsScenario();
 
-        _assertPreviewWithdrawUnderestimates(USER_DEPOSIT / 2);
+        _assertPreviewWithdrawPricesPendingFee(USER_DEPOSIT / 2, 0);
     }
 
     /// @dev Trigger: withdraw fee burn, with the withdraw fee branch of previewWithdraw
-    function testShouldUnderestimatePreviewWithdraw_whenPerformanceFeePendingFromWithdrawFeeBurn() public {
+    function testShouldPricePreviewWithdraw_whenPerformanceFeePendingFromWithdrawFeeBurn() public {
         _deploy(PERFORMANCE_FEE, false);
         _setupWithdrawFeeBurnScenario();
 
-        _assertPreviewWithdrawUnderestimates(USER_DEPOSIT / 4);
+        _assertPreviewWithdrawPricesPendingFee(USER_DEPOSIT / 4, WITHDRAW_FEE);
+    }
+
+    /// @dev The exit pulls from a market whose cached balance is fresh: the refresh in redeem and withdraw does not
+    ///      move the NAV, so the views equal the results with a performance fee pending (IL-9624). Residual 2 below
+    ///      is the same exit with a stale cache
+    function testShouldPricePreviews_whenPerformanceFeePendingAndExitPullsFromFreshMarket() public {
+        _deploy(PERFORMANCE_FEE, true);
+        _deposit(user, USER_DEPOSIT);
+        _deposit(other, USER_DEPOSIT);
+        _supplyToMarket(2 * USER_DEPOSIT);
+        vm.warp(block.timestamp + 1 days);
+        /// @dev the gain sits in the idle balance, the exits below need more than that and pull from the market
+        asset.mint(address(plasmaVault), VESTED_REWARDS);
+
+        CrystallizedFee memory fee = _crystallizedFeeByAnotherHolder();
+        assertGt(fee.feeShares, 0, "precondition: a performance fee is pending");
+
+        uint256 shares = plasmaVault.balanceOf(user) / 2;
+        uint256 previewAssets = plasmaVault.previewRedeem(shares);
+        uint256 marketBefore = market.balanceOf(address(plasmaVault));
+        uint256 snapshot = vm.snapshotState();
+        vm.prank(user);
+        assertEq(plasmaVault.redeem(shares, user, user), previewAssets, "redeem pays previewRedeem");
+        assertLt(market.balanceOf(address(plasmaVault)), marketBefore, "precondition: redeem pulled from the market");
+        vm.revertToState(snapshot);
+
+        uint256 assets = USER_DEPOSIT / 2;
+        uint256 previewShares = plasmaVault.previewWithdraw(assets);
+        snapshot = vm.snapshotState();
+        vm.prank(user);
+        assertEq(plasmaVault.withdraw(assets, user, user), previewShares, "withdraw burns previewWithdraw");
+        vm.revertToState(snapshot);
+
+        uint256 maxAssets = plasmaVault.maxWithdraw(user);
+        assertEq(_enforcedWithdrawLimit(user, maxAssets), maxAssets, "maxWithdraw equals the in-call limit");
+        _assertWithdrawsMaxWithdraw(maxAssets);
     }
 
     /// @dev Control: the same vesting scenario with performance fee 0. Nothing is pending, so the previews bound the
@@ -390,38 +420,44 @@ contract PlasmaVaultPreviewResidualsTest is Test {
     // Assertions and measurements
     // ---------------------------------------------------------------------------------------------
 
-    function _assertPreviewRedeemOverestimates(uint256 shares_, uint256 withdrawFee_) internal {
-        /// @dev the withdraw fee shares are burned without payout, so only the rest is priced
-        uint256 pricedShares = Math.mulDiv(shares_, 1e18 - withdrawFee_, 1e18);
+    /// @dev With the fee pending, redeem pays previewRedeem. Without a withdraw fee exactly; with one the vault burns
+    ///      floor(shares * fee) and the view prices floor(shares * (1 - fee)), at most one share unit apart, worth
+    ///      less than one asset unit, in the holder's favour
+    function _assertPreviewRedeemPricesPendingFee(uint256 shares_, uint256 withdrawFee_) internal {
         uint256 previewAssets = plasmaVault.previewRedeem(shares_);
         CrystallizedFee memory fee = _crystallizedFeeByAnotherHolder();
+        assertGt(fee.feeShares, 0, "precondition: a performance fee is pending");
 
         vm.prank(user);
         uint256 paid = plasmaVault.redeem(shares_, user, user);
 
-        uint256 gap = previewAssets - paid;
-        uint256 bound = Math.mulDiv(fee.feeAssets, pricedShares, fee.baseSupply) + ROUNDING_SLACK;
-        assertGt(previewAssets, paid, "previewRedeem overestimates redeem");
-        assertGt(gap, 0, "gap exists");
-        assertLe(gap, bound, "gap is at most the holder's share of the pending performance fee");
+        assertGe(paid, previewAssets, "previewRedeem does not promise more than redeem pays");
+        assertLe(paid - previewAssets, withdrawFee_ == 0 ? 0 : 1, "redeem pays previewRedeem");
     }
 
-    function _assertPreviewWithdrawUnderestimates(uint256 assets_) internal {
+    /// @dev With the fee pending, withdraw burns previewWithdraw. Without a withdraw fee exactly; with one the view
+    ///      grosses up to ceil(net / (1 - fee)) and the vault burns net + floor(gross * fee), at most one share unit
+    ///      less
+    function _assertPreviewWithdrawPricesPendingFee(uint256 assets_, uint256 withdrawFee_) internal {
         uint256 previewShares = plasmaVault.previewWithdraw(assets_);
         CrystallizedFee memory fee = _crystallizedFeeByAnotherHolder();
+        assertGt(fee.feeShares, 0, "precondition: a performance fee is pending");
         uint256 sharesBefore = plasmaVault.balanceOf(user);
 
         vm.prank(user);
         plasmaVault.withdraw(assets_, user, user);
         uint256 burned = sharesBefore - plasmaVault.balanceOf(user);
 
-        /// @dev the fee dilutes every holder by feeShares / baseSupply, so the shares needed for the same assets
-        ///      rise by that fraction of previewShares
-        uint256 gap = burned - previewShares;
-        uint256 bound = Math.mulDiv(previewShares, fee.feeShares, fee.baseSupply) + ROUNDING_SLACK;
-        assertGt(burned, previewShares, "withdraw burns more than previewWithdraw");
-        assertGt(gap, 0, "gap exists");
-        assertLe(gap, bound, "gap is at most the holder's share of the pending performance fee");
+        assertLe(burned, previewShares, "withdraw burns no more than previewWithdraw");
+        assertLe(previewShares - burned, withdrawFee_ == 0 ? 0 : 1, "withdraw burns previewWithdraw");
+    }
+
+    /// @dev withdraw(maxWithdraw) succeeds and pays the full amount
+    function _assertWithdrawsMaxWithdraw(uint256 maxAssets_) internal {
+        uint256 balanceBefore = asset.balanceOf(user);
+        vm.prank(user);
+        plasmaVault.withdraw(maxAssets_, user, user);
+        assertEq(asset.balanceOf(user) - balanceBefore, maxAssets_, "user received maxWithdraw");
     }
 
     /// @dev Lets another holder crystallize the pending fees with a tiny exit in a snapshot and measures the
@@ -609,9 +645,21 @@ contract PlasmaVaultPreviewResidualsTest is Test {
         plasmaVault.execute(calls);
     }
 
-    /// @dev Supply once the pending management fee is minted, the way realization does it (Floor on the raw supply)
+    /// @dev IL-8870 (D-002): management fee shares V = floor(min(F, G) * (S + scale) / (G - min(F, G) + 1)),
+    ///      recomputed here from the accrued fee F, the supply S and the gross assets G, not through the vault
+    function _managementFeeShares() internal view returns (uint256) {
+        uint256 gross = plasmaVault.totalAssets();
+        uint256 fee = plasmaVault.getUnrealizedManagementFee();
+        if (fee > gross) {
+            fee = gross;
+        }
+        uint256 scale = 10 ** (plasmaVault.decimals() - asset.decimals());
+        return Math.mulDiv(fee, plasmaVault.totalSupply() + scale, gross - fee + 1);
+    }
+
+    /// @dev Supply once the accrued management fee is minted: S + V (IL-8870, D-002 formula in the test)
     function _supplyAfterManagementFee() internal view returns (uint256) {
-        return plasmaVault.totalSupply() + plasmaVault.convertToShares(plasmaVault.getUnrealizedManagementFee());
+        return plasmaVault.totalSupply() + _managementFeeShares();
     }
 
     function _slice(bytes memory data_, uint256 start_) private pure returns (bytes memory out) {

@@ -14,7 +14,14 @@ contract MockTermRepoServicer {
     uint256 public maturityTimestamp;
     uint256 public redemptionTimestamp;
     uint256 public endOfRepurchaseWindow;
+    /// @dev Term semantics: proportion of redemption value paid out on redemption (a recovery
+    ///      ratio, 18-dec), 0 while unset. Set by the live servicer on the first pro-rata redemption.
+    ///      `redeemTermRepoTokens` pays `amount × mantissa / 1e18` (Term `_proRataRedemption`).
     uint256 public shortfallHaircutMantissa;
+    /// @dev Term `totalRepurchaseCollected`: purchase tokens repaid into the repo locker.
+    uint256 public totalRepurchaseCollected;
+    /// @dev Term `totalOutstandingRepurchaseExposure`: face debt not yet repaid by any borrower.
+    uint256 public totalOutstandingRepurchaseExposure;
 
     /// @dev Borrower => outstanding repurchase obligation (face value, purchase-token raw units).
     mapping(address => uint256) internal _obligation;
@@ -59,6 +66,14 @@ contract MockTermRepoServicer {
         shortfallHaircutMantissa = v_;
     }
 
+    function setTotalRepurchaseCollected(uint256 v_) external {
+        totalRepurchaseCollected = v_;
+    }
+
+    function setTotalOutstandingRepurchaseExposure(uint256 v_) external {
+        totalOutstandingRepurchaseExposure = v_;
+    }
+
     /// @notice Seed the outstanding repurchase obligation for a given borrower.
     function setBorrowerRepurchaseObligation(address borrower_, uint256 amount_) external {
         _obligation[borrower_] = amount_;
@@ -82,7 +97,15 @@ contract MockTermRepoServicer {
     function redeemTermRepoTokens(address redeemer_, uint256 amount_) external {
         // Burn repoToken from caller side.
         MockTermRepoToken(termRepoToken).burn(redeemer_, amount_);
-        uint256 payout = (amount_ * (1e18 - shortfallHaircutMantissa)) / 1e18;
+        // Mirrors Term: a set mantissa is the recovery ratio; while unset, par if nothing is outstanding,
+        // otherwise collected / (collected + outstanding).
+        uint256 recovery = shortfallHaircutMantissa;
+        if (recovery == 0) {
+            recovery = totalOutstandingRepurchaseExposure == 0
+                ? 1e18
+                : (totalRepurchaseCollected * 1e18) / (totalRepurchaseCollected + totalOutstandingRepurchaseExposure);
+        }
+        uint256 payout = (amount_ * recovery) / 1e18;
         if (payout > 0) {
             // Transfer purchase token from termRepoLocker (test will deal it to locker).
             // In a real flow `termRepoLocker` is its own escrow contract; here we use

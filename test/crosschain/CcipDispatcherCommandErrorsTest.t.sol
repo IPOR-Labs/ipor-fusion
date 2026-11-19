@@ -8,7 +8,7 @@ import {CcipCrosschainDispatcher} from "../../contracts/crosschain/ccip/CcipCros
 import {CcipMsgType} from "../../contracts/crosschain/ccip/lib/CcipMessages.sol";
 import {BusinessAction, CommandStatus} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
-import {Command, CrosschainMessages} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
+import {Command, CrosschainMessages, SweepFloor} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CcipRouteConfig} from "../../contracts/crosschain/ccip/interfaces/ICcipCrosschain.sol";
 import {CcipExecutorFixture} from "./CcipExecutorFixture.sol";
 import {MockCcipRouteValidator} from "./mocks/MockCcipRouteValidator.sol";
@@ -37,7 +37,11 @@ contract CcipDispatcherCommandErrorsTest is CcipExecutorFixture {
         vaults[0] = vault_;
         Command memory command = _command(BusinessAction.DEPOSIT, "");
         vm.prank(address(dispatcher));
-        dispatcher.runStoredCommand(CcipMsgType.UPDATE_VAULTS, command, abi.encode(vaults, true, false));
+        dispatcher.runStoredCommand(
+            CcipMsgType.UPDATE_VAULTS,
+            command,
+            abi.encode(vaults, true, false, new SweepFloor[](0))
+        );
         assertTrue(dispatcher.isTrackedVault(vault_), "vault tracked");
     }
 
@@ -115,6 +119,43 @@ contract CcipDispatcherCommandErrorsTest is CcipExecutorFixture {
         );
     }
 
+    function testShouldRevertRequestSharesAboveFeeCeilingWithRequestSharesFeeExceeded() public {
+        _track(address(vault));
+        deal(address(vault), address(dispatcher), 3e18, true);
+        withdrawManager.setFeeShares(2e18);
+        bytes memory data = CrosschainMessages.encodeRequestSharesAction(
+            address(withdrawManager),
+            address(vault),
+            3e18,
+            1e18
+        );
+        // vault, deducted (measured balance drop), requested shares, ceiling
+        _runExpectingRevert(
+            BusinessAction.REQUEST_SHARES,
+            data,
+            abi.encodeWithSelector(CrosschainErrors.RequestSharesFeeExceeded.selector, address(vault), 2e18, 3e18, 1e18)
+        );
+    }
+
+    function testShouldRevertRequestSharesToForeignManagerWithWithdrawManagerMismatch() public {
+        _track(address(vault));
+        deal(address(vault), address(dispatcher), 3e18, true);
+        address foreignManager = address(new MockWithdrawManager(address(vault)));
+        bytes memory data = CrosschainMessages.encodeRequestSharesAction(
+            foreignManager,
+            address(vault),
+            1e18,
+            type(uint256).max
+        );
+        // the command's manager (not the vault's), then the vault
+        _runExpectingRevert(
+            BusinessAction.REQUEST_SHARES,
+            data,
+            abi.encodeWithSelector(CrosschainErrors.WithdrawManagerMismatch.selector, foreignManager, address(vault))
+        );
+        assertEq(vault.balanceOf(address(dispatcher)), 3e18, "balance untouched");
+    }
+
     function testShouldRevertRedeemFromRequestToForeignReceiverWithReceiverMustBeSelf() public {
         _track(address(vault));
         address receiver = address(0xBEEF);
@@ -151,6 +192,7 @@ contract CcipDispatcherCommandErrorsTest is CcipExecutorFixture {
                 rescueDelay: RESCUE_DELAY,
                 balanceStalenessMax: BALANCE_STALENESS_MAX,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: MIN_UPDATE_INTERVAL,
                 transferStalenessMax: 1 days
             })

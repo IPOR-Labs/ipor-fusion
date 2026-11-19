@@ -3,13 +3,19 @@ pragma solidity 0.8.30;
 
 import {PlasmaVaultLib} from "../../../libraries/PlasmaVaultLib.sol";
 
-/// @notice Transaction-scoped marker used by recovery fuses and the cross-chain balance fuse.
-/// @dev Fuses execute by delegatecall in PlasmaVault context. Recovery fuses set this transient flag;
-///      if live cross-chain NAV remains fail-closed after the recovery action, the balance fuse serves the
-///      previously cached market value (single-executor market) or the marked executor's booked balance
-///      (several executors, staleness reverts only, IL-8611) instead of reverting the whole recovery transaction.
+/// @notice Transaction-scoped markers used by recovery fuses and the cross-chain balance fuse.
+/// @dev Fuses execute by delegatecall in PlasmaVault context. Recovery fuses mark the `(market, executor)` scope
+///      they drive in transient storage; if live cross-chain NAV remains fail-closed after the recovery action, the
+///      balance fuse serves the previously cached market value (single-executor market) or each marked executor's
+///      booked balance (several executors, staleness reverts only, IL-8611) instead of reverting the whole recovery
+///      transaction. Several executors can be marked in one transaction (IL-9655).
 library CrosschainRecoveryLib {
+    /// @dev Head of the transient set of marked recovery scopes: the number of distinct `(market, executor)` scopes
+    ///      armed in this transaction. Zero means that no recovery action has been armed (`isRecoveryArmed`).
     bytes32 private constant _RECOVERY_SLOT = keccak256("ipor.fusion.crosschain.recovery.active");
+    /// @dev Entries of the set: scope `i` (0-based, `i < tload(_RECOVERY_SLOT)`) is stored at
+    ///      `uint256(_RECOVERY_SCOPES_SLOT) + i`.
+    bytes32 private constant _RECOVERY_SCOPES_SLOT = keccak256("ipor.fusion.crosschain.recovery.scopes");
     bytes32 private constant _EXPOSURE_SLOT = keccak256("ipor.fusion.crosschain.exposure.active");
     /// @dev USD-WAD value that recovery fuses moved OUT of the crosschain market and INTO the vault's own
     ///      balance during this transaction. The balance fuse subtracts it from the cached market value,
@@ -41,7 +47,9 @@ library CrosschainRecoveryLib {
     ///      fuses keep accumulating as intended.
     /// @param marketId_ The CROSSCHAIN market whose cached value the balance fuse will correct.
     /// @param executor_ The executor this recovery action drives. The marker is scoped to it, so a
-    ///        recovery on one transport cannot suppress a sibling executor's fail-closed revert.
+    ///        recovery on one transport cannot suppress a fail-closed revert of a sibling executor that no
+    ///        recovery action in this transaction drives. Marking a second executor adds its scope and keeps
+    ///        the first one (IL-9655); marking the same scope again changes nothing.
     function markRecovery(uint256 marketId_, address executor_) internal {
         if (isNewExposure()) revert RecoveryExposureBatchForbidden();
 
@@ -59,28 +67,64 @@ library CrosschainRecoveryLib {
             }
         }
 
-        bytes32 slot = _RECOVERY_SLOT;
-        bytes32 scope = _recoveryScope(marketId_, executor_);
+        _addRecoveryScope(_recoveryScope(marketId_, executor_));
+    }
+
+    /// @dev The marker stores the SCOPES it was armed for, not a bare `1`. The balance fuse checks the executor
+    ///      whose `getBalance()` actually reverted against the marked scopes, so a recovery driven against one
+    ///      executor can no longer swallow a fail-closed revert from a sibling executor the batch never touched —
+    ///      nor from a different market (audit
+    ///      `cross_transport_recovery_marker_suppresses_fail_closed_gate_and_discards_sibling_executor_nav`).
+    ///      Every recovery action adds its own scope (IL-9655): until IL-9655 one slot held one scope and a second
+    ///      `markRecovery` overwrote the first, so when every executor of a market was stale (for example after
+    ///      an outage of attesters they share) no batch could repair them, separately or together. With several
+    ///      executors in the market the balance fuse substitutes `getBalanceUnchecked()` only for a marked executor
+    ///      and only when its `getBalance()` reverted with a STALENESS selector (IL-8611); a `ChainBlocked` marked
+    ///      executor, or an executor whose `getBalanceUnchecked()` reverts `ChainBlocked`, keeps the batch
+    ///      reverting (the books are known-inconsistent until the rescue completes). It sums the other executors
+    ///      live, because it cannot decompose one market-wide cache per executor; an executor that fails closed
+    ///      while not marked still reverts, the safe direction.
+    function _recoveryScope(uint256 marketId_, address executor_) private pure returns (bytes32) {
+        return keccak256(abi.encode(marketId_, executor_));
+    }
+
+    /// @dev Adds `scope_` to the transient set of marked scopes unless it is already there.
+    ///      A set behind one counter, not a per-scope mapping: the counter in `_RECOVERY_SLOT` is the only
+    ///      switch of the whole marker, so zeroing it drops every marked scope at once and a scope marked
+    ///      earlier can never resurface (tests model a transaction boundary that way). The set holds one entry
+    ///      per distinct executor driven by a recovery action in this transaction, so the linear scan is short.
+    function _addRecoveryScope(bytes32 scope_) private {
+        bytes32 headSlot = _RECOVERY_SLOT;
+        uint256 count;
         assembly {
-            tstore(slot, scope)
+            count := tload(headSlot)
+        }
+        if (_isScopeMarked(scope_, count)) return;
+        uint256 entrySlot;
+        unchecked {
+            entrySlot = uint256(_RECOVERY_SCOPES_SLOT) + count;
+        }
+        assembly {
+            tstore(entrySlot, scope_)
+            tstore(headSlot, add(count, 1))
         }
     }
 
-    /// @dev The marker stores the SCOPE it was armed for, not a bare `1`. The balance fuse compares the
-    ///      stored scope against the executor whose `getBalance()` actually reverted, so a recovery driven
-    ///      against one executor can no longer swallow a fail-closed revert from a sibling executor the
-    ///      batch never touched — nor from a different market (audit
-    ///      `cross_transport_recovery_marker_suppresses_fail_closed_gate_and_discards_sibling_executor_nav`).
-    ///      One slot rather than a per-scope mapping: only ONE executor can be marked per transaction, a
-    ///      second `markRecovery` overwriting the first. With several executors in the market the balance
-    ///      fuse substitutes `getBalanceUnchecked()` only for the marked executor and only when its
-    ///      `getBalance()` reverted with a STALENESS selector (IL-8611); a `ChainBlocked` marked executor, or an
-    ///      executor whose `getBalanceUnchecked()` reverts `ChainBlocked`, keeps the batch reverting (the books
-    ///      are known-inconsistent until the rescue completes). It sums the siblings live, because it cannot
-    ///      decompose one market-wide cache per executor; a sibling that fails closed while not marked still
-    ///      reverts, the safe direction.
-    function _recoveryScope(uint256 marketId_, address executor_) private pure returns (bytes32) {
-        return keccak256(abi.encode(marketId_, executor_));
+    /// @dev True when `scope_` is one of the first `count_` entries of the transient set of marked scopes.
+    function _isScopeMarked(bytes32 scope_, uint256 count_) private view returns (bool) {
+        uint256 entrySlot = uint256(_RECOVERY_SCOPES_SLOT);
+        bytes32 stored;
+        for (uint256 i; i < count_; ) {
+            assembly {
+                stored := tload(entrySlot)
+            }
+            if (stored == scope_) return true;
+            unchecked {
+                ++i;
+                ++entrySlot;
+            }
+        }
+        return false;
     }
 
     /// @notice True when `recoveredUsd()` still describes value missing from the CURRENT persisted cache.
@@ -172,14 +216,15 @@ library CrosschainRecoveryLib {
     }
 
     /// @notice True when THIS transaction armed a recovery action against exactly this executor on this
-    ///         market. False for a sibling executor, a different market, or an ordinary batch.
+    ///         market. False for an executor no recovery action drove, a different market, or an ordinary batch.
+    /// @dev Several executors can be marked in one transaction (IL-9655); each answers for its own scope only.
     function isRecovery(uint256 marketId_, address executor_) internal view returns (bool) {
-        bytes32 slot = _RECOVERY_SLOT;
-        bytes32 stored;
+        bytes32 headSlot = _RECOVERY_SLOT;
+        uint256 count;
         assembly {
-            stored := tload(slot)
+            count := tload(headSlot)
         }
-        return stored != bytes32(0) && stored == _recoveryScope(marketId_, executor_);
+        return count != 0 && _isScopeMarked(_recoveryScope(marketId_, executor_), count);
     }
 
     /// @notice True when any recovery action has been armed in this transaction, whatever its scope.

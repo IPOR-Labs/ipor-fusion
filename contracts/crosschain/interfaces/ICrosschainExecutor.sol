@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {Command} from "../lib/CrosschainMessages.sol";
+import {Command, SweepFloor} from "../lib/CrosschainMessages.sol";
 import {DeploymentStatus} from "../lib/CrosschainConstants.sol";
 
 /// @notice A settled-remote-balance attestation observation. Absolute
@@ -60,11 +60,26 @@ interface ICrosschainExecutor {
     function cancelDispatcherRequest(uint256 requestId_) external;
 
     /// @notice Replace the remote deposit allowlist through the sequenced command envelope.
-    /// @dev Every vault that leaves the allowlist is swept best effort and ALWAYS untracked: ALPHA must redeem or
+    /// @dev Every vault that leaves the allowlist is swept best effort and untracked: ALPHA must redeem or
     ///      recall its position to zero BEFORE removing it, otherwise a residual the sweep could not redeem leaves NAV
     ///      until the vault is allowlisted again (D-060). Send one removal per command on tight lanes and adds in a
-    ///      separate command (D-065).
+    ///      separate command (D-065). Sends no sweep floor (IL-9629, see `updatePlasmaVaultsWithSweepFloors`); a vault
+    ///      retained below a floor by an earlier command is left as it is.
     function updatePlasmaVaults(uint256 dstChainId_, address[] calldata vaults_) external;
+
+    /// @notice `updatePlasmaVaults` with per-vault floors for the sweep of the vaults that leave the allowlist
+    ///         (IL-9629).
+    /// @dev A vault with a non-zero floor is redeemed only when the measured ASSET received reaches it; otherwise
+    ///      nothing is redeemed and the vault, off the allowlist, STAYS TRACKED (its position keeps counting in NAV) and
+    ///      ALPHA exits it with a REDEEM. Such a retained vault is swept again only by a later command whose `floors_`
+    ///      names it (`minAssets` 0 = forced removal at any price, D-028). A vault without an entry is swept without a
+    ///      floor. `floors_`: at most `MAX_TRACKED_POSITION_VAULTS` entries (`VaultsCapReached`), no zero or duplicate
+    ///      vault (`InvalidVault`); `minAssets` in SHARED decimals, forwarded verbatim (like REDEEM `minAssets`).
+    function updatePlasmaVaultsWithSweepFloors(
+        uint256 dstChainId_,
+        address[] calldata vaults_,
+        SweepFloor[] calldata floors_
+    ) external;
 
     /// @notice Bridge assets to the dispatcher (taxi + mandatory compose ACK).
     function sendAssetToDispatcher(

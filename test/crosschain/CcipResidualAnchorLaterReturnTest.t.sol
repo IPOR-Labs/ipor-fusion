@@ -147,6 +147,11 @@ contract CcipResidualAnchorLaterReturnHarnessTest is Test {
     CcipAttestationState internal state;
     mapping(uint256 => uint256) internal settled;
 
+    function setUp() public {
+        // IL-9720: the band is a per-executor value the harness has to set, as the executor constructor does.
+        state.anchorBandBps = 2_000;
+    }
+
     function _apply(uint256 sentSD_, uint256 remoteBalanceSD_) internal returns (uint256 debit, Vm.Log[] memory logs) {
         vm.recordLogs();
         debit = CcipExecutorAttestationLib.applyReturnDebit(

@@ -10,6 +10,11 @@ import {ICcipRouterClient} from "../interfaces/CcipClient.sol";
 ///      operates on the caller's storage through delegatecall. A route's `(chainSelector, peer)` pair
 ///      is an authentication boundary and can never change after registration; fee token, gas limits,
 ///      fee ceiling and enabled state are operational policy and may be replaced by an authorized caller.
+///      `enabled = false` stops sending on the route and, on the dispatcher, new work arriving over it (COMMAND,
+///      UPDATE_VAULTS, RETRY_COMMAND); replies, settlements, recalls and cancels still arrive. It is not a fast
+///      kill switch: the change is timelocked (24 h) and the dispatcher sees it only after `syncCcipRoutePolicy`.
+///      A command refused this way stays failed on the OffRamp and `CANCEL_COMMAND` cannot close it
+///      (`CommandNotFailed`); its slot frees by manual execution after re-enable, or by `ABANDON_COMMAND`.
 library CcipRouteLib {
     error CcipZeroAddress();
     error CcipRouteAlreadyRegistered(uint256 chainId, uint64 selector);

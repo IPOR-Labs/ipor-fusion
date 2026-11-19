@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {Command, CrosschainMessages} from "../../lib/CrosschainMessages.sol";
+import {Command, CrosschainMessages, SweepFloor} from "../../lib/CrosschainMessages.sol";
 import {CcipMsgType} from "./CcipMessages.sol";
+import {CcipDecimalsLib} from "./CcipDecimalsLib.sol";
 import {BusinessAction, CommandStatus, CommandResolution, CrosschainConstants} from "../../lib/CrosschainConstants.sol";
 import {CrosschainErrors} from "../../lib/CrosschainErrors.sol";
 
@@ -55,6 +56,10 @@ library CcipExecutorCommandLib {
     error RealignStateMoved(
         uint256 chainId, uint64 expectedSequence, uint64 actualSequence, uint64 expectedEpoch, uint64 actualEpoch
     );
+    /// @notice Thrown when the realign declares the new config epoch as zero. Epoch zero is the unconfigured state:
+    ///         the dispatcher's `commandConfigEpoch` is never zero once configured, so a mirror written to 0 would
+    ///         stamp every later command with an epoch the dispatcher NACKs (IL-9683).
+    error RealignNewEpochZero(uint256 chainId);
     // Mirrors of the executor's vault-shape errors. Declared in both places on purpose: the selector is
     // derived from the signature, so the revert data is identical and the executor's ABI is unchanged.
     error TooManyVaults(uint256 supplied, uint256 maximum);
@@ -150,7 +155,7 @@ library CcipExecutorCommandLib {
     ///      by remote yield, so a cap here would either be vacuous or would make yield unrecognizable. It is
     ///      never written to NAV by this contract — evidence for the attester pair only (see the emit site's
     ///      comment). A proposal built from it is bounded by `CcipExecutorAttestationLib.approve`: `±bigChangeBps`
-    ///      of `settledRemoteBalance` and the `ATTESTATION_ANCHOR_BAND_BPS` band around the accounting anchor; from
+    ///      of `settledRemoteBalance` and the executor's `anchorBandBps` band around the accounting anchor; from
     ///      a zero bucket a non-zero proposal only within the band of a non-zero anchor (IL-8606); a zero proposal
     ///      from a zero or dust bucket skips both bounds.
     event RemoteBalanceUpdated(uint256 chainId, uint256 balance, uint64 stateVersion);
@@ -228,6 +233,45 @@ library CcipExecutorCommandLib {
                 if (vaults_[j] == vault) revert DuplicateVault(vault);
             }
         }
+    }
+
+    /// @notice Validates an UPDATE_VAULTS and returns its `extra` element: `abi.encode(vaults, allowed, replace,
+    ///         floors)`, the tuple the dispatcher decodes (IL-9629 adds `floors`).
+    /// @dev `vaults_` keeps its shape rule (`validateVaultShape`). The vaults of `floors_` follow the same rule (at most
+    ///      `MAX_TRACKED_POSITION_VAULTS` entries, no zero address, no duplicate: `TooManyVaults`, `InvalidVaultAddress`,
+    ///      `DuplicateVault`). Each `minAssets` arrives in the executor's LOCAL ASSET decimals and is converted to
+    ///      shared decimals exactly (`AmountHasDust` on sub-precision dust), as REDEEM `minAssets` is. An entry for a
+    ///      vault that stays allowlisted is carried but unused. Lives here for EIP-170 headroom.
+    /// @param vaults_ The vaults to add or remove (or the replacement set).
+    /// @param allowed_ True to add, false to remove.
+    /// @param replace_ True to replace the remote allowlist.
+    /// @param floors_ The sweep floors, local ASSET decimals; empty = no floor for any vault.
+    /// @param rate_ The executor's `DECIMAL_CONVERSION_RATE`.
+    /// @return extra The encoded `extra` with the floors in shared decimals.
+    function encodeVaultUpdate(
+        address[] calldata vaults_,
+        bool allowed_,
+        bool replace_,
+        SweepFloor[] calldata floors_,
+        uint256 rate_
+    ) public pure returns (bytes memory extra) {
+        validateVaultShape(vaults_);
+        uint256 length = floors_.length;
+        if (length > CrosschainConstants.MAX_TRACKED_POSITION_VAULTS) {
+            revert TooManyVaults(length, CrosschainConstants.MAX_TRACKED_POSITION_VAULTS);
+        }
+        SweepFloor[] memory floorsSD = new SweepFloor[](length);
+        for (uint256 i; i < length; ++i) {
+            address vault = floors_[i].vault;
+            if (vault == address(0)) revert InvalidVaultAddress(vault);
+            for (uint256 j; j < i; ++j) {
+                if (floors_[j].vault == vault) revert DuplicateVault(vault);
+            }
+            uint256 minAssets = floors_[i].minAssets;
+            if (minAssets % rate_ != 0) revert CcipDecimalsLib.AmountHasDust(minAssets);
+            floorsSD[i] = SweepFloor({vault: vault, minAssets: minAssets / rate_});
+        }
+        extra = abi.encode(vaults_, allowed_, replace_, floorsSD);
     }
 
     /// @notice Refuses a RETRY_COMMAND whose delivery gas cannot cover the stored command's budget (IL-8625).
@@ -592,6 +636,9 @@ library CcipExecutorCommandLib {
     ///      `RealignStateMoved`; the admin reschedules from the new state. When an `ABANDON_COMMAND` armed in
     ///      the same batch runs first, the expected pair is the state AFTER it (sequence + 1 if it declares the
     ///      sequence consumed).
+    ///
+    ///      `newEpoch` must be non-zero: checked after the free-slot and `RealignStateMoved` checks and before
+    ///      any write, it reverts `RealignNewEpochZero` (IL-9683).
     function realign(CcipExecutorCommandState storage self, uint256 chainId_, uint256 arg_) public {
         bytes32 activeId = self.active[chainId_];
         if (activeId != bytes32(0)) revert ActiveCommandExists(chainId_, activeId);
@@ -604,6 +651,7 @@ library CcipExecutorCommandLib {
         if (previousSequence != expectedSequence || previousEpoch != expectedEpoch) {
             revert RealignStateMoved(chainId_, expectedSequence, previousSequence, expectedEpoch, previousEpoch);
         }
+        if (newEpoch == 0) revert RealignNewEpochZero(chainId_);
         self.nextCommandSequence[chainId_] = newSequence;
         self.commandConfigEpoch[chainId_] = newEpoch;
         emit CommandLaneRealigned(chainId_, previousSequence, newSequence, previousEpoch, newEpoch);

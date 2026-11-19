@@ -59,6 +59,12 @@ interface IPlasmaVaultBaseGetter {
  * - Version tracking for upgrades
  * - Delegatecall security implications
  *
+ * Operational rule (IL-9598):
+ * - Parked fee shares stay in `totalSupply` until burned, so a burn credits every holder at the moment of the burn,
+ *   including an account that deposited shortly before it. Burn often, in small portions, and do not announce the
+ *   time of a burn in advance; avoid one large burn of a long-accumulated balance.
+ * - The same parked balance funds `RequestFeeRefundFuse` refunds, so keep refund needs in mind when choosing the amount.
+ *
  */
 
 /// @notice Data structure for the enter function parameters

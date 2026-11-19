@@ -9,6 +9,12 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @title ERC4626PriceFeed
+/// @notice Price of one share of an ERC-4626 vault in USD: the live convertToAssets(10 ** decimals) times the asset
+///         price from the calling middleware
+/// @dev For a PlasmaVault the conversion has no execution gate inside that vault's execute batch or instant
+///      withdrawal, so do not use this feed where a consumer can be called from within such an operation; see
+///      "Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)" in
+///      contracts/vaults/README.md
 contract ERC4626PriceFeed is IPriceFeed {
     using SafeCast for uint256;
 

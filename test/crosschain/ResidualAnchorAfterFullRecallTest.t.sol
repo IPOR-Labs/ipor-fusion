@@ -2,13 +2,17 @@
 pragma solidity 0.8.30;
 
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 import {CrosschainTestBase} from "./CrosschainTestBase.sol";
 import {CcipExecutorFixture} from "./CcipExecutorFixture.sol";
 import {BalanceObservation} from "../../contracts/crosschain/interfaces/ICrosschainExecutor.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
-import {CrosschainConstants} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
+import {CrosschainConstants, ResolveOutcome} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
+import {CcipCrosschainExecutor} from "../../contracts/crosschain/ccip/CcipCrosschainExecutor.sol";
 import {CcipExecutorAttestationLib} from "../../contracts/crosschain/ccip/lib/CcipExecutorAttestationLib.sol";
+import {CcipClient} from "../../contracts/crosschain/ccip/interfaces/CcipClient.sol";
+import {CcipMessages, CcipMsgType} from "../../contracts/crosschain/ccip/lib/CcipMessages.sol";
 
 /// @title StargateResidualAnchorAfterFullRecallTest
 /// @notice IL-8606 / TP-M-28 on the Stargate transport. If the remote shares earn yield after the last
@@ -204,6 +208,74 @@ contract StargateResidualAnchorAfterFullRecallTest is CrosschainTestBase {
             50e6,
             "anchor = min(R + D, D) = D, the residual is lost"
         );
+    }
+
+    // ------------------------------------------------------------------
+    // IL-9625 (M35): a zero credit keeps the residual anchor
+    // ------------------------------------------------------------------
+
+    bytes32 internal constant ANCHOR_UPDATED_TOPIC = keccak256("AttestationAnchorUpdated(uint256,uint256)");
+    bytes32 internal constant NET_UPDATED_TOPIC = keccak256("AttestationNetPrincipalUpdated(uint256,uint256)");
+
+    /// @dev Anchor / net-principal events the executor emitted since the last `vm.recordLogs()`.
+    function _anchorEventsSinceRecord() internal returns (uint256 count) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter != address(executor)) continue;
+            bytes32 topic = logs[i].topics[0];
+            if (topic == ANCHOR_UPDATED_TOPIC || topic == NET_UPDATED_TOPIC) ++count;
+        }
+    }
+
+    /// @dev Full recall leaving a residual of 7e6 (net principal 0), then a 50e6 send whose settlement reports a
+    ///      zero delivery. Logs are recorded from the settlement on.
+    function _zeroCreditAfterFullRecall() internal {
+        _fullRecallLeavingResidual(7e6);
+        vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
+        (bytes32 transferId, bytes32 guid, ) = _sendAsset(50e6, 0);
+        vm.recordLogs();
+        _deliverTransferSettled(transferId, guid, 0, 3); // the route delivered nothing
+    }
+
+    /// @dev Before IL-9625 a zero credit ran through the credit formula, which caps the anchor at the net principal
+    ///      (0 after a full recall), so the residual anchor was wiped.
+    function testZeroCreditAfterFullRecallShouldKeepTheResidualAnchor() public {
+        _zeroCreditAfterFullRecall();
+
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 0, "zero credit");
+        assertEq(executor.attestationAnchorPrincipal(REMOTE_CHAIN), 7e6, "residual anchor kept");
+        assertEq(_anchorEventsSinceRecord(), 0, "a zero credit writes no anchor and emits no anchor event");
+    }
+
+    /// @dev The residual stays attestable by an ordinary attestation; before IL-9625 this reverted
+    ///      `UnanchoredAttestation` and only `FORCE_SET_SETTLED` could price it.
+    function testResidualShouldStayAttestableAfterAZeroCredit() public {
+        _zeroCreditAfterFullRecall();
+
+        vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
+        _attest(7e6, 3);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 7e6, "residual priced by an ordinary attestation");
+        assertEq(executor.getBalance(), 112e6, "NAV = idle 105 + residual 7; the zero delivery added nothing");
+    }
+
+    /// @dev The late-credit path (IL-8619): the send is dropped from NAV by a timelocked force-resolve, then its
+    ///      genuine settlement arrives late with a zero delivery.
+    function testZeroLateCreditAfterDropFromNavShouldKeepTheResidualAnchor() public {
+        _fullRecallLeavingResidual(7e6);
+        (bytes32 transferId, bytes32 guid, ) = _sendAsset(50e6, 0); // settlement not delivered yet
+        vm.prank(admin);
+        uint256 rescueId = executor.scheduleForceResolveTransfer(transferId, ResolveOutcome.DROP_FROM_NAV);
+        vm.warp(block.timestamp + RESCUE_DELAY);
+        vm.prank(admin);
+        executor.executeForceResolveTransfer(rescueId, transferId, ResolveOutcome.DROP_FROM_NAV);
+
+        _deliverTransferSettled(transferId, guid, 0, 3);
+
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 0, "zero late credit");
+        assertEq(executor.attestationAnchorPrincipal(REMOTE_CHAIN), 7e6, "residual anchor kept");
+        vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
+        _attest(7e6, 3);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 7e6, "residual priced by an ordinary attestation");
     }
 
     // ------------------------------------------------------------------
@@ -462,6 +534,97 @@ contract CcipResidualAnchorAfterFullRecallTest is CcipExecutorFixture {
     }
 
     // ------------------------------------------------------------------
+    // IL-9625 (M35): a zero credit keeps the residual anchor
+    // ------------------------------------------------------------------
+
+    bytes32 internal constant ANCHOR_UPDATED_TOPIC = keccak256("AttestationAnchorUpdated(uint256,uint256)");
+    bytes32 internal constant NET_UPDATED_TOPIC = keccak256("AttestationNetPrincipalUpdated(uint256,uint256)");
+
+    /// @dev Anchor / net-principal events the executor emitted since the last `vm.recordLogs()`.
+    function _anchorEventsSinceRecord() internal returns (uint256 count) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter != address(executor)) continue;
+            bytes32 topic = logs[i].topics[0];
+            if (topic == ANCHOR_UPDATED_TOPIC || topic == NET_UPDATED_TOPIC) ++count;
+        }
+    }
+
+    /// @dev Full recall of 105 leaving a residual of 7 (net principal 0), then a 50e18 send that arrives as a zero
+    ///      delivery (a 100% pool haircut models a CCIP 2.0 pool fee plus decimal downscaling, IL-8635); the
+    ///      dispatcher settles it as a zero credit. Logs are recorded from the send on.
+    function _zeroCreditAfterFullRecall() internal {
+        _fullRecallAfterYield(105e18, 12e18);
+        vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
+        router.setPoolHaircutBps(10_000);
+        vm.recordLogs();
+        _bridge(50e18);
+        router.setPoolHaircutBps(0);
+    }
+
+    /// @dev Before IL-9625 a zero credit ran through the credit formula, which caps the anchor at the net principal
+    ///      (0 after a full recall), so the residual anchor was wiped.
+    function testZeroCreditAfterFullRecallShouldKeepTheResidualAnchor() public {
+        _zeroCreditAfterFullRecall();
+
+        assertEq(executor.outboundInFlight(REMOTE_CHAIN), 0, "outbound closed by the zero settlement");
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 0, "zero credit");
+        assertEq(executor.attestationAnchorPrincipal(REMOTE_CHAIN), 7e18, "residual anchor kept");
+        assertEq(executor.attestationNetPrincipal(REMOTE_CHAIN), 0, "net principal unchanged");
+        assertEq(_anchorEventsSinceRecord(), 0, "a zero credit writes no anchor and emits no anchor event");
+    }
+
+    /// @dev The residual stays attestable by an ordinary attestation; before IL-9625 this reverted
+    ///      `UnanchoredAttestation` and only `FORCE_SET_SETTLED` could price it.
+    function testResidualShouldStayAttestableAfterAZeroCredit() public {
+        _zeroCreditAfterFullRecall();
+
+        vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
+        _attest(7e18);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 7e18, "residual priced by an ordinary attestation");
+        assertEq(executor.getBalance(), 112e18, "NAV = idle 105 + residual 7; the zero delivery added nothing");
+    }
+
+    /// @dev The late-credit path (IL-8619): the send is dropped from NAV by a timelocked force-resolve, then its
+    ///      genuine settlement arrives late with a zero delivery.
+    function testZeroLateCreditAfterDropFromNavShouldKeepTheResidualAnchor() public {
+        _fullRecallAfterYield(105e18, 12e18);
+        router.setAutoDeliver(false); // the outbound message is not executed yet
+        token.mint(address(executor), 50e18);
+        vm.recordLogs();
+        executor.sendAssetToDispatcher(REMOTE_CHAIN, 50e18, 0, address(0), 500_000);
+        bytes32 operationId = _captureOperationId();
+        router.setAutoDeliver(true);
+        vm.prank(RESCUE_ADMIN);
+        uint256 rescueId = executor.scheduleForceResolveOutbound(operationId, false);
+        vm.warp(block.timestamp + RESCUE_DELAY);
+        vm.prank(RESCUE_ADMIN);
+        executor.executeForceResolveOutbound(rescueId, operationId, false);
+
+        uint64 lateVersion = executor.lastRemoteStateVersion(REMOTE_CHAIN) + 1;
+        uint256 remoteBalance = dispatcher.accountedBalance();
+        vm.prank(address(router));
+        executor.ccipReceive(
+            CcipClient.Any2EVMMessage({
+                messageId: keccak256("late-zero-settle"),
+                sourceChainSelector: DISPATCHER_SELECTOR,
+                sender: abi.encode(address(dispatcher)),
+                data: CcipMessages.encode(
+                    CcipMsgType.TRANSFER_SETTLED,
+                    abi.encode(operationId, uint256(0), remoteBalance, lateVersion)
+                ),
+                destTokenAmounts: new CcipClient.EVMTokenAmount[](0)
+            })
+        );
+
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 0, "zero late credit");
+        assertEq(executor.attestationAnchorPrincipal(REMOTE_CHAIN), 7e18, "residual anchor kept");
+        vm.warp(block.timestamp + MIN_UPDATE_INTERVAL);
+        _attest(7e18);
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), 7e18, "residual priced by an ordinary attestation");
+    }
+
+    // ------------------------------------------------------------------
     // IL-8737 (#2): a top-up on a (settled 0, anchor R, net N > 0) residual
     // ------------------------------------------------------------------
 
@@ -523,18 +686,16 @@ contract CcipResidualAnchorAfterFullRecallTest is CcipExecutorFixture {
         _topUpOnResidual(10e18, 10e18, 10e18); // anchor 20e18
         uint256 snap = vm.snapshotState();
 
+        // IL-9720: above the band (anchor 20e18, upper edge 24e18) the approval no longer reverts: nothing is written, the
+        // proposal is closed and the chain is blocked. Below the band (next block) it still reverts.
         uint256 pid = _propose(24e18 + 1);
+        uint256 settledBefore = executor.settledRemoteBalance(REMOTE_CHAIN);
+        vm.expectEmit(address(executor));
+        emit CcipCrosschainExecutor.BalanceRejectedAndBlocked(pid, REMOTE_CHAIN);
         vm.prank(APPROVER);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                CcipExecutorAttestationLib.AttestationOutsideAnchorBand.selector,
-                REMOTE_CHAIN,
-                20e18,
-                24e18 + 1,
-                2_000
-            )
-        );
         executor.approveBalance(pid);
+        assertTrue(executor.chainBlocked(REMOTE_CHAIN), "the chain is blocked");
+        assertEq(executor.settledRemoteBalance(REMOTE_CHAIN), settledBefore, "nothing was written");
 
         vm.revertToState(snap);
         pid = _propose(16e18 - 1);

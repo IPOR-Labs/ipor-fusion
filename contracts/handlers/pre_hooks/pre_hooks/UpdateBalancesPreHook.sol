@@ -20,6 +20,14 @@ import {FusesLib} from "../../../libraries/FusesLib.sol";
 /// - Protected by PlasmaVault's access control
 /// - No external configuration dependencies
 /// - Atomic balance updates for all markets
+/// - Refreshes every active market, so on a vault with a live EulerSwap pool it makes a user operation
+///   a trigger for refreshing the EULER_V2 market (11), which must not be reachable from user operations
+///   there (IL-9331). This also holds when the hook is nested in ExchangeRateValidatorPreHook, and for
+///   markets whose dependency graph (expanded recursively) contains market 11. See the Euler fuses README.
+/// - On a vault that holds a child PlasmaVault, the hook turns every hooked user operation into a read of the
+///   child's share price, which can be temporarily wrong while the child runs its `execute` batch or an instant
+///   withdrawal. This also holds when the hook is nested in ExchangeRateValidatorPreHook. Known limitation, no
+///   code guard (owner decision); see "Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)" in contracts/vaults/README.md.
 ///
 /// Comparison with UpdateBalancesIgnoreDustPreHook:
 /// - No dust threshold filtering

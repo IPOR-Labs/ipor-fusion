@@ -7,6 +7,8 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {CcipForkBase, CcipForkMessage} from "./CcipForkBase.sol";
 import {CcipMsgType} from "../../../contracts/crosschain/ccip/lib/CcipMessages.sol";
+import {SweepFloor} from "../../../contracts/crosschain/lib/CrosschainMessages.sol";
+import {CrosschainVaultActionLib} from "../../../contracts/crosschain/lib/CrosschainVaultActionLib.sol";
 
 /// @title VaultRemovalDustForkTest
 /// @notice IL-8784 / D-065 over the REAL CCIP transport: an UPDATE_VAULTS removal of a real Arbitrum PlasmaVault
@@ -23,6 +25,14 @@ abstract contract VaultRemovalDustForkBase is CcipForkBase {
     address internal constant PRIME = 0xD855296f9868fF659F3f359C90B7D005EC049228; // IPOR USDC Prime (PlasmaVault)
 
     CcipForkMessage internal held;
+
+    /// @dev The vault under test; PRIME unless a test overrides it.
+    function _vault() internal view virtual returns (address) {
+        return PRIME;
+    }
+
+    /// @dev Runs on the Arbitrum fork before the dispatcher is created (a test deploys its own vault here).
+    function _prepareVault() internal virtual {}
 
     event TrackedVaultSweepResidual(
         address vault,
@@ -47,28 +57,56 @@ abstract contract VaultRemovalDustForkBase is CcipForkBase {
     /// @dev Creates the dispatcher tracking PRIME, donates `shares_` of PRIME to it (or the shares worth
     ///      `assetsWorth_` when `shares_` is zero and `assetsWorth_` is not) and holds the removal message.
     function _setUpWithShares(uint256 assetsWorth_, uint256 shares_) internal returns (uint256 given) {
+        return _setUpWithSharesAndFloors(assetsWorth_, shares_, new SweepFloor[](0));
+    }
+
+    /// @dev `_setUpWithShares` whose removal carries `floors_` (IL-9629, `updateVaultsWithSweepFloors`, LOCAL decimals)
+    ///      when the list is not empty.
+    function _setUpWithSharesAndFloors(
+        uint256 assetsWorth_,
+        uint256 shares_,
+        SweepFloor[] memory floors_
+    ) internal returns (uint256 given) {
         _deployStack();
         _warmExecutorStorage();
-        address[] memory vaults = new address[](1);
-        vaults[0] = PRIME;
         vm.selectFork(arbFork);
-        require(IERC4626(PRIME).asset() == ARBITRUM_USDC, "usdc vault");
+        _prepareVault();
+        address[] memory vaults = new address[](1);
+        vaults[0] = _vault();
+        // A floor entry for address(0) stands for the vault under test, which a test may deploy only in the hook above.
+        for (uint256 i; i < floors_.length; ++i) {
+            if (floors_[i].vault == address(0)) floors_[i].vault = _vault();
+        }
+        require(IERC4626(_vault()).asset() == ARBITRUM_USDC, "usdc vault");
         vm.selectFork(ethFork);
         _startCapture();
         factory.requestDispatcher(address(executor), ARBITRUM_CHAIN_ID, vaults, MAX_FEE);
         CcipForkMessage memory create = _sendFromExecutor();
         _roundTrip(create, "create", CcipMsgType.DEPLOYMENT_ACK, "ack");
         vm.selectFork(arbFork);
-        assertTrue(dispatcher.isTrackedVault(PRIME), "tracked");
+        assertTrue(dispatcher.isTrackedVault(_vault()), "tracked");
         vm.deal(address(dispatcher), 1 ether);
 
-        given = shares_ != 0 ? shares_ : IERC4626(PRIME).convertToShares(assetsWorth_);
-        if (given != 0) deal(PRIME, address(dispatcher), given);
-        assertEq(IERC20(PRIME).balanceOf(address(dispatcher)), given, "dealt");
+        given = shares_ != 0 ? shares_ : IERC4626(_vault()).convertToShares(assetsWorth_);
+        if (given != 0) deal(_vault(), address(dispatcher), given);
+        assertEq(IERC20(_vault()).balanceOf(address(dispatcher)), given, "dealt");
 
         vm.selectFork(ethFork);
         _startCapture();
-        executor.updateVaults(ARBITRUM_CHAIN_ID, vaults, false, false, MAX_FEE, FEE_TOKEN, 0);
+        if (floors_.length == 0) {
+            executor.updateVaults(ARBITRUM_CHAIN_ID, vaults, false, false, MAX_FEE, FEE_TOKEN, 0);
+        } else {
+            executor.updateVaultsWithSweepFloors(
+                ARBITRUM_CHAIN_ID,
+                vaults,
+                false,
+                false,
+                floors_,
+                MAX_FEE,
+                FEE_TOKEN,
+                0
+            );
+        }
         held = _sendFromExecutor();
         assertEq(held.ccipReceiveGasLimit, 3_000_000, "3M route");
         vm.selectFork(arbFork);
@@ -100,7 +138,7 @@ abstract contract VaultRemovalDustForkBase is CcipForkBase {
 
     function _deliverMeasured() internal returns (Outcome memory o) {
         o.navBefore = dispatcher.accountedBalance();
-        o.worthBefore = IERC4626(PRIME).convertToAssets(IERC20(PRIME).balanceOf(address(dispatcher)));
+        o.worthBefore = IERC4626(_vault()).convertToAssets(IERC20(_vault()).balanceOf(address(dispatcher)));
         vm.recordLogs();
         bool success;
         (success, , o.gasUsed) = _routeViaRouter(held, ARBITRUM_ROUTER, held.ccipReceiveGasLimit);
@@ -110,8 +148,8 @@ abstract contract VaultRemovalDustForkBase is CcipForkBase {
         o.residuals = _residuals(logs);
         assertEq(out.length, 1, "one response");
         o.response = _type(out[0]);
-        o.tracked = dispatcher.isTrackedVault(PRIME);
-        o.sharesLeft = IERC20(PRIME).balanceOf(address(dispatcher));
+        o.tracked = dispatcher.isTrackedVault(_vault());
+        o.sharesLeft = IERC20(_vault()).balanceOf(address(dispatcher));
         o.navAfter = dispatcher.accountedBalance();
         emit log_named_uint("router gasUsed", o.gasUsed);
         emit log_named_uint("shares left", o.sharesLeft);
@@ -176,9 +214,12 @@ contract VaultRemovalRealPositionForkTest is VaultRemovalDustForkBase {
 
 contract VaultRemovalUnredeemableForkTest is VaultRemovalDustForkBase {
     /// @dev OpenZeppelin `Address.FailedInnerCall()`: an inner call of the vault's redeem ran out of the forwarded gas
-    ///      and the vault bubbled that up. This is the revert data when the test has its fork to itself (alone or in a
-    ///      suite of its own); empty data (a plain out-of-gas) was seen only while it shared a fork backend with
-    ///      sibling tests. Either way it is the reason 5 gas-limited failure this test is about.
+    ///      and the vault bubbled that up. This was the revert data when the test had its fork to itself; empty data (a
+    ///      plain out-of-gas) was seen while it shared a fork backend with sibling tests. IL-9629 (two more stored
+    ///      payload words, about 48k less gas left for the redeem on the same 3M lane) moved the point where the gas runs
+    ///      out, and the redeem now reverts with empty data even alone (forge 1.9.0, 2026-11-10). Which of the two it is
+    ///      depends only on where in the vault's call tree the forwarded gas ends; both are the reason 5 gas-limited
+    ///      failure this test is about, so both are accepted and everything else in the event is pinned exactly.
     bytes4 internal constant FAILED_INNER_CALL = 0x1425ea42;
 
     function _forkBlocks() internal pure override returns (uint256, uint256) {
@@ -197,9 +238,11 @@ contract VaultRemovalUnredeemableForkTest is VaultRemovalDustForkBase {
         uint256 shares = _setUpWithShares(2_000_000e6, 0);
         Outcome memory o = _deliverMeasured();
         assertEq(o.residuals.length, 1, "one residual event");
+        (, , , bytes4 redeemError, ) = abi.decode(o.residuals[0], (address, uint256, uint8, bytes4, bool));
+        assertTrue(redeemError == FAILED_INNER_CALL || redeemError == bytes4(0), "out-of-gas revert data");
         assertEq(
             o.residuals[0],
-            abi.encode(PRIME, shares, uint8(5), FAILED_INNER_CALL, true),
+            abi.encode(PRIME, shares, uint8(5), redeemError, true),
             "reason 5: redeem failed on the gas the 3M lane left"
         );
         assertEq(uint8(o.response), uint8(CcipMsgType.COMMAND_ACK), "acked");
@@ -208,5 +251,183 @@ contract VaultRemovalUnredeemableForkTest is VaultRemovalDustForkBase {
         assertGt(o.navBefore, 1_999_000e6, "the position was in NAV");
         assertEq(o.navAfter, 0, "NAV impact equals the residual: it drops out of NAV");
         assertEq(o.navBefore - o.navAfter, o.worthBefore, "dropped value is the residual's worth");
+    }
+}
+
+/// @dev IL-9629: the removal of a realistic position with a sweep FLOOR over the real CCIP transport on a 3M lane. The
+///      floored redeem runs inside the dispatcher's `sweepRedeemSelf` frame (one more call frame than the IL-8784 sweep).
+abstract contract VaultRemovalFloorForkBase is VaultRemovalDustForkBase {
+    function _floorOnPrime(uint256 minAssets_) internal pure returns (SweepFloor[] memory floors) {
+        floors = new SweepFloor[](1);
+        floors[0] = SweepFloor({vault: PRIME, minAssets: minAssets_});
+    }
+}
+
+contract VaultRemovalFloorReachedForkTest is VaultRemovalFloorForkBase {
+    function _forkBlocks() internal pure override returns (uint256, uint256) {
+        return (ETHEREUM_FORK_BLOCK + 11, ARBITRUM_FORK_BLOCK + 11);
+    }
+
+    /// @dev A 100k USDC Prime position removed with a 99k floor: the redeem pays about 100k, the floor is met, and the
+    ///      whole position is swept on the 3M lane exactly as without a floor (ACK, untracked, NAV about unchanged).
+    /// forge-config: default.isolate = true
+    function testShouldSweepARealPositionWhoseFloorIsReachedAtThreeMillion() public {
+        _setUpWithSharesAndFloors(100_000e6, 0, _floorOnPrime(99_000e6));
+        Outcome memory o = _deliverMeasured();
+        assertEq(uint8(o.response), uint8(CcipMsgType.COMMAND_ACK), "acked");
+        assertFalse(o.tracked, "untracked");
+        assertEq(o.sharesLeft, 0, "swept: nothing left");
+        assertEq(o.residuals.length, 0, "no residual: swept");
+        assertApproxEqRel(o.navAfter, o.navBefore, 0.001e18, "the redeemed assets are in idle, NAV about unchanged");
+    }
+}
+
+contract VaultRemovalFloorNotReachedForkTest is VaultRemovalFloorForkBase {
+    function _forkBlocks() internal pure override returns (uint256, uint256) {
+        return (ETHEREUM_FORK_BLOCK + 12, ARBITRUM_FORK_BLOCK + 12);
+    }
+
+    /// @dev The same position removed with a floor above what the redeem pays (101k): the redeem is rolled back, the
+    ///      command is still ACKed, the vault leaves the allowlist but stays tracked with all its shares and the NAV is
+    ///      unchanged; the residual event reports reason 6 with the `SweepBelowMinimum` selector and `untracked` false.
+    /// forge-config: default.isolate = true
+    function testShouldKeepARealPositionTrackedWhenItsFloorIsNotReachedAtThreeMillion() public {
+        uint256 shares = _setUpWithSharesAndFloors(100_000e6, 0, _floorOnPrime(101_000e6));
+        Outcome memory o = _deliverMeasured();
+        assertEq(uint8(o.response), uint8(CcipMsgType.COMMAND_ACK), "acked");
+        assertTrue(o.tracked, "still tracked");
+        assertFalse(dispatcher.isAllowedVault(PRIME), "off the allowlist");
+        assertEq(o.sharesLeft, shares, "no share sold");
+        assertEq(o.navAfter, o.navBefore, "the position still counts in NAV");
+        assertEq(o.residuals.length, 1, "one residual event");
+        assertEq(
+            o.residuals[0],
+            abi.encode(PRIME, shares, uint8(6), CrosschainVaultActionLib.SweepBelowMinimum.selector, false),
+            "reason 6: below the floor, kept tracked"
+        );
+    }
+}
+
+contract VaultRemovalFloorUnredeemableForkTest is VaultRemovalFloorForkBase {
+    /// @dev See `VaultRemovalUnredeemableForkTest.FAILED_INNER_CALL`.
+    bytes4 internal constant FAILED_INNER_CALL = 0x1425ea42;
+
+    function _forkBlocks() internal pure override returns (uint256, uint256) {
+        return (ETHEREUM_FORK_BLOCK + 13, ARBITRUM_FORK_BLOCK + 13);
+    }
+
+    /// @dev IL-9699: the UNREDEEMABLE 2M USDC position (about 8x the vault's TVL) removed with a non-zero floor, the
+    ///      expensive revert on the 3M CCIP lane. The floored redeem runs out of the forwarded gas (every sweep on this
+    ///      lane is gas-limited, below `VAULT_SWEEP_GAS`). The vault bubbles up `FailedInnerCall` or reverts with empty
+    ///      data, depending on where in its call tree the gas ends. The rule follows the data, not the gas:
+    ///      - `FailedInnerCall` (error data present): reason 6, the vault stays tracked, off the allowlist, shares and
+    ///        NAV unchanged (IL-9694 D-002);
+    ///      - empty data (plain out-of-gas): reason 5, untracked, the shares are the residual (D-065).
+    ///      Either way COMMAND_ACK is delivered. Measured router gas on the 3M lane: about 2.74M (forge 1.9.0,
+    ///      2026-11-11), asserted only against the lane limit.
+    /// forge-config: default.isolate = true
+    function testShouldAckAnUnredeemablePositionWithAFloorAndFollowTheRevertDataAtThreeMillion() public {
+        uint256 shares = _setUpWithSharesAndFloors(2_000_000e6, 0, _floorOnPrime(1_000_000e6));
+        Outcome memory o = _deliverMeasured();
+        assertEq(uint8(o.response), uint8(CcipMsgType.COMMAND_ACK), "acked");
+        assertEq(o.residuals.length, 1, "one residual event");
+        (, , , bytes4 redeemError, ) = abi.decode(o.residuals[0], (address, uint256, uint8, bytes4, bool));
+        assertTrue(redeemError == FAILED_INNER_CALL || redeemError == bytes4(0), "out-of-gas revert data");
+        assertEq(o.sharesLeft, shares, "no share sold");
+        assertLe(o.gasUsed, 3_000_000, "within the 3M route");
+        if (redeemError == FAILED_INNER_CALL) {
+            assertEq(
+                o.residuals[0],
+                abi.encode(PRIME, shares, uint8(6), FAILED_INNER_CALL, false),
+                "reason 6: error data under a floor keeps the vault tracked"
+            );
+            assertTrue(o.tracked, "still tracked");
+            assertFalse(dispatcher.isAllowedVault(PRIME), "off the allowlist");
+            assertEq(o.navAfter, o.navBefore, "the position still counts in NAV");
+        } else {
+            assertEq(
+                o.residuals[0],
+                abi.encode(PRIME, shares, uint8(5), bytes4(0), true),
+                "reason 5: empty data untracks"
+            );
+            assertFalse(o.tracked, "untracked");
+            assertEq(o.navAfter, 0, "the residual drops out of NAV");
+        }
+    }
+}
+
+/// @dev A vault whose `redeem` burns almost all the gas it is given in a nested call that returns, then reverts with a
+///      custom error: a deterministic expensive revert that always carries error data.
+contract ExpensiveRevertingVault {
+    error ExpensiveVaultFailure();
+
+    address public immutable asset;
+    mapping(address => uint256) public balanceOf;
+
+    constructor(address asset_) {
+        asset = asset_;
+    }
+
+    function convertToAssets(uint256 shares_) external pure returns (uint256) {
+        return shares_;
+    }
+
+    function maxRedeem(address owner_) external view returns (uint256) {
+        return balanceOf[owner_];
+    }
+
+    function burn() external view {
+        assembly {
+            for {} gt(gas(), 20000) {} {}
+        }
+    }
+
+    function redeem(uint256, address, address) external returns (uint256) {
+        (bool ok, ) = address(this).call{gas: gasleft() - 50_000}(abi.encodeCall(this.burn, ()));
+        ok;
+        revert ExpensiveVaultFailure();
+    }
+}
+
+contract VaultRemovalFloorExpensiveRevertForkTest is VaultRemovalFloorForkBase {
+    ExpensiveRevertingVault internal mock;
+
+    function _forkBlocks() internal pure override returns (uint256, uint256) {
+        return (ETHEREUM_FORK_BLOCK + 14, ARBITRUM_FORK_BLOCK + 14);
+    }
+
+    function _vault() internal view override returns (address) {
+        return address(mock);
+    }
+
+    function _prepareVault() internal override {
+        mock = new ExpensiveRevertingVault(ARBITRUM_USDC);
+    }
+
+    /// @dev IL-9694 D-002 and "measure COMMAND_ACK gas after an expensive revert on the 3M route": a vault whose
+    ///      redeem burns nearly all forwarded gas in a nested call and then reverts with its own custom error, removed
+    ///      with a non-zero floor on the real 3M lane. The revert always carries data, so the result is deterministic:
+    ///      reason 6 with that selector, the vault stays tracked, off the allowlist, shares and NAV unchanged, and the
+    ///      COMMAND_ACK is still delivered within the lane limit.
+    /// forge-config: default.isolate = true
+    function testShouldKeepAVaultTrackedWhenItsRedeemBurnsGasThenRevertsWithAnErrorUnderAFloorAtThreeMillion() public {
+        uint256 shares = 100_000e6;
+        SweepFloor[] memory floors = new SweepFloor[](1);
+        floors[0] = SweepFloor({vault: address(0), minAssets: 50_000e6});
+        _setUpWithSharesAndFloors(0, shares, floors);
+        Outcome memory o = _deliverMeasured();
+        assertEq(uint8(o.response), uint8(CcipMsgType.COMMAND_ACK), "acked");
+        assertEq(o.residuals.length, 1, "one residual event");
+        assertEq(
+            o.residuals[0],
+            abi.encode(address(mock), shares, uint8(6), ExpensiveRevertingVault.ExpensiveVaultFailure.selector, false),
+            "reason 6 with the vault's own error, still tracked"
+        );
+        assertTrue(o.tracked, "still tracked");
+        assertFalse(dispatcher.isAllowedVault(address(mock)), "off the allowlist");
+        assertEq(o.sharesLeft, shares, "no share sold");
+        assertEq(o.navAfter, o.navBefore, "the position still counts in NAV");
+        assertGt(o.gasUsed, 1_500_000, "the revert was expensive");
+        assertLe(o.gasUsed, 3_000_000, "within the 3M route");
     }
 }

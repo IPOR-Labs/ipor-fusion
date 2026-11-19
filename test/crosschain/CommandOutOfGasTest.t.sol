@@ -16,7 +16,12 @@ import {CcipMessages, CcipMsgType} from "../../contracts/crosschain/ccip/lib/Cci
 import {CcipExecutorCommandLib} from "../../contracts/crosschain/ccip/lib/CcipExecutorCommandLib.sol";
 import {BusinessAction, CommandStatus, CrosschainConstants} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
-import {Command, CrosschainMessages, UpdateVaults} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
+import {
+    Command,
+    CrosschainMessages,
+    UpdateVaults,
+    SweepFloor
+} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {MockLzEndpoint} from "./mocks/MockLzEndpoint.sol";
 import {MockCcipRouter} from "./mocks/MockCcipRouter.sol";
 import {MockCcipRouteValidator} from "./mocks/MockCcipRouteValidator.sol";
@@ -48,7 +53,13 @@ contract StargateBudgetBuilderHarness {
     }
 
     function buildUpdate(uint256 chainId_) external returns (bytes memory payload) {
-        (payload,,) = StargateExecutorCommandLib.buildUpdateVaults(_s, chainId_, new address[](0), 1);
+        (payload, , ) = StargateExecutorCommandLib.buildUpdateVaults(
+            _s,
+            chainId_,
+            new address[](0),
+            new SweepFloor[](0),
+            1
+        );
     }
 }
 
@@ -247,20 +258,22 @@ contract StargateCommandOutOfGasTest is StargateTwoSidedBase {
         h.setLane(REMOTE_CHAIN, uint128(minLane));
         h.buildCommand(REMOTE_CHAIN, 0); // exactly the minimum is accepted
 
-        // The empty UPDATE_VAULTS is a smaller payload than any command here, so its minimum is lower.
+        // The empty UPDATE_VAULTS (9 words since IL-9629 added the empty `floors` list) is now a larger payload than
+        // this 8-word command, so its minimum is higher; each payload is refused below its own minimum.
         UpdateVaults memory emptyUpdate = UpdateVaults({
             commandId: bytes32(0),
             sequence: 0,
             newConfigEpoch: 0,
             minExecutionGas: 0,
-            vaults: new address[](0)
+            vaults: new address[](0),
+            floors: new SweepFloor[](0)
         });
         uint256 minUpdateLane = CrosschainMessages.laneGasFor(
             CrosschainConstants.COMMAND_EXECUTION_MIN_GAS,
             CrosschainMessages.payloadWords(abi.encode(emptyUpdate).length),
             true
         );
-        assertLt(minUpdateLane, minLane, "the UPDATE_VAULTS floor is lower than the command floor");
+        assertGt(minUpdateLane, minLane, "the UPDATE_VAULTS floor is above the command floor (two more words)");
 
         h.setLane(REMOTE_CHAIN, 0);
         vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.CommandLaneGasTooLow.selector, 0, minUpdateLane));
@@ -968,15 +981,18 @@ contract StargateCommandOutOfGasTest is StargateTwoSidedBase {
             CrosschainConstants.COMMAND_EXECUTION_MIN_GAS,
             "budget >= floor > reserve: the capped self-call cannot underflow"
         );
-        // A maximum-size UPDATE_VAULTS (32 vaults) is the largest Stargate payload: its inner encoding is
-        // offset + 5 head words + length + one word per vault = 7 + MAX_ALLOWED_VAULTS words.
-        uint256 maxWords = 7 + CrosschainConstants.MAX_ALLOWED_VAULTS;
+        // A maximum-size UPDATE_VAULTS without sweep floors (32 vaults) is the largest payload the minimum lane must carry:
+        // its inner encoding is offset + 6 head words + vaults length + one word per vault + floors length
+        // = 9 + MAX_ALLOWED_VAULTS words (IL-9629 added the `floors` offset and length). Each sweep floor adds two words;
+        // a lane that cannot carry them refuses the build with `CommandLaneGasTooLow`, nothing is sent.
+        uint256 maxWords = 9 + CrosschainConstants.MAX_ALLOWED_VAULTS;
         uint256 formulaMin = CrosschainMessages.laneGasFor(CrosschainConstants.COMMAND_EXECUTION_MIN_GAS, maxWords, true);
-        // The cold-measured work of that payload on the real endpoint (`StargatePreCheckForkTest`, forge 1.8.5 cold semantics: up to
-        // 1,331,535 gas net of the hop loss for 39 words, cold accounts included) must fit the minimum lane's allowance with the 100k cold margin.
+        // The cold-measured work of that payload on the real endpoint (`StargatePreCheckForkTest`, forge 1.9.0, measured
+        // 2026-11-10 for IL-9629: 1,358,619 gas net of the hop loss for 41 words, cold accounts included) must fit the
+        // minimum lane's allowance with the 100k cold margin.
         // Hardcoded on purpose (this test is pure); the fork test `StargatePreCheckForkTest` is the AUTHORITATIVE cold
         // check of the same margin and fails first if the figure drifts.
-        uint256 coldWork32 = 1_331_535;
+        uint256 coldWork32 = 1_358_619;
         assertGe(
             CrosschainConstants.COMMAND_PRE_CALL_BASE + CrosschainConstants.COMMAND_PRE_CALL_PER_WORD * maxWords,
             coldWork32 + 100_000,
@@ -1000,8 +1016,11 @@ contract StargateCommandOutOfGasTest is StargateTwoSidedBase {
     ///         plus 1M of executor transaction overhead stays under it, on both transports.
     function testShouldKeepTheMaximumBudgetDeliverableUnderTheEthereumTransactionGasCap() public pure {
         uint256 cap = 16_777_216; // 2^24
-        uint256 stargateMaxWords = 7 + CrosschainConstants.MAX_ALLOWED_VAULTS;
-        uint256 ccipMaxWords = 3 + 7 + 1 + 3 + 1 + CrosschainConstants.MAX_ALLOWED_VAULTS;
+        // The largest payloads without sweep floors (IL-9629 layout: `floors` offset and length included). Every floor adds
+        // two words: a 14M raise of a full 32-vault Stargate update that also carries floors can exceed the cap on
+        // Ethereum; it stays safe (an expired command is NACKed before its budget check and the manager's CANCEL frees it).
+        uint256 stargateMaxWords = 9 + CrosschainConstants.MAX_ALLOWED_VAULTS;
+        uint256 ccipMaxWords = 3 + 7 + 1 + 4 + 1 + CrosschainConstants.MAX_ALLOWED_VAULTS + 1;
         uint256 stargateDelivered =
             CrosschainMessages.laneGasFor(CrosschainConstants.MAX_COMMAND_EXECUTION_GAS, stargateMaxWords, true);
         uint256 ccipDelivered =
@@ -1109,6 +1128,7 @@ contract CcipCommandOutOfGasTest is Test {
             rescueDelay: RESCUE_DELAY,
             balanceStalenessMax: 7 days,
             bigChangeBps: 2_000,
+            anchorBandBps: 2_000,
             minUpdateInterval: 1 hours,
             transferStalenessMax: 1 days
         });
@@ -1815,6 +1835,7 @@ contract CcipCommandOutOfGasTest is Test {
     }
 
     function testShouldKeepTheCcipVersionPinnedForTheNewCommandLayout() public pure {
-        assertEq(CcipMessages.VERSION, 3, "an old dispatcher must reject the new Command layout");
+        // IL-9629 bumped it again (3 -> 4) for the sweep floors of the UPDATE_VAULTS `extra`.
+        assertEq(CcipMessages.VERSION, 4, "an old dispatcher must reject the new Command layout");
     }
 }

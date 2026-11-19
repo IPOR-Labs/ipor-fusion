@@ -12,6 +12,7 @@ import {IFuseCommon} from "../IFuseCommon.sol";
 import {IFuseInstantWithdraw} from "../IFuseInstantWithdraw.sol";
 import {AaveV4SubstrateLib, AaveV4ReserveGrant} from "./AaveV4SubstrateLib.sol";
 import {IAaveV4Spoke} from "./ext/IAaveV4Spoke.sol";
+import {IAaveV4Hub} from "./ext/IAaveV4Hub.sol";
 
 /// @dev Data structure for entering (supply) the Aave V4 protocol
 struct AaveV4SupplyFuseEnterData {
@@ -263,7 +264,11 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
             _validateInstantWithdrawAllowed(grant, data_.spoke, data_.reserveId);
         }
 
-        _validateReserveAsset(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
+        IAaveV4Spoke.Reserve memory reserve = _validateReserveAsset(
+            IAaveV4Spoke(data_.spoke),
+            data_.reserveId,
+            data_.asset
+        );
 
         uint256 supplyAssets = IAaveV4Spoke(data_.spoke).getUserSuppliedAssets(data_.reserveId, address(this));
 
@@ -272,6 +277,13 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
 
         uint256 finalAmount = IporMath.min(supplyAssets, data_.amount);
+
+        /// @dev Instant withdraw path only: the Spoke draws the withdrawal from its Hub, which cannot release more
+        ///      than its liquidity of the asset, so cap the request at that liquidity. A partly liquid Hub then pays
+        ///      what it has and the next instant withdraw fuse pays the rest. The ALPHA exit stays uncapped.
+        if (catchExceptions_ && finalAmount > 0) {
+            finalAmount = IporMath.min(finalAmount, _hubLiquidityCap(reserve, finalAmount));
+        }
 
         if (finalAmount == 0) {
             return (data_.asset, 0);
@@ -326,15 +338,43 @@ contract AaveV4SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         }
     }
 
+    /// @notice Reads the Hub liquidity of the reserve's asset with a guarded staticcall
+    /// @dev The Hub is a new external contract on the user path, so a failed read must not block withdrawals: if the
+    ///      call reverts, the Hub has no code or the answer is shorter than 32 bytes, there is no cap and the request
+    ///      stays limited by the position only (the behaviour before the cap existed).
+    /// @param reserve_ The reserve (Hub address and Hub asset id)
+    /// @param requested_ The amount that is returned when the Hub liquidity cannot be read
+    /// @return The Hub liquidity, or `requested_` when it cannot be read
+    function _hubLiquidityCap(
+        IAaveV4Spoke.Reserve memory reserve_,
+        uint256 requested_
+    ) internal view returns (uint256) {
+        if (reserve_.hub.code.length == 0) {
+            return requested_;
+        }
+        (bool success, bytes memory result) = reserve_.hub.staticcall(
+            abi.encodeCall(IAaveV4Hub.getAssetLiquidity, (uint256(reserve_.assetId)))
+        );
+        if (!success || result.length < 32) {
+            return requested_;
+        }
+        return abi.decode(result, (uint256));
+    }
+
     /// @notice Validates that the reserve's underlying asset matches the expected asset
     /// @dev Defense-in-depth cross-check of the alpha-provided asset against the granted reserve
     /// @param spoke_ The Aave V4 Spoke contract
     /// @param reserveId_ The reserve ID to validate
     /// @param expectedAsset_ The asset address that the caller expects at this reserveId
-    function _validateReserveAsset(IAaveV4Spoke spoke_, uint256 reserveId_, address expectedAsset_) internal view {
-        address actual = spoke_.getReserve(reserveId_).underlying;
-        if (actual != expectedAsset_) {
-            revert AaveV4SupplyFuseReserveAssetMismatch(reserveId_, expectedAsset_, actual);
+    /// @return reserve The reserve read from the Spoke
+    function _validateReserveAsset(
+        IAaveV4Spoke spoke_,
+        uint256 reserveId_,
+        address expectedAsset_
+    ) internal view returns (IAaveV4Spoke.Reserve memory reserve) {
+        reserve = spoke_.getReserve(reserveId_);
+        if (reserve.underlying != expectedAsset_) {
+            revert AaveV4SupplyFuseReserveAssetMismatch(reserveId_, expectedAsset_, reserve.underlying);
         }
     }
 }

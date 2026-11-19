@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import {IFuseCommon} from "../../IFuseCommon.sol";
-import {Command, CrosschainMessages} from "../../../crosschain/lib/CrosschainMessages.sol";
+import {Command, CrosschainMessages, SweepFloor} from "../../../crosschain/lib/CrosschainMessages.sol";
 import {BusinessAction} from "../../../crosschain/lib/CrosschainConstants.sol";
 import {ICrosschainExecutor} from "../../../crosschain/interfaces/ICrosschainExecutor.sol";
 import {ICcipCrosschainExecutor, CcipRouteConfig} from "../../../crosschain/ccip/interfaces/ICcipCrosschain.sol";
@@ -146,9 +146,14 @@ struct CcipCommandFuseEnterData {
 ///      `DEPLOYMENT_CANCEL_GRACE`, can); batched with a recovery-marked command such as `REFRESH_BALANCE` it goes
 ///      through, which is harmless since a cancel moves no value.
 ///      UPDATE_VAULTS removal warning (IL-8784, D-060 / D-065): redeem or recall the position to zero BEFORE removing
-///      a vault. A removed vault is swept best effort and always untracked, so a failed sweep drops the residual shares
+///      a vault. A removed vault is swept best effort and untracked, so a failed sweep drops the residual shares
 ///      out of NAV until the vault is allowlisted again; alert on the dispatcher's `TrackedVaultSweepResidual` event.
 ///      On tight lanes send ONE removal per UPDATE_VAULTS and adds in a separate command.
+///      Sweep floors (IL-9629): `enterWithSweepFloors` sends an UPDATE_VAULTS with per-vault floors (`minAssets` in
+///      LOCAL ASSET decimals, like REDEEM `minAssets`); a vault whose non-zero floor is not reached is not redeemed and
+///      stays tracked off the allowlist (still in NAV, exit with REDEEM). Such a retained vault is swept again only by a
+///      later UPDATE_VAULTS naming it in a floor entry (`minAssets` 0 = forced removal). Floors add no exposure, so they
+///      are not checked against the REMOTE_VAULT substrates and do not change the chain-blocked rule.
 /// @dev Runs in the PlasmaVault storage context. MUST NOT declare storage variables; only `immutable`.
 ///      The Stargate twin is `StargateCrosschainCommandFuse`; it emits the same `CrosschainCommandFuseEnter` event.
 ///      The chain-blocked, recovery and removal rules are described above on this contract.
@@ -183,6 +188,21 @@ contract CcipCrosschainCommandFuse is IFuseCommon {
         MARKET_ID = marketId_;
     }
 
+    /// @notice `enter` for an UPDATE_VAULTS with per-vault sweep floors (IL-9629): forwards to the executor's
+    ///         `updateVaultsWithSweepFloors` (to `updateVaults` when `floors_` is empty).
+    /// @dev Only `UPDATE_VAULTS` is accepted (any other type reverts `CcipCommandFuseUnsupportedCommand`); the executor
+    ///      validation, the gating and the event are those of `enter`.
+    /// @param data_ The command data, `commandType` = `UPDATE_VAULTS`.
+    /// @param floors_ The sweep floors; `minAssets` in LOCAL ASSET decimals.
+    function enterWithSweepFloors(CcipCommandFuseEnterData calldata data_, SweepFloor[] calldata floors_) external {
+        if (data_.commandType != CcipCommandType.UPDATE_VAULTS) {
+            revert CcipCommandFuseUnsupportedCommand(uint8(data_.commandType));
+        }
+        _validate(data_.executor);
+        _updateVaults(data_, floors_);
+        emit CrosschainCommandFuseEnter(VERSION, data_.executor, uint8(data_.commandType), data_.chainId);
+    }
+
     /// @notice Forwards one manager operation, selected by `data_.commandType`, to the executor or its factory.
     /// @dev Validates the executor first (granted EXECUTOR, MANAGER = this vault, CCIP transport). Reverts
     ///      `CcipCommandFuseUnsupportedCommand` for `UNDEFINED`. Emits `CrosschainCommandFuseEnter` on success.
@@ -204,19 +224,7 @@ contract CcipCrosschainCommandFuse is IFuseCommon {
                 data_.maxFee
             );
         } else if (data_.commandType == CcipCommandType.UPDATE_VAULTS) {
-            if (data_.vaultsAllowed && data_.plasmaVaults.length != 0) {
-                _requireChainNotBlocked(data_.executor, data_.chainId);
-                CrosschainSubstrateLib.validateRemoteVaultsGranted(MARKET_ID, data_.chainId, data_.plasmaVaults);
-            }
-            ICcipCrosschainExecutor(data_.executor).updateVaults(
-                data_.chainId,
-                data_.plasmaVaults,
-                data_.vaultsAllowed,
-                data_.vaultsReplace,
-                data_.maxFee,
-                data_.feeToken,
-                data_.gasLimit
-            );
+            _updateVaults(data_, new SweepFloor[](0));
         } else if (data_.commandType == CcipCommandType.SEND_COMMAND) {
             if (data_.command.action == uint8(BusinessAction.DEPOSIT)) {
                 _requireChainNotBlocked(data_.executor, data_.chainId);
@@ -286,6 +294,37 @@ contract CcipCrosschainCommandFuse is IFuseCommon {
         }
 
         emit CrosschainCommandFuseEnter(VERSION, data_.executor, uint8(data_.commandType), data_.chainId);
+    }
+
+    /// @dev UPDATE_VAULTS: an allowlist-adding update is chain-gated and substrate-checked; `floors_` (IL-9629) selects
+    ///      `updateVaultsWithSweepFloors` when non-empty.
+    function _updateVaults(CcipCommandFuseEnterData calldata data_, SweepFloor[] memory floors_) private {
+        if (data_.vaultsAllowed && data_.plasmaVaults.length != 0) {
+            _requireChainNotBlocked(data_.executor, data_.chainId);
+            CrosschainSubstrateLib.validateRemoteVaultsGranted(MARKET_ID, data_.chainId, data_.plasmaVaults);
+        }
+        if (floors_.length == 0) {
+            ICcipCrosschainExecutor(data_.executor).updateVaults(
+                data_.chainId,
+                data_.plasmaVaults,
+                data_.vaultsAllowed,
+                data_.vaultsReplace,
+                data_.maxFee,
+                data_.feeToken,
+                data_.gasLimit
+            );
+        } else {
+            ICcipCrosschainExecutor(data_.executor).updateVaultsWithSweepFloors(
+                data_.chainId,
+                data_.plasmaVaults,
+                data_.vaultsAllowed,
+                data_.vaultsReplace,
+                floors_,
+                data_.maxFee,
+                data_.feeToken,
+                data_.gasLimit
+            );
+        }
     }
 
     function _gateOrMarkBusinessAction(ICrosschainExecutor executor_, uint8 action_) private {

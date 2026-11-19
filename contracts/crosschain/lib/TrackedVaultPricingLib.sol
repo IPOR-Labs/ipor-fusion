@@ -57,7 +57,13 @@ library TrackedVaultPricingLib {
     }
 
     /// @notice Underlying value of `holder_`'s position in `vault_`; `reason != PRICED` when a read failed.
-    /// @dev A zero share balance is worth zero without asking the vault to convert (and without the asset check: an
+    /// @dev Operator rule (IL-8607, IL-9698): the position is valued with `convertToAssets`, which ERC-4626 permits to
+    ///      omit an exit or withdraw fee, so the figure can sit above what a `redeem` returns. Allowlist only remote
+    ///      vaults that charge no exit or withdraw fee, or make the attesters report net-of-fee values. This is not an
+    ///      on-chain check. `convertToAssets` is kept on purpose (as in `Erc4626BalanceFuse`): `previewRedeem` may revert
+    ///      where `convertToAssets` may not, and a vault whose preview reverts would become unpriced instead of
+    ///      slightly overvalued, stalling attestations.
+    ///      A zero share balance is worth zero without asking the vault to convert (and without the asset check: an
     ///      empty position carries no value that a drifted underlying could misprice). A held position is priced
     ///      only while `vault_.asset() == asset_` (IL-8645); otherwise `convertToAssets` would be denominated in
     ///      another token. That makes up to three capped reads per vault.

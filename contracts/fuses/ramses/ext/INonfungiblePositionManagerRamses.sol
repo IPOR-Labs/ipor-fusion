@@ -124,6 +124,38 @@ interface IRamsesV2Pool {
 
     function feeGrowthGlobal1X128() external view returns (uint256);
 
+    /// @notice Look up information about a specific tick in the pool
+    /// @dev Ramses V2 layout: the Uniswap V3 tick fields with two extra fields after `liquidityNet`
+    /// (`boostedLiquidityGross`, `boostedLiquidityNet`, unused slots in current pools)
+    /// @param tick The tick to look up
+    /// @return liquidityGross The total amount of position liquidity that uses the pool either as tick lower or tick upper
+    /// @return liquidityNet How much liquidity changes when the pool price crosses the tick
+    /// @return boostedLiquidityGross Unused slot kept for the storage layout
+    /// @return boostedLiquidityNet Unused slot kept for the storage layout
+    /// @return feeGrowthOutside0X128 The fee growth on the other side of the tick from the current tick in token0
+    /// @return feeGrowthOutside1X128 The fee growth on the other side of the tick from the current tick in token1
+    /// @return tickCumulativeOutside The cumulative tick value on the other side of the tick from the current tick
+    /// @return secondsPerLiquidityOutsideX128 The seconds spent per liquidity on the other side of the tick
+    /// @return secondsOutside The seconds spent on the other side of the tick from the current tick
+    /// @return initialized True if the tick is initialized
+    function ticks(
+        int24 tick
+    )
+        external
+        view
+        returns (
+            uint128 liquidityGross,
+            int128 liquidityNet,
+            uint128 boostedLiquidityGross,
+            int128 boostedLiquidityNet,
+            uint256 feeGrowthOutside0X128,
+            uint256 feeGrowthOutside1X128,
+            int56 tickCumulativeOutside,
+            uint160 secondsPerLiquidityOutsideX128,
+            uint32 secondsOutside,
+            bool initialized
+        );
+
     /// @notice Returns the information about a position by the position's key
     /// @param key The position's key is a hash of a preimage composed by the owner, tickLower and tickUpper
     /// @return _liquidity The amount of liquidity in the position,

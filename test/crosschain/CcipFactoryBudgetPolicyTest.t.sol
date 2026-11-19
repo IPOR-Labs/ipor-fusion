@@ -103,6 +103,7 @@ contract CcipFactoryBudgetPolicyTest is Test {
                 rescueDelay: 3 days,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             });
@@ -392,14 +393,14 @@ contract CcipFactoryBudgetPolicyTest is Test {
         assertFalse(factory.consumedTicket(ticketHash));
         assertFalse(factory.isDispatcher(executor));
 
-        // Step 3: restore the source chain view and deliver the NACK.
+        // Step 3: restore the source chain view and deliver the NACK (it echoes the ticket's `expiresAt`, IL-9685).
         vm.chainId(LOCAL_CHAIN);
         vm.expectEmit(true, true, true, true, address(factory));
         emit CcipCrosschainFactory.DeploymentNack(executor, REMOTE_CHAIN, ticketHash, 1);
         _deliver(
             REMOTE_SELECTOR,
             CcipMsgType.DEPLOYMENT_NACK,
-            abi.encode(executor, REMOTE_CHAIN, ticketHash, uint8(1)),
+            abi.encode(executor, REMOTE_CHAIN, ticketHash, uint8(1), _expiry()),
             "nack-1"
         );
         assertEq(factory.pendingDeploymentTicket(executor, REMOTE_CHAIN), bytes32(0));
@@ -499,10 +500,13 @@ contract CcipFactoryBudgetPolicyTest is Test {
 
     function _nack(address executor_, bytes32 id_) private {
         bytes32 ticketHash = factory.pendingDeploymentTicket(executor_, REMOTE_CHAIN);
+        // The NACK names the pending request by its `expiresAt` (IL-9685).
+        uint256 expiresAt = uint256(factory.pendingDeploymentCreatedAt(executor_, REMOTE_CHAIN)) +
+            factory.DEPLOYMENT_TTL();
         _deliver(
             REMOTE_SELECTOR,
             CcipMsgType.DEPLOYMENT_NACK,
-            abi.encode(executor_, REMOTE_CHAIN, ticketHash, uint8(2)),
+            abi.encode(executor_, REMOTE_CHAIN, ticketHash, uint8(2), expiresAt),
             id_
         );
     }

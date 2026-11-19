@@ -1279,16 +1279,16 @@ contract MidasBalanceFuseTest is Test {
         uint128 balance,
         uint128 price
     ) public {
-        // Bound to realistic range (1-3 deposit vaults)
-        numDepositVaults = uint8(bound(numDepositVaults, 1, 3));
+        // Bound to realistic range (1-2 deposit vaults, one per mock). A third entry could only repeat a substrate,
+        // which grantMarketSubstrates rejects with MarketSubstrateDuplicate since IL-9642
+        numDepositVaults = uint8(bound(numDepositVaults, 1, 2));
         vm.assume(balance > 0);
         vm.assume(price > 0);
         vm.assume(uint256(balance) * uint256(price) <= type(uint256).max); // no overflow check
 
         bytes32[] memory substrates = new bytes32[](numDepositVaults);
 
-        // We only have two deposit vault mocks, so cap at 2 for actual setup
-        uint8 actualVaults = numDepositVaults > 2 ? 2 : numDepositVaults;
+        uint8 actualVaults = numDepositVaults;
 
         if (actualVaults >= 1) {
             depositVault.setMToken(address(mTokenA));
@@ -1303,10 +1303,6 @@ contract MidasBalanceFuseTest is Test {
             dataFeed2.setPrice(uint256(price));
             mTokenB.setBalance(address(harness), uint256(balance));
             substrates[1] = _depositVaultSubstrate(address(depositVault2));
-        }
-        // Fill remaining with copy if numDepositVaults > 2
-        for (uint8 i = actualVaults; i < numDepositVaults; i++) {
-            substrates[i] = substrates[actualVaults - 1];
         }
 
         harness.setMarketSubstrates(MARKET_ID, substrates);

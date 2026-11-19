@@ -12,6 +12,11 @@ pragma solidity 0.8.30;
 /// @author IPOR Labs
 library CrosschainErrors {
     error InvalidRescueDelay(uint256 supplied, uint256 minimum);
+    /// @dev Transfer staleness window below `CrosschainConstants.MIN_TRANSFER_STALENESS_WINDOW`; thrown by both
+    ///      executor constructors for a nonzero value under the floor (IL-9663).
+    error TransferStalenessBelowMinimum(uint256 supplied, uint256 minimum);
+    /// @dev Rescue delay above `CrosschainConstants.MAX_RESCUE_DELAY` (IL-9674).
+    error RescueDelayTooLong(uint256 supplied, uint256 maximum);
     /// @dev Factory configuration timelock below `CrosschainConstants.MIN_CONFIG_DELAY` (IL-8538).
     error InvalidConfigDelay(uint256 supplied, uint256 minimum);
     error NoActiveReturnRequest(uint256 chainId);
@@ -231,6 +236,19 @@ library CrosschainErrors {
     /// @param target The targeted contract.
     error RescueContextCall(address target);
 
+    /// @notice Thrown when a generic rescue on a host that holds vault shares (a dispatcher) does not have one of
+    ///         the seven allowed calldata shapes (IL-9654): empty calldata (value only; on a contract target it runs
+    ///         its `receive` / `fallback`), `transfer(address,uint256)`, `approve(address,uint256)` with amount 0,
+    ///         `redeem(uint256,address,address)` or `redeemFromRequest(uint256,address,address)` with the host as
+    ///         owner, `requestShares(uint256)` on a WithdrawManager whose vault is neither tracked nor allowlisted, or
+    ///         LayerZero packet hygiene on the host's endpoint. Raised at schedule time; for `requestShares` also at
+    ///         execute time, when the target does not answer `getPlasmaVaultAddress()` with one non-zero address
+    ///         word. The fence checks the calldata, not what the target does with it; executors and the Stargate
+    ///         factory are not restricted by it.
+    /// @param target The targeted contract.
+    /// @param selector The rejected calldata selector (zero when the calldata is shorter than 4 bytes).
+    error RescueCallShapeNotAllowed(address target, bytes4 selector);
+
     /// @notice Thrown when a generic rescue targets the caller's transport: any call to the CCIP router or
     ///         to the Stargate pool (`STARGATE_POOL()`), or any call to the LayerZero endpoint other than inbound packet hygiene (`skip`, `clear`,
     ///         `nilify`, `burn`). The transport authenticates the host by bare `msg.sender`, so a rescue
@@ -241,8 +259,10 @@ library CrosschainErrors {
 
     /// @notice Thrown when a generic rescue targets one of the dispatcher's tracked or allowlisted
     ///         vaults, at schedule or at execute time. Share-token approvals or redemptions would drain NAV outside the
-    ///         ASSET floor (IL-8556).
-    /// @param vault The tracked or allowlisted vault that was targeted.
+    ///         ASSET floor (IL-8556). Also thrown, at schedule or at execute time, for a `requestShares` rescue on a
+    ///         WithdrawManager whose vault (`getPlasmaVaultAddress()`) is tracked or allowlisted; `vault` is then that
+    ///         vault, not the rescue target (IL-9654).
+    /// @param vault The tracked or allowlisted vault that was targeted, or that the targeted manager reports.
     error RescueTrackedVaultCall(address vault);
 
     /// @notice Thrown when the host's tracked vault set exceeds the protocol cap while a rescue reads it.
@@ -280,14 +300,20 @@ library CrosschainErrors {
     /// @notice Thrown when the balance proposer address equals the approver (must differ, §9 Q5).
     error ProposerEqualsApprover();
 
-    /// @notice Thrown when `BIG_CHANGE_BPS` is zero or exceeds `ATTESTATION_ANCHOR_BAND_BPS` at
-    ///         construction (§8 P3 item 5, IL-8049).
+    /// @notice Thrown when `BIG_CHANGE_BPS` is zero or exceeds the executor's `anchorBandBps` at
+    ///         construction (§8 P3 item 5, IL-8049, IL-9720).
     /// @param bps The invalid basis-points value.
     error InvalidBigChangeBps(uint256 bps);
 
+    /// @notice Thrown when the per-executor attestation anchor band is below `BIG_CHANGE_BPS` or above
+    ///         `MAX_ATTESTATION_ANCHOR_BAND_BPS` at construction of a Stargate executor (IL-9720).
+    /// @param bps The invalid anchor band in basis points.
+    error InvalidAnchorBandBps(uint256 bps);
+
     /// @notice Thrown when a timing parameter is zero, above `MAX_STALENESS_WINDOW`, or when
-    ///         `STALENESS_MAX < MIN_PROPOSAL_APPROVAL_WINDOW` or `MIN_UPDATE_INTERVAL >= STALENESS_MAX` at
-    ///         construction (§8 P3, IL-8049).
+    ///         `STALENESS_MAX < MIN_PROPOSAL_APPROVAL_WINDOW`, `MIN_UPDATE_INTERVAL >= STALENESS_MAX` or
+    ///         `STALENESS_MAX - MIN_UPDATE_INTERVAL < MIN_PROPOSAL_APPROVAL_WINDOW` at construction
+    ///         (§8 P3, IL-8049, IL-9664).
     error InvalidTimingParameter();
 
     /// @notice Thrown when a `deploymentTtl` is outside `[MIN_DEPLOYMENT_TTL, MAX_DEPLOYMENT_TTL]`: at
@@ -402,7 +428,7 @@ library CrosschainErrors {
     /// @param proposed The balance the approval tried to write.
     error UnanchoredAttestation(uint256 chainId, uint256 proposed);
 
-    /// @notice Thrown when an approved attestation would move `settledSD` outside `ATTESTATION_ANCHOR_BAND_BPS`
+    /// @notice Thrown when an approved attestation would move `settledSD` outside the executor's `anchorBandBps`
     ///         of the per-chain accounting anchor (`anchorPrincipal`) — Stargate transport (audit
     ///         `no_cumulative_bound_on_attested_balance_ratchet`, IL-7967).
     /// @param chainId The chain referenced.
@@ -901,8 +927,9 @@ library CrosschainErrors {
     error TicketExpiryOutOfRange(uint256 expiresAt, uint256 maxExpiresAt);
 
     /// @notice Thrown by the CCIP source factory on a NACK(`TICKET_EXPIRED`) received before the current pending
-    ///         request's own `createdAt + DEPLOYMENT_TTL`: such a NACK answers an earlier, identical request and must
-    ///         not close the fresh one. Retryable: the pending request is untouched.
+    ///         request's own `createdAt + DEPLOYMENT_TTL`: the destination clock runs ahead of the source, so the NACK
+    ///         cannot close the fresh request. A stale NACK for an earlier, identical request reverts
+    ///         `StaleDeploymentNack` instead (IL-9685). Retryable: the pending request is untouched.
     /// @param executor The executor with the pending request.
     /// @param dstChainId The destination chain id.
     /// @param notBefore The first timestamp at which a TICKET_EXPIRED NACK is accepted.

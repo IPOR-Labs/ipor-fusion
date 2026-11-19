@@ -16,6 +16,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
@@ -149,7 +150,7 @@ contract HyperCoreOrderFuseTest is Test {
         substrates[0] = HyperCoreSubstrateLib.encodePerpMarket(ASSET, 10_000, false);
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SettlementMode, 2);
         substrates[2] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowOrderSeconds, 0);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         _execute(true, 100e8, 1000, false, 2, 1);
         (uint64 pendingUntil, , , uint8 actionClass, , , , ) = _readPending();
         assertEq(pendingUntil, 0, "no pending record even when the legacy mode says REPORTED");
@@ -158,7 +159,7 @@ contract HyperCoreOrderFuseTest is Test {
         core.setL1BlockNumber(101);
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SettlementMode, 257);
         vm.prank(TestAddresses.FUSE_MANAGER);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         _execute(true, 100e8, 1000, false, 2, 2);
     }
 
@@ -439,7 +440,7 @@ contract HyperCoreOrderFuseTest is Test {
         vm.prank(TestAddresses.FUSE_MANAGER);
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodePerpMarket(asset_, maxNotionalUsd6_, reduceOnlyRequired_);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _execute(bool isBuy_, uint64 limitPx_, uint64 sz_, bool reduceOnly_, uint8 tif_, uint128 cloid_) private {

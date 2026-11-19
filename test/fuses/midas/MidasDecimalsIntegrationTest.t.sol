@@ -100,7 +100,7 @@ contract MidasDecimalsIntegrationTest is Test {
         plasmaVault.addBalanceFusesToVault(MARKET_ID, address(balanceFuse));
 
         // Configure market substrates
-        bytes32[] memory substrates = new bytes32[](6);
+        bytes32[] memory substrates = new bytes32[](5);
         substrates[0] = MidasSubstrateLib.substrateToBytes32(
             MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: MTBILL_TOKEN})
         );
@@ -121,9 +121,6 @@ contract MidasDecimalsIntegrationTest is Test {
                 substrateType: MidasSubstrateType.REDEMPTION_VAULT,
                 substrateAddress: MTBILL_REDEMPTION_VAULT
             })
-        );
-        substrates[5] = MidasSubstrateLib.substrateToBytes32(
-            MidasSubstrate({substrateType: MidasSubstrateType.M_TOKEN, substrateAddress: MTBILL_TOKEN})
         );
         plasmaVault.addSubstratesToMarket(MARKET_ID, substrates);
 

@@ -11,6 +11,7 @@ import {PriceManagerFactory} from "../../contracts/factory/PriceManagerFactory.s
 import {PlasmaVaultFactory} from "../../contracts/factory/PlasmaVaultFactory.sol";
 import {AccessManagerFactory} from "../../contracts/factory/AccessManagerFactory.sol";
 import {FeeManagerFactory} from "../../contracts/managers/fee/FeeManagerFactory.sol";
+import {FeeManager} from "../../contracts/managers/fee/FeeManager.sol";
 import {MockERC20} from "../test_helpers/MockERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IporFusionMarkets} from "../../contracts/libraries/IporFusionMarkets.sol";
@@ -65,6 +66,8 @@ contract RedemptionDelayExemptionVaultTest is Test {
     PlasmaVault private plasmaVault;
 
     event RedemptionDelayExemptionUpdated(address account, bool exempt);
+
+    address private feeManagerOf;
 
     function setUp() public {
         owner = makeAddr("owner");
@@ -164,6 +167,7 @@ contract RedemptionDelayExemptionVaultTest is Test {
 
         accessManager = IporFusionAccessManager(instance.accessManager);
         plasmaVault = PlasmaVault(payable(instance.plasmaVault));
+        feeManagerOf = instance.feeManager;
 
         // the owner also acts as role admin for whitelisting depositors (ATOMIST_ROLE administers WHITELIST_ROLE)
         vm.prank(owner);
@@ -179,7 +183,10 @@ contract RedemptionDelayExemptionVaultTest is Test {
         address[] memory accounts = new address[](2);
         accounts[0] = depositor;
         accounts[1] = other;
-        assertEq(accessManager.getRedemptionDelayExemptionsCount(), 0, "no exemptions initially");
+        // IL-9634 (T79): a new vault starts with exactly the fee manager and its two fee accounts exempt
+        _assertInitialFeeExemptions();
+        uint256 initialCount = accessManager.getRedemptionDelayExemptionsCount();
+        assertEq(initialCount, 3, "fee manager + 2 fee accounts exempt initially");
         assertFalse(accessManager.isRedemptionDelayExempt(depositor), "not exempt initially");
 
         // when
@@ -194,11 +201,11 @@ contract RedemptionDelayExemptionVaultTest is Test {
         assertTrue(accessManager.isRedemptionDelayExempt(depositor), "depositor exempt");
         assertTrue(accessManager.isRedemptionDelayExempt(other), "other exempt");
         assertFalse(accessManager.isRedemptionDelayExempt(stranger), "stranger not exempt");
-        assertEq(accessManager.getRedemptionDelayExemptionsCount(), 2, "count");
+        assertEq(accessManager.getRedemptionDelayExemptionsCount(), initialCount + 2, "count");
         address[] memory listed = accessManager.getRedemptionDelayExemptions();
-        assertEq(listed.length, 2, "listed length");
-        assertEq(listed[0], depositor, "listed[0]");
-        assertEq(listed[1], other, "listed[1]");
+        assertEq(listed.length, initialCount + 2, "listed length");
+        assertEq(listed[initialCount], depositor, "listed[initial]");
+        assertEq(listed[initialCount + 1], other, "listed[initial + 1]");
 
         // when - revoke one
         address[] memory revoked = new address[](1);
@@ -210,7 +217,8 @@ contract RedemptionDelayExemptionVaultTest is Test {
 
         // then
         assertFalse(accessManager.isRedemptionDelayExempt(depositor), "depositor revoked");
-        assertEq(accessManager.getRedemptionDelayExemptionsCount(), 1, "count after revoke");
+        assertEq(accessManager.getRedemptionDelayExemptionsCount(), initialCount + 1, "count after revoke");
+        _assertInitialFeeExemptions();
     }
 
     function testShouldNotSetExemptionThroughVaultWhenNotOwner() public {
@@ -236,7 +244,9 @@ contract RedemptionDelayExemptionVaultTest is Test {
             }
         }
 
-        assertEq(accessManager.getRedemptionDelayExemptionsCount(), 0, "nothing was exempted");
+        assertEq(accessManager.getRedemptionDelayExemptionsCount(), 3, "only the initial fee exemptions remain");
+        assertFalse(accessManager.isRedemptionDelayExempt(other), "other was not exempted");
+        _assertInitialFeeExemptions();
     }
 
     function testShouldNotSetExemptionDirectlyOnAccessManagerEvenWhenOwner() public {
@@ -533,54 +543,43 @@ contract RedemptionDelayExemptionVaultTest is Test {
         assertEq(plasmaVault.balanceOf(depositor), shares, "owner shares untouched");
     }
 
-    function testShouldLockNonExemptOperatorOfExemptOwnerOnTransferFrom() public {
+    /// @dev IL-9705 (Pete D-004): the caller passes only the role check, so the operator's own lock does not matter
+    function testShouldNotLockNonExemptOperatorOfExemptOwnerOnTransferFrom() public {
         // given
         _enableTransferShares();
-        uint256 operatorUnlockTime = _exemptOwnerAndFreshOperator();
+        _exemptOwnerAndFreshOperator();
         uint256 shares = plasmaVault.balanceOf(depositor);
 
-        // when/then - the exempt owner does not unlock the operator
-        vm.expectRevert(abi.encodeWithSignature("AccountIsLocked(uint256)", operatorUnlockTime));
+        // when - the operator is still inside its own lock window
         vm.prank(spender);
         plasmaVault.transferFrom(depositor, receiver, shares / 2);
 
-        // and - succeeds once the operator's own delay passed
-        vm.warp(operatorUnlockTime);
-        vm.prank(spender);
-        plasmaVault.transferFrom(depositor, receiver, shares / 2);
+        // then
         assertEq(plasmaVault.balanceOf(receiver), shares / 2, "shares transferred");
     }
 
-    function testShouldLockNonExemptOperatorOfExemptOwnerOnWithdraw() public {
+    function testShouldNotLockNonExemptOperatorOfExemptOwnerOnWithdraw() public {
         // given
-        uint256 operatorUnlockTime = _exemptOwnerAndFreshOperator();
+        _exemptOwnerAndFreshOperator();
 
-        // when/then
-        vm.expectRevert(abi.encodeWithSignature("AccountIsLocked(uint256)", operatorUnlockTime));
+        // when
         vm.prank(spender);
         plasmaVault.withdraw(DEPOSIT_AMOUNT / 2, receiver, depositor);
 
-        // and
-        vm.warp(operatorUnlockTime);
-        vm.prank(spender);
-        plasmaVault.withdraw(DEPOSIT_AMOUNT / 2, receiver, depositor);
+        // then
         assertEq(underlyingToken.balanceOf(receiver), DEPOSIT_AMOUNT / 2, "assets received");
     }
 
-    function testShouldLockNonExemptOperatorOfExemptOwnerOnRedeem() public {
+    function testShouldNotLockNonExemptOperatorOfExemptOwnerOnRedeem() public {
         // given
-        uint256 operatorUnlockTime = _exemptOwnerAndFreshOperator();
+        _exemptOwnerAndFreshOperator();
         uint256 shares = plasmaVault.balanceOf(depositor);
 
-        // when/then
-        vm.expectRevert(abi.encodeWithSignature("AccountIsLocked(uint256)", operatorUnlockTime));
+        // when
         vm.prank(spender);
         plasmaVault.redeem(shares / 2, receiver, depositor);
 
-        // and
-        vm.warp(operatorUnlockTime);
-        vm.prank(spender);
-        plasmaVault.redeem(shares / 2, receiver, depositor);
+        // then
         assertGt(underlyingToken.balanceOf(receiver), 0, "assets received");
     }
 
@@ -625,6 +624,20 @@ contract RedemptionDelayExemptionVaultTest is Test {
         underlyingToken.approve(address(plasmaVault), amount_);
         plasmaVault.deposit(amount_, account_);
         vm.stopPrank();
+    }
+
+    /// @dev IL-9634 (T79): the factory exempts the fee manager and both fee accounts on every new vault
+    function _assertInitialFeeExemptions() private view {
+        address feeManager = feeManagerOf;
+        assertTrue(accessManager.isRedemptionDelayExempt(feeManager), "fee manager exempt");
+        assertTrue(
+            accessManager.isRedemptionDelayExempt(FeeManager(feeManager).PERFORMANCE_FEE_ACCOUNT()),
+            "performance fee account exempt"
+        );
+        assertTrue(
+            accessManager.isRedemptionDelayExempt(FeeManager(feeManager).MANAGEMENT_FEE_ACCOUNT()),
+            "management fee account exempt"
+        );
     }
 
     function _setExemptionCalldata(address[] memory accounts_, bool exempt_) private pure returns (bytes memory) {

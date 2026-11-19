@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IPreHook} from "../IPreHook.sol";
 import {PlasmaVaultConfigLib} from "../../../libraries/PlasmaVaultConfigLib.sol";
+import {PreHooksLib} from "../PreHooksLib.sol";
 import {ICrosschainExecutor} from "../../../crosschain/interfaces/ICrosschainExecutor.sol";
 import {IPlasmaVault} from "../../../interfaces/IPlasmaVault.sol";
 import {IPlasmaVaultGovernance} from "../../../interfaces/IPlasmaVaultGovernance.sol";
@@ -34,13 +35,46 @@ import {
 ///      The gate exists ONLY in `run()` (state-changing selectors via `PlasmaVault._checkCanCall`). The vault's
 ///      `maxDeposit`, `maxMint`, `maxWithdraw`, `maxRedeem`, `preview*` and `convertTo*` views are not gated: while
 ///      the gate is closed they keep returning values priced from the cached NAV, whereas EIP-4626 integrators
-///      would expect `max*` to return 0 during a halt (IL-8639, TP-L-11; PlasmaVault `max*` semantics are
-///      intentionally unchanged). Use `isNavHealthy(plasmaVault)` as a best-effort off-chain / integrator signal.
+///      would expect `max*` to return 0 during a halt (IL-8639, TP-L-11). This hook does not change the PlasmaVault
+///      `max*` semantics; separately, IL-9679 makes `maxWithdraw(owner)` and `maxRedeem(owner)` return 0 while the
+///      owner's redemption lock is active on vaults built with it, which has nothing to do with this gate.
+///      Use `isNavHealthy(plasmaVault)` as a best-effort off-chain / integrator signal.
 ///
 ///      The early return for `execute` and `updateMarketsBalances` does NOT cover performance-fee realisation:
 ///      both can mint fee shares after refreshing an unrelated market while an executor's cached value may
 ///      overstate the real remote value. This is an accepted limitation (IL-8599, TP-M-21); the operational
 ///      rule is in the "Performance fees while an executor is fail-closed" section of the crosschain READMEs.
+///
+///      Watched vaults (IL-9720). A vault that holds shares of a CROSSCHAIN vault (an index, a pair) has no EXECUTOR
+///      substrate of its own, so the walk above sees nothing, while its NAV and every share price it quotes still depend
+///      on the other vault's executors. Such a vault registers this hook DIRECTLY on `deposit`, `mint`,
+///      `depositWithPermit`, `withdraw`, `redeem` and `redeemFromRequest`, and passes the list of watched vaults as the
+///      pre-hook substrates of each of those selectors, one `bytes32` per vault holding the address in the low 160 bits
+///      (`PlasmaVaultConfigLib.addressToBytes32`); the same list for every selector, in one `setPreHookImplementations`
+///      call. After the own executors, `run` calls `isNavHealthy(watchedVault)` on this implementation (`VERSION`, an
+///      external call, so the probe sees exactly what an integrator calling `isNavHealthy` sees) for every entry, in
+///      list order: a `false` answer reverts `CrosschainNavValidationPreHookWatchedVaultUnhealthy(vault)`, a revert of
+///      the probe (malformed data, IL-9118) makes `run` revert with the probe's data. `execute` and
+///      `updateMarketsBalances` never read the list; the CROSSCHAIN vaults themselves register the hook with an empty list
+///      and behave exactly as before.
+///
+///      Known limits of the pre-hook system this relies on (README, "Vaults that hold shares of a CROSSCHAIN vault"):
+///      1. One hook per selector: registering this hook REPLACES the previous implementation of the selector, so
+///         every control it performed is lost (a rate validator and its nested hooks, a balance refresh, a pause).
+///         Inventory the six selectors first (`PreHooksInfoReader`); re-register only where nothing is lost.
+///      2. Nested use gets an empty list: this hook run from inside another hook (for example
+///         `ExchangeRateValidatorPreHook`) reads the substrates of the REGISTERED implementation, not its own, so a
+///         watched-vault list does not apply there.
+///      3. The list is per selector: a selector without it lets the call through.
+///      4. Replacing the implementation deletes the list of the old one; the new one gets only what is passed in
+///         that call. A re-registration (a new hook, Hooks V2) with an empty list silently stops watching.
+///      5. `isNavHealthy(holder)` does not see the list; probe the watched vaults as well.
+///      6. The probe does not prove that an entry is a CROSSCHAIN vault: a contract that returns no substrates, or a
+///         vault without an EXECUTOR substrate, is "healthy". `MARKET_ID` must be the CROSSCHAIN market of the watched
+///         vaults. Upper bits of an entry are ignored; an address without code, or one without the vault getters,
+///         reverts.
+///      Hooks V2 (IL-9490) lifts limits 1 and 2; the port of this list to `CrosschainNavValidationPreHookV2` is
+///      tracked there.
 /// @author IPOR Labs
 contract CrosschainNavValidationPreHook is IPreHook {
     /// @notice Thrown when a granted substrate is neither a remote-vault marker nor a valid executor.
@@ -49,12 +83,23 @@ contract CrosschainNavValidationPreHook is IPreHook {
     /// @notice Thrown when a granted executor is not managed by this PlasmaVault.
     error CrosschainNavValidationPreHookExecutorManagerMismatch(address executor, address manager);
 
+    /// @notice Thrown when a watched vault (a pre-hook substrate of the called selector) does not pass
+    ///         `isNavHealthy` (IL-9720).
+    error CrosschainNavValidationPreHookWatchedVaultUnhealthy(address watchedVault);
+
     /// @notice Market identifier bound to this pre-hook instance (governance wiring / substrate lookup).
     uint256 public immutable MARKET_ID;
+
+    /// @notice Address of this implementation, fixed at construction. Under delegatecall `address(this)` is the vault,
+    ///         so the implementation address is needed to read the pre-hook substrates keyed by (implementation,
+    ///         selector) and to call `isNavHealthy` on the implementation itself (same pattern as
+    ///         `UpdateBalancesIgnoreDustPreHook`).
+    address public immutable VERSION;
 
     /// @param marketId_ Market identifier this pre-hook is associated with (CROSSCHAIN).
     constructor(uint256 marketId_) {
         MARKET_ID = marketId_;
+        VERSION = address(this);
     }
 
     /// @notice Best-effort probe: would `run()` pass for a gated selector on `plasmaVault_` right now?
@@ -153,6 +198,18 @@ contract CrosschainNavValidationPreHook is IPreHook {
             }
             // Fail-closed gate: reverts on staleness / blocked chain / stale in-flight record. Result discarded.
             ICrosschainExecutor(executor).getBalance();
+        }
+
+        // IL-9720: vaults this vault holds shares of. The list is the pre-hook substrates of the registered
+        // implementation for this selector (empty for every CROSSCHAIN vault and for any other registration).
+        bytes32[] memory watched = PreHooksLib.getPreHookSubstrates(selector_, VERSION);
+        uint256 watchedLen = watched.length;
+        for (uint256 j; j < watchedLen; ++j) {
+            address watchedVault = PlasmaVaultConfigLib.bytes32ToAddress(watched[j]);
+            // External probe on the implementation: a revert (malformed data) propagates with its own data.
+            if (!CrosschainNavValidationPreHook(VERSION).isNavHealthy(watchedVault)) {
+                revert CrosschainNavValidationPreHookWatchedVaultUnhealthy(watchedVault);
+            }
         }
     }
 }

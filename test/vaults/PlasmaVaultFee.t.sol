@@ -217,9 +217,16 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
 
-        assertEq(userOneBalanceOfAssets, 108536115);
-        assertEq(userTwoBalanceOfAssets, 108536115);
-        assertEq(plasmaVault.balanceOf(performanceFeeManager), 82429067);
+        // IL-8870 fee share sizing: the performance fee shares are sized on the price after their own mint, S·x/(1−x) of
+        // the supply S = 2e10 instead of S·x. With x = 82429067/2e10 (the shares before): 2e10·82429067/(2e10−82429067) =
+        // 82770200. They are worth 898340, 5 % of the gain of 17966884 (rate floored to price units), and each user
+        // keeps 1844 units less (was 108536115).
+        // IL-9601: the rate and the HWM carry the 1e12 scale (HWM 1e18, rate floor(1e20·217966885/(2e10+100)) =
+        // 1089834419550827902), so the fee is 5 % of the exact gain: 82770556 shares worth 898344 (was 82770200 worth
+        // 898340, the floor of the rate to 1089834 dropped 0.42 of a price unit); each user keeps 2 units less.
+        assertEq(userOneBalanceOfAssets, 108534269);
+        assertEq(userTwoBalanceOfAssets, 108534269);
+        assertEq(plasmaVault.balanceOf(performanceFeeManager), 82770556);
     }
 
     function testShouldExitFromTwoMarketsAaveV3SupplyAndCompoundV3SupplyAndCalculatePerformanceFeeTimeIsNotChanged()
@@ -497,9 +504,14 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
 
-        assertEq(userOneBalanceOfAssets, 28798997, "userOneBalanceOfAssets");
-        assertEq(userTwoBalanceOfAssets, 103798997, "userTwoBalanceOfAssets");
-        assertEq(plasmaVault.balanceOf(performanceFeeManager), 38447669, "daoBalanceOfAssets");
+        // IL-8870 fee share sizing (see testShouldExitFromTwoMarketsAaveV3SupplyAndCompoundV3SupplyAndCalculatePerformanceFee):
+        // 2e10·38447669/(2e10−38447669) = 38521722, with the floors 38521723 shares (was 38447669), worth 5 % of the gain
+        // of 7997078; each user keeps 384 units less (was 28798997 and 103798997).
+        // IL-9601: with the 1e12 scale on the rate and the HWM the fee is sized on the exact gain: 38522085 shares (was
+        // 38521723 on the rate floored to price units), then the withdraw of 75e6; each user keeps 1 unit less.
+        assertEq(userOneBalanceOfAssets, 28798612, "userOneBalanceOfAssets");
+        assertEq(userTwoBalanceOfAssets, 103798612, "userTwoBalanceOfAssets");
+        assertEq(plasmaVault.balanceOf(performanceFeeManager), 38522085, "daoBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1058,9 +1070,14 @@ contract PlasmaVaultFeeTest is Test {
         uint256 userOneBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userOne));
         uint256 userTwoBalanceOfAssets = plasmaVault.convertToAssets(plasmaVault.balanceOf(userTwo));
 
-        assertEq(userOneBalanceOfAssets, 32279599, "userOneBalanceOfAssets on plasma vault");
-        assertEq(userTwoBalanceOfAssets, 107598665, "userTwoBalanceOfAssets on plasma vault");
-        assertApproxEqAbs(plasmaVault.balanceOf(performanceFeeManager), 74048353, 1, "daoBalanceOfAssets aprox");
+        // IL-8870 fee share sizing (see testShouldExitFromTwoMarketsAaveV3SupplyAndCompoundV3SupplyAndCalculatePerformanceFee):
+        // 2e10·74048353/(2e10−74048353) = 74323529 shares (was 74048353); the users keep 442 and 1474 units less (was
+        // 32279599 and 107598665).
+        // IL-9601: with the 1e12 scale on the rate and the HWM the fee is sized on the exact gain of 15994082:
+        // 74323883 shares (was 74323529 on the rate floored to price units); the users keep 1 and 2 units less.
+        assertEq(userOneBalanceOfAssets, 32279156, "userOneBalanceOfAssets on plasma vault");
+        assertEq(userTwoBalanceOfAssets, 107597189, "userTwoBalanceOfAssets on plasma vault");
+        assertApproxEqAbs(plasmaVault.balanceOf(performanceFeeManager), 74323883, 1, "daoBalanceOfAssets aprox");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1276,10 +1293,14 @@ contract PlasmaVaultFeeTest is Test {
             plasmaVault.balanceOf(managementFeeManager)
         );
 
-        assertEq(userOneBalanceOfAssets, 95238095, "userOneBalanceOfAssets on plasma vault");
+        // IL-8870 D-002: userOne was 95238095 (F·G/(G+F)), now 95000000 (exact F). Independent check: G = 100e6,
+        // F = 100e6·500·365d/(365d·1e4) = 5000000, S = 1e10, scale = 100, V = floor(F·(S+100)/(G−F+1)) = 526315789;
+        // userTwo deposits 100e6 and gets floor(1e8·(S+V+100)/(G+1)) shares, then G = 2e8 and the supply is S+V+shares.
+        assertEq(userOneBalanceOfAssets, 95000000, "userOneBalanceOfAssets on plasma vault");
         assertEq(userTwoBalanceOfAssets, 99999999, "userTwoBalanceOfAssets on plasma vault");
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "performanceFeeManagerBalanceOfAssets");
-        assertEq(managementFeeManagerBalanceOfAssets, 4761904, "managementFeeManagerBalanceOfAssets");
+        // IL-8870 D-002: was 4761904 (F·G/(G+F)), now 4999999 (F = 5000000 less one unit of floor rounding)
+        assertEq(managementFeeManagerBalanceOfAssets, 4999999, "managementFeeManagerBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1383,11 +1404,16 @@ contract PlasmaVaultFeeTest is Test {
         );
 
         assertEq(userOneBalanceOfAssetsBefore, 100000000, "userOneBalanceOfAssetsBefore");
-        assertEq(userOneBalanceOfAssetsAfter, 95238095, "userOneBalanceOfAssetsAfter");
+        // IL-8870 D-002: was 95238095 (F·G/(G+F)), now 95000000 (exact F). Independent check: G = 100e6,
+        // F = 5000000, S = 1e10, V = floor(F·(S+100)/(G−F+1)) = 526315789; userTwo mints 1e10 shares for
+        // ceil(1e10·(G+1)/(S+V+100)) = 95000001 assets, so G = 195000001 and the supply is S+V+1e10.
+        assertEq(userOneBalanceOfAssetsAfter, 95000000, "userOneBalanceOfAssetsAfter");
 
-        assertEq(userTwoBalanceOfAssetsAfter, 95238095, "userTwoBalanceOfAssetsAfter");
+        // IL-8870 D-002: was 95238095, now 95000000 (same independent check)
+        assertEq(userTwoBalanceOfAssetsAfter, 95000000, "userTwoBalanceOfAssetsAfter");
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "performanceFeeManagerBalanceOfAssets");
-        assertEq(managementFeeManagerBalanceOfAssets, 4761904, "managementFeeManagerBalanceOfAssets");
+        // IL-8870 D-002: was 4761904 (F·G/(G+F)), now 5000000 (exact F)
+        assertEq(managementFeeManagerBalanceOfAssets, 5000000, "managementFeeManagerBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 
@@ -1700,10 +1726,17 @@ contract PlasmaVaultFeeTest is Test {
             plasmaVault.balanceOf(managementFeeManager)
         );
 
-        assertEq(userOneBalanceOfAssets, 30856297, "userOneBalanceOfAssets on plasma vault");
-        assertEq(userTwoBalanceOfAssets, 102854325, "userTwoBalanceOfAssets on plasma vault");
+        // IL-8870 D-002: userOne was 30856297 (F·G/(G+F)), now 30779156 (exact F). Independent model: the 200e6 Aave
+        // leg grows 365d at the pinned-block liquidity rate to G ~ 215.99e6 (linear interest, error of a few
+        // units of 1e-6 relative), F = floor(G·500/1e4), V = floor(F·(S+100)/(G−F+1)) with S = 2e10, userOne
+        // redeems 70e8 shares for floor(70e8·(G+1)/(S+V+100)), the rest is priced at (G'+1)/(S'+100): the model gives
+        // 30779144 against the run value 30779156 (residual = Aave aToken rounding).
+        assertEq(userOneBalanceOfAssets, 30779156, "userOneBalanceOfAssets on plasma vault");
+        // IL-8870 D-002: was 102854325, now 102597189 (same model: model 102597146, residual from the same Aave rounding in G)
+        assertEq(userTwoBalanceOfAssets, 102597189, "userTwoBalanceOfAssets on plasma vault");
         assertEq(performanceFeeManagerBalanceOfAssets, 0, "performanceFeeManagerBalanceOfAssets");
-        assertEq(managementFeeManagerBalanceOfAssets, 10285432, "managementFeeManagerBalanceOfAssets");
+        // IL-8870 D-002: was 10285432, now 10799704 (same model: model 10799699, ~ F = 5 % of G)
+        assertEq(managementFeeManagerBalanceOfAssets, 10799704, "managementFeeManagerBalanceOfAssets");
         assertEq(userTwoBalanceOfSharesBefore, userTwoBalanceOfSharesAfter, "userTwoBalanceOfShares not changed");
     }
 

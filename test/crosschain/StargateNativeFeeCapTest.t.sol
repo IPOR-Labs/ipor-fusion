@@ -8,7 +8,12 @@ import {EnforcedOptionParam} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/
 import {CrosschainTestBase} from "./CrosschainTestBase.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
 import {BusinessAction} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
-import {CrosschainMessages, Command, UpdateVaults} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
+import {
+    CrosschainMessages,
+    Command,
+    UpdateVaults,
+    SweepFloor
+} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {StargateCrosschainDispatcher} from "../../contracts/crosschain/stargate/StargateCrosschainDispatcher.sol";
 import {DEFAULT_COMMAND_BUDGET} from "./CommandBudget.sol";
 
@@ -231,7 +236,8 @@ contract StargateNativeFeeCapTest is CrosschainTestBase {
                     sequence: 0,
                     newConfigEpoch: 1,
                     minExecutionGas: DEFAULT_COMMAND_BUDGET,
-                    vaults: new address[](0)
+                    vaults: new address[](0),
+                    floors: new SweepFloor[](0)
                 })
             )
         );

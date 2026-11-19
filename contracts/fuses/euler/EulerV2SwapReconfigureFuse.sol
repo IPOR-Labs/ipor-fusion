@@ -43,7 +43,7 @@ contract EulerV2SwapReconfigureFuse is IFuseCommon {
     /// @notice Thrown when dynamic parameters fail sanity bounds (fee, expiration) or request a swap hook
     error EulerV2SwapReconfigureFuseInvalidParams();
     /// @notice Thrown when calling exit (reconfiguration is one-directional; decommission via DeployFuse)
-    error UnsupportedOperation();
+    error EulerV2SwapReconfigureFuseUnsupportedOperation();
 
     /// @notice Address of this fuse contract version
     address public immutable VERSION;
@@ -150,7 +150,7 @@ contract EulerV2SwapReconfigureFuse is IFuseCommon {
 
     /// @notice Not supported; decommissioning is handled by EulerV2SwapDeployFuse.exit
     function exit() external pure {
-        revert UnsupportedOperation();
+        revert EulerV2SwapReconfigureFuseUnsupportedOperation();
     }
 
     /// @notice Enters using parameters read from transient storage (concatenated bytes32 chunks)

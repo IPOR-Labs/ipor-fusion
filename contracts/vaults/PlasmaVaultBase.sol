@@ -276,7 +276,10 @@ contract PlasmaVaultBase is
     }
 
     /// @dev Notice! Can be executed only by Plasma Vault in delegatecall.
-    /// Handles ERC20 balance updates, supply cap validation, and optional voting units updates.
+    /// Handles ERC20 balance updates, supply cap validation, optional voting units updates and the request caps:
+    /// a debit that leaves the sender below its WithdrawManager request cap lowers the cap to that balance (IL-9531).
+    /// One storage read per debit (two and possibly a write when the sender has a cap), no external call; a credit
+    /// never raises a cap.
     function _update(address from_, address to_, uint256 value_) internal virtual override {
         super._update(from_, to_, value_);
 
@@ -298,6 +301,18 @@ contract PlasmaVaultBase is
             votesPlugin.functionDelegateCall(
                 abi.encodeWithSelector(IPlasmaVaultVotesPlugin.transferVotingUnits.selector, from_, to_, value_)
             );
+        }
+
+        /// @dev Request cap: shares that leave the account stop backing its request, also when they come back later
+        if (from_ != address(0) && from_ != to_ && value_ > 0) {
+            mapping(address => uint256) storage caps = PlasmaVaultStorageLib.getRequestCaps().caps;
+            uint256 requestCap = caps[from_];
+            if (requestCap != 0) {
+                uint256 balance = balanceOf(from_);
+                if (requestCap > balance) {
+                    caps[from_] = balance;
+                }
+            }
         }
     }
 

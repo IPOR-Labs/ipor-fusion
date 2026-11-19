@@ -235,7 +235,7 @@ struct StargateExecutorState {
     // already within `ATTESTATION_ZERO_DUST_SD` zeroes the anchor together with that dust bucket, so it
     // can only lower the anchor to zero together with that dust bucket, never raise it.
     // `StargateExecutorAttestationLib.approve` bounds every
-    // approved `settledSD` to within `ATTESTATION_ANCHOR_BAND_BPS` of this value, so the untrusted
+    // approved `settledSD` to within the executor's `anchorBandBps` (IL-9720; reference 2_000) of this value, so the untrusted
     // proposer/approver pair can move NAV only within a band around principal the vault verifiably
     // sent, not to an arbitrary value.
     mapping(uint256 chainId => uint256 principalSD) anchorPrincipal;
@@ -277,4 +277,9 @@ struct StargateExecutorState {
     // `COMMAND_PRE_CALL_PER_WORD`, see `CrosschainMessages.commandGasBudget`), or a higher manager top-up on a
     // COMMAND. Appended last.
     mapping(uint256 chainId => uint128 gas) commandLaneReceiveGas;
+    // IL-9720: the per-executor attestation anchor band in basis points, written once by the executor constructor
+    // (`0 < bigChangeBps <= anchorBandBps <= MAX_ATTESTATION_ANCHOR_BAND_BPS`) and read by `approve`, the
+    // `applyReturnDebit` clamp and the `creditAnchor` floor. A state without a band (0) rejects every non-zero
+    // attestation, so any host or harness that builds this state must set it. Appended last.
+    uint256 anchorBandBps;
 }

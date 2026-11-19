@@ -24,6 +24,16 @@ import {ContextClient} from "../context/ContextClient.sol";
 /// - ATOMIST_ROLE: Required for setupVestingTime and rescheduleVesting functions
 /// - PUBLIC_ROLE: transferVestedTokensToVault (restricted, mapped to PUBLIC_ROLE by the standard initializer)
 /// - Unrestricted views: balanceOf, isRewardFuseSupported, getVestingData, getRewardsFuses
+///
+/// @custom:security Vesting covers only the underlying token that is held by this manager when updateBalance() runs.
+/// Tokens that reach the Plasma Vault directly do not vest. The underlying token is counted in totalAssets() as soon
+/// as it arrives, because the live balance of the vault is read. A reward in any other token is not counted at once:
+/// it enters totalAssets() when a market configured on the vault counts that token, at the next refresh of that
+/// market (the ERC20 market, for a token that is granted there and priced, is the usual example), or it stays
+/// outside totalAssets().
+/// Some reward distributors pay the account on a claim made by any caller, so such a claim made for the vault pays
+/// the vault itself and bypasses this manager. This is a known limitation that is not guarded in code; see
+/// contracts/vaults/README.md, section "Reward vesting and rewards claimed on the vault's behalf (IL-9744)".
 contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IRewardsClaimManager {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -272,6 +282,9 @@ contract RewardsClaimManager is AccessManagedUpgradeable, ContextClient, IReward
     /// would be forced into the clamp window. The caller should either invoke updateBalance() first
     /// (drain & reset) or use rescheduleVesting() to rebase the curve in place (it pushes the vested amount to the vault first).
     /// @dev Setting the duration to zero is always accepted: balanceOf() then returns the live balance.
+    /// @custom:security Zero disables the protection against sandwiching a rewards inflow: balanceOf() then returns the live
+    /// balance, so a rewards transfer raises totalAssets() in one step. Use zero only when rewards do not reach this manager.
+    /// A non-zero vesting time protects only inflows that reach this manager.
     /// @custom:access ATOMIST_ROLE
     function setupVestingTime(uint256 vestingTime_) external restricted {
         if (vestingTime_ != 0) {

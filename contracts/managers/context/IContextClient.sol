@@ -16,6 +16,8 @@ pragma solidity 0.8.30;
  * - Context should never be nested (one context at a time)
  * - Context must always be cleared after use
  * - Proper access control should be implemented by contracts using this interface
+ * - The context sender should be returned only to the caller that set it (ContextClient binds it to the caller of
+ *   setupContext, IL-9533); any other caller, including re-entrant code, should act as itself
  */
 interface IContextClient {
     /**
@@ -23,8 +25,10 @@ interface IContextClient {
      * @param sender_ The address to be set as the context sender
      * @dev Requirements:
      * - Must be called by an authorized contract
+     * - sender_ must not be address(0) (ContextClient reverts UnauthorizedSender)
      * - No active context should exist when setting up new context
      * - Emits ContextSet event on successful setup
+     * - The caller becomes the context setter: only it gets sender_ back until clearContext
      * @custom:security Should implement access control to prevent unauthorized context manipulation
      */
     function setupContext(address sender_) external;
@@ -33,7 +37,7 @@ interface IContextClient {
      * @notice Clears the current active context
      * @dev Requirements:
      * - Must be called by an authorized contract
-     * - An active context must exist
+     * - An active context must exist (ContextClient reverts ContextNotSet otherwise)
      * - Emits ContextCleared event on successful cleanup
      * @custom:security Should always be called after context operations are complete
      */
@@ -58,6 +62,6 @@ interface IContextClient {
      * @dev Implementations should define these errors:
      * - ContextAlreadySet(): When attempting to set context while one is active
      * - ContextNotSet(): When attempting to clear or access non-existent context
-     * - UnauthorizedSender(): When unauthorized address attempts to modify context
+     * - UnauthorizedSender(): When unauthorized address attempts to modify context, or setupContext gets address(0)
      */
 }

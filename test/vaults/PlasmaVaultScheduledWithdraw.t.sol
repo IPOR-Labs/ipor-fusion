@@ -48,6 +48,10 @@ contract PlasmaVaultScheduledWithdraw is Test {
         _createPlasmaVault();
         _initAccessManager();
 
+        /// @dev IL-9531: requestShares checks the balance on the vault the WithdrawManager is wired to
+        vm.prank(_ATOMIST);
+        WithdrawManager(_withdrawManager).updatePlasmaVaultAddress(_plasmaVault);
+
         vm.startPrank(_USER);
         ERC20(_USDC).approve(_plasmaVault, 10_000e6);
         PlasmaVault(_plasmaVault).deposit(10_000e6, _USER);
@@ -179,7 +183,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 withdrawAmount = 1_000e6;
 
         vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, ERC20(_plasmaVault).totalSupply());
         vm.stopPrank();
 
         bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidSharesToRelease(uint256)", withdrawAmount);
@@ -224,7 +228,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         // given
 
         vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, ERC20(_plasmaVault).totalSupply());
         vm.stopPrank();
 
         uint256 withdrawAmount = 1_000e8;
@@ -533,7 +537,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 withdrawAmount = 1_000e8;
 
         vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, ERC20(_plasmaVault).totalSupply());
         vm.stopPrank();
 
         vm.prank(_ATOMIST);
@@ -571,7 +575,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, ERC20(_plasmaVault).totalSupply());
 
         vm.warp(block.timestamp + 24 hours);
 
@@ -600,7 +604,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 days + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, ERC20(_plasmaVault).totalSupply());
 
         bytes memory error = abi.encodeWithSignature("WithdrawManagerInvalidSharesToRelease(uint256)", withdrawAmount);
 
@@ -625,7 +629,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, type(uint128).max);
+        WithdrawManager(_withdrawManager).releaseFunds(block.timestamp - 1, ERC20(_plasmaVault).totalSupply());
 
         vm.warp(block.timestamp + 24 hours);
 
@@ -737,7 +741,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 releaseFundsTimestamp = block.timestamp - 1;
 
         vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(releaseFundsTimestamp, 1e18);
+        WithdrawManager(_withdrawManager).releaseFunds(releaseFundsTimestamp, 5e11);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 days);
@@ -754,7 +758,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         vm.expectRevert(error);
         // when
         vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(newReleaseFundsTimestamp, 1e18);
+        WithdrawManager(_withdrawManager).releaseFunds(newReleaseFundsTimestamp, 5e11);
         vm.stopPrank();
     }
 
@@ -768,7 +772,7 @@ contract PlasmaVaultScheduledWithdraw is Test {
         uint256 releaseFundsTimestamp = block.timestamp - 1;
 
         vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(releaseFundsTimestamp, 1e18);
+        WithdrawManager(_withdrawManager).releaseFunds(releaseFundsTimestamp, 5e11);
         vm.stopPrank();
 
         vm.warp(block.timestamp + 1 days);
@@ -777,12 +781,12 @@ contract PlasmaVaultScheduledWithdraw is Test {
 
         // when
         vm.startPrank(_ALPHA);
-        WithdrawManager(_withdrawManager).releaseFunds(newReleaseFundsTimestamp, 2e18);
+        WithdrawManager(_withdrawManager).releaseFunds(newReleaseFundsTimestamp, 1e12);
         vm.stopPrank();
 
         // then
         uint256 sharesToRelease = WithdrawManager(_withdrawManager).getSharesToRelease();
-        assertEq(sharesToRelease, 2e18);
+        assertEq(sharesToRelease, 1e12);
     }
 
     function testShouldNotBeAbleToUpdateWithdrawFeeWhenNotAtomist() external {

@@ -41,10 +41,17 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
     }
 
     /// @notice Calculates total value of PlasmaVault's Dolomite positions in USD (18 decimals)
+    /// @dev Every Dolomite account number is a separate margin account: collateralization and liquidation are
+    ///      evaluated per `(owner, number)`, and a liquidation of an account number can seize every positive balance
+    ///      of that number. So each account number is valued as `max(0, sum(supply) - sum(debt))` and the account
+    ///      numbers are added up: the shortfall of one underwater account number is never charged to another one,
+    ///      and the result is never negative and never reverts.
+    ///      The accounts are accumulated in one pass over the substrates, which are grouped by `subAccountId`
+    ///      (up to 256 account numbers) and every account number is added once.
     /// @dev IMPORTANT: Substrates must not contain duplicates for the same (asset, subAccountId) pair
     ///      with different canBorrow values, e.g. (USDC, subAccount=0, canBorrow=false) and
     ///      (USDC, subAccount=0, canBorrow=true). This would cause double-counting of the balance.
-    /// @return The total balance in USD normalized to WAD (returns 0 if net balance is negative)
+    /// @return The total balance in USD normalized to WAD (sum over account numbers of the non-negative net value)
     function balanceOf() external view override returns (uint256) {
         bytes32[] memory substrates = PlasmaVaultConfigLib.getMarketSubstrates(MARKET_ID);
         uint256 len = substrates.length;
@@ -53,7 +60,8 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
             return 0;
         }
 
-        int256 balanceTemp;
+        // net value of every account number (index = subAccountId), accumulated in one pass
+        int256[256] memory accountNet;
         address plasmaVault = address(this);
         address priceOracleMiddleware = PlasmaVaultLib.getPriceOracleMiddleware();
         IDolomiteMargin dolomiteMargin = IDolomiteMargin(DOLOMITE_MARGIN);
@@ -72,21 +80,37 @@ contract DolomiteBalanceFuse is IMarketBalanceFuse {
 
             dolomiteMarketId = dolomiteMargin.getMarketIdByTokenAddress(substrate.asset);
 
-            accountInfo = IDolomiteMargin.AccountInfo({
-                owner: plasmaVault,
-                number: uint256(substrate.subAccountId)
-            });
+            accountInfo = IDolomiteMargin.AccountInfo({owner: plasmaVault, number: uint256(substrate.subAccountId)});
 
             balance = dolomiteMargin.getAccountWei(accountInfo, dolomiteMarketId);
 
             if (balance.sign) {
-                balanceTemp += _convertToUsd(priceOracleMiddleware, substrate.asset, balance.value).toInt256();
+                accountNet[substrate.subAccountId] += _convertToUsd(
+                    priceOracleMiddleware,
+                    substrate.asset,
+                    balance.value
+                ).toInt256();
             } else if (balance.value > 0) {
-                balanceTemp -= _convertToUsd(priceOracleMiddleware, substrate.asset, balance.value).toInt256();
+                accountNet[substrate.subAccountId] -= _convertToUsd(
+                    priceOracleMiddleware,
+                    substrate.asset,
+                    balance.value
+                ).toInt256();
             }
         }
 
-        return balanceTemp > 0 ? uint256(balanceTemp) : 0;
+        // add every account number once: its slot is cleared after it is added
+        int256 total;
+        uint8 accountId;
+        for (uint256 j; j < len; ++j) {
+            accountId = DolomiteFuseLib.bytes32ToSubstrate(substrates[j]).subAccountId;
+            if (accountNet[accountId] > 0) {
+                total += accountNet[accountId];
+            }
+            accountNet[accountId] = 0;
+        }
+
+        return total.toUint256();
     }
 
     function _convertToUsd(

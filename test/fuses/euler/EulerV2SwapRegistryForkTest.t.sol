@@ -120,7 +120,7 @@ contract EulerV2SwapRegistryForkTest is Test {
 
         _initAccessManager();
         _setupDependenceBalance();
-        _grantMarketSubstratesForEuler();
+        _grantMarketSubstratesForEuler(address(0));
         _initialDepositIntoPlasmaVault();
 
         _eulerAccount = EulerFuseLib.generateSubAccountAddress(_plasmaVault, _SUB_ACCOUNT);
@@ -246,15 +246,20 @@ contract EulerV2SwapRegistryForkTest is Test {
         vm.stopPrank();
     }
 
-    /// @notice Grants the two Euler-vault substrates (packed EulerSubstrate) for the dedicated sub-account.
-    function _grantMarketSubstratesForEuler() private {
-        bytes32[] memory substrates = new bytes32[](2);
+    /// @notice Grants the two Euler-vault substrates (packed EulerSubstrate) for the dedicated sub-account and, when
+    ///         `pool_` is not zero, the pool entry (pool, sub-account) that EulerV2SwapDeployFuse.enter requires (IL-9706).
+    /// @dev Substrate grants replace the whole list, so the eVault rows are granted again together with the entry.
+    function _grantMarketSubstratesForEuler(address pool_) private {
+        bytes32[] memory substrates = new bytes32[](pool_ == address(0) ? 2 : 3);
         substrates[0] = EulerFuseLib.substrateToBytes32(
             EulerSubstrate({eulerVault: _EVAULT_CBETH, isCollateral: true, canBorrow: true, subAccounts: _SUB_ACCOUNT})
         );
         substrates[1] = EulerFuseLib.substrateToBytes32(
             EulerSubstrate({eulerVault: _EVAULT_WETH, isCollateral: true, canBorrow: true, subAccounts: _SUB_ACCOUNT})
         );
+        if (pool_ != address(0)) {
+            substrates[2] = EulerFuseLib.swapPoolSubstrateToBytes32(pool_, _SUB_ACCOUNT);
+        }
 
         vm.startPrank(_ATOMIST);
         PlasmaVaultGovernance(_plasmaVault).grantMarketSubstrates(IporFusionMarkets.EULER_V2, substrates);
@@ -366,6 +371,7 @@ contract EulerV2SwapRegistryForkTest is Test {
     function _supplyAndDeploy() private returns (address pool) {
         IEulerV2Swap.StaticParams memory sp = _staticParams();
         (bytes32 salt, address predictedPool) = _mineSalt(sp);
+        _grantMarketSubstratesForEuler(predictedPool);
 
         FuseAction[] memory actions = new FuseAction[](3);
         FuseAction[] memory supply = _supplyCollateralActions();
@@ -464,6 +470,27 @@ contract EulerV2SwapRegistryForkTest is Test {
             IEulerV2SwapRegistry(_EULERSWAP_REGISTRY).poolByEulerAccount(_eulerAccount),
             address(0),
             "pool unregistered for euler account"
+        );
+    }
+
+    /// @dev Pins vendor behaviour: the live registry refuses to unregister while the pool is still an
+    ///      authorized EVC operator, so unregistering before decommissioning must revert.
+    function testShouldRevertUnregisterBeforeDecommission() public {
+        address pool = _supplyAndDeploy();
+        _execute(_registerAction(pool));
+
+        FuseAction[] memory actions = new FuseAction[](1);
+        actions[0] = _unregisterAction(pool);
+
+        vm.startPrank(_ALPHA);
+        vm.expectRevert(bytes4(keccak256("OldOperatorStillInstalled()")));
+        PlasmaVault(_plasmaVault).execute(actions);
+        vm.stopPrank();
+
+        assertEq(
+            IEulerV2SwapRegistry(_EULERSWAP_REGISTRY).poolByEulerAccount(_eulerAccount),
+            pool,
+            "registration intact after failed unregister"
         );
     }
 

@@ -13,11 +13,16 @@ import {LiquidityAmounts} from "./ext/LiquidityAmounts.sol";
 import {PoolAddress} from "./ext/PoolAddress.sol";
 
 import {INonfungiblePositionManagerRamses, IRamsesV2Pool} from "./ext/INonfungiblePositionManagerRamses.sol";
-import {PositionKey} from "./ext/PositionKey.sol";
+import {RamsesV2PositionFees} from "./ext/RamsesV2PositionFees.sol";
 
 /**
  * @title RamsesV2Balance
  * @dev Fuse balance for Ramses V2 positions. This contract calculates the balance of a given market by summing up the value of all positions.
+ * @custom:security Spot-price risk: the principal of each position is split between token0 and token1 at the pool's
+ *      current spot price (`slot0`), which can be moved within a single transaction (for example by a large swap
+ *      or a flash loan), so the reported value can be moved with it and a market refresh would persist the moved
+ *      value. For vaults where this matters, the atomist should prefer the oracle-derived balance fuse `RamsesV2OracleBalance`
+ *      (see contracts/fuses/uniswap/README.md for how to choose and how to switch).
  */
 contract RamsesV2Balance is IMarketBalanceFuse {
     using Address for address;
@@ -81,7 +86,9 @@ contract RamsesV2Balance is IMarketBalanceFuse {
     /**
      * @dev Internal function to get the amounts for a given position.
      * This function calculates the amounts of token0 and token1 for a given liquidity position in the Ramses V2 pool.
-     * It takes into account the current price, the position's liquidity, and any fees owed to the position.
+     * It takes into account the current price, the position's liquidity, and any fees owed to the position: the
+     * `tokensOwed` checkpointed in the position manager plus the fees earned since the position's last checkpoint,
+     * computed from the pool's current fee growth (`RamsesV2PositionFees`), i.e. what `collect` would return.
      * @param tokenId The ID of the token.
      * @return token0 The address of token0.
      * @return token1 The address of token1.
@@ -112,55 +119,19 @@ contract RamsesV2Balance is IMarketBalanceFuse {
             position.liquidity
         );
 
-        (uint256 fee0, uint256 fee1) = _calculateFees(
-            position.feeGrowthInside0Last,
-            position.feeGrowthInside1Last,
-            position.liquidity,
-            tokenId,
+        (uint256 fee0, uint256 fee1) = RamsesV2PositionFees.uncollectedFees(
+            pool,
             position.tickLower,
             position.tickUpper,
-            pool
+            position.liquidity,
+            position.feeGrowthInside0Last,
+            position.feeGrowthInside1Last
         );
 
         amount0 += (fee0 + position.tokensOwed0);
         amount1 += (fee1 + position.tokensOwed1);
         token0 = position.token0;
         token1 = position.token1;
-    }
-
-    /**
-     * @dev Internal function to calculate the fees for a given position.
-     * @param feeGrowthInside0Last The last recorded fee growth inside for token0.
-     * @param feeGrowthInside1Last The last recorded fee growth inside for token1.
-     * @param liquidity The liquidity of the position.
-     * @param tokenId The ID of the token.
-     * @param tickLower The lower tick of the position.
-     * @param tickUpper The upper tick of the position.
-     * @param pool The pool associated with the position.
-     * @return fee0 The calculated fee for token0.
-     * @return fee1 The calculated fee for token1.
-     */
-    function _calculateFees(
-        uint256 feeGrowthInside0Last,
-        uint256 feeGrowthInside1Last,
-        uint256 liquidity,
-        uint256 tokenId,
-        int24 tickLower,
-        int24 tickUpper,
-        IRamsesV2Pool pool
-    ) internal view returns (uint256 fee0, uint256 fee1) {
-        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, , , ) = pool.positions(
-            PositionKey.compute(address(this), tokenId, tickLower, tickUpper)
-        );
-
-        uint256 feeGrowthInside0 = feeGrowthInside0Last > feeGrowthInside0LastX128
-            ? 0
-            : feeGrowthInside0LastX128 - feeGrowthInside0Last;
-        uint256 feeGrowthInside1 = feeGrowthInside1Last > feeGrowthInside1LastX128
-            ? 0
-            : feeGrowthInside1LastX128 - feeGrowthInside1Last;
-        fee0 = (liquidity * (feeGrowthInside0)) / (1 << 128);
-        fee1 = (liquidity * (feeGrowthInside1)) / (1 << 128);
     }
 
     /**

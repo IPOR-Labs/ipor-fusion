@@ -47,7 +47,7 @@ The balance corresponding to an open Trove is
 collateral * collTokenPrice - debt * ebUSDPrice
 ```
 
-This ensures that the `totalAssets()` quantity is an invariant (approximate, modulo slippage due to swaps following flash loans and fees) for all the Fuse's operations. This balance is floored with zero in case the debt exceeds the collateral; however, this situation is unlikely, since Liquity liquidates such Troves much before this happens.
+This ensures that the `totalAssets()` quantity is an invariant (approximate, modulo slippage due to swaps following flash loans and fees) for all the Fuse's operations. The balance of every Trove is floored with zero on its own, and the floored values are then summed: the shortfall of an underwater Trove (debt above collateral) is never charged to the healthy Troves. This situation is unlikely, since Liquity liquidates such Troves much before this happens. The collateral surplus of the `REGISTRY` substrates (see below) is added on top, outside the per-Trove floor.
 
 ### Liquidation
 

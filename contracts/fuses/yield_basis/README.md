@@ -131,3 +131,9 @@ than the position is worth. The fuse therefore passes a minimum output of
 fees can only raise it within a block). If the pool cannot meet this floor, the LT reverts, the fuse emits
 `YieldBasisLtSupplyFuseExitFailed` and the vault moves on to the next instant withdrawal fuse instead of absorbing the
 loss.
+
+**Who pays the tolerance.** The slippage tolerance is a real exit cost: whatever the LT delivers below the booked
+value (up to 1%, or up to 5% if configured) lowers the vault NAV before the payout is priced, so it is paid by all
+holders, not only by the holder who triggered the withdrawal. By the instant withdrawal list rule (see "Instant
+withdrawals" in `contracts/vaults/README.md`) this fuse belongs on the list only after an explicit decision of the
+role that configures it; otherwise unwind the position with an ALPHA action under a slippage limit of your choice.

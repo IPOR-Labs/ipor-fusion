@@ -645,8 +645,10 @@ contract MidasSupplyFuseTest is Test {
         );
         deal(USDC, address(vault), usdcToReceive);
 
+        // IL-9617: word 0 is the missing USDC (router), converted by the fuse into mTBILL with the live Midas views;
+        // 1,000,000 USDC missing is more than the 100 mTBILL position, so the whole position is redeemed
         bytes32[] memory params = new bytes32[](5);
-        params[0] = bytes32(mTokenAmount);
+        params[0] = bytes32(uint256(1_000_000e6));
         params[1] = PlasmaVaultConfigLib.addressToBytes32(MTBILL_TOKEN);
         params[2] = PlasmaVaultConfigLib.addressToBytes32(USDC);
         params[3] = PlasmaVaultConfigLib.addressToBytes32(MTBILL_INSTANT_REDEMPTION_VAULT);
@@ -677,8 +679,9 @@ contract MidasSupplyFuseTest is Test {
             abi.encode("revert")
         );
 
+        // IL-9617: word 0 is the missing USDC; 1,000,000 USDC is more than the 100 mTBILL position
         bytes32[] memory params = new bytes32[](5);
-        params[0] = bytes32(mTokenAmount);
+        params[0] = bytes32(uint256(1_000_000e6));
         params[1] = PlasmaVaultConfigLib.addressToBytes32(MTBILL_TOKEN);
         params[2] = PlasmaVaultConfigLib.addressToBytes32(USDC);
         params[3] = PlasmaVaultConfigLib.addressToBytes32(MTBILL_INSTANT_REDEMPTION_VAULT);

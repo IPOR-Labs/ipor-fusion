@@ -48,6 +48,20 @@ struct DeploymentNack {
     uint8 reason; // NackReason
 }
 
+/// @notice Per-vault floor of the best-effort sweep run when a vault leaves the allowlist (IL-9629).
+/// @dev Carried by UPDATE_VAULTS (Stargate: `UpdateVaults.floors`; CCIP: the fourth element of the `extra` tuple).
+///      A vault without an entry is swept with no floor. A non-zero floor is redeemed only when the measured ASSET
+///      received reaches it; otherwise nothing is redeemed and the vault, off the allowlist, STAYS TRACKED (its
+///      position keeps counting in NAV) until a later UPDATE_VAULTS names it in an entry again (`minAssets` 0 =
+///      forced removal at any price, D-028) or ALPHA redeems it with a REDEEM command.
+///      `minAssets` is SHARED decimals on the wire on both transports (the dispatcher compares `_toLD(minAssets)` with
+///      the measured local-decimal receipt). Callers: the Stargate executor forwards it verbatim (shared decimals),
+///      the CCIP executor takes LOCAL ASSET decimals and converts them exactly, as for REDEEM `minAssets`.
+struct SweepFloor {
+    address vault;
+    uint256 minAssets;
+}
+
 /// @notice UPDATE_VAULTS — sequenced deposit-allowlist replacement; also the born-empty initial list.
 struct UpdateVaults {
     bytes32 commandId;
@@ -56,6 +70,9 @@ struct UpdateVaults {
     // IL-8625: gas budget carried by the command, see `Command.minExecutionGas`
     uint64 minExecutionGas;
     address[] vaults; // bounded by MAX_ALLOWED_VAULTS; validated destination-side
+    // IL-9629: sweep floors of vaults leaving the allowlist (or retained below an earlier floor); bounded by
+    // MAX_TRACKED_POSITION_VAULTS, no zero or duplicate vault (validated executor-side)
+    SweepFloor[] floors;
 }
 
 /// @notice OUTBOUND_TRANSFER — compose payload accompanying an executor->dispatcher Stargate send.
@@ -352,6 +369,37 @@ library CrosschainMessages {
 
     function decodeCommandNack(bytes memory data_) internal pure returns (CommandNack memory) {
         return abi.decode(data_, (CommandNack));
+    }
+
+    // -------------------------------------------------------------------------
+    // Sweep floors of UPDATE_VAULTS (IL-9629)
+    // -------------------------------------------------------------------------
+
+    /// @notice The sweep floor that a tracked vault off the allowlist gets in an UPDATE_VAULTS, shared by both
+    ///         dispatcher libraries (IL-9629).
+    /// @dev An entry in `floors_` gives its `minAssets` (0 = forced removal at any price, D-028). Without an entry
+    ///      the floor is 0, except for a vault in `retained_` (tracked and off the allowlist when the command started,
+    ///      that is retained below a floor by an earlier command): it is skipped (`skip` true, left tracked and
+    ///      untouched), because such a position is swept again only through an explicit entry. `retained_` may hold
+    ///      zero addresses as padding (no vault is the zero address).
+    /// @param floors_ The command's sweep floors (no duplicate vault, checked by the executor).
+    /// @param retained_ The vaults retained before this command.
+    /// @param vault_ The tracked vault that is off the allowlist.
+    /// @return skip True when the vault must be left as it is.
+    /// @return minAssetsSD The floor in shared decimals (0 when `skip`).
+    function sweepFloorFor(
+        SweepFloor[] memory floors_,
+        address[] memory retained_,
+        address vault_
+    ) internal pure returns (bool skip, uint256 minAssetsSD) {
+        uint256 len = floors_.length;
+        for (uint256 i; i < len; ++i) {
+            if (floors_[i].vault == vault_) return (false, floors_[i].minAssets);
+        }
+        len = retained_.length;
+        for (uint256 i; i < len; ++i) {
+            if (retained_[i] == vault_) return (true, 0);
+        }
     }
 
     // -------------------------------------------------------------------------

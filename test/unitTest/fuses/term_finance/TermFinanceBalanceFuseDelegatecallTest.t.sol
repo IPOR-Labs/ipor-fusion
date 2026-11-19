@@ -200,7 +200,7 @@ contract TermFinanceBalanceFuseDelegatecallTest is Test {
     ///         an UNTRACKED servicer with a broken `termRepoCollateralManager()` proxy MUST
     ///         degrade to a zero NAV contribution — NOT revert. This pins the
     ///         "single broken leg degrades to 0 under delegatecall" invariant on the very
-    ///         first foreign call in `_signedValueForServicerInternal`, the one that gates
+    ///         first foreign call in `_valueForServicerInternal`, the one that gates
     ///         the rest of the servicer-side aggregation.
     /// @dev The servicer is intentionally UNTRACKED — no locked collateral, no pending bids,
     ///      no held repo tokens — so there is no exposure that would justify propagating any
@@ -230,7 +230,7 @@ contract TermFinanceBalanceFuseDelegatecallTest is Test {
 
         // Break the very first foreign call: `termRepoCollateralManager()` reverts. The fuse
         // routes through `_tryReadCollateralManager` which returns `(false, address(0))` and
-        // `_signedValueForServicerInternal` short-circuits to `return 0`.
+        // `_valueForServicerInternal` short-circuits to `return 0`.
         vm.mockCallRevert(
             address(t.servicer),
             abi.encodeWithSignature("termRepoCollateralManager()"),

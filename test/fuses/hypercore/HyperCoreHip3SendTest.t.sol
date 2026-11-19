@@ -17,6 +17,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
 import {HyperCoreMockState} from "./mocks/MockHyperCorePrecompiles.sol";
@@ -142,7 +143,7 @@ contract HyperCoreHip3SendTest is Test {
         substrates[2] = HyperCoreSubstrateLib.encodeDestination(address(vault));
         substrates[3] = HyperCoreSubstrateLib.encodeSendCap(HyperCoreLib.USDC_TOKEN, type(uint64).max);
         substrates[4] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.SpotSendBridgeEnabled, 1);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         vm.stopPrank();
     }
 
@@ -382,7 +383,7 @@ contract HyperCoreHip3SendTest is Test {
             substrates[6 + i] = extra_[i];
         }
         vm.prank(TestAddresses.FUSE_MANAGER);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _executeSpotSend(address destination_, uint64 tokenIndex_, uint64 amountWei_) private {

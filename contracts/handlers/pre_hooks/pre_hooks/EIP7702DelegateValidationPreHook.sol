@@ -32,11 +32,20 @@ import {ContextClientStorageLib} from "../../../managers/context/ContextClientSt
 /// - Gas efficient implementation using assembly
 /// - Supports ContextManager for delegated calls
 ///
+/// Nesting:
+/// - This hook cannot be nested in `ExchangeRateValidatorPreHook`: it needs its own whitelist substrates, and a
+///   nested hook never receives them (substrates are stored per registered implementation and selector; only hooks
+///   without their own substrates, such as `UpdateBalancesPreHook`, can be nested). Register it directly on the
+///   selector; a nested instance sees an empty whitelist and rejects every EIP-7702 delegated sender.
+///
 /// Sender resolution:
 /// - Uses ContextClientStorageLib.getSenderFromContext() to determine the effective sender
 /// - When context is set (via ContextManager), uses the context sender
 /// - When no context is set, falls back to msg.sender
 /// - This enables validation for both direct calls and calls through ContextManager
+/// - The hook runs in a delegatecall from the vault, so msg.sender is the vault's caller: for a relayed call it is the
+///   ContextManager that set the context, and the hook validates the relayed user. Any other caller during the relayed
+///   call (e.g. re-entrant code or a vault self-call) is validated as itself (IL-9533)
 contract EIP7702DelegateValidationPreHook is IPreHook {
     /// @notice EIP-7702 delegation designator prefix
     bytes3 private constant EIP7702_PREFIX = 0xef0100;
@@ -63,6 +72,8 @@ contract EIP7702DelegateValidationPreHook is IPreHook {
     ///      Regular EOAs without delegation are allowed to pass without validation.
     ///      Note: Uses ContextClientStorageLib.getSenderFromContext() to support both direct calls and
     ///      calls through ContextManager. When no context is set, it falls back to msg.sender.
+    ///      Called by delegatecall from the vault: msg.sender is the vault's caller, so the relayed user is returned
+    ///      only when that caller is the ContextManager that set the context; any other caller is validated as itself.
     /// @param selector_ The function selector of the main operation that will be executed
     function run(bytes4 selector_) external view {
         address sender = ContextClientStorageLib.getSenderFromContext();

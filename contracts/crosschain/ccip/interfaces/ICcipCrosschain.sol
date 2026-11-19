@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.30;
 
-import {Command} from "../../lib/CrosschainMessages.sol";
+import {Command, SweepFloor} from "../../lib/CrosschainMessages.sol";
 
 struct CcipRouteConfig {
     uint64 chainSelector;
@@ -81,6 +81,20 @@ interface ICcipCrosschainExecutor {
         address[] calldata vaults_,
         bool allowed_,
         bool replace_,
+        uint256 maxFee_,
+        address feeToken_,
+        uint256 gasLimit_
+    ) external returns (bytes32);
+
+    /// @dev `updateVaults` with per-vault sweep floors (IL-9629); `floors_[i].minAssets` in LOCAL ASSET decimals,
+    ///      converted to shared decimals exactly (`AmountHasDust`). A vault whose non-zero floor is not reached stays
+    ///      tracked off the allowlist and is swept again only by a command naming it in `floors_` (0 = forced removal).
+    function updateVaultsWithSweepFloors(
+        uint256 dstChainId_,
+        address[] calldata vaults_,
+        bool allowed_,
+        bool replace_,
+        SweepFloor[] calldata floors_,
         uint256 maxFee_,
         address feeToken_,
         uint256 gasLimit_

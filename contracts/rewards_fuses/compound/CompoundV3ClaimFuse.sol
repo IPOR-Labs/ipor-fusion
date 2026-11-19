@@ -28,6 +28,10 @@ contract CompoundV3ClaimFuse {
 
     /**
      * @notice Claims rewards for a specific Compound V3 market.
+     * @dev `claimTo` names the RewardsClaimManager as receiver; this fuse moves no balance the vault already holds. The
+     * event carries no amount and is also emitted when nothing was owed. Per the published source of the protocol,
+     * checked 2026-11-16, a third party can claim for the vault and the protocol pays the vault; a deployed instance
+     * can differ. See "When someone else already claimed" in `contracts/rewards_fuses/README.md`.
      * @param comet_ The address of the Compound V3 market to claim rewards for.
      */
     function claim(address comet_) external {

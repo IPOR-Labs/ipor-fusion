@@ -131,6 +131,7 @@ contract CcipAuditRemediationTest is Test {
                 rescueDelay: 3 days,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000, // == ATTESTATION_ANCHOR_BAND_BPS, the constructor ceiling (IL-8058)
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             });
@@ -1208,7 +1209,13 @@ contract CcipAuditRemediationTest is Test {
     function testShouldBlockCcipRescueOnVaultTrackedAfterSchedule() public {
         _deploy(18, 18);
         MockRemoteVault a = new MockRemoteVault(IERC20(address(token)), "a", "A");
-        bytes memory cd = abi.encodeCall(IERC20.approve, (address(0xA11), type(uint256).max));
+        // A recovery `redeem` (an allowed shape, IL-9654) on a vault that is not allowlisted yet: accepted.
+        bytes memory cd = abi.encodeWithSignature(
+            "redeem(uint256,address,address)",
+            1e18,
+            address(0xA11),
+            address(dispatcher)
+        );
         vm.prank(address(0xA11));
         uint256 id = dispatcher.scheduleRescue(address(a), 0, cd);
 
@@ -1227,13 +1234,10 @@ contract CcipAuditRemediationTest is Test {
         _deploy(18, 18);
         MockRemoteVault a = _trackedVaultWithShares();
         uint256 held = a.balanceOf(address(dispatcher));
-        MockSharePuller puller = new MockSharePuller();
+        MockSharePuller puller = new MockSharePuller(IERC20(address(a)));
         vm.prank(address(dispatcher));
         a.approve(address(puller), type(uint256).max);
-        bytes memory cd = abi.encodeCall(
-            MockSharePuller.pull,
-            (IERC20(address(a)), address(dispatcher), address(0xA11), 1e18)
-        );
+        bytes memory cd = abi.encodeCall(MockSharePuller.transfer, (address(0xA11), 1e18));
 
         vm.prank(address(0xA11));
         uint256 id = dispatcher.scheduleRescue(address(puller), 0, cd);

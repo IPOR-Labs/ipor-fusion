@@ -16,6 +16,7 @@ import {
 import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCoreBalanceFuse.sol";
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 
 import {HyperCoreTestHelper, HyperCoreMockUsdc} from "./HyperCoreTestHelper.sol";
@@ -143,7 +144,10 @@ contract HyperCoreBuilderFeeFuseTest is Test {
         substrates[0] = HyperCoreSubstrateLib.encodeBuilder(builder, 100);
         substrates[1] = HyperCoreSubstrateLib.encodeSpotToken(0, address(usdc));
         vm.prank(TestAddresses.FUSE_MANAGER);
-        PlasmaVaultGovernance(address(vault)).grantMarketSubstrates(MARKET_ID, substrates);
+        PlasmaVaultGovernance(address(vault)).grantMarketSubstrates(
+            MARKET_ID,
+            NavJumpFloorFixture.withFloor(substrates)
+        );
 
         // 1,000 USDC on Core spot (weiDecimals = 8), priced 1:1 by the oracle.
         core.setSpotBalance(address(vault), 0, HyperCoreMockState.SpotBalance({total: 1_000e8, hold: 0, entryNtl: 0}));
@@ -195,7 +199,7 @@ contract HyperCoreBuilderFeeFuseTest is Test {
         bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = HyperCoreSubstrateLib.encodeBuilder(builder, 100);
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, 0);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(
             abi.encodeWithSelector(HyperCoreBuilderFeeFuse.HyperCoreBuilderFeeFuseInvalidWindow.selector, uint240(0))
@@ -211,7 +215,7 @@ contract HyperCoreBuilderFeeFuseTest is Test {
         substrates[1] = HyperCoreSubstrateLib.encodeConfig(
             HyperCoreSubstrateLib.ConfigKey.WindowTransferSeconds, overflowingWindow
         );
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
 
         vm.expectRevert(
             abi.encodeWithSelector(HyperCoreBuilderFeeFuse.HyperCoreBuilderFeeFuseInvalidWindow.selector, overflowingWindow)
@@ -245,7 +249,7 @@ contract HyperCoreBuilderFeeFuseTest is Test {
         vm.prank(TestAddresses.FUSE_MANAGER);
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodeBuilder(builder_, maxRate_);
-        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, substrates);
+        PlasmaVaultHelper.addSubstratesToMarket(vault, MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _execute(address builder_, uint64 maxFeeRateDecibps_) private {

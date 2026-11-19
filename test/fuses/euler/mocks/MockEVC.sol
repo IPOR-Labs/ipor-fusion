@@ -12,7 +12,20 @@ contract MockEVC {
     bool public lastAuthorized;
     uint256 public setOperatorCallCount;
 
+    /// @dev When true, `setAccountOperator` reverts with `MockEVCSetAccountOperatorSentinel` before any state change.
+    ///      Lets ordering tests prove that a guard runs before the operator install.
+    bool public revertOnSetAccountOperator;
+
+    error MockEVCSetAccountOperatorSentinel();
+
+    function setRevertOnSetAccountOperator(bool revert_) external {
+        revertOnSetAccountOperator = revert_;
+    }
+
     function setAccountOperator(address account, address operator, bool authorized_) external payable {
+        if (revertOnSetAccountOperator) {
+            revert MockEVCSetAccountOperatorSentinel();
+        }
         authorized[account][operator] = authorized_;
         lastAccount = account;
         lastOperator = operator;
@@ -36,12 +49,25 @@ contract MockEVC {
     uint256 public lastCallValue;
     uint256 public callCount;
 
+    /// @dev When true, `call` reverts with `MockEVCCallSentinel` before any state change or forwarding.
+    ///      Lets ordering tests prove that a guard runs before the EVC call.
+    bool public revertOnCall;
+
+    error MockEVCCallSentinel();
+
+    function setRevertOnCall(bool revert_) external {
+        revertOnCall = revert_;
+    }
+
     function call(
         address targetContract,
         address onBehalfOfAccount,
         uint256 value,
         bytes calldata data
     ) external payable returns (bytes memory result) {
+        if (revertOnCall) {
+            revert MockEVCCallSentinel();
+        }
         lastCallTarget = targetContract;
         lastOnBehalfOfAccount = onBehalfOfAccount;
         lastCallValue = value;

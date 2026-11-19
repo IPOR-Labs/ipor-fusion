@@ -25,7 +25,8 @@ import {
     RetryCommand,
     CancelCommand,
     CommandAck,
-    CommandNack
+    CommandNack,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
 
@@ -100,7 +101,12 @@ contract CrosschainMessagesTest is Test {
         vaults[0] = address(0x71);
         vaults[1] = address(0x72);
         UpdateVaults memory u = UpdateVaults({
-            commandId: keccak256("c"), sequence: 4, newConfigEpoch: 9, minExecutionGas: 1_234_567, vaults: vaults
+            commandId: keccak256("c"),
+            sequence: 4,
+            newConfigEpoch: 9,
+            minExecutionGas: 1_234_567,
+            vaults: vaults,
+            floors: new SweepFloor[](0)
         });
         (MsgType mt, bytes memory data) = this.decodeEnvelopeExt(CrosschainMessages.encodeUpdateVaults(u));
         assertEq(uint8(mt), uint8(MsgType.UPDATE_VAULTS));
@@ -191,9 +197,10 @@ contract CrosschainMessagesTest is Test {
     /// @notice IL-8119 bumped CODEC_VERSION 2 -> 3 because an old executor cannot `abi.decode` the new
     ///         `BELOW_MINIMUM` enum member. Pin the value so an accidental revert of the bump is caught.
     ///         IL-8625 bumped it 3 -> 4: `Command` and `UpdateVaults` gained `minExecutionGas`, so an old dispatcher would
-    ///         mis-decode the new layout and must reject the envelope instead.
-    function testShouldHaveCodecVersionFour() public pure {
-        assertEq(CrosschainConstants.CODEC_VERSION, 4);
+    ///         mis-decode the new layout and must reject the envelope instead. IL-9629 bumped it 4 -> 5: `UpdateVaults`
+    ///         gained `floors`, which an old dispatcher would silently drop.
+    function testShouldHaveCodecVersionFive() public pure {
+        assertEq(CrosschainConstants.CODEC_VERSION, 5);
     }
 
     function testShouldRoundTripCommand() public {

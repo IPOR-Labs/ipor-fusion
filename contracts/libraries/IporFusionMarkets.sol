@@ -30,7 +30,9 @@ library IporFusionMarkets {
     /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with balance of ERC20_VAULT_BALANCE
     uint256 public constant UNISWAP_SWAP_V3 = 10;
 
-    /// @dev Euler market
+    /// @dev Euler market. A vault that borrows an asset other than its underlying on Euler needs that token as a substrate of
+    ///      ERC20_VAULT_BALANCE (7) and a dependency edge EULER_V2 (11) -> ERC20_VAULT_BALANCE (7), so that borrowing,
+    ///      withdrawing and instant withdraw refresh the token balance together with the Euler market
     uint256 public constant EULER_V2 = 11;
 
     /// @dev universal token swapper, one need add dependence graph with balance of ERC20_VAULT_BALANCE
@@ -289,14 +291,16 @@ library IporFusionMarkets {
     ///        backward-compatible with raw `addressToBytes32(servicer)` from lender side)
     ///      - TYPE 0x01 COLLATERAL_TOKEN: ERC20 collateral token addresses accepted by a
     ///        borrower's TermRepoCollateralManager (upper byte = 0x01)
-    /// @dev Balance fuse: TermFinanceBalanceFuse with signed-int aggregation across 5 legs:
+    /// @dev Balance fuse: TermFinanceBalanceFuse with per-servicer unsigned aggregation across 5 legs:
     ///      held repo tokens (+), pending offers (+), pending bids (+), locked collateral (+),
-    ///      debt PV (-). No external self-call is used (under delegatecall `address(this)` is
+    ///      debt PV (-). Every servicer is floored at 0 on its own (limited liability of a Term Repo) and
+    ///      repo tokens of a servicer are netted with its own debt; after maturity a repo token is valued at
+    ///      face x the servicer's recovery ratio (`shortfallHaircutMantissa`). No external self-call is used (under delegatecall `address(this)` is
     ///      the vault, so `try this.fn(...)` would hit the vault fallback); instead each foreign
     ///      Term Finance read is wrapped in its own per-call try/catch, degrading an UNTRACKED
     ///      servicer leg to 0 on revert. A TRACKED leg re-raises (`*PriceZeroForTracked`,
     ///      `*DebtReadFailedForTrackedServicer`, `*DebtRateFailedForTrackedServicer`) to freeze
-    ///      share math. Per-leg saturation at MAX_VALUE_PER_LEG = 1e36 USD-WAD.
+    ///      share math. Per-servicer saturation at MAX_VALUE_PER_LEG_UINT = 1e36 USD-WAD.
     /// @dev if this marketId is added to the PlasmaVault, one need add dependence graph with
     ///      balance of ERC20_VAULT_BALANCE — purchase tokens (USDC/WETH) are returned to the
     ///      vault on `RedeemFuse.enter`, `OfferFuse.exit` (pre-reveal cancel), `BidFuse.exit`
@@ -372,6 +376,10 @@ library IporFusionMarkets {
     /// @dev A crosschain NAV validation pre-hook (staleness / blocked-chain fail-closed) gates the
     ///      source PlasmaVault's share-price-sensitive selectors, mirroring `RWAPausePreHook`.
     /// @dev Fuse family overview: contracts/fuses/crosschain/README.md
+    /// @dev An executor whose `ASSET()` is not the vault underlying delivers a token that leaves this market's value on
+    ///      claim. It is valued again only through ERC20_VAULT_BALANCE (7): the FUSE_MANAGER must grant the token there and
+    ///      add the dependency edge CROSSCHAIN (54) -> ERC20_VAULT_BALANCE (7), otherwise NAV is understated until
+    ///      market 7 is refreshed (IL-9688).
     uint256 public constant CROSSCHAIN = 54;
 
     /// @dev HyperCore positions and actions through the HyperEVM CoreWriter and read precompiles.
@@ -390,8 +398,10 @@ library IporFusionMarkets {
     ///        2 WindowOrderSeconds (reserved, ignored since IL-8543), 3 MaxUsdClassTransferUsd6, 4 PerpDexIds
     ///        (bitmap of enabled HIP-3 dex indices, bit n = dex n, dex 0 is implicit), 5 SettlementMode (reserved,
     ///        ignored since IL-8543), 6 SpotSendBridgeEnabled, 7 TransferTimeoutSeconds,
-    ///        8 ActivationFeeAllowanceUsdcWei, 9 MaxNavJumpBps, 10 MaxMarkOracleDeviationBps, 11 NavJumpFloorUsd6. A key may be
-    ///        granted at most once; key 0 and keys above 11 are invalid.
+    ///        8 ActivationFeeAllowanceUsdcWei, 9 MaxNavJumpBps, 10 MaxMarkOracleDeviationBps, 11 NavJumpFloorUsd6,
+    ///        12 NavZeroBaselineCapUsd6 (optional USD6 cap on the live Core value while the stored market value is
+    ///        zero; grant it only after the whole HyperCore fuse and pre-hook set is swapped). A key may be
+    ///        granted at most once; key 0 and keys above 12 are invalid.
     ///      - SendCap: tokenIndex uint64 in 191..128, maxWei uint128 in 127..0 (bits 247..192 zero); one per token.
     ///      - PerpPositionCap: asset uint32 in 247..216, maxPositionNotionalUsd6 uint88 in 215..128 (aggregate
     ///        position cap, USD 6 decimals), bits 127..0 zero; one per asset.

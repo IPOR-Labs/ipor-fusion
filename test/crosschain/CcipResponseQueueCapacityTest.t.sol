@@ -12,7 +12,7 @@ import {CcipExecutorCommandLib} from "../../contracts/crosschain/ccip/lib/CcipEx
 import {CcipMessages, CcipMsgType} from "../../contracts/crosschain/ccip/lib/CcipMessages.sol";
 import {BusinessAction, CommandStatus} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
 import {CcipClient} from "../../contracts/crosschain/ccip/interfaces/CcipClient.sol";
-import {Command, CrosschainMessages} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
+import {Command, CrosschainMessages, SweepFloor} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {MockCcipRouter} from "./mocks/MockCcipRouter.sol";
 import {MockCcipRouteValidator} from "./mocks/MockCcipRouteValidator.sol";
 import {MockRemoteVault} from "./mocks/MockRemoteVault.sol";
@@ -115,6 +115,7 @@ contract CcipResponseQueueCapacityTest is Test {
                 rescueDelay: RESCUE_DELAY,
                 balanceStalenessMax: 7 days,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 hours,
                 transferStalenessMax: 1 days
             });
@@ -174,7 +175,10 @@ contract CcipResponseQueueCapacityTest is Test {
 
     /// @dev A successful empty `UPDATE_VAULTS` command: queues one `COMMAND_ACK`.
     function _injectAck() private {
-        _inject(_command(CcipMsgType.UPDATE_VAULTS, 0, "", abi.encode(new address[](0), true, false)), 0);
+        _inject(
+            _command(CcipMsgType.UPDATE_VAULTS, 0, "", abi.encode(new address[](0), true, false, new SweepFloor[](0))),
+            0
+        );
     }
 
     /// @dev A deposit into a vault that is not allowlisted: the command fails and queues a `COMMAND_NACK`.

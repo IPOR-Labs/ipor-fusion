@@ -15,7 +15,8 @@ Stargate/LayerZero stack.
 - Linked libraries (EIP-170; IL-8659 added `CcipDispatcherLib`, IL-8660 / IL-8551 moved more bodies out):
   `CcipExecutorAttestationLib`, `CcipExecutorCommandLib` and `CcipExecutorTransferLib` hold most executor bodies,
   `CcipDecimalsLib` its decimal conversions, `CcipDispatcherLib` the dispatcher's vault-set configuration and
-  removal sweep;
+  removal sweep, the body of the `REQUEST_SHARES` command (`requestShares`, it runs in the library by delegatecall, not
+  in the dispatcher) and the response-queue codec (`raiseQueuedBalances`, `unwindQueuedReturn`);
   `CrosschainVaultActionLib` and `RescueLogicLib` are shared with Stargate. They run by delegatecall on the host's
   storage; the host ABIs mirror their events and errors in `ICcipExecutorLibraryAbi` / `ICcipDispatcherLibraryAbi`
   (kept complete by `CrosschainLibraryAbiCompletenessTest`). A library change means re-pinning it in the
@@ -54,14 +55,54 @@ responses can arrive out of order (see IL-8496).
 - A recall above the local token pool's outbound rate-limit CAPACITY (`TokenMaxCapacityExceeded`, permanent until the
   pool admin raises it) is answered `RETURN_REJECTED(ABOVE_POOL_CAPACITY)` before any value moves, and neither
   `trackedIdle` nor `stateVersion` changes. A transient `TokenRateLimitReached` still queues the
-  `RETURN_TRANSFER` and `flushResponse` retries it (IL-8553). The reject applies only when the recall meets an
-  empty response queue; a recall queued behind an occupied head can still stick later in `flushResponse` and then
-  needs the `scheduleSkipStuckResponse` + executor `ADVANCE_FRONTIER` rescue (TP-M-05 family); that
+  `RETURN_TRANSFER` and `flushResponse` retries it (IL-8553). "Transient" names the cause (the limit is expected to
+  refill), not a duration: before the recall deadline a queued response has no time limit of its own, and this retry is
+  the whole rule (IL-8553). Past the deadline, a dispatcher built from this code also has `flushExpiredReturn` (next
+  item). The reject applies only when the recall
+  meets an empty response queue; a recall queued behind an occupied head can still stick later in `flushResponse`.
+  On a dispatcher built from this code such a return keeps its deadline, and once it becomes the expired head
+  `flushExpiredReturn` releases it without tokens even when the token send fails for capacity (the tokenless exit is
+  attempted after any failure of the send with tokens), so the skip below is not invariably required. On an older
+  dispatcher, or when the token-less transport is unavailable (the whole call reverts, see the Fees note of exit 1),
+  the return then needs the `scheduleSkipStuckResponse` + executor `ADVANCE_FRONTIER` rescue (TP-M-05 family); that
   `ADVANCE_FRONTIER` clears the cancelled-recall clock of the chain only once the reset guard window has passed
   (otherwise it keeps the clock; see checklist item 6, IL-8590). Only the
   `TokenMaxCapacityExceeded` selector of Chainlink's `RateLimiter` is recognised; other permanent limits (a CCTP
   USDC pool's per-message burn limit, which reverts with a string; the CCIP 1.5 OnRamp
   `AggregateValueMaxCapacityExceeded`, not present on 1.6/2.0 OnRamps) are not.
+- Head-of-line blocking on a shared rate limiter (IL-9621, IL-9745; builds on the IL-8816 limitation). Only the head
+  of the response queue is ever sent, and a head that keeps reverting `TokenRateLimitReached` holds every later
+  response; while it does, the executor's recall turns `TransferStale`. The outbound rate-limit bucket of the pool lane
+  is shared, so any bridger on the same lane can consume it. Nothing is lost: `flushResponse` needs no role and
+  succeeds as soon as the bucket has refilled above the return amount, and the queue drains from there. But before
+  the recall deadline there is no fixed upper bound on how long the head waits.
+  Dispatchers built from this code (they have `queuedReturnDeadline`) add a permissionless exit after that deadline.
+  The deadline is the `createdAt + TRANSFER_STALENESS_MAX` the executor stamped on the request (IL-8590). It is kept in
+  the queue entry of a `RETURN_TRANSFER` that stays queued, is read with `queuedReturnDeadline(responseId)` (0 means
+  none) and is compared with the clock of the dispatcher chain. Strictly after it, `flushExpiredReturn()` (no role)
+  first sends the head as it is, with its tokens, and returns `false` when that works. When that send fails, whatever
+  the cause, the same response (same operation id, same version) leaves without tokens, with amount 0, the tokens go
+  back from the queue to `trackedIdle`, `ReturnExpiredUnwound` is emitted and the call returns `true`. The executor
+  then closes the recall with nothing received and nothing debited. The promise is narrow: it removes the dependence of
+  the recall on the token transfer, and nothing more. The liquidity does not come back, so the recall has to be issued
+  again. Once the zero return is delivered, the executor's valuation reopens only when its other gates allow it: the
+  responses are applied in version order (an out-of-order delivery fails with `StateVersionGap` until the earlier
+  version is delivered), the chain is not blocked (`ChainBlocked`), no other transfer is stale and no cancelled recall
+  is still unresolved, and an approved observation is fresh (`ObservationStale`; the zero return does not refresh it).
+  Dispatchers deployed before this change have no such exit. How to call it, its gas limit and its failure cases are in
+  "Recall held at the queue head by a shared pool rate limit (IL-9745, 3sigma #36)" under Recovery.
+  Effect on the vault: once `TRANSFER_STALENESS_MAX` has passed since the recall was created, `getBalance()` of the
+  executor reverts `TransferStale`. A vault with `CrosschainNavValidationPreHook` on its user selectors then rejects
+  `deposit`, `depositWithPermit`, `mint`, `withdraw`, `redeem` and `redeemFromRequest`, and so does a vault that
+  watches it through the hook's watched-vault list (IL-9720). `execute` still passes the hook. Refreshing the
+  CROSSCHAIN market stays closed, except inside a recovery batch on a market with exactly one executor, which is served
+  the cached value (see "Cached balance during a recovery batch (IL-8564 / IL-8638)"). `updateMarketsBalances` works for
+  another market unless that market's balance dependency graph includes the CROSSCHAIN market: its refresh then
+  reaches the same failing balance fuse.
+  Rejecting on `TokenRateLimitReached` is deliberately not done: it would fail ordinary recalls during normal
+  congestion (IL-8553), it would need the keeper to repeat the recall, and it would give no guarantee, because the
+  `RETURN_REJECTED` answer travels through the same queue. The exit, the per-lane checks and the operational rule are
+  in "Recall held at the queue head by a shared pool rate limit (IL-9745, 3sigma #36)" under Recovery.
 - CCIP token pools may charge a fee or apply a haircut (the pool owner is a trusted external party), so the
   destination can receive less than a supply sent. The credit that arrived is booked and the shortfall is a realized
   NAV loss; the chain is NOT blocked. Settlement emits `SettledCreditShortfall(chainId, operationId, amountSD,
@@ -135,12 +176,16 @@ there is no `routeGas / 64` term on CCIP (Stargate has one). The executor resolv
 `CcipSendLib.send` does (0 or above policy is clamped to it, below reverts) and refuses to send, reverting
 `CommandLaneGasTooLow(routeGas, requiredRouteGas)`, when the budget would be below `COMMAND_EXECUTION_MIN_GAS` (1,000,000).
 Route minimums follow from the formula: a DEPOSIT needs about 1.84M, an empty UPDATE_VAULTS about 1.86M, a 32-vault
-UPDATE_VAULTS (47 stored words) 2.63M; set `messageGasLimit` to at least 2,700,000 (CcipPreCheckPinTest pins all of it).
+UPDATE_VAULTS 2.63M (47 stored words; since IL-9629 the list of sweep floors adds two words even when empty, so 49
+words and 2,676,000, and every floor entry adds two words, 48,000); set `messageGasLimit` to at least 2,700,000 for an
+update without floor entries (CcipPreCheckPinTest pins all of it).
 The budget is part of the committed bytes (`commandCommitment = keccak256` of the stored data), so a deliverer cannot lower
-it. `CcipMessages.VERSION` is 3 so a mixed old/new pair fails `InvalidVersion`. Calibration of the two constants (cooled
+it. `CcipMessages.VERSION` is 3 (4 since IL-9629) so a mixed old/new pair fails `InvalidVersion`. Calibration of the two constants (cooled
 with `vm.cool`, direct `ccipReceive`, 2,500 added for every touched account; `CcipPreCheckPinTest`): pre-check work 321k / 344k / 544k /
 725k / 1,087k for 14 / 15 / 23 / 31 / 47 words (about 23.2k per word overall, 25.1k between 15 and 23 words, so 24k per word
-is not a per-step bound), covered by 500k + 24k per word with at least 508k of margin (asserted at 100k). The real Router's own overhead is outside the receiver's gas limit. The real-endpoint cold
+is not a per-step bound), covered by 500k + 24k per word with at least 508k of margin (asserted at 100k). Since IL-9629
+the floors list adds two words, and the re-measured pre-check work (forge 1.9.0, 2026-11-10) is 364k / 413k / 631k / 828k /
+1,224k for 14 / 17 / 25 / 33 / 49 words, a margin of at least 452k. The real Router's own overhead is outside the receiver's gas limit. The real-endpoint cold
 calibration is the Stargate one (`stargate/README.md`).
 
 The rule: a delivery that reaches the business call with less gas than the budget reverts `InsufficientGasForCommand`
@@ -178,7 +223,7 @@ struct and the executor's payload-word mapping, `requireRetryGas` changed) and `
 changed: re-pin them in `crosschain_deploy` and re-link the executors (the Stargate libraries `StargateExecutorAccountingLib`,
 `StargateExecutorDeploymentLib` and `StargateLzSendLib` changed too). The executor gained a payload-word mapping appended
 after all existing state, so no existing slot moved. Routes registered with `messageGasLimit` below the payload's minimum
-(see the formula above; 2,628,000 for a 32-vault UPDATE_VAULTS) refuse the matching sends until the policy is raised
+(see the formula above; 2,628,000 for a 32-vault UPDATE_VAULTS, 2,676,000 since IL-9629) refuse the matching sends until the policy is raised
 through the timelocked `syncRoutePolicy`.
 
 **Per-message gas cap and the deadline.** CCIP lanes also cap the gas of one message (the destination FeeQuoter's
@@ -336,10 +381,17 @@ factory through `receive()`; the owner can recover funds with `sweepNative` and 
   destination sanity bound rejects it: `expiresAt > block.timestamp + MAX_DEPLOYMENT_TTL + DEPLOYMENT_CANCEL_MARGIN`
   reverts `TicketExpiryOutOfRange` (retryable).
 - `DEPLOYMENT_TTL` (7 days) is also the delivery deadline, including time spent on the CCIP manual-execution path.
-- Stale NACK(4) guard: the ticket hash is identical across re-requests, so a NACK(4) answering a previous request
-  could close an identical fresh one. The source reverts a reason-4 NACK (`PrematureExpiredNack`, retryable) until
-  `pendingDeploymentCreatedAt + DEPLOYMENT_TTL` of the current request; later it is harmless (the request is expired
-  anyway).
+- Stale NACK guard (IL-9685): the ticket hash is identical across re-requests, so a NACK answering a previous request
+  could close an identical fresh one. Every `DEPLOYMENT_NACK` therefore carries the `expiresAt` of the request it
+  answers, echoed from the `CREATE_DISPATCHER` payload: the NACK payload is `(executor, dstChainId, ticketHash,
+  reason, expiresAt)`. The source compares it with the pending request's `createdAt + DEPLOYMENT_TTL` and, for ANY
+  reason (1 to 4), reverts `StaleDeploymentNack(executor, dstChainId, expectedExpiresAt, receivedExpiresAt)` on a
+  difference; the pending request stays and the message is harmless. A re-request is possible only after the
+  previous one was cancelled, strictly after its own expiry, so it always has a later `createdAt` and the NACK of any
+  earlier request never matches. `PrematureExpiredNack` (retryable) now covers only a destination clock that runs
+  ahead of the source: a reason-4 NACK of the pending request itself that arrives before
+  `createdAt + DEPLOYMENT_TTL` has passed on the source chain. Before IL-9685 the NACK carried no request identity
+  and only reason 4 was bound to the fresh request's TTL.
 - Destination: an unconsumed ticket delivered at or after `expiresAt` is answered NACK reason 4 and not deployed; an
   occupied address is still NACK(1) first, and an already consumed ticket is still re-ACKed. The NACK does not emit a
   dedicated expiry event on CCIP; the source emits `DeploymentNack` with reason 4.
@@ -373,18 +425,23 @@ factory through `receive()`; the owner can recover funds with `sweepNative` and 
   `CANCEL_DISPATCHER_REQUEST`): while NAV is fail-closed a batch holding only it reverts on the end-of-batch refresh,
   and the factory owner (or anyone after the grace) cancels instead; batched with a recovery-marked command such as
   `REFRESH_BALANCE` it goes through, which is harmless since a cancel moves no value.
-- A ticket has no nonce (IL-8637 R3): a re-request with identical inputs has the hash of the cancelled ticket, and the
-  NACK branch only checks that the pending hash equals the NACK's. A reason 1-3 NACK that answered the cancelled ticket
-  and arrived after the cancel fails (`UnknownDeploymentAck`) and stays executable on the OffRamp; once the identical
-  ticket is pending again, anyone can execute it and close the fresh ticket with the old reason. For reason 1 that is
-  still true; for reasons 2 and 3 the fresh ticket may have been deployed, and its ACK still lands through the late
-  path. Reason 4 is bound to the fresh request's own TTL (`PrematureExpiredNack`). Operations: treat a
-  `DeploymentNack` whose hash is in `isCancelledDeploymentTicket(executor, chainId, hash)` as suspect, and before sending a
-  new ticket check on the destination whether the dispatcher already exists (`consumedTicket(hash)` on the
-  destination factory, or code at the dispatcher address).
+- A ticket has no nonce (IL-8637 R3, closed by IL-9685 for pairs from the new factory): a re-request with identical
+  inputs has the hash of the cancelled ticket, but a NACK now names its request by `expiresAt` (see "Stale NACK
+  guard" above). A NACK that answered the cancelled ticket and arrives after the cancel fails (`UnknownDeploymentAck`)
+  while no ticket is pending and stays executable on the OffRamp; once the identical ticket is pending again it carries
+  the OLD `expiresAt` and reverts `StaleDeploymentNack`, so nobody can close the fresh ticket with an old reason (1 to
+  4). For reasons 2 and 3 the fresh ticket may have been deployed, and its ACK still lands through the late path. The
+  limitation remains for factories deployed before IL-9685, whose NACK carries no `expiresAt` (a reason 1-3 NACK closes
+  any identical pending ticket); there, treat a `DeploymentNack` whose hash is in
+  `isCancelledDeploymentTicket(executor, chainId, hash)` as suspect, and before sending a new ticket check on the
+  destination whether the dispatcher already exists (`consumedTicket(hash)` on the destination factory, or code at the
+  dispatcher address).
 - Deployment note: the factory gains the mappings `cancelledDeploymentTicket` and `isCancelledDeploymentTicket` and
   is not upgradeable, so redeploy it. The CCIP command fuse is redeployed and re-granted for `CANCEL_DEPLOYMENT` (an
-  older fuse refuses command type 9 when decoding the enum). There is no wire change. The Stargate factory bytecode changes too (see its README), so both
+  older fuse refuses command type 9 when decoding the enum). IL-9685 changes the wire: the `DEPLOYMENT_NACK` payload gained
+  the `expiresAt` word (the peer factory is always the factory's own CREATE3 address, so both ends of a pair run the same
+  build, and a NACK in the former four-field layout does not decode on the new factory and reverts); redeploy the
+  factories together and never mix builds. The Stargate factory bytecode changes too (see its README), so both
   factories are redeployed.
 
 ### Events
@@ -396,13 +453,14 @@ Events declare no `indexed` parameters by design: every field is in the data sec
 Changes to the dispatcher's tracked-position set emit `VaultTracked(vault)` and `VaultUntracked(vault)`.
 Removal is swap-and-pop, so every removal reorders `trackedVaults` and changes `trackedPositionSetHash()`.
 Attesters must therefore read `observation()` at the observed block instead of replaying events. A
-vault leaving the allowlist is swept (best-effort `redeem` into idle) and ALWAYS untracked in the same command
-(IL-8784, below), so on CCIP the tracked set equals the allowlist.
+vault leaving the allowlist is swept (best-effort `redeem` into idle) and untracked in the same command
+(IL-8784, below), except reason 6 (IL-9629 sweep floor not reached), when it stays tracked; so on CCIP the tracked set
+equals the allowlist, bar such retained vaults.
 
-### Removing a vault: sweep, always untrack (IL-8784, D-020 / D-028)
+### Removing a vault: sweep, untrack except reason 6 (IL-8784, D-020 / D-028, IL-9629)
 
 `UPDATE_VAULTS` (removal or replace) first flags the new allowlist, then, for every tracked vault that is no longer
-allowed (reverse iteration), calls `CrosschainVaultActionLib.sweepShares(vault)` and untracks the vault; only then are
+allowed (reverse iteration), calls `CrosschainVaultActionLib.sweepShares(vault)` and untracks the vault (except reason 6, IL-9629 sweep floor not reached, when it stays tracked); only then are
 newly allowed vaults tracked (cap-checked). The whole thing runs in the gas-bounded self-call `runStoredCommand`; the
 redeemed assets (measured as the ASSET balance delta, floored to shared decimals) are credited to `trackedIdle`, so
 the move into idle is value-neutral and the ACK delta stays 0. Consequences:
@@ -418,8 +476,13 @@ the move into idle is value-neutral and the ACK delta stays 0. Consequences:
   data are copied. A vault failing is never a revert: it emits
   `TrackedVaultSweepResidual(vault, sharesLeft, reason, redeemError, untracked)` (`reason` 1 unreadable balance,
   2 `redeem` reverted or ran out of its cap, 3 partial redeem or `maxRedeem` 0, 4 dust skipped, 5 `redeem` failed
-  or was skipped with less than `VAULT_SWEEP_GAS` forwarded; on a 3M lane every sweep is gas-limited, so ANY failed sweep, also a non-gas revert such as `AccountIsLocked` or `restricted`, reports 5: monitoring must read `redeemError`, non-zero = the vault's own revert) and the vault is
-  untracked anyway. A clean redeem emits `TrackedVaultSwept(vault, sharesRedeemed, assetsLD)`.
+  or was skipped with less than `VAULT_SWEEP_GAS` forwarded; on a 3M lane every sweep is gas-limited, so without a floor ANY failed sweep, also a non-gas revert such as `AccountIsLocked` or `restricted`, reports 5 (under a non-zero floor such a revert with error data reports 6, see below): monitoring must read `redeemError`, non-zero = the vault's own revert). For reasons 1 to 5 the vault is untracked anyway; reason 6 is the exception: a non-zero sweep floor was not reached and nothing was burned (IL-9629, `untracked` false; also a floored `redeem` that reverted with the vault's own error data, gas-limited or not, IL-9699), so the vault stays tracked and in NAV, off the allowlist. ALPHA exits it with a REDEEM (through `CcipCrosschainCommandFuse`, which still requires the vault's `REMOTE_VAULT(chainId, vault)` substrate: a retained vault that is no longer granted must have the substrate granted again first; a retained vault emptied by REDEEM stays tracked at zero shares until a floor-0 entry frees its slot, and retained vaults count against the tracked cap) or names it in a later UPDATE_VAULTS floor entry (see "Sweep floors (IL-9629)" below). A clean redeem emits `TrackedVaultSwept(vault, sharesRedeemed, assetsLD)`.
+- **Redemption lock on the removed vault (IL-9679).** On a removed vault built with IL-9679 `maxRedeem` is 0 while the
+  dispatcher's redemption lock is active, so `redeem` is not called and the shares are a residual: reason 3 without a
+  sweep floor (the vault is untracked), reason 6 with a floor (IL-9629; the vault stays tracked and in NAV, off the
+  allowlist). Before IL-9679 the `redeem` was called and reverted with `AccountIsLocked` (reason 2 or 5, untracked,
+  `redeemError` non-zero). A vault deployed before IL-9679 keeps that old behaviour.
+- **Closed or reserve-capped vault (IL-9624 follow-up).** On a removed vault that is closed, `redeem` is not called (reason 3 without a floor, reason 6 with one). A vault capped by the released-request reserve is redeemed only up to `maxRedeem`, and its remaining shares stay on the dispatcher (reason 3 and untracked without a floor or with one at most the payout; with a higher floor the redeem is rolled back, reason 6). The cap needs the `maxRedeem` read to fit the 200,000-gas read limit: when the outer gas cannot fund the read the sweep reverts with `InsufficientGasForVaultRead`; when the capped read itself fails or runs out of its gas, the sweep takes the whole balance, which reverts for a reserve-capped position (reason 2 or 5 without a floor, 6 with one); see "Closed vault and released-request reserve in the max views (IL-9624 follow-up)" in `contracts/vaults/README.md`.
 - **Dust is skipped (D-061).** When the dispatcher's shares of the removed vault are worth at most 0.01 asset
   unit (about $30 on WETH, about $1,000 on an 8-decimal BTC-class asset; `10^(decimals - 2)`, read with two gas-capped views: the asset's `decimals()` and
   `convertToAssets(held)`), `redeem` is NOT called: the vault is untracked at once and the residual event is
@@ -455,13 +518,100 @@ the move into idle is value-neutral and the ACK delta stays 0. Consequences:
 - **Blocked chain.** A pure removal is allowed while the chain is blocked, but a re-add is refused and REDEEM /
   REQUEST_SHARES / REDEEM_FROM_REQUEST are gated on `isTrackedVault`. A residual created on a blocked chain has no
   command path until the chain is unblocked: never remove a vault that holds shares on a blocked chain; REDEEM first.
+- **Sweep floors (IL-9629).** `updateVaultsWithSweepFloors` (the `updateVaults` arguments with a `SweepFloor[] floors`
+  list before `maxFee`; command fuse: `enterWithSweepFloors`, UPDATE_VAULTS only) sends an UPDATE_VAULTS that
+  carries a `SweepFloor{vault, minAssets}` per vault to be swept; `updateVaults` and the fuse `enter` keep their
+  selectors and send no floors. `minAssets` is given in LOCAL ASSET decimals and converted to shared decimals exactly
+  (`AmountHasDust` on sub-precision dust), like REDEEM `minAssets`; a floor above `type(uint256).max / rate` (shared decimals converted with the rate) saturates instead of overflowing, as on Stargate: it means "never sell", the sweep reports reason 6, the vault is kept and the UPDATE_VAULTS command still SUCCEEDS (no checked-multiply panic, no NACK); at most `MAX_TRACKED_POSITION_VAULTS` entries, no
+  zero or duplicate vault (`TooManyVaults`, `InvalidVaultAddress`, `DuplicateVault`). A removed vault with a non-zero
+  floor is redeemed inside a self-call frame of the dispatcher (`sweepRedeemSelf`, same gas cap) that measures the
+  ASSET received and reverts `SweepBelowMinimum` below the floor, so a redeem at a manipulated spot price is rolled
+  back and the shares stay. Dust and a zero redeemable amount make no call and, under a non-zero floor, also count
+  as "floor not reached". In every such case the sweep reports reason 6 (`SWEEP_BELOW_MIN`, `untracked` false): the
+  vault leaves the allowlist but STAYS TRACKED, so its position keeps counting in NAV and the tracked-set rules keep
+  applying to it (the IL-8556 rescue fence, the `isTrackedVault` gating of REDEEM). IL-9699 (IL-9694 D-002): under a
+  non-zero floor a `redeem` that reverts with the vault's own error data (for example `AccountIsLocked`, `restricted`, a
+  `WithdrawManager` refusal) and burned nothing also reports reason 6, so a temporarily locked vault stays tracked and in
+  NAV, and `redeemError` carries the vault's selector (reason 6 no longer always means `SweepBelowMinimum` or nothing to
+  redeem). This also holds when the sweep is gas-limited (forwarded gas below `VAULT_SWEEP_GAS`, so on a 3M lane every
+  sweep): `AccountIsLocked` on a 3M lane keeps the vault tracked. Only an out-of-gas of the `redeem` frame itself (empty revert data), a skipped call (too little gas to forward) and an unreadable balance (reason 1) report reason 5 or 1 and untrack. An out-of-gas INSIDE the vault call tree usually comes back with error data (a PlasmaVault turns an empty fuse revert into `FailedInnerCall` 0x1425ea42, and a fuse failing with data is skipped, so the payout shortfall reverts with an ERC20/ERC4626 error), so under a non-zero floor it is reason 6 and the vault stays tracked. Monitoring must read `redeemError`: non-zero is the vault's own revert OR a gas-starved inner call; `FailedInnerCall` under reason 6 means gas-starved, so REDEEM in smaller chunks or remove the vault with floor 0. Without a floor (floor 0, or no entry) D-028 stands: a failed `redeem` reports reason 2 or 5 and the
+  vault is untracked, so a broken vault can still be removed, and a floor of 0 forces the removal. A retained vault (tracked, off the
+  allowlist when a command starts) is touched only by a later UPDATE_VAULTS that names it in a floor entry; a floor of
+  0 forces the removal at any price (the pre-IL-9629 behaviour), and a vault without an entry is skipped. A command
+  that carries floors runs the sweep pass even when it only adds vaults. ALPHA exits a retained position with a
+  REDEEM; on CCIP a retained vault emptied by REDEEM stays tracked at zero shares until a floor-0 entry frees the
+  slot, and retained vaults count against the tracked cap (an add past 32 reverts `VaultsCapReached` and the command
+  is NACKed). Each floor entry adds two words to the stored UPDATE_VAULTS: the route minimum for a 32-vault update
+  with an empty floor list is 2,676,000 (49 stored words, was 2,628,000), plus 48,000 per entry (see "Command gas
+  budget" above). Deployment: `CcipMessages.VERSION` is 4 (was 3), so a mixed old/new executor-dispatcher pair fails
+  `InvalidVersion`; an old pair keeps the old layout and has no floors. Deploy the executor, the dispatcher and the
+  command fuse together.
 - **No force-untrack, no write-off timelock on CCIP.** Tracked == allowlisted, so `scheduleForceUntrack`,
   `executeForceUntrack` and the CCIP `TrackedVaultWrittenOff` event were removed: remove the vault from the allowlist
   instead (a vault whose reads revert is simply reported as residual reason 1 and untracked). A residual is no
-  longer covered by the IL-8556 rescue fence (the vault is untracked), so a generic rescue may move it.
+  longer covered by the IL-8556 rescue fence (the vault is untracked), so a generic rescue may move it; on a dispatcher
+  with the IL-9654 library only in the shapes listed under "What a generic rescue may not target".
 - **Deploy.** Dispatchers are not upgradeable and the factories pin their code hash: new `CcipDispatcherLib`,
   `CrosschainVaultActionLib`, dispatcher code and factory are needed; executors and fuses are unchanged.
 - **Monitoring.** Alert on `TrackedVaultSweepResidual`.
+
+## Compromised or unavailable attester key (IL-9596, IL-9616, IL-9627)
+
+Runbook for a compromised, malicious or unreachable `BALANCE_PROPOSER` or `BALANCE_APPROVER`. Both roles are immutable
+executor constructor arguments, so a key cannot be rotated in place. The design is fail-closed on purpose: no single
+attester key can write `settled`, a wrong key can only make the NAV unavailable, never serve a stale or invented value,
+and no behaviour in this section was changed by the series. The pinning tests are
+`test/crosschain/CcipProposerLivenessBoundTest.t.sol`, `test/crosschain/CcipApproverBlockBoundTest.t.sol` and, on a real
+vault, `test/crosschain/CrosschainApproverBlockVaultFreezeTest.t.sol` (Stargate executor, same pre-hook path).
+
+### Proposer key (IL-9596)
+
+`proposeBalance` marks the active pending proposal SUPERSEDED (`ProposalInvalidated`) and approve of it then reverts
+`ProposalNotActive`. A compromised proposer can therefore replace every proposal before the approver acts, so no
+attestation lands and the observation ages out.
+
+- **Signal.** A series of `ProposalInvalidated` events with no `BalanceApproved` for the chain, while `BalanceProposed`
+  keeps arriving; `lastApprovedObservedAt` stops advancing.
+- **Effect is limited to liveness.** `settled` and the readable NAV never move (only the approver can approve). After
+  `BALANCE_STALENESS_MAX` since the last approval `getBalance` reverts `ObservationStale`: the NAV fails closed, it never
+  serves a stale value. Refusing the supersede (so that an approver could still approve an old proposal) would undo
+  IL-8472; rate-limiting it gives nothing, because the same key can also simply stop proposing, with the same effect.
+- **Exit.** The timelocked `FORCE_SET_SETTLED` (rescue admin, after the rescue delay) restores a readable NAV without the
+  proposer key. A permanently compromised proposer key also needs a new executor through the factory, because
+  the role is immutable.
+- **Alert.** Page on more than one `ProposalInvalidated` for a chain within one approval window, and on
+  `now - lastApprovedObservedAt` above half of `BALANCE_STALENESS_MAX`.
+
+### Approver key (IL-9616)
+
+`rejectBalanceAndBlock` needs only the approver, does not check that the proposal is unexpired, and sets
+`chainBlocked`, which only the timelocked `FORCE_SET_SETTLED` clears; a later propose/approve round does not. This is
+intended: writing a value needs two keys (proposer and approver), closing the NAV needs one. Lifting the block with two
+keys would undo the stale-frontier-repair-latch fix, and requiring a live proposal gains nothing because the same key
+blocks on the next routine proposal.
+
+- **Signal.** `BalanceRejectedAndBlocked` that no off-chain verification explains; `getBalance` reverting
+  `ChainBlocked`.
+- **Effect.** Availability only: `settled` is untouched. On a market whose pre-hook covers the executor, every
+  deposit and withdrawal fails closed until the block is lifted (see the vault effect below). A market with several
+  executors is stopped by the blocked one, as the block makes `balanceByChain` revert for that chain with a nonzero
+  total.
+- **Exit and time.** Schedule `FORCE_SET_SETTLED` for the chain (observed at the current frontier); it executes after
+  the rescue delay, and the guardian can cancel a scheduled rescue. The block holds for the whole delay and the same key
+  can block again the next time a proposal is pending, so a compromised approver key is cured only by a new executor
+  (the key is immutable). Until then ALPHA can still claim idle value through `execute`.
+- **Alert.** Page on any `BalanceRejectedAndBlocked`.
+
+### Vault effect of a blocked chain (IL-9627)
+
+With `CrosschainNavValidationPreHook` wired (as in `ConfigureMainVault`), a blocked chain makes the pre-hook revert
+`ChainBlocked` for `deposit`, `mint`, `withdraw` (even when the vault idle covers it), `redeem` and `redeemFromRequest`.
+`execute` (recovery actions such as claiming idle value) and `updateMarketsBalances` for other markets stay callable;
+refreshing the CROSSCHAIN market itself stays fail-closed. A fresh approval does not lift the block; only the
+timelocked `FORCE_SET_SETTLED` does (after it, one fresh approval makes the NAV readable again). Letting exits covered
+by idle pass while the chain is blocked would pay departing users at a disputed price, so the freeze is the intended
+cost of the single-key close. The remedy for a compromised key is a new executor; the vault is frozen for at least the
+rescue delay in the meantime.
 
 ## Deployment order
 
@@ -547,8 +697,11 @@ ceiling, so dispatchers must be upgraded no later than the fuses and executors. 
 `feeShares` field, so its topic changed and indexers must be updated.
 
 **A repeated `REQUEST_SHARES` pays the request fee again (IL-8603, IL-9209).** The remote WithdrawManager replaces the
-stored request on every call and takes `shares * getRequestFee() / 1e18` out of the dispatcher's vault shares, so a
-second request on the same vault is charged on its whole new amount. `maxFeeShares` is counted in shares of the remote
+stored request on a call and takes `shares * getRequestFee() / 1e18` out of the dispatcher's vault shares, so a
+second request on the same vault is charged on its whole new amount. Since IL-9652 the manager refuses a repeated
+request (`WithdrawManagerReleasedRequestPending`) while the previous one is already released and inside its window, also
+when its request cap has dropped to 0 (window at most 365 days, IL-9675): send `REDEEM_FROM_REQUEST` first, or wait for
+the end of the window. `maxFeeShares` is counted in shares of the remote
 vault: set it to `shares * getRequestFee() / 1e18` plus a margin. Value that fee in assets (`convertToAssets` of the
 remote vault) together with the fees of any further requests made before the next attestation, and keep the total
 inside the `bigChangeBps` step of `settled`. The hub still carries the old value until the next attestation is
@@ -569,11 +722,12 @@ not 0; the response events are informational (see "Two `convertToAssets` budgets
 closed by staleness without a fresh approved observation.
 
 Runbook for a vault that stays unpriceable: de-allowlist it with `UPDATE_VAULTS` (tracked == allowlisted on CCIP, IL-8784).
-The removal sweeps and untracks it whatever the vault does (an unreadable balance is reported as residual reason 1 and
-the vault is untracked). This WRITES OFF any remaining position from reports: lower the executor value with the
+The removal sweeps and untracks it whatever the vault does, except reason 6 (IL-9629 sweep floor not reached), when it
+stays tracked (an unreadable balance is reported as residual reason 1 and the vault is untracked). This WRITES OFF any remaining position from reports: lower the executor value with the
 timelocked `scheduleChainRescue(FORCE_SET_SETTLED, ...)` when the drop exceeds `bigChangeBps` or the anchor band. The
 shares stay in the dispatcher and, the vault being untracked, a generic rescue may move them later if it heals (the
-IL-8555/8556 vault fence no longer applies). There is no CCIP force-untrack any more.
+IL-8555/8556 vault fence no longer applies; on a dispatcher with the IL-9654 library only in the shapes listed under "What
+a generic rescue may not target"). There is no CCIP force-untrack any more.
 
 On the on-chain paths each vault read is capped at 200,000 gas (`TrackedVaultPricingLib.VAULT_READ_GAS`), so a
 gas-burning vault cannot starve the response; a read that honestly needs more is reported unpriced (errs low, flagged).
@@ -650,7 +804,7 @@ vault therefore stays possible; if a redeem returns nothing it is the measured d
 the dispatcher, recoverable only by rescue).
 
 A drifted vault that cannot be exited stays flagged unpriced; removing it from the allowlist (`UPDATE_VAULTS`, IL-8784)
-is the ejection path on CCIP: the sweep is best effort and the vault is untracked either way. No timelocked path remains.
+is the ejection path on CCIP: the sweep is best effort and the vault is untracked either way, except reason 6 (IL-9629 sweep floor not reached), when it stays tracked. No timelocked path remains.
 
 While a faulty vault is tracked the generic rescue (`executeRescue`) is unavailable, because its share snapshot uses a
 plain `balanceOf` (`RescueLogicLib`); it works again once the vault is removed. The `TrackedVaultSweepResidual` event
@@ -696,7 +850,16 @@ reverted with a STALENESS selector (`ObservationStale`, `TransferStale`), that e
 every sibling is still read with `getBalance()` and keeps its own verdict (an unmarked fail-closed sibling still
 reverts), and the market cache is not used. `CrosschainUncheckedBalanceServed(marketId, executor, reason)` is emitted.
 A market with a single executor behaves as before (cache fallback with the recovered-USD correction,
-`CrosschainCachedBalanceServed`, `ChainBlocked` included). Only one executor can be marked per transaction.
+`CrosschainCachedBalanceServed`, `ChainBlocked` included). Several executors can be marked in one transaction (IL-9655): every recovery action adds its own
+`(market, executor)` scope to a transient set, marking the same scope again changes nothing, and
+`isRecovery(market, executor)` answers for one executor only. Before IL-9655 one slot held one scope and a second
+recovery action overwrote the first, so when every executor of a market was stale no batch could repair them,
+separately or together. A scope stays marked until the end of the transaction: closing the recovered-USD
+accumulator when the balance fuse values the market does not clear it, so a scope marked in an earlier `execute()`
+batch (for example by a Safe MultiSend) still applies to later batches of the same transaction. A recovery action
+and a new-exposure batch (`markNewExposure`) remain mutually exclusive. The transient layout of the marker changed
+(its head slot is now a counter of marked scopes), so the six crosschain fuses (balance, claim, and supply and
+command for both transports) are redeployed and re-granted together; do not mix old and new fuses in one vault.
 
 A blocked chain is NOT substituted (follow-up to IL-8611, TP-M-33 review). A blocked chain means the books are
 known-inconsistent until a rescue completes. The double count of `DROP_RETURN_METADATA_INCLUDED` is the Stargate
@@ -726,7 +889,7 @@ The return leg debits `settled` by the amount the dispatcher declared it sent an
 dispatcher pays every recall out of `trackedIdle` only, never out of the tracked ERC-4626 positions, so any
 return smaller than the attested bucket (a partial recall, or a full recall while part of the bucket sits in a
 vault) leaves a pro-rata residue that still carries the whole remote loss the attesters had not yet recognised.
-Once that loss exceeds `ATTESTATION_ANCHOR_BAND_BPS` (20%) of the residue, the residue cannot be attested down
+Once that loss exceeds the executor's `anchorBandBps` (20% at the reference band of 2_000) of the residue, the residue cannot be attested down
 to its true value: `approve` holds every value within the band of the anchor, and the exact-zero exception
 applies only at or below `ATTESTATION_ZERO_DUST_SD`. Example: `settled == anchor == 1,000,000`, 900,000 is idle
 and 100,000 sits in a vault that lost all of it; a full recall returns the 900,000 and leaves 100,000 against a
@@ -741,7 +904,11 @@ that was already unrecognised before it (10% of the bucket before, 100% of the r
    and compare it with `settled`. Inside the band, attest normally. Below the band floor (and above
    `ATTESTATION_ZERO_DUST_SD`), block immediately (`rejectBalanceAndBlock`; the proposer submits the truthful
    figure, `propose` has no band check) instead of waiting for `BALANCE_STALENESS_MAX` to fail NAV closed. The
-   block makes `totalAssets()` revert for the whole vault until the force-set executes.
+   block makes the executor's `getBalance()` revert `ChainBlocked` until the force-set executes:
+   `CrosschainNavValidationPreHook` then reverts `deposit`, `mint`, `depositWithPermit`, `withdraw`, `redeem` and
+   `redeemFromRequest` on a vault that wires it, and a refresh of the CROSSCHAIN market reverts outside an armed
+   recovery batch. `totalAssets()`, `convertTo*`, `preview*` and `max*` do not revert; they keep returning values
+   priced from the cached market total.
 3. Schedule `scheduleChainRescue(FORCE_SET_SETTLED, chainId, (observedStateVersion << 192) |
    (observedRemoteTimestamp << 128) | trueValueLD)` with the value read at `lastRemoteStateVersion(chainId)` (and
    its remote read time), and run `executeChainRescue` after `RESCUE_DELAY` (at
@@ -760,6 +927,10 @@ declares the sequence consumed). An ACK that frees a slot occupied at schedule (
 covered too, because every applied ACK strictly raises the sequence mirror. An argument in the pre-IL-8586 shape
 (upper 128 bits zero) is refused at schedule with `RealignExpectedEpochZero`: off-chain tooling must pack the
 expected pair. The Stargate realign carries the same binding since IL-8652 (its own packing, see the Stargate README).
+The declared `newEpoch` must be non-zero (IL-9683): epoch 0 is the unconfigured state and the dispatcher's
+`commandConfigEpoch` is never 0 once configured, so a mirror written to 0 would stamp every later command with an epoch
+the dispatcher NACKs. `realign` reverts `RealignNewEpochZero(chainId)` after the free-slot and `RealignStateMoved`
+checks and before any write; pack the dispatcher's observed epoch.
 
 Expired cancel and the `EXPIRED` receipt (TP-M-16 / IL-8594). A `CANCEL_COMMAND` delivered after its command's deadline
 closes the command on the dispatcher without consuming the sequence: it emits `CancelCommandExpiredIgnored`, marks the
@@ -844,6 +1015,15 @@ That ignored case is pre-existing and unreachable from an honest dispatcher.
 Monitoring: with `minReturn == 0` a zero delivery shows only as `ReturnFinalized(received = 0)`, so alert on
 `received == 0` or `received << sentSD`.
 
+Two different zero deliveries (IL-9621). `ReturnFinalized(sentSD > 0, received == 0)` is a loss in transport: the
+dispatcher sent value and nothing arrived, so `settled` was debited by `sentSD` (a pool fee plus decimal downscaling, as
+above). `ReturnFinalized(sentSD == 0, received == 0)` is a recall closed without tokens, which a dispatcher built from
+this code produces through `flushExpiredReturn`: nothing was sent, `settled` is not debited (`debited == 0`), the tokens
+stayed on the dispatcher in `trackedIdle`, and the recall has to be issued again. Tell them apart by `sentSD`. The same
+applies to `ReturnBelowMinimumCredited` with a non-zero `minReturn`: the event does not carry `sentSD`, so read it with
+the `ReturnFinalized` (or `LateReturnFinalized`) of the same `operationId`. A closed-without-tokens recall with a
+non-zero `minReturn` also emits it, because `0 < minReturn`; it is not a pool fee.
+
 Follow-up: there is no per-lane minimum config today (only the per-request `minReturn` / `minDelivered`), so a
 send-time rejection of amounts that cannot survive fee + downscaling is not implemented; operators should size recalls
 well above the pool fee and decimal step.
@@ -861,18 +1041,58 @@ flight and `getBalance()` reverted `TransferStale` after `TRANSFER_STALENESS_MAX
 source token has more decimals than the destination and the pool fee is above zero; USDC 6/6 lanes are unaffected.
 Deployment: the CCIP dispatcher creation code changes, so dispatchers must be redeployed through the factory.
 
+### Anchor band per executor (IL-9720, 3sigma #26)
+
+The band around `anchorPrincipal` within which `approve` accepts an attested balance is a constructor parameter of every
+executor, `SafetyConfig.anchorBandBps` (the last field), not a protocol constant. Bounds, checked at construction:
+`0 < bigChangeBps <= anchorBandBps <= MAX_ATTESTATION_ANCHOR_BAND_BPS` (50_000, i.e. up to 6x the anchor); otherwise the
+constructor reverts `InvalidSafetyConfig`. The value is stored once in the attestation state, is immutable, and is
+readable with `attestationAnchorBandBps()`. `ATTESTATION_ANCHOR_BAND_BPS` (2_000, +-20%) stays as the reference band for a
+leg without leverage; no contract reads it. Executors created before this change keep the fixed 20% band and are not
+migrated in place (a different band means a new executor, a full recall and a new substrate).
+
+Choosing the band. A leg with leverage moves its equity by a multiple of the underlying move (10x to 20x: a 1% to 2% move
+leaves a +-20% window). Take the equity range `[Emin, Emax]` the leg can reach around the anchor `A` within
+`RESCUE_DELAY + MIN_UPDATE_INTERVAL`, then `anchorBandBps = 10_000 * max(A - Emin, Emax - A) / A` plus a margin; a leg that can
+lose its whole capital needs at least 10_000. Choose `bigChangeBps` so that the move of one `MIN_UPDATE_INTERVAL` fits one
+relative step; the walk to the true value is made of ordinary approvals, each within `bigChangeBps` of the previous one.
+
+Geometry for `b = anchorBandBps / 10_000`: an attested value must lie in `[A * (1 - b), A * (1 + b)]` (the lower edge is zero
+for `b >= 1`); the band-consistency floor and the debit clamp are `ceil(settledAfter * 10_000 / (10_000 + anchorBandBps))`;
+the below-band case of IL-8737 exists only for `c < ((1 - b) / b) * min(R, N)`, so not at all for `b >= 1`; the fourth
+argument of `AttestationOutsideAnchorBand` is the executor's band.
+
+Security cost. A compromised attester pair can move NAV anywhere in `[max(0, A * (1 - b)), A * (1 + b)]`; at `b >= 1` the lower
+edge is zero, and a leg that is re-levered continuously has no enforceable ceiling at all. Pick the narrowest band that covers
+the leg, keep the attesters independent, and monitor `BalanceApproved` for direction reversals (FP-H-01).
+
+A value above the band (CCIP). If the true value lies above the upper edge, approving it does not revert: `approveBalance`
+writes nothing, rejects the proposal and blocks the chain, exactly as `rejectBalanceAndBlock` (`BalanceRejectedAndBlocked`);
+a chain that is already blocked, a value below the lower edge, and the zero-baseline branch keep the revert
+`AttestationOutsideAnchorBand`, and a proposal inside the band but further than `bigChangeBps` from the last approved value
+still reverts `BigChangeExceeded`. Procedure: walk `settled` up with ordinary approvals to the band edge, then propose the
+true value; the block, with `getBalance()` reverting `ChainBlocked` while value is tracked, holds the vault's gated selectors
+and the timelocked `FORCE_SET_SETTLED` (after `RESCUE_DELAY`) is the way out. Orchestration that approves and then refreshes
+the market must expect a blocked chain after the approval (no refresh, no `getBalance()` read).
+
 ### Anchor credit cap and band limitation (TP-H-02 / IL-8578, FP-H-01 / IL-8554)
 
 Anchor credit cap (TP-H-02, IL-8578). Each chain keeps a `netPrincipal` (credits from authenticated settles, debited
 by the authenticated amount the dispatcher sent back on each recall, floored at 0, rebased by `forceSetSettled`;
 only authenticated returns lower it and the attesters never raise it; they can only zero it together with the anchor through the dust-to-zero approval). A credit on
 re-supply sets the anchor to `max(min(anchor + credited, netPrincipal), floor)` (it may lower it), where
-`floor = ceil(settledAfter * 10_000 / 12_000)` is the band-consistency floor, so a recall / re-supply round
+`floor = ceil(settledAfter * 10_000 / (10_000 + anchorBandBps))` (`12_000` at the reference band of 2_000) is the band-consistency floor, so a recall / re-supply round
 trip cannot add band headroom without new capital. The "never exceeds the largest net principal" claim holds up
 to one shared-decimal unit of `Ceil` rounding per credit (a cycle costs two bridge round trips and an
 attestation to gain one unit, so it is not economically exploitable). Known limitation: a realised loss stays in
 `netPrincipal` after the bucket is emptied (supply 100, attest 90, recall 90 leaves 10); it is bounded by real
 losses and clears on `forceSetSettled`.
+
+Zero credit (IL-9625). A zero credit (a zero delivery, IL-8635) returns before any write: the anchor,
+`netPrincipal` and the events `AttestationAnchorUpdated` / `AttestationNetPrincipalUpdated` are untouched. Without
+this the formula above would cap the anchor at `netPrincipal` and wipe the residual anchor of a full recall
+(`settled` 0, anchor R, `netPrincipal` 0, IL-8606), leaving R unattestable without `FORCE_SET_SETTLED`. A credit above
+zero is unchanged (the IL-8578 cap above stays).
 
 Honest-yield consequence: after a recall that leaves already-recognised yield on the remote chain, the next
 credit sets the anchor at the band floor, so `settled` then sits at the band ceiling and further honest yield
@@ -883,17 +1103,17 @@ ceiling until a force-set.
 Settled below the anchor band (IL-8737 / IL-8792). The relative `BigChangeExceeded` check applies only while the current settled lies inside the
 anchor band (outside the band on either side skips it; only below is reachable). After an approved loss and a recovery, a full recall leaves (settled 0, anchor R, net N) with N > 0 (the approved loss stays in netPrincipal). A later
 top-up c then gives (c, min(R, N) + c). When `c * (1 + bigChangeBps / 10_000) < 0.8 * (min(R, N) + c)` (for example
-`c < 2 * min(R, N)` at 20%, `c < 8/3 * min(R, N)` at 10%), settled is below the band and the two windows are disjoint,
+`c < 2 * min(R, N)` at 20%, `c < 8/3 * min(R, N)` at 10%; in general `c < ((1 - b) / b) * min(R, N)` with `b = anchorBandBps / 10_000`, so the case cannot occur at `b >= 1`), settled is below the band and the two windows are disjoint,
 so before this fix no value was approvable at all and NAV stayed fail-closed after `BALANCE_STALENESS_MAX`. Such a
-settled is not a baseline, like zero (IL-8606), so the band alone bounds that one approval (at most `1.2 * anchor`; the
+settled is not a baseline, like zero (IL-8606), so the band alone bounds that one approval (at most `(1 + b) * anchor`, `1.2 * anchor` at the reference band; the
 anchor grows only from authenticated credits, IL-8578). The relative check returns after the first band approval.
 Example (`bigChangeBps` 20%): supply 100, approved loss of 10 (attest 90), yield back to 100 on the remote chain, recall of 90 gives (0, R = 10, N = 10); a top-up of 10 gives (10, 20), window [8; 12] against band [16; 24], and approving 20 passes after the fix. Executors deployed before this change keep the old behaviour; for them
 attest the residual before any top-up (see the IL-8606 section below). Once frozen, recall the whole settled bucket or force-set.
 
-Known limitation (FP-H-01, IL-8554): the band bounds the LEVEL of mispricing (+-20% of the anchor), not the
+Known limitation (FP-H-01, IL-8554): the band bounds the LEVEL of mispricing (+-`anchorBandBps` of the anchor, +-20% at the reference band), not the
 cumulative movement; a jointly compromised proposer/approver pair can walk `settled` between the band edges
 repeatedly (about 9 approvals per full 0.8x -> 1.2x -> 0.8x cycle: 5 up, 4 down, at the reference
-`bigChangeBps` of 1_000; 3 + 2 at 2_000). Accepted by design (it needs both attester keys); mitigation is
+`bigChangeBps` of 1_000; 3 + 2 at 2_000; the walk takes proportionally longer at a wider band). Accepted by design (it needs both attester keys); mitigation is
 off-chain monitoring of `BalanceApproved` direction reversals.
 
 Residual anchor after a full recall (TP-M-28, IL-8606). If the remote shares earn yield after the last attestation, an
@@ -916,33 +1136,47 @@ zero-to-zero approval stays allowed and leaves the residual anchor in place. A r
 A later authenticated `RETURN_TRANSFER` that arrives when `settled` is already zero (for example the return of a
 second recall opened after the first was cancelled) debits nothing, but it recomputes the anchor from the reported
 balance: `min(remoteBalance, anchorPrincipal)` when `remoteBalance` is above `ATTESTATION_ZERO_DUST_SD`, otherwise 0.
-On this path the anchor only decreases (IL-9134). A stale balance (a return queued behind a skipped response, or a
-return with a version at or below the frontier after `ADVANCE_FRONTIER`) can lower the anchor below the real
-residual; the exit is `FORCE_SET_SETTLED`.
+On this path the anchor only decreases (IL-9134). A stale balance can lower the anchor below the real residual in two
+cases. (1) A return with a version at or below the frontier after `ADVANCE_FRONTIER` is delivered with the balance it
+was sent with: this holds for every dispatcher, because a response that has left the queue is not corrected. (2) A
+return queued behind a skipped response carried the balance encoded when it was queued, lower by the dropped amount:
+this is the behaviour of dispatchers built before IL-9621 (no `queuedReturnDeadline`); a dispatcher built from this code
+raises the balances queued behind a skipped token-bearing head or a head released by `flushExpiredReturn` (see the
+IL-9146 paragraph in item 6 of "Attesting while the response queue is stalled (IL-8257)"). The exit in both cases is
+`FORCE_SET_SETTLED`.
 
 The residual is NOT recallable until it is attested (recall bounds use `settled`), so the order of operations matters.
 Attest the residual before re-supplying: a credit that lands before the attestation caps the anchor at the credited
 amount (`min(R + D, netPrincipal = D)`, see the anchor credit cap above), which drops the residual out of the band
 (covered by `testCreditBeforeResidualAttestationShouldCapTheAnchorAtTheCredit`). The first attestation from the zero
 baseline is bounded only by the anchor band, the relative limiter being skipped at a zero baseline, so a single step can
-move `settled` from 0 to 1.2 R. The residual anchor is capped at the pre-debit anchor: an honest residual (yield since
+move `settled` from 0 to `(1 + b) R` (1.2 R at the reference band). The residual anchor is capped at the pre-debit anchor: an honest residual (yield since
 the last attestation) never exceeds it, so an inflated reported figure cannot RAISE the anchor, which stays
 non-increasing under debits. The cap does not stop such a figure from KEEPING the whole pre-recall anchor at
 `settled == 0` although almost nothing is left remotely (IL-9191). Example trigger: a tracked remote vault whose
 `convertToAssets` can be moved on a spot input, priced during a recall delivery that anyone can execute. From that zero
-baseline a single attestation can reach 1.2 times the kept anchor. After the manipulation is undone an honest
-observation shows the true residual, which lies below 0.8 times the kept anchor, so an honest positive approval reverts
+baseline a single attestation can reach `(1 + b)` times the kept anchor (1.2 at the reference band). After the manipulation is undone an honest
+observation shows the true residual, which lies below `(1 - b)` times the kept anchor (0.8 at the reference band; the case does not exist at `b >= 1`), so an honest positive approval reverts
 `AttestationOutsideAnchorBand` and an honest pair can only approve 0. A zero-to-zero approval leaves the kept anchor in
 place until a re-supply credit, a lower later return or a force-set changes it, so pricing the true residual needs the
 force-set. Booking the phantom value needs an attester pair approving a figure no honest observation shows (attester
-collusion as in FP-H-01 / IL-8554, but up to 1.2 times the kept anchor rather than +-20% of value the vault sent). The
+collusion as in FP-H-01 / IL-8554, but up to `(1 + b)` times the kept anchor, 1.2 at the reference band, rather than +-`b` of value the vault sent). The
 allowlisting rule in "Remote vault allowlisting rules" (IL-9191) is an operator rule, not an on-chain check; it is meant
 to keep such vaults out. The cap on the residual anchor is covered by
 `testReportedResidualAbovePreDebitAnchorShouldBeCappedAtThePreDebitAnchor` (`ResidualAnchorAfterFullRecallTest`).
 Until the residual is attested NAV excludes it (it understates, never overstates), and a
-zero attestation is allowed (it does not clear the kept anchor), so a lost residual needs no special exit;
+zero attestation is allowed (it does not clear the kept anchor), so a residual that is still worth about its kept anchor needs no special exit (a residual whose value is gone while `netPrincipal` is positive is the exception described below);
 `rejectBalanceAndBlock` plus the timelocked
 `FORCE_SET_SETTLED` is only needed to price a residual that has fallen out of the band.
+
+Exception: a lost residual with `netPrincipal` above zero (IL-9669). The kept anchor is deliberate (a transient zero
+reading can be followed by the honest residual attestation) and a zero-to-zero approval writes no anchor. If the residual
+R was lost after an earlier approved loss N, and a small top-up c is later credited through `creditAnchor`, the anchor
+becomes `min(R, N) + c` while the true value is c. When c is below `4 * min(R, N)` the true value lies below the anchor
+band, the honest attester pair cannot approve it, and NAV fails closed (`ObservationStale`) after
+`BALANCE_STALENESS_MAX` until ALPHA recalls the whole bucket (no timelock) or a `FORCE_SET_SETTLED` executes. Rule: when
+a residual is lost and `netPrincipal` is positive, recall the whole bucket or force-set before a top-up smaller than
+`4 * min(R, N)`.
 
 Deployment note: `applyReturnDebit`'s signature changed, so the executor must be linked to the new
 `CcipExecutorAttestationLib`; an executor still linked to the old library reverts in the `RETURN_TRANSFER` handler.
@@ -962,9 +1196,10 @@ per-approval relative limiter; from a zero `settled` with a residual anchor (IL-
 refreshed (`updateMarketsBalances([CROSSCHAIN])`, an `execute` through a crosschain fuse or `UpdateBalancesPreHook`)
 deposits, mints, withdrawals and redeems are still priced at the old cache (a withdrawal refreshes only the markets it
 pulls from, and the crosschain supply fuses are not instant-withdraw fuses). If that refresh is late or reverts (for
-example `AssetDistributionProtectionLib.checkLimits` in `PlasmaVault._updateMarketsBalances` when the CROSSCHAIN market
-crosses its limit), successive attestations spaced by `MIN_UPDATE_INTERVAL` accumulate until `settled` reaches the
-anchor band edge (`ATTESTATION_ANCHOR_BAND_BPS`, +-20% of the anchor; the gap to the cached value can reach the band
+example `AssetDistributionProtectionLib.checkLimits` in `PlasmaVault._updateMarketsBalances` when an `execute` through a
+crosschain fuse leaves the CROSSCHAIN market above its limit; `updateMarketsBalances` and `UpdateBalancesPreHook` no
+longer revert on a limit on a vault built with IL-9612, a vault on an older PlasmaVault implementation still does), successive attestations spaced by `MIN_UPDATE_INTERVAL` accumulate until `settled` reaches the
+anchor band edge (the executor's `anchorBandBps`, +-20% of the anchor at the reference band; the gap to the cached value can reach the band
 width), not just one step. A late transfer settlement after `DROP_FROM_NAV` (IL-8619) opens the same window in one
 step: it adds the whole recovered amount (`min(received, sent)`) to `settled` and to the anchor, so neither the
 relative limiter nor the band bounds it (unless a later latch-clearing approval or force-set already priced that
@@ -975,6 +1210,12 @@ share-price operations while a proposal is pending, because it would only narrow
 user operations. Operational rule for the attester pair: submit propose + approve + `updateMarketsBalances`
 (`[CROSSCHAIN]`) back-to-back in one block through a private submission channel, keep the attestation cadence well
 below `BALANCE_STALENESS_MAX`, and rely on deposit/withdraw fees where remote yield is lumpy.
+
+The same window follows every `FORCE_SET_SETTLED` execute and the approval that clears the frontier-repair latch. While
+the chain was blocked the vault's CROSSCHAIN cache could not be refreshed and still holds the value from before the
+block, so the gap is the whole rebase (or write-off), not one attestation step. A force-set to zero reopens NAV at
+execute under any settings (the staleness gate does not run for a zero bucket). Keep the vault paused through the
+rescue and unpause it only in the same transaction as `updateMarketsBalances([CROSSCHAIN])`.
 
 **A delivery that realizes a transport fee opens the same window (IL-8596, IL-9221).** A supply settlement that
 credits less than was sent (`SettledCreditShortfall` on the transfer's first receipt; on a later receipt of a
@@ -1016,7 +1257,8 @@ older than a value-moving command that has been sent, and attest again after the
 
 Deployment rule: choose `stalenessMax - minUpdateInterval >= observation lag + approval latency` (at least the
 15-minute `MIN_PROPOSAL_APPROVAL_WINDOW`), because an observation is approvable only while its age is at most
-`stalenessMax - minUpdateInterval`; the constructors guarantee only that the difference is positive.
+`stalenessMax - minUpdateInterval`; the constructor enforces that this difference is at least the 15-minute
+window and reverts with `InvalidSafetyConfig` otherwise (IL-9664).
 
 ### Force-set observation timestamp (IL-8646 / TP-L-18)
 
@@ -1042,13 +1284,15 @@ timestamp). `lastApprovalAt` (the local rate-limit marker) still takes the execu
 - Staleness after execute (intended, conservative): the figure ages while it waits out `RESCUE_DELAY`. NAV is stale
   right after execute exactly when `executeTime - observedRemoteTimestamp > BALANCE_STALENESS_MAX` (`ObservationStale`).
   An observation older than `BALANCE_STALENESS_MAX - RESCUE_DELAY` at schedule is sufficient but not necessary (a late
-  execution also ages it), and every force-set is stale on execute when `RESCUE_DELAY >= BALANCE_STALENESS_MAX`. The
-  settled bucket, anchor and net principal are still rebased and the block is lifted. Take the observation as late as
+  execution also ages it), and every non-zero force-set is stale on execute when
+  `RESCUE_DELAY >= BALANCE_STALENESS_MAX`. The freshness gate runs only for a non-zero settled bucket, so a force-set to
+  exactly zero is never stale: it reopens NAV at execute under any settings. The settled bucket, anchor and net principal are still rebased and the block is lifted. Take the observation as late as
   possible before scheduling.
 - Cost: when NAV is stale on execute it stays stale for at least `MIN_UPDATE_INTERVAL` (`lastApprovalAt` takes the
   execute time), and also until an observation read after the execute is approved (`lastValueMovingReceiptAt` is
   armed at execute, so an earlier read is refused). If production `BALANCE_STALENESS_MAX <= RESCUE_DELAY`, every
-  force-set is stale on execute, so the runbook plans an ordinary attestation right after it.
+  non-zero force-set is stale on execute, so the runbook plans an ordinary attestation right after it (a force-set to
+  zero is not stale and needs the pause described in "Pricing window between propose and approve").
 - Short remaining freshness (IL-8631 R1): nothing at execute checks how much freshness the committed observation has
   left. If it is still fresh at execute but has less than `MIN_UPDATE_INTERVAL` left, NAV reverts (`ObservationStale`)
   from `observedRemoteTimestamp + BALANCE_STALENESS_MAX` until `execute + MIN_UPDATE_INTERVAL`, because the limiter
@@ -1113,13 +1357,69 @@ transaction in which an executor read reverted, using a transient "NAV unverifie
 belongs to the PlasmaVault core and is out of scope for the crosschain layer. Same family as the pricing window
 above (IL-8577, IL-8596): a cached NAV that is correct only after the next attestation and refresh.
 
+### Vaults that hold shares of a CROSSCHAIN vault (IL-9720, 3sigma #26)
+
+A vault that holds shares of a CROSSCHAIN vault (an index, a pair) has no EXECUTOR substrate of its own, so the NAV gate of
+that vault sees nothing while its NAV and every share price it quotes depend on the other vault's executors. The hook can
+watch such vaults: the vault that holds the shares registers `CrosschainNavValidationPreHook` DIRECTLY on `deposit`, `mint`,
+`depositWithPermit`, `withdraw`, `redeem` and `redeemFromRequest`, and passes the list of every CROSSCHAIN vault in its tree as
+the pre-hook substrates of each of those selectors: one `bytes32` per vault, the address in the low 160 bits
+(`PlasmaVaultConfigLib.addressToBytes32`), the same list on all six selectors, in one `setPreHookImplementations` call.
+`execute` stays open (repay and deleverage of the pair). The CROSSCHAIN vaults themselves register the hook as before, with an
+empty list (their behaviour does not change).
+
+After its own executors, `run` calls `isNavHealthy(watched)` on the hook implementation (`VERSION()`, an external call, so the
+answer is exactly what an integrator calling `isNavHealthy` gets) for each entry in list order. "Healthy" means that
+`getBalance()` of every executor of the watched vault passes. True: continue. False: revert
+`CrosschainNavValidationPreHookWatchedVaultUnhealthy(watchedVault)` for the first such vault. A revert of the probe (malformed
+data, IL-9118): `run` reverts with the probe's data. `execute` and `updateMarketsBalances` never read the list. The hook's
+`MARKET_ID` must be the CROSSCHAIN market of the watched vaults (54 in production).
+
+Limits of the current pre-hook system, each pinned by a test (`CrosschainNavWatchedVaultsTest`,
+`NestedCrosschainNavWatchedVaultsTest`, `CrosschainWatchedVaultRealVaultsTest`):
+
+1. One hook per selector. Registering the hook REPLACES what the selector had: a rate validator with its nested pre and post
+   hooks (not only the balance refresh), `UpdateBalancesPreHook`, a pause hook. A keeper that refreshes balances does not
+   restore the validator. Before re-registering, inventory the six selectors (`PreHooksInfoReader`) and re-register only where
+   nothing is lost; the full fix is Hooks V2 (IL-9490, up to ten hooks per selector).
+2. Nested use gets an empty list. Inside `ExchangeRateValidatorPreHook` the hook reads the substrates of the REGISTERED
+   implementation, not its own, so the list is empty and the gate is open. It cannot be told apart from a correctly nested hook
+   on a CROSSCHAIN vault (where the list is meant to be empty), so there is no guard in code.
+3. The list is per selector: a selector without it lets the call through. Register all six in one transaction and check them
+   with `PreHooksInfoReader`.
+4. Replacing the implementation deletes the list of the old one and the new one gets only what is passed in that call. A
+   re-registration (a new hook, Hooks V2) with an empty list silently stops watching.
+5. `isNavHealthy(holder)` does not see the list: it reads the holder's own executors only, so it can answer true while the
+   holder's `run` reverts. Probe the watched vaults as well.
+6. The probe does not prove that an entry is a CROSSCHAIN vault. A vault without an EXECUTOR substrate (also while an executor is
+   being migrated) and any contract that returns no substrates is "healthy"; the upper bits of an entry are ignored; an address
+   without code, or one without the vault getters, makes the holder's operations revert.
+7. Reopening. The holder reopens as soon as the executor of the watched vault passes `getBalance()` again, while the pair may
+   still hold a one-sided cache. After a force-set keep the holder's share flows paused until the refresh in the order CROSSCHAIN
+   vault, pair, index.
+8. Liveness depends on the watched vaults. The holder's flows (including public redemptions served from idle) stop while any
+   listed executor's `getBalance()` reverts: a blocked chain with tracked value, a stale attestation with a non-zero `settled`, a
+   stale in-flight record. A blocked chain with nothing tracked, or a stale attestation at a zero `settled`, does not close the
+   gate, and the first booked value closes it again. `RESCUE_DELAY` (at least 24h) bounds the fastest repair, not the minimum
+   closure. Listed vaults must share one trust domain, because the governance of a watched vault can close the holder.
+9. Gas. Every watched vault costs one STATICCALL to the implementation, the external `getMarketSubstrates` and `MANAGER()` plus
+   `getBalance()` for each of its executors, on every gated call; the list has no length limit. Measured on `deposit`
+   (warm): about +2.6k gas for an empty list, about +72k for one watched vault and +20k for each further one.
+
+Together with the band (previous sections) this closes the gap in which a vault that holds shares of a levered leg would
+otherwise return more value than reaching the edge of the band would: the block of part 2 is only as strong as the gate that
+every holder of the shares has.
+
 ### Share views are not gated while the NAV gate is closed (TP-L-11 / IL-8639)
 
 The fail-closed gate lives only in `CrosschainNavValidationPreHook.run()`, which guards the state-changing selectors
 through `PlasmaVault._checkCanCall`. `maxDeposit`, `maxMint`, `maxWithdraw`, `maxRedeem`, `preview*` and
 `convertTo*` are not gated: while an executor is fail-closed they keep returning values priced from the cached NAV,
-although EIP-4626 integrators would expect `max*` to return 0 during a halt. The `max*` semantics of PlasmaVault are
-intentionally unchanged (owner decision): a user operation attempted in that state reverts in the hook.
+although EIP-4626 integrators would expect `max*` to return 0 during a halt. The NAV pre-hook does not change the `max*`
+semantics of PlasmaVault (owner decision): a user operation attempted in that state reverts in the hook. Separately,
+IL-9679 makes `maxWithdraw(owner)` and `maxRedeem(owner)` return 0 while the owner's redemption lock is active on vaults
+created from a template built with it (see `contracts/vaults/README.md`, "Redemption lock in the exit views (IL-9679)");
+that is a redemption-lock rule, not part of the NAV gate.
 
 For integrators and monitoring the hook offers a non-reverting best-effort probe
 `CrosschainNavValidationPreHook.isNavHealthy(plasmaVault)`. It returns false when the hook's `run()` would revert for
@@ -1166,6 +1466,15 @@ a higher version than it was read at (an overshot frontier) loses the late credi
 `CcipLateSettlementAfterRepairWriteTest` (a settlement above the write's version is credited, including after a
 force-set). The other exits from the latch stay guarded: a settled force-set needs no pending transfers, and
 `rejectBalanceAndBlock` clears the latch but leaves the chain blocked.
+
+Late settlement after a drop on a blocked chain (IL-9607). A blocked chain means the books are known to be
+inconsistent until the rescue completes. `balanceByChain` skips a blocked chain only while `settled +
+outboundInFlight` is zero (IL-8260), and the late credit of a dropped outbound (IL-8619) adds to `settled` without
+reading `chainBlocked`. So a late `TRANSFER_SETTLED` for a `DROP_FROM_NAV` outbound makes an empty blocked chain
+value-bearing again, and `getBalance` reverts `ChainBlocked` until a `FORCE_SET_SETTLED` executes; a new outbound send
+re-arms the revert in the same way. This is the intended rule: the delivery is the genuine settlement, no funds are at
+risk, and the force-set that lifts the block is needed anyway. Because of this, drop an outbound only when its transfer
+has not arrived, and take the force-set observation after any such late settlement has landed.
 
 Pinned by `CcipFrontierRepairOpenOutboundTest`.
 
@@ -1220,7 +1529,16 @@ checklist when the queue is not empty:
    `RETURN_TRANSFER` or a `RETURN_REJECTED` of every cancelled recall has landed (`cancelledRecallCount`), or a
    `FORCE_SET_SETTLED` or an `ADVANCE_FRONTIER` executed after the reset guard window (below) resets it (an answer to a recall cancelled before the
    reset is ignored, `cancelledRecallGeneration`). A new recall may be opened meanwhile (but see the IL-8768 caveat below); the cancelled clock stays
-   separate and is not re-anchored when only some of several cancelled recalls resolve. CCIP 2.0 delivery is
+   separate. It is anchored on the OLDEST cancelled recall that is still unresolved (IL-9595): when that recall is
+   answered the anchor moves to the next unresolved one in cancel order (a per-chain FIFO of the current reset
+   generation; one recall is active per chain at a time, so cancel order is also `createdAt` order) and clears with
+   the last one. The queue is doubly linked: a resolved recall is unlinked in O(1) wherever it sits, so the anchor is
+   always the oldest unresolved recall (there is no bounded head walk any more). The anchor never moves past an unresolved recall, so every return the
+   dispatcher may still deliver stays under a clock no looser than its own `createdAt`. A reset (`FORCE_SET_SETTLED`
+   or `ADVANCE_FRONTIER` after the guard window) empties the queue together with the clock. Before IL-9595 the
+   anchor stayed on the first cancelled recall until the last one resolved, that is on the age of an answered
+   recall. The executor gained the queue (`CancelledRecallQueue`, appended after all existing state, no slot moved),
+   so the CCIP executor needs new creation code (new factory). CCIP 2.0 delivery is
    unordered (IL-8496), so a cancelled recall's return can land at any time. After cancelling a recall whose
    `RETURN_TRANSFER` is still queued on the dispatcher, do not open a new recall before `flushResponse` has drained
    the queue. This applies to dispatchers deployed before IL-8768, which report the balance with the earlier queued
@@ -1228,6 +1546,14 @@ checklist when the queue is not empty:
    dispatchers report the balance net of `queuedTokenAmount`.
    Stargate carries the same cancelled-recall clock (IL-8621); it additionally clears on an approval bound to a
    dispatcher version past the cancel-time one.
+   Transfer staleness floor (IL-9663). The executor constructor rejects a non-zero `transferStalenessMax` below
+   `MIN_TRANSFER_STALENESS_WINDOW` = 1 hour with `TransferStalenessBelowMinimum(supplied, minimum)`: the value stamps
+   the deadline of every `RETURN_REQUEST` and a recall takes two legs (request out, return back), so on the slowest
+   supported path (about 20 minutes of source-chain finality per leg plus `RECALL_DEADLINE_SKEW_MARGIN`, about 55
+   minutes) a smaller window makes recalls that always expire. The floor is a guard against unit mistakes (seconds or
+   minutes passed as the window), not a recommended value: size the window from the real latency of the lane and from
+   how long a stuck recall may keep NAV closed. A zero window is still `InvalidSafetyConfig`. The window is immutable,
+   so the floor applies to new executors only.
    Request deadline and reset guard (IL-8590). Message format version 2 appends a `deadline` word to
    `RETURN_REQUEST`: `createdAt + TRANSFER_STALENESS_MAX` (the constructor refuses a zero window). The dispatcher
    rejects a request executed after it (the deadline itself is still honoured) with `RETURN_REJECTED(EXPIRED)`
@@ -1248,7 +1574,10 @@ checklist when the queue is not empty:
      kept clock is later cleared by the cancelled recalls' answers (an expired request comes back `EXPIRED` in the
      same generation) or by `FORCE_SET_SETTLED`, whose guard is then bounded because the blocked chain refuses new
      recalls. Executed after `refusedUntil` the advance resets the clock as before.
-   Before executing a skip, check the token-bearing returns queued behind the dropped response: each carries the
+   A dispatcher built from this code (it has `queuedReturnDeadline`) raises the balance carried by every response
+   queued behind a skipped token-bearing head, and behind a head released by `flushExpiredReturn`, by the dropped
+   amount, so the check below applies only to older dispatchers. On an older dispatcher, before executing a skip, check
+   the token-bearing returns queued behind the dropped response: each carries the
    `remoteBalance` encoded when it was queued, lower by the dropped amount. If one of them will empty `settled`,
    or will land while `settled` is already zero (IL-9134 then lowers the anchor to its stale balance), approve the
    residual before it lands, or plan `FORCE_SET_SETTLED` (or a credit followed by an attestation) (IL-9146).
@@ -1290,6 +1619,164 @@ checklist when the queue is not empty:
    `remoteTimestamp` is declared by the proposer, so this protects an honest attester from a stale observation; it
    is not a defence against a malicious proposer.
 
+### Recall held at the queue head by a shared pool rate limit (IL-9745, 3sigma #36)
+
+A recall answer (`RETURN_TRANSFER`) that sits at the head of the dispatcher's response queue is retried only by
+`flushResponse`. When the outbound rate limiter of the pool lane keeps reverting `TokenRateLimitReached`, the head stays
+where it is and every later response waits behind it. The limiter is shared by every sender on the lane, and the
+dispatcher retries it before the recall deadline (see "Invariants", IL-8553 and IL-9621). A dispatcher built from this
+code adds a permissionless exit after the deadline, `flushExpiredReturn()` (exit 1 below). A dispatcher deployed earlier
+does not have it, and for it this is an accepted known limitation: nothing is lost, but there is no fixed upper bound
+on the time. The code is recognised by `queuedReturnDeadline(uint64)`: a dispatcher where that call reverts has no such
+exit. This section is the operator's side of it.
+
+- **Signal.** On the dispatcher chain the head carries tokens and does not change
+  (`queuedResponse(responseQueueHead())`, `queuedTokenAmount()`), and a simulated `flushResponse()` reverts with the
+  pool's `TokenRateLimitReached`. On a dispatcher built from this code `queuedReturnDeadline(responseQueueHead())`
+  gives the recall deadline (0 when the head is not a queued recall return). On the executor chain the recall stays open (`activeReturn(chainId)`) and later
+  `getBalance()` reverts `TransferStale`.
+  Units: `queuedTokenAmount()` is in shared decimals, while `amountLD` from `queuedResponse` is in the local decimals of
+  the asset on the dispatcher chain.
+- **Effect.** Every later response waits behind the head, including the `TRANSFER_SETTLED` of a later deposit. After
+  `TRANSFER_STALENESS_MAX` (an immutable executor value, from 1 hour to 7 days) the NAV gate of the vault closes; the
+  affected selectors are listed in the IL-9621 paragraph of "Invariants". `cancelStalePendingReturn` and
+  `cancelPendingReturn` free the recall slot but do not open the NAV (item 6 of "Attesting while the response queue is
+  stalled (IL-8257)"). Before the recall deadline, and on an older dispatcher at all times, there is no fixed upper bound
+  on the time.
+- **Exit and time.** There are four exits. Exit 1 exists only on a dispatcher built from this code and is the first to
+  use. Exits 2 to 4 stay for older dispatchers and for failures that also block token-less messages (a disabled route,
+  a fee above the ceiling or no fee balance for any message, a router failure), where `flushExpiredReturn()` reverts.
+    1. After the recall deadline, anyone calls `flushExpiredReturn()`; it needs no role. In this order:
+        - Read `queuedReturnDeadline(responseQueueHead())`. It must be non-zero and `block.timestamp` must be strictly
+          past it: otherwise the call reverts `ReturnNotExpired(head, deadline)` (an empty queue reverts
+          `NoQueuedResponse`).
+        - Call `flushResponse()` first. When the limit has refilled it sends the head with its tokens and nothing is
+          given up.
+        - Then call `flushExpiredReturn()`. It tries the send with tokens once more, with a fixed gas budget of
+          2,000,000 (`EXPIRED_RETURN_ATTEMPT_GAS`), whatever the gas limit of the caller. Result `false`: the head left
+          with its tokens. Result `true`: the head was released without tokens. Its amount moves from
+          `queuedTokenAmount()` to `trackedIdle`, the same response (same `operationId`, same version) is sent with
+          amount 0 on the route's `messageGasLimit`, and `ReturnExpiredUnwound(operationId, amount, responseId)` is
+          emitted. `stateVersion`, `accountedBalance()` and the token balance of the dispatcher do not change.
+        - Drain the responses behind the head with `flushResponse(n)`; the released head is already sent.
+        - On the executor chain, once the zero return is delivered the recall is closed with nothing received and
+          nothing debited (see "Zero-amount RETURN_TRANSFER (IL-8635)": `sentSD == 0`). Issue the recall again if the
+          liquidity is still needed. A new attestation follows when the gates of "Invariants" (version order, no
+          blocked chain, no other stale transfer, a fresh approved observation) allow it.
+        - A skip scheduled for the entry that was released can no longer be executed (`NoQueuedResponse`): cancel it
+          with `cancelRescue(rescueId)` (rescue admin or guardian).
+      Gas. The call reverts `InsufficientGasForExpiredReturn(gasLeft, required)` when less than the budget plus 1/32 of
+      it (2,062,500) is left before the attempt; nothing changes, so retry with a higher gas limit. The rest of the call
+      rewrites every queued response that carries a balance, so its cost grows with the number of entries behind the
+      head; measured values are in the release note of this change, not here. With a full queue behind the head the call
+      can need more gas than a HyperEVM small block allows: use a sender that has big blocks enabled for that
+      transaction (HyperEVM selects big blocks per account, explicitly). No vault is read.
+      Fees. The attempt with tokens fails for any cause inside its budget, including a fee above the route's fee ceiling
+      or a fee balance that covers only the token-less message, and the recall is then closed without tokens although a
+      higher ceiling or balance would have let it leave with them. Keep the fee ceiling and the fee balance sized for
+      the message with tokens. When the token-less send fails too (fee above the ceiling, no fee balance, disabled
+      route, router failure), the whole call reverts and the queue, its payloads, the ledgers and the deadline stay as
+      they were; use exits 2 to 4.
+    2. The limit refills and anyone calls `flushResponse()`; it needs no role. The time cannot be given in advance: it
+       depends on the bucket and on the other traffic of the lane.
+    3. The owner of the pool, or its rate-limit admin, changes the limiter; then `flushResponse()`. This depends on a
+       party outside Fusion.
+    4. The administrative valve, in this order: skip, cancel, `ADVANCE_FRONTIER`, approve, with the flush of the
+       responses behind the head after the skip. Who calls what:
+        - Skip, on the dispatcher chain, rescue admin: `scheduleSkipStuckResponse(responseId)`, then after the delay
+          `executeSkipStuckResponse(rescueId, responseId)`, with `responseId` = `responseQueueHead()`. Its tokens
+          return to `trackedIdle`; on a dispatcher built from this code the balances carried by the responses queued
+          behind the dropped head are raised by that amount; like the release above, this rewrite costs more the more entries
+          are queued behind the head, so with a full queue the execution may also need a sender with big blocks enabled on
+          HyperEVM (measured values are in the release note). Before scheduling, read `queuedResponse(responseId)` and note the version of the
+          dropped `RETURN_TRANSFER`: `data` is `abi.encode(version, messageType, inner)` and `inner` is
+          `abi.encode(operationId, amount, remoteBalance, version)`; the record is deleted by the skip.
+        - Cancel, on the executor chain: `cancelPendingReturn(chainId)` (manager only; for the vault this is the
+          `CANCEL_RETURN` command of the CCIP command fuse) or, once the recall is stale,
+          `cancelStalePendingReturn(chainId)` (anyone). `chainId` is the dispatcher's chain.
+        - Advance, on the executor chain, rescue admin: `scheduleChainRescue(ADVANCE_FRONTIER, chainId, v)`, then after
+          the executor's frontier-repair delay `executeChainRescue(rescueId, ADVANCE_FRONTIER, chainId, v)` with the
+          same arguments, where `v` is the version of the dropped response noted above.
+        - Approve: a fresh proposed and approved attestation, as in item 2 of "Attesting while the response queue is
+          stalled (IL-8257)".
+        - Flush, on the dispatcher chain, anyone: after the skip nothing sends the responses that stood behind the
+          head until `flushResponse()` or `flushResponse(n)` is called. A versioned response that reaches the
+          executor before the advance has run fails on the OffRamp (`StateVersionGap`); re-execute it there after
+          the advance. Do not drain token-bearing responses blindly: on an older dispatcher first make the IL-9146
+          check described in the paragraph just before "Skip-valve exit ORDER".
+
+        The order and the `refusedUntil` condition are in the paragraphs "Request deadline and reset guard (IL-8590)"
+        and "Skip-valve exit ORDER" of item 6 of "Attesting while the response queue is stalled (IL-8257)". Responses
+        that stand behind a dropped head: a retained `TRANSFER_SETTLED` is covered by "Lost TRANSFER_SETTLED
+        (TP-M-36, IL-8614)", token-bearing returns by the IL-9146 check in item 6 (older dispatchers only). Time: the skip waits the
+        dispatcher's `RESCUE_DELAY` (an immutable value, at least 24 hours and at most 30 days; the guardian can
+        cancel a scheduled action or veto all of them); `ADVANCE_FRONTIER` has its own delay of 6 hours and clears
+        the clock of the cancelled recall only when it is executed after `refusedUntil`; then a fresh, proposed and
+        approved attestation follows. In total this is more than a day in every case, and at least 30 hours when
+        the steps are scheduled one after the other with the minimum rescue delay.
+
+    Preconditions of exit 4. The four steps are the way out of a queue stall alone, on a chain that carries no other
+    block and has no open outbound transfer. (a) If the chain was already blocked for another reason (a reject by the
+    approver, an approval above the band), `ADVANCE_FRONTIER` does not arm the repair latch and the attestation does not
+    lift that block; the exit is then `FORCE_SET_SETTLED`, which is a further `RESCUE_DELAY`. (b) While the latch is
+    armed and `outboundInFlight` is non-zero, `approveBalance` reverts `FrontierRepairBlockedByOpenTransfers`. The
+    expected case is a deposit settled after the recall: its `TRANSFER_SETTLED` waits behind the head, so its outbound
+    transfer is open. The order is then: skip, flush the responses behind the head, advance, re-execute any that
+    failed on the gap, and propose and approve only once the transfer is closed. If the settlement cannot be
+    delivered, close it by a force-resolve, which waits `RESCUE_DELAY`. Both cases are covered by "Lost
+    TRANSFER_SETTLED (TP-M-36, IL-8614)"; the procedure is not repeated here. The times above are minimums for the
+    case without these obstacles.
+
+    When the NAV is closed. How long the procedure takes and when the gate is closed are two different things.
+    Scheduling or executing the skip closes nothing, and the procedure can be started before the recall turns stale. The
+    gate is closed whenever `getBalance()` reverts: from the moment the recall turns stale (`TransferStale`), and
+    cancelling the recall does not reopen it; after `ADVANCE_FRONTIER` is executed, a chain that carries value is
+    blocked (`ChainBlocked`) until the attestation that lifts the block; a frontier repair executed before
+    `refusedUntil` leaves the clock of the cancelled recall running (see "Skip-valve exit ORDER"). The vault is not
+    closed throughout the procedure; after the recall has turned stale the gate stays closed until these conditions
+    are removed.
+
+- **Per-lane checks.** These are checks to make on each lane (pool version, limiter configuration), not statements about
+  any particular Fusion lane. (a) `rate == 0`: in the current public sources of Chainlink (`RateLimiter`,
+  `TokenPool`) an enabled bucket may have a zero refill rate, and then every request above the tokens left is answered
+  with the same `TokenRateLimitReached`, without end. The dispatcher recognises only `TokenMaxCapacityExceeded`. On a dispatcher built from this code `flushExpiredReturn()`
+  still ends the recall after the deadline (its send with tokens fails, the token-less one does not); on an older one
+  exits 3 and 4 remain. Check the configured rate of the bucket of the lane. (b) The inbound limiter of the pool on
+  the executor side: in the same sources the inbound limit is consumed when the pool releases or mints the tokens,
+  with a bucket of its own per remote chain. A return that has left the dispatcher can wait there for a re-execution,
+  and the recall turns stale in the same way. Exits 1 and 4 do not apply here: the response has already left the queue, so
+  there is nothing to release or skip. Re-execute the message on the executor chain once the inbound bucket allows it (it refills,
+  or the pool owner or rate-limit admin changes it), and meanwhile do not cancel the recall and do not attest (items 2
+  and 6 of "Attesting while the response queue is stalled (IL-8257)"). (c) Reading the limiter state depends on the
+  pool version (`typeAndVersion()`). For a CCIP 2.0 pool the repository's fork test calls
+  `getCurrentRateLimiterState`, which takes the remote chain selector and a custom-block-confirmation flag and returns
+  the `outbound` and `inbound` buckets with
+  `tokens`, `capacity`, `rate` and `isEnabled`. Fusion sends with default finality (`GenericExtraArgsV2`), so read the
+  bucket with the flag `false`; the buckets for custom block confirmations are separate and can be disabled. The token
+  registry can return a proxy of the pool, and the proxy is not the contract that holds the limiter: resolve the pool
+  that serves the remote chain of the lane through the proxy's own pool lookup, check that this pool reports
+  `typeAndVersion()` and supports the remote chain selector, and read the limiter there. (d) The cost of the send with
+  tokens against the attempt budget of `flushExpiredReturn()` (`EXPIRED_RETURN_ATTEMPT_GAS`): on a route where that
+  send (Router, OnRamp, pool, token) costs more than the budget, the function never sends the tokens, it always ends
+  the recall without them, while `flushResponse()` has no such limit. Measure the cold cost of the send with tokens on
+  each route against a real Router and pool and keep it well inside the budget (the fork test
+  `CcipExpiredReturnForkTest` applies the rule: twice the measured cost within the budget).
+- **Operational rule.** Before a recall, read the outbound limiter state of the lane on the dispatcher chain: the
+  default-finality bucket (flag `false`, as in check (c)) of the pool that serves the lane, not of a registry proxy. The
+  comparison applies only when the bucket is enabled (`isEnabled`): a disabled bucket limits nothing and reports
+  capacity zero, so zero does not mean "do not send". For an enabled bucket compare the available tokens with the
+  recall amount, and the amount with the capacity, in the units of the pool token, that is the local decimals of the
+  asset on the dispatcher chain. The recall amount is given to the executor in its local decimals: convert it to shared
+  decimals with the executor's `DECIMAL_CONVERSION_RATE`, then to the dispatcher's local decimals with the
+  dispatcher's rate. The dispatcher sends at most what it holds in `trackedIdle`. Do not request a recall that the
+  bucket cannot carry with a margin. This is a heuristic, not a guarantee: the bucket is shared and can change before
+  the send runs on the dispatcher chain. Call `flushResponse` on a schedule.
+- **Alert.** A token-bearing head that stays queued: a `ReturnQueued` without a `ResponseDispatched` for the same
+  `responseId` (match on the id: when the send is immediate, `ResponseDispatched` is emitted before `ReturnQueued` in
+  the same transaction), or a non-zero `queuedTokenAmount()` with an unchanged `responseQueueHead()`. Also alert on
+  `ReturnExpiredUnwound` (and on `ReturnFinalized` with `sentSD == 0` on the executor chain): the recall was closed
+  without tokens and has to be issued again. Escalate before the `TRANSFER_STALENESS_MAX` of the recall runs out. No numeric threshold is set here.
+
 ### Response queue capacity (IL-8583)
 
 The dispatcher keeps at most `MAX_QUEUED_RESPONSES` (64) live responses, and every state-changing inbound message
@@ -1321,7 +1808,7 @@ NACK of a failed command included) while an undeliverable head kept it full.
   order and returns the number sent. The first send reverts with its cause like `flushResponse()`; a later failure
   just stops the loop and keeps what was already sent.
 
-### What a generic rescue may not target (IL-8555 / IL-8556 / IL-8770)
+### What a generic rescue may not target (IL-8555 / IL-8556 / IL-8770 / IL-9654)
 
 `scheduleRescue` (queue shared by the executor and dispatcher, fenced in `RescueLogicLib`) refuses: the host's
 factory (IL-8261); non-`transfer` calls on the tracked asset; every call to the CCIP router (`CCIP_ROUTER`);
@@ -1341,7 +1828,99 @@ sender, so `runWithContext({vault.approve(ADMIN, max)})` would grant the rescue 
 the vault ban (the target is the ContextManager) nor the share snapshot (the balance is unchanged) sees, and the admin
 could redeem outside the timelock. Checked at schedule, where the calldata is committed. Residual: a non-Fusion vault
 behind a signature-less ERC-2771 trusted forwarder lets the forwarder pick the sender; no such vault is among the
-remote vaults we know, and the vault ban plus the share snapshot still apply to direct calls.
+remote vaults we know, and the vault ban plus the share snapshot still apply to direct calls. On pairs with the
+IL-9654 library the residual narrows to calls whose calldata is in an allowed shape (the library does not classify the
+target); on older pairs it covers every forwarder call.
+
+**Call-shape fence on dispatchers (IL-9654).** On a dispatcher linked with the IL-9654 version of `RescueLogicLib`,
+`scheduleRescue` accepts a generic rescue only in one of these calldata shapes and refuses every other call with
+`RescueCallShapeNotAllowed(target, selector)`:
+
+- empty calldata: value only; on a contract target it runs that contract's `receive` or `fallback` with the dispatcher
+  as `msg.sender`;
+- `transfer(address,uint256)`, exactly 68 bytes;
+- `approve(address,uint256)` with amount 0, exactly 68 bytes;
+- `redeem(uint256,address,address)`, exactly 100 bytes, with the dispatcher as the owner word;
+- `redeemFromRequest(uint256,address,address)`, exactly 100 bytes, with the dispatcher as the owner word;
+- `requestShares(uint256)`, exactly 36 bytes, on a WithdrawManager whose `getPlasmaVaultAddress()` answers with exactly
+  one non-zero address word naming a vault that is neither tracked nor allowlisted (on CCIP a vault is tracked as soon
+  as it is allowlisted). A vault that is tracked or allowlisted is refused with `RescueTrackedVaultCall(vault)`; a
+  manager that does not answer, answers with a different length, with zero or with dirty upper bits is refused with
+  `RescueCallShapeNotAllowed(manager, 0xfc415e9c)`.
+
+The LayerZero packet-hygiene shapes (`skip`, `clear`, `nilify`, `burn` on the dispatcher's own endpoint) exist on the
+Stargate dispatcher only; the CCIP dispatcher has none. The `owner` word is compared in full, so appended arguments and
+dirty upper bits are refused, and the recipient of `transfer`, `redeem` and `redeemFromRequest` is not restricted.
+
+The error is raised at schedule. The calldata is bound by its hash from then on, so the shape is not checked again at
+execute; the two state-dependent checks are. The tracked-vault ban is repeated at execute, and so is the
+`requestShares` rule against the current sets, so the shape error can also be raised at execute (a manager that stopped
+answering during the timelock) and a vault that was allowlisted again during the timelock refuses `redeem`,
+`redeemFromRequest` and `requestShares` there. The earlier fences run first and keep their errors (factory, ASSET calls
+other than `transfer`, CCIP router, tracked-vault targets, `runWithContext`). The rule depends on the host's code, not on
+the content of its tracked set, so it also holds while the set is empty. On a dispatcher with this library the calls
+described as residuals under IL-9654 (through the Ethereum Vault Connector), IL-9672 (borrowing against shares at a
+sibling contract) and IL-8844 (a share allowance above 0 granted while a vault is off the allowlist) are refused at
+schedule when the calldata is not one of the shapes listed below, and nothing reaches the queue. A call in an allowed
+shape (empty calldata, or a listed token or vault shape) to such a target, or to a signature-less ERC-2771 forwarder
+with a `fallback`, is not classified by target and still passes schedule; it stays guardian work.
+
+What the fence guarantees is about the bytes of the call, not about what the target does with them. For ERC-20 tokens and
+for ERC-4626 vaults including PlasmaVault, these shapes move only the dispatcher's own balance or set an allowance to 0.
+A target that gives the same selector another meaning is not covered: on an ERC-721 contract `approve(spender, 0)`
+approves token id 0, and NFTs are not supported on crosschain hosts. Empty calldata on a contract target runs its
+`receive` or `fallback`. The guardian still reads every scheduled rescue (target and recipient of the shapes above,
+the manager of a `requestShares`, any empty calldata that goes to a contract).
+
+Not executable from a dispatcher with this library: a reward claim that only the share holder may send, a token that
+needs a call other than `transfer` to be moved, an asynchronous exit from a vault that does not use the Fusion
+WithdrawManager, and NFTs. Dispatchers are not upgradeable, so a missing shape means a new library and new pairs from
+the new factories. The executors are not restricted by the fence, and the CCIP factory has no rescue module at all (an executor holds only the ASSET and
+no vault shares). Known limitation: a future ASSET that itself trusts an external contract (an operator or a hook of the
+token) is not covered for executors.
+
+**Residual shares of a removed vault: recovery through a rescue (IL-9654).** The basic path is to allowlist the vault
+again (the dispatcher tracks it again) and recover through the business commands (`REDEEM`, `REQUEST_SHARES` and
+`REDEEM_FROM_REQUEST`, see "Removing a vault"). While the vault is off the allowlist and untracked, a rescue can move the
+residual only in the shapes above. `transfer` works when the vault's shares are transferable; many PlasmaVaults restrict
+share transfers. A plain `redeem` works only where the vault pays it out directly; a PlasmaVault with a WithdrawManager
+refuses it when its unallocated cash does not cover the released-request reserve plus the redeemed amount.
+
+Last resort, two rescues scheduled together:
+
+1. `requestShares(S)` on the vault's WithdrawManager (36 bytes);
+2. `redeemFromRequest(S', receiver, dispatcher)` on the vault (100 bytes, dispatcher as owner), where `S'` is not above
+   the request after the fee.
+
+After the rescue timelock the first one is executed. The remote side then releases the request with `releaseFunds` and a
+timestamp later than the request, and the second one is executed inside the withdraw window. If a request filed by a
+command before the removal is already released and inside its window, only the second step is needed.
+
+Pre-checks, before scheduling and again before executing:
+
+- the vault is neither tracked nor allowlisted (the rule is checked at schedule and at execute);
+- the manager answers `getPlasmaVaultAddress()` with that vault. A manager without the getter (older managers) or one
+  that is not linked to the vault has no such path, and the basic path remains;
+- the withdraw manager that the vault itself reports (read through `UniversalReader.read` as in "Withdraw-manager
+  discovery reads the legacy slot too") equals the rescue target. The rule reads the manager's pointer to the vault, not
+  the vault's pointer to the manager, so a `requestShares` on a manager the vault does not use passes the schedule check
+  and fails only at the second step, after the timelock and after the fee. The rule also trusts the manager's answer: a
+  manager whose vault pointer was changed by the remote vault's management (`updatePlasmaVaultAddress`) is trusted at the
+  same level as the remote commands.
+
+The request fee. The `REQUEST_SHARES` command has a ceiling on the manager's request fee (`maxFeeShares`, see
+"REQUEST_SHARES fee ceiling"); the rescue path has none. The remote fee holder can change the request fee until the
+rescue executes, up to 100 %, and the fee is taken out of the dispatcher's shares, so it comes out of the residual. Read
+`getRequestFee()` right before `executeRescue` and do not execute the rescue when the fee is not the one expected
+(wait for it or cancel). A fee changed during the timelock can also make the committed amount of the second step too
+high: the manager requires the request to hold at least the amount redeemed, so schedule in parallel a variant of the
+second step with a lower amount and commit `S'` at or below the request after the fee,
+`S - S * getRequestFee() / 1e18`.
+
+**Pairs created before the IL-9654 library.** Existing dispatchers keep the earlier `RescueLogicLib` and do not have
+the shape fence; the guardian-veto rule below stays valid for them, and so do the paragraphs from here to that rule
+(share allowances, EVC-authenticated vaults, in-place encumbrance). The fence reaches only pairs created through new
+factories with the re-pinned library, see "Telling the two apart".
 
 A rescue cannot leave a tracked vault's share balance lower than before the call: shares can only leave a tracked vault
 through business REDEEM / REDEEM_FROM_REQUEST commands (and a REQUEST_SHARES fee, capped by `maxFeeShares`). Since
@@ -1359,6 +1938,32 @@ scheduled while the vault was out but executed after the re-add is refused at ex
 removed vault, revoke any share allowance the dispatcher granted (a rescue `approve(spender, 0)` while the vault is
 still out; after the re-add every rescue on it is refused). We accept this rather than banning approve-family
 selectors on every target.
+
+Two more residuals pass the fences above without changing a tracked share balance and without calling a tracked vault
+(IL-9654, IL-9672). Both need the trusted RESCUE_ADMIN behind the rescue timelock and the guardian veto, and an
+allowlisted vault of the kind described, so they are Low. They belong to the same class as the signature-less ERC-2771
+forwarder residual above.
+
+- EVC-authenticated vaults (IL-9654). A vault that authenticates callers through the Ethereum Vault Connector (Euler
+  EVK) passes the admission check (`code` + `asset()`). If one is allowlisted, a rescue `EVC.setAccountOperator(host,
+  admin, true)` or `EVC.call(vault, host, 0, approve(admin, max))` grants rights over the host's shares without a
+  balance change and without a call to the vault, and the admin can move the shares later, outside the timelock.
+- In-place encumbrance (IL-9672). For a vault whose shares can be pledged to a sibling contract, for example a Silo v2
+  silo with a paired silo, a rescue calling the paired silo's `borrow(assets, admin, host)` borrows against the host's
+  shares with the host as `msg.sender`: no allowance is needed, the share balance and the ASSET balance stay unchanged,
+  and the paired silo is neither tracked nor allowlisted. The admin keeps the borrowed tokens and remote NAV values the
+  encumbered shares at full value until liquidation.
+
+Guardian-veto rule: veto any scheduled rescue whose target is the EVC or a lending sibling of an allowlisted vault, and
+any rescue calldata that sets an operator, approves, or borrows against the host's vault shares. The allowlisting rule
+is in "Remote vault allowlisting rules" below.
+
+**Telling the two apart.** The library address of a dispatcher is in the release pins. A direct check: an `eth_call` of
+`scheduleRescue(<address without a role>, 0, 0x00000001)` from the rescue admin address. A dispatcher with the IL-9654
+library reverts with `RescueCallShapeNotAllowed`; one with the earlier library returns an id. The call is an `eth_call`
+and writes nothing. The target must not be the factory, the transport, the ASSET or a tracked or allowlisted vault (the
+earlier fences answer first), and a full queue answers `RescueQueueFull`. Executors cannot be told apart this way: they
+are not restricted.
 
 ### Rescue post-condition is non-worsening (IL-8640)
 
@@ -1397,19 +2002,72 @@ block is lifted. A token that checks only the sender (USDT, `isBlackListed` on E
 lets the transfer succeed and the tokens are frozen at `ADMIN` (IL-8807). Either way, check the issuer's blocklist for
 `ADMIN` before relying on it.
 
+## Executors whose asset is not the vault underlying (IL-9688)
+
+`CrosschainClaimFuse` can claim from an executor whose `ASSET()` is not the vault's underlying. The claim moves that
+token into the vault and removes its value from the CROSSCHAIN market (54), on the live path (the executor's idle
+balance drops) and on the cached path (`recoveredUsd`). `totalAssets()` counts the token again only through an
+`ERC20_VAULT_BALANCE` (7) market refreshed in the same batch. Keeping such a token valued is a FUSE_MANAGER
+configuration duty, not a check of the fuse: grant the token as a market 7 substrate (with its price feed) and add the
+dependency edge `CROSSCHAIN (54) -> ERC20_VAULT_BALANCE (7)`. Without it NAV is understated (never inflated) until market
+7 is refreshed.
+
+## Disabled route (IL-9701)
+
+A route's `enabled` flag is delivery policy sourced from the timelocked factory (`CcipRouteLib`). `enabled = false`
+means:
+
+- **Stops: sending.** `CcipSendLib` refuses every send on the route with `CcipUnknownChain(chainId)`: on the executor
+  side the commands and requests, on the dispatcher side the replies (ACK / NACK, balance reports, return transfers).
+  A reply that cannot be sent stays in the dispatcher's response queue and goes out with `flushResponse` after the
+  route is enabled again; the state change it reports has already happened.
+- **Stops: new work on the dispatcher.** `COMMAND`, `UPDATE_VAULTS` and `RETRY_COMMAND` arriving over the route are
+  refused with `CcipUnknownChain` before the message is marked processed (the revert undoes the mark), so the same
+  message is executable again once the route is enabled. The factory already refuses a new dispatcher on a disabled
+  route in the same way (its ACK / NACK send reverts).
+- **Still arrives and is processed:** token transfers (`OUTBOUND_TRANSFER`), recalls (`RETURN_REQUEST`),
+  `CANCEL_COMMAND`, `BALANCE_REQUEST` on the dispatcher, and every reply of the dispatcher on the executor
+  (settlements, returns, ACKs, balance reports). The executor does not read the flag when it receives.
+
+It is not a fast kill switch. A change of the flag goes through the factory's 24-hour timelock, and the executor and
+the dispatcher see it only after `syncCcipRoutePolicy(app, chainId)` is called for each of them (permissionless).
+Until then they run on the previous policy.
+
+**Wind-down order, on both sides.** (1) ALPHA redeems or recalls the positions and returns the assets to the executor
+side while the route is enabled (commands need it); wait for the ACKs, the settlements and the returns. (2) Schedule
+`enabled = false` on the factory of each chain and execute it after the timelock. (3) Call `syncCcipRoutePolicy` for the
+executor and for the dispatcher. (4) Replies that were queued meanwhile are flushed when the route is enabled again.
+
+**A refused command stays failed.** The message that carried a refused `COMMAND` or `UPDATE_VAULTS` fails on the OffRamp
+and nothing is stored: the command has no status on the dispatcher, so `CANCEL_COMMAND` cannot close it
+(`CommandNotFailed`). Its executor slot is freed by executing the failed message manually on the OffRamp after the
+route is enabled again, or by `ABANDON_COMMAND` on the executor. A refused `RETRY_COMMAND` changes nothing: the original
+command stays `FAILED` on the dispatcher (retryable after the route is enabled, or cancellable).
+
 ## Remote vault allowlisting rules (IL-8607 / IL-8608 / IL-8609)
 
 **No exit fee on allowlisted vaults (IL-8607).** The dispatcher values remote shares with `convertToAssets`, which
 ERC-4626 permits to exclude exit/withdraw fees, so an attested position can be priced above what a redeem returns.
 Allowlist only remote vaults that charge no exit or withdraw fee, or make the attesters report net-of-fee value.
 `convertToAssets` is kept for consistency with core Fusion's `Erc4626BalanceFuse`.
-For a `PlasmaVault` child, `convertToAssets` is gross of the unrealized management fee, which `redeem` realizes first.
-The correction is `previewRedeem(balanceOf(dispatcher))` (it prices the pending management fee since IL-8343) or
-subtracting the dispatcher's share of `getUnrealizedManagementFee()`. Neither covers a pending performance fee above
-the high-water mark or the value change after the child's markets are refreshed (`PlasmaVault.previewRedeem`
-NatSpec), so both remain an approximation, not a full net valuation. Attesters take these risks into account (for
-example by refreshing the markets and subtracting the pending performance fee); when the difference exceeds the
-band, the existing exit remains (IL-9158).
+For a `PlasmaVault` child built with PR #61 (IL-8870) or later, `convertToAssets` is already net of the unrealized
+management fee: the share price counts the virtual fee shares that a realization would mint. It still omits the
+`WithdrawManager` withdraw fee, a pending performance fee above the high-water mark and the value change after the
+child's markets are refreshed. `previewRedeem(balanceOf(dispatcher))` prices the withdraw fee, and on a child built with
+IL-9624 the pending performance fee as well, but not a market refresh (`PlasmaVault.previewRedeem` NatSpec), so it
+remains an approximation, not a full net valuation. A child built before IL-8870 is also gross of the unrealized
+management fee, which `redeem` realizes first; `previewRedeem` prices it since IL-8343. Attesters take these risks into
+account (for example by refreshing the markets and subtracting the pending performance fee); when the difference
+exceeds the band, the existing exit remains (IL-9158).
+
+**Exempt the dispatcher from the remote vault's redemption delay (IL-9695).** The redemption lock of a `PlasmaVault`
+sits on the receiver of the shares and every deposit or mint to the receiver restarts it (IL-8736, by design; anyone
+can restart it with a deposit). So every `DEPOSIT` of the dispatcher locks the dispatcher's whole position for the
+delay: while it lasts a `REDEEM` fails with `AccountIsLocked`, and on a vault built with IL-9679 `maxRedeem` is 0, so
+the vault-removal sweep makes no `redeem` call (see "Removing a vault"). The owner of the remote vault should exempt
+the dispatcher address from the redemption delay (`PlasmaVaultGovernance.setRedemptionDelayExemption`, OWNER_ROLE,
+IL-7935), otherwise exit through `REQUEST_SHARES` and `REDEEM_FROM_REQUEST`, which a later deposit cannot lock again (a request filed during the lock starts when that lock ends, IL-9531). The
+exemption also removes the same-block deposit-and-exit guard for that address, so exempt only a trusted dispatcher.
 
 **Atomically manipulable price reads (IL-9191).** The recall delivery reads each tracked vault with `convertToAssets`
 and reports tracked idle plus those values as the authenticated post-debit balance, which can become the residual
@@ -1417,8 +2075,19 @@ anchor (see "Anchor credit cap and band limitation"). This is an operator rule; 
 only remote vaults whose `convertToAssets` cannot be moved and moved back within one block (in one transaction or in a
 bundle around the delivery, for example through a spot-price input), because the recall delivery can be executed by
 anyone and so the caller controls the block state around the read. For a vault that can be moved this way an inflated
-read can keep the whole pre-recall anchor open at `settled == 0`, from where one attestation can reach 1.2 times that
-anchor.
+read can keep the whole pre-recall anchor open at `settled == 0`, from where one attestation can reach `(1 + b)` times that
+anchor (1.2 at the reference band).
+
+**Vaults whose shares can be encumbered without moving them (IL-9654 / IL-9672).** On pairs created before the
+IL-9654 library, the rescue fences see direct calls to tracked vaults, the ContextManager `runWithContext` selector and
+any fall in a tracked share balance; they do not see a call to the Ethereum Vault Connector or to a sibling contract that
+lets the host borrow against its shares in place (a lending-pair vault such as a Silo v2 silo). For those pairs, allowlist
+an EVC-authenticated vault or a vault with pledgeable shares only after accepting the residual described in "What a
+generic rescue may not target", and keep the guardian-veto rule there in place. On a dispatcher linked with the new
+library a rescue accepts only the call shapes listed there, but it does not classify the target: an allowed-shape call
+to the Ethereum Vault Connector or to a sibling contract is not refused by the fence and stays with the guardian's veto.
+The rescue path is therefore a smaller, not a closed, reason to keep such a vault off the allowlist; the other rules of
+this section still apply, and this does not say that the integration itself is safe.
 
 **Withdraw-manager discovery reads the legacy slot too (IL-8608).** `plasmaVaultWithdrawManager()` runs inside the
 remote vault through `UniversalReader.read` and returns the manager with the legacy fallback

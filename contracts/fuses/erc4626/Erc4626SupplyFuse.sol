@@ -32,6 +32,12 @@ struct Erc4626SupplyFuseExitData {
     uint256 vaultAssetAmount;
     /// @dev maximum number of vault shares that can be burned during the withdraw, 0 means no limit
     uint256 maxSharesBurned;
+    /// @dev minimum amount of underlying assets the Plasma Vault must receive from a full exit (the `redeem` branch),
+    ///      0 means no minimum. It is compared with the measured change of the Plasma Vault's balance of the vault's
+    ///      `asset()`, not with the value returned by `redeem`. It is not checked on the partial exit (`withdraw`
+    ///      branch), which pays out exactly the requested amount. The minimum is absolute for the call: when the fuse
+    ///      clips the redeemed shares to the held balance or to `maxRedeem`, a minimum sized for a larger exit reverts.
+    uint256 minAssetsOut;
 }
 
 /// @title Generic fuse for ERC4626 vaults responsible for supplying and withdrawing assets from the ERC4626 vaults based on preconfigured market substrates
@@ -79,6 +85,11 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
     /// @param sharesBurned The amount of shares actually burned
     /// @param maxSharesBurned The maximum amount of shares allowed to be burned
     error Erc4626SupplyFuseExcessiveSharesBurned(uint256 sharesBurned, uint256 maxSharesBurned);
+
+    /// @notice Thrown when the assets received from a full exit are below the minimum required
+    /// @param receivedAssets The amount of underlying assets actually received
+    /// @param minAssetsOut The minimum amount of underlying assets required
+    error Erc4626SupplyFuseInsufficientAssets(uint256 receivedAssets, uint256 minAssetsOut);
 
     address public immutable VERSION;
     uint256 public immutable MARKET_ID;
@@ -140,9 +151,15 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         address vault = TypeConversionLib.toAddress(inputs[0]);
         uint256 amount = TypeConversionLib.toUint256(inputs[1]);
         uint256 maxSharesBurned = TypeConversionLib.toUint256(inputs[2]);
+        uint256 minAssetsOut = TypeConversionLib.toUint256(inputs[3]);
 
         uint256 shares = exit(
-            Erc4626SupplyFuseExitData({vault: vault, vaultAssetAmount: amount, maxSharesBurned: maxSharesBurned})
+            Erc4626SupplyFuseExitData({
+                vault: vault,
+                vaultAssetAmount: amount,
+                maxSharesBurned: maxSharesBurned,
+                minAssetsOut: minAssetsOut
+            })
         );
 
         bytes32[] memory outputs = new bytes32[](1);
@@ -156,7 +173,7 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
 
         address vault = PlasmaVaultConfigLib.bytes32ToAddress(params_[1]);
 
-        _exit(Erc4626SupplyFuseExitData(vault, amount, 0), true);
+        _exit(Erc4626SupplyFuseExitData(vault, amount, 0, 0), true);
     }
 
     /// @dev Shared exit path of `exit()` (reverts on failure) and `instantWithdraw()` (catches a failing vault `withdraw()`).
@@ -196,7 +213,14 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         ///      performance fee inside withdraw before it checks the limit, so withdraw(maxWithdraw) reverts with
         ///      ERC4626ExceededMaxWithdraw (IL-8489). redeem burns exactly the given shares, so it cannot overshoot.
         if (data_.vaultAssetAmount >= maxWithdrawAmount) {
-            return _performRedeem(data_.vault, maxWithdrawAmount, data_.maxSharesBurned, catchExceptions_);
+            return
+                _performRedeem(
+                    data_.vault,
+                    maxWithdrawAmount,
+                    data_.maxSharesBurned,
+                    data_.minAssetsOut,
+                    catchExceptions_
+                );
         }
 
         return _performWithdraw(data_.vault, data_.vaultAssetAmount, data_.maxSharesBurned, catchExceptions_);
@@ -227,6 +251,7 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
         address vault_,
         uint256 maxWithdrawAmount_,
         uint256 maxSharesBurned_,
+        uint256 minAssetsOut_,
         bool catchExceptions_
     ) private returns (uint256 shares) {
         uint256 ownedShares = IERC4626(vault_).balanceOf(address(this));
@@ -251,10 +276,38 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 emit Erc4626SupplyFuseExitFailed(VERSION, IERC4626(vault_).asset(), vault_, maxWithdrawAmount_);
             }
         } else {
+            address underlying;
+            uint256 balanceBefore;
+            if (minAssetsOut_ > 0) {
+                underlying = IERC4626(vault_).asset();
+                balanceBefore = ERC20(underlying).balanceOf(address(this));
+            }
             uint256 assets = IERC4626(vault_).redeem(sharesToRedeem, address(this), address(this));
+            if (minAssetsOut_ > 0) {
+                uint256 received = ERC20(underlying).balanceOf(address(this)) - balanceBefore;
+                if (received < minAssetsOut_) {
+                    revert Erc4626SupplyFuseInsufficientAssets(received, minAssetsOut_);
+                }
+            }
             shares = sharesToRedeem;
             emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, assets, shares);
         }
+    }
+
+    /// @dev Instant-path retry (IL-9643): redeems `min(previewWithdraw(assets_), balanceOf)` shares. The payout can be
+    ///      below `assets_` by the vault's share of a crystallized fee; the next instant-withdraw fuse covers the rest.
+    ///      A failure of `previewWithdraw` or `redeem` emits `Erc4626SupplyFuseExitFailed` and returns 0.
+    function _retryWithRedeem(address vault_, uint256 assets_) private returns (uint256 shares) {
+        try IERC4626(vault_).previewWithdraw(assets_) returns (uint256 previewShares) {
+            uint256 sharesToRedeem = IporMath.min(previewShares, IERC4626(vault_).balanceOf(address(this)));
+            if (sharesToRedeem > 0) {
+                try IERC4626(vault_).redeem(sharesToRedeem, address(this), address(this)) returns (uint256 received_) {
+                    emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, received_, sharesToRedeem);
+                    return sharesToRedeem;
+                } catch {}
+            }
+        } catch {}
+        emit Erc4626SupplyFuseExitFailed(VERSION, IERC4626(vault_).asset(), vault_, assets_);
     }
 
     function _performWithdraw(
@@ -273,8 +326,10 @@ contract Erc4626SupplyFuse is IFuseCommon, IFuseInstantWithdraw {
                 shares = shares_;
                 emit Erc4626SupplyFuseExit(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_, shares);
             } catch {
-                /// @dev if withdraw failed, continue with the next step
-                emit Erc4626SupplyFuseExitFailed(VERSION, IERC4626(vault_).asset(), vault_, finalVaultAssetAmount_);
+                /// @dev IL-9643: a request just below the cap can fail on `withdraw` while `redeem` of the same
+                ///      shares succeeds (a nested PlasmaVault crystallizes a pending performance fee inside `withdraw`),
+                ///      so retry through `redeem`; only when that fails too, report the failure and continue with the next step
+                shares = _retryWithRedeem(vault_, finalVaultAssetAmount_);
             }
         } else {
             shares = IERC4626(vault_).withdraw(finalVaultAssetAmount_, address(this), address(this));

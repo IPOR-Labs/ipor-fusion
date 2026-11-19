@@ -158,6 +158,11 @@ struct CompoundV3SupplyFuseExitData {
   collateralisation reverts `NotCollateralized()` in Comet.
 - **Instant withdraw** params: `[0] amount` (in vault-underlying units, set by the vault), `[1] asset`; Comet
   failures are caught and reported with `CompoundV3SupplyFuseExitFailed`. See _Instant Withdrawal Configuration_.
+  For the **base token** the instant request is also capped, after the position cap and for a non-zero amount, at
+  `balanceOf(COMET)` of the base token (Comet pays a base withdrawal in full or not at all), so a partly liquid
+  Comet pays what it holds and the next entry pays the rest; at zero liquidity the fuse makes no Comet call and
+  emits no event. Collateral withdrawals are **not** capped (collateral is not lent out). The `exit` /
+  `exitTransient` of ALPHA stay uncapped and revert above the liquidity.
 - ABI: `enter((address,uint256))`, `exit((address,uint256))`. Transient inputs `0 asset, 1 amount`;
   outputs `[asset, market, amount]`.
 
@@ -306,10 +311,10 @@ A market has exactly one balance fuse.
 - Redemptions are served from idle underlying first; borrowed USDC held idle in a USDC-underlying vault can be
   redeemed without touching the Compound position.
 - **Market 57 (ciUSDCv3).** The USDC entry is configured only for a USDC-underlying vault. At high utilization
-  (about 84 %, about 3.38M USDC of cash at Ethereum block 26,340,464) a `COMET.withdraw` can fail. The fuse catches
-  the failure and emits `CompoundV3SupplyFuseExitFailed`; the redemption then has to be served from other sources,
-  so size expectations for instant withdrawal accordingly. The same happens while lenders' withdrawals are paused
-  on the Comet (`isLendersWithdrawPaused()`, see _Risks_).
+  (about 84 %, about 3.38M USDC of cash at Ethereum block 26,340,464) the instant withdraw is capped at the base token
+  the Comet holds: the entry pays what is available and the rest of the redemption has to be served from other
+  sources, so size expectations for instant withdrawal accordingly. While lenders' withdrawals are paused
+  on the Comet the withdraw fails, the fuse catches it and emits `CompoundV3SupplyFuseExitFailed` (`isLendersWithdrawPaused()`, see _Risks_).
 
 ## Price Oracle Setup
 
@@ -384,6 +389,13 @@ following are documented risks, not enforced invariants.
   **borrowing stays open** (a lenders-withdraw pause does not stop `CompoundV3BorrowFuse.enter`, verified by a
   fork test); while base supply is paused, supply `enter` reverts. Monitor the extended flags, not only the
   legacy ones.
+- **Rewards claimed for the vault by someone else.** Anyone can claim COMP for an account, and the protocol pays
+  the account (per the published source of the protocol, checked 2026-11-16; a deployed instance can differ).
+  `CompoundV3ClaimFuse` only claims for the vault and sends the result to the rewards claim manager
+  (`contracts/rewards_fuses/compound/CompoundV3ClaimFuse.sol:43`), so it does not move a balance that was paid
+  to the vault earlier; rewards that accrue later still reach the manager on the next claim through the fuse.
+  Rewards paid to the vault this way bypass the manager's vesting. See `contracts/vaults/README.md`, "Reward
+  vesting and rewards claimed on the vault's behalf (IL-9744)".
 
 ## Mainnet Reference (Ethereum)
 

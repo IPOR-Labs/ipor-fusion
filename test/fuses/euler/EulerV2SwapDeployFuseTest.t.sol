@@ -106,11 +106,19 @@ contract EulerV2SwapDeployFuseTest is Test {
         substrates[3] = EulerFuseLib.substrateToBytes32(
             EulerSubstrate({eulerVault: borrowVault1, isCollateral: false, canBorrow: true, subAccounts: SUB_ACCOUNT})
         );
-        harness.grantMarketSubstrates(MARKET_ID, substrates);
+        _grantSubstrates(substrates);
     }
 
+    /// @dev Grants the given eVault substrates plus the pool entry for the predicted pool and SUB_ACCOUNT, so that
+    ///      every negative test still reaches its own guard (the pool entry is checked after the eVault guards).
     function _grantSubstrates(bytes32[] memory substrates) internal {
-        harness.grantMarketSubstrates(MARKET_ID, substrates);
+        uint256 len = substrates.length;
+        bytes32[] memory withPool = new bytes32[](len + 1);
+        for (uint256 i; i < len; ++i) {
+            withPool[i] = substrates[i];
+        }
+        withPool[len] = EulerFuseLib.swapPoolSubstrateToBytes32(predictedPool, SUB_ACCOUNT);
+        harness.grantMarketSubstrates(MARKET_ID, withPool);
     }
 
     function _buildEnterData() internal view returns (EulerV2SwapDeployFuseEnterData memory data) {
@@ -426,6 +434,82 @@ contract EulerV2SwapDeployFuseTest is Test {
         _enterExpectRevert(data);
     }
 
+    /// @dev Isolates the borrowVault1 canBorrow guard: borrowVault0 and both supply vaults are fully granted, only borrowVault1 lacks canBorrow.
+    function test_enterRevertsUnsupportedBorrowVault1() public {
+        bytes32[] memory substrates = new bytes32[](4);
+        substrates[0] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: supplyVault0, isCollateral: true, canBorrow: false, subAccounts: SUB_ACCOUNT})
+        );
+        substrates[1] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: supplyVault1, isCollateral: true, canBorrow: false, subAccounts: SUB_ACCOUNT})
+        );
+        substrates[2] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: borrowVault0, isCollateral: false, canBorrow: true, subAccounts: SUB_ACCOUNT})
+        );
+        substrates[3] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: borrowVault1, isCollateral: false, canBorrow: false, subAccounts: SUB_ACCOUNT})
+        );
+
+        _grantSubstrates(substrates);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapDeployFuse.EulerV2SwapDeployFuseUnsupportedVault.selector,
+                borrowVault1,
+                SUB_ACCOUNT
+            )
+        );
+        _enterExpectRevert(data);
+    }
+
+    /// @dev Supply-only pool (no borrow vaults): collateral checks are skipped, so only the supply guard can reject an ungranted supplyVault0.
+    function test_enterRevertsUnsupportedSupplyVault0InSupplyOnlyPool() public {
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: supplyVault1, isCollateral: false, canBorrow: false, subAccounts: SUB_ACCOUNT})
+        );
+
+        _grantSubstrates(substrates);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.staticParams.borrowVault0 = address(0);
+        data.staticParams.borrowVault1 = address(0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapDeployFuse.EulerV2SwapDeployFuseUnsupportedVault.selector,
+                supplyVault0,
+                SUB_ACCOUNT
+            )
+        );
+        _enterExpectRevert(data);
+    }
+
+    /// @dev Mirror: supply-only pool with an ungranted supplyVault1.
+    function test_enterRevertsUnsupportedSupplyVault1InSupplyOnlyPool() public {
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = EulerFuseLib.substrateToBytes32(
+            EulerSubstrate({eulerVault: supplyVault0, isCollateral: false, canBorrow: false, subAccounts: SUB_ACCOUNT})
+        );
+
+        _grantSubstrates(substrates);
+
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+        data.staticParams.borrowVault0 = address(0);
+        data.staticParams.borrowVault1 = address(0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapDeployFuse.EulerV2SwapDeployFuseUnsupportedVault.selector,
+                supplyVault1,
+                SUB_ACCOUNT
+            )
+        );
+        _enterExpectRevert(data);
+    }
+
     function test_enterRevertsInvalidParamsFeeTooHigh() public {
         EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
         data.dynamicParams.fee0 = uint64(1e18); // >= MAX_FEE
@@ -508,7 +592,6 @@ contract EulerV2SwapDeployFuseTest is Test {
             )
         );
         _enterExpectRevert(data);
-        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
     }
 
     function test_enterRevertsCurvePriceBelowOracleBand() public {
@@ -523,7 +606,6 @@ contract EulerV2SwapDeployFuseTest is Test {
             )
         );
         _enterExpectRevert(data);
-        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
     }
 
     /// @dev Boundary/positive control: the band is inclusive at +-1%. This passes both before and after
@@ -554,7 +636,6 @@ contract EulerV2SwapDeployFuseTest is Test {
             )
         );
         _enterExpectRevert(data);
-        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
     }
 
     /// @dev priceX/priceY embeds 10^(dec1-dec0): a USDC(6)/WETH(18) pool at 1 WETH = 2000 USDC needs
@@ -587,6 +668,48 @@ contract EulerV2SwapDeployFuseTest is Test {
         _enterExpectRevert(raw);
     }
 
+    /// @dev The oracle reports asset0 at 8 decimals; the curve guard must normalise it to WAD before comparing
+    ///      the ratio. Without normalisation the expected ratio is off by 10^10 and the valid input reverts.
+    function test_enterNormalisesEightDecimalOraclePrice() public {
+        vm.mockCall(asset0, abi.encodeWithSignature("decimals()"), abi.encode(uint8(6)));
+        vm.mockCall(asset1, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
+        oracle.setAssetPrice(asset0, 1e8, 8); // 1 USD
+        oracle.setAssetPrice(asset1, 2000e18, 18); // 2000 USD
+
+        EulerV2SwapDeployFuseEnterData memory consistent = _buildEnterData();
+        consistent.dynamicParams.priceX = uint80(5e18);
+        consistent.dynamicParams.priceY = uint80(1e10);
+        address deployed = _enter(consistent);
+        assertEq(deployed, predictedPool, "8-decimal oracle price accepted");
+
+        EulerV2SwapDeployFuseEnterData memory outside = _buildEnterData();
+        outside.dynamicParams.priceX = uint80(5.1e18);
+        outside.dynamicParams.priceY = uint80(1e10);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EulerV2SwapCurveLib.EulerV2SwapCurvePriceOutOfBounds.selector,
+                uint256(1.02e18),
+                PRICE_DEVIATION_WAD
+            )
+        );
+        _enterExpectRevert(outside);
+    }
+
+    /// @dev The oracle reports asset0 at 20 decimals (above 18); the normalisation must scale down. Without it the
+    ///      expected ratio is off by 10^-2 and the valid input reverts.
+    function test_enterNormalisesOraclePriceAboveEighteenDecimals() public {
+        vm.mockCall(asset0, abi.encodeWithSignature("decimals()"), abi.encode(uint8(6)));
+        vm.mockCall(asset1, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
+        oracle.setAssetPrice(asset0, 1e20, 20); // 1 USD
+        oracle.setAssetPrice(asset1, 2000e18, 18); // 2000 USD
+
+        EulerV2SwapDeployFuseEnterData memory consistent = _buildEnterData();
+        consistent.dynamicParams.priceX = uint80(5e18);
+        consistent.dynamicParams.priceY = uint80(1e10);
+        address deployed = _enter(consistent);
+        assertEq(deployed, predictedPool, "20-decimal oracle price accepted");
+    }
+
     function test_enterRevertsInitialStateNotAtEquilibriumReserve0() public {
         EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
         data.initialState.reserve0 = uint112(data.dynamicParams.equilibriumReserve0) - 1;
@@ -601,7 +724,6 @@ contract EulerV2SwapDeployFuseTest is Test {
             )
         );
         _enterExpectRevert(data);
-        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
     }
 
     function test_enterRevertsInitialStateNotAtEquilibriumReserve1() public {
@@ -618,7 +740,6 @@ contract EulerV2SwapDeployFuseTest is Test {
             )
         );
         _enterExpectRevert(data);
-        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
     }
 
     function test_enterRevertsWhenOraclePriceZero() public {
@@ -628,10 +749,12 @@ contract EulerV2SwapDeployFuseTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(EulerV2SwapCurveLib.EulerV2SwapUnsupportedOraclePrice.selector, asset1));
         _enterExpectRevert(data);
-        assertEq(factory.deployCallCount(), 0, "deployPool must not be called");
     }
 
+    /// @dev Executable ordering contract: the curve guard must run before any EVC side effect. The sentinel is
+    ///      armed, so moving the guard after `setAccountOperator` would surface the sentinel instead of the guard error.
     function test_enterRevertsCurveGuardBeforeOperatorInstall() public {
+        evc.setRevertOnSetAccountOperator(true);
         EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
         data.dynamicParams.priceX = uint80(1.02e18);
 
@@ -643,8 +766,16 @@ contract EulerV2SwapDeployFuseTest is Test {
             )
         );
         _enterExpectRevert(data);
+    }
 
-        assertEq(evc.setOperatorCallCount(), 0, "setAccountOperator must not run before the curve guard");
+    /// @dev Positive control for the ordering test above: with valid input and the sentinel armed, the first
+    ///      EVC side effect (`setAccountOperator`) is reached and surfaces exactly the sentinel error.
+    function test_mockEvcSentinelFiresOnOperatorInstall() public {
+        evc.setRevertOnSetAccountOperator(true);
+        EulerV2SwapDeployFuseEnterData memory data = _buildEnterData();
+
+        vm.expectRevert(MockEVC.MockEVCSetAccountOperatorSentinel.selector);
+        _enterExpectRevert(data);
     }
 
     // ============================================

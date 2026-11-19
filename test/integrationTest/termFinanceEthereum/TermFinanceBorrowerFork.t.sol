@@ -800,6 +800,146 @@ contract TermFinanceBorrowerFork is Test {
             "journal credits the ledger at clearing (handoff completes; no double-count window)"
         );
     }
+    // ----------------------------------------------------------------------
+    // IL-9553 / IL-9566 (D-003, D-016, D-017): an underwater servicer on the live borrower.
+    // ----------------------------------------------------------------------
+
+    /// @dev Second live Term repo at the pinned block (USDC, matures 1781193600): servicer Y, its repo token and
+    ///      discovered through the controller's pairing events and its auction's `termRepoServicer()`.
+    address private constant SERVICER_Y = 0x2b86AeE66C8989454cE012762631E197B261b3c2;
+    address private constant REPO_TOKEN_Y = 0xe6244ab726CDF36018A47e72985Ea07eAE11482c;
+
+    /// @dev Deploys a standalone balance harness (own address, own storage) with the given substrates.
+    function _newBalanceHarness(bytes32[] memory subs_) private returns (TermFinanceBalanceFuseHarness harness) {
+        harness = new TermFinanceBalanceFuseHarness(MARKET_ID, TERM_CONTROLLER, ADAPTER_B);
+        harness.setMarketSubstrates(MARKET_ID, subs_);
+        harness.setPriceOracleMiddleware(address(oracle));
+    }
+
+    function _substratesX(bool withRepoTokenHolding_) private pure returns (bytes32[] memory subs) {
+        subs = new bytes32[](withRepoTokenHolding_ ? 3 : 2);
+        subs[0] = PlasmaVaultConfigLib.addressToBytes32(SERVICER);
+        subs[1] = TermFinanceSubstrateLib.collateralPairKey(SERVICER, PT_REUSD);
+        if (withRepoTokenHolding_) subs[2] = TermFinanceSubstrateLib.repoTokenHoldingKey(SERVICER);
+    }
+
+    /// @dev Etches a balance harness at the live borrower with the given substrates.
+    function _etchBalanceHarnessWithSubstrates(bytes32[] memory subs_) private returns (TermFinanceBalanceFuseHarness) {
+        TermFinanceBalanceFuseHarness shadow = new TermFinanceBalanceFuseHarness(MARKET_ID, TERM_CONTROLLER, ADAPTER_B);
+        vm.etch(LIVE_BORROWER, address(shadow).code);
+        TermFinanceBalanceFuseHarness(LIVE_BORROWER).setMarketSubstrates(MARKET_ID, subs_);
+        TermFinanceBalanceFuseHarness(LIVE_BORROWER).setPriceOracleMiddleware(address(oracle));
+        return TermFinanceBalanceFuseHarness(LIVE_BORROWER);
+    }
+
+    /// @dev PT-reUSD price (18 decimals) at which the live borrower's locked collateral is worth `target_` WAD-USD.
+    function _ptPriceForLockedValue(uint256 target_) private view returns (uint256) {
+        uint256 locked = IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(
+            LIVE_BORROWER,
+            PT_REUSD
+        );
+        // value(WAD) = locked(6 dec) * 1e12 * price / 1e18
+        return (target_ * 1e18) / (locked * 1e12);
+    }
+
+    /// @notice Collateral price collapse in the middleware: the live borrower owes more than its collateral is
+    ///         worth, the servicer is underwater. Base: `balanceOf` reverts on the negative net; now the leg is
+    ///         floored at zero and the read succeeds.
+    function testForkUnderwaterServicerOnLiveBorrowerFloorsAtZeroWithoutRevert() public {
+        TermFinanceBalanceFuseHarness harness = _etchBalanceHarnessWithSubstrates(_substratesX(false));
+        uint256 navHealthy = harness.balanceOf();
+        assertGt(navHealthy, 0, "healthy baseline");
+
+        // $0.01 per PT-reUSD: ~11.6k USD of collateral against ~1.0M USD of debt.
+        oracle.setAssetPrice(PT_REUSD, 1e6, 8);
+        assertGt(
+            IExtTermRepoServicer(SERVICER).getBorrowerRepurchaseObligation(LIVE_BORROWER),
+            0,
+            "debt is still outstanding"
+        );
+
+        assertEq(harness.balanceOf(), 0, "underwater servicer with no other legs contributes zero");
+    }
+
+    /// @notice (a) The vault also holds repo tokens of ANOTHER live servicer Y. The underwater X contributes zero
+    ///         and Y keeps its own present value: the debt of X is not netted against Y.
+    function testForkUnderwaterServicerDoesNotReduceRepoTokensOfAnotherServicer() public {
+        // Y-only reference vault (no debt anywhere).
+        bytes32[] memory subsY = new bytes32[](2);
+        subsY[0] = PlasmaVaultConfigLib.addressToBytes32(SERVICER_Y);
+        subsY[1] = TermFinanceSubstrateLib.repoTokenHoldingKey(SERVICER_Y);
+        TermFinanceBalanceFuseHarness yOnly = _newBalanceHarness(subsY);
+        uint256 yRepoBalance = 40_000 * 1e6;
+        deal(REPO_TOKEN_Y, address(yOnly), yRepoBalance);
+        uint256 navYOnly = yOnly.balanceOf();
+        assertGt(navYOnly, 0, "Y repo tokens have a positive PV");
+        assertLt(navYOnly, yRepoBalance * 1e12, "Y repo tokens are discounted below face");
+
+        // Live borrower of X that also holds Y repo tokens.
+        bytes32[] memory subs = new bytes32[](4);
+        subs[0] = PlasmaVaultConfigLib.addressToBytes32(SERVICER);
+        subs[1] = TermFinanceSubstrateLib.collateralPairKey(SERVICER, PT_REUSD);
+        subs[2] = PlasmaVaultConfigLib.addressToBytes32(SERVICER_Y);
+        subs[3] = TermFinanceSubstrateLib.repoTokenHoldingKey(SERVICER_Y);
+        TermFinanceBalanceFuseHarness harness = _etchBalanceHarnessWithSubstrates(subs);
+        deal(REPO_TOKEN_Y, LIVE_BORROWER, yRepoBalance);
+
+        // Healthy X: both legs add up (X net is positive).
+        uint256 navHealthy = harness.balanceOf();
+        assertGt(navHealthy, navYOnly, "healthy X adds a positive net on top of Y");
+
+        oracle.setAssetPrice(PT_REUSD, 1e6, 8);
+        assertEq(harness.balanceOf(), navYOnly, "underwater X is zero, Y repo tokens keep their PV");
+    }
+
+    /// @notice (b) The vault holds repo tokens of the SAME servicer it owes debt on (REPO_TOKEN_HOLDING on X): they are
+    ///         netted against the debt (D-016) and X contributes max(0, held PV + locked - debt PV).
+    function testForkUnderwaterServicerNetsOwnRepoTokensAgainstDebt() public {
+        uint256 heldFace = 100_000 * 1e6;
+        // PV of the held repo tokens alone (standalone vault without debt).
+        uint256 heldPvWad = _newHolderOfRepoTokens(heldFace).balanceOf();
+        assertGt(heldPvWad, 0, "held repo tokens have a PV");
+
+        // Debt PV in WAD from the healthy net of the live borrower (price 1): locked - debt PV.
+        uint256 debtPvWad = _lockedValueWad() - _etchBalanceHarnessWithSubstrates(_substratesX(false)).balanceOf();
+
+        // The live borrower with the same repo tokens declared as held: the held PV is added in a healthy servicer.
+        TermFinanceBalanceFuseHarness harness = _etchBalanceHarnessWithSubstrates(_substratesX(true));
+        deal(REPO_TOKEN, LIVE_BORROWER, heldFace);
+        assertApproxEqAbs(
+            harness.balanceOf(),
+            _lockedValueWad() - debtPvWad + heldPvWad,
+            1e12,
+            "held PV is added in a healthy servicer"
+        );
+
+        // Collateral price at which the locked value is debt PV - held / 2: underwater without the held tokens...
+        oracle.setAssetPrice(PT_REUSD, _ptPriceForLockedValue(debtPvWad - heldPvWad / 2), 18);
+        assertEq(
+            _etchBalanceHarnessWithSubstrates(_substratesX(false)).balanceOf(),
+            0,
+            "underwater without own repo tokens"
+        );
+
+        // ...and the vault's own repo tokens are netted: held PV + locked - debt PV = held PV / 2.
+        harness = _etchBalanceHarnessWithSubstrates(_substratesX(true));
+        assertApproxEqRel(harness.balanceOf(), heldPvWad / 2, 1e12, "netted value = held PV + locked - debt PV");
+        assertLt(harness.balanceOf(), heldPvWad, "the debt of the same servicer reduces the repo token leg");
+    }
+
+    /// @dev Value of the live borrower's locked PT-reUSD in WAD-USD at price 1.
+    function _lockedValueWad() private view returns (uint256) {
+        return IExtTermRepoCollateralManager(COLLATERAL_MANAGER).getCollateralBalance(LIVE_BORROWER, PT_REUSD) * 1e12;
+    }
+
+    /// @dev Standalone vault holding `face_` repo tokens of X (REPO_TOKEN_HOLDING), without debt.
+    function _newHolderOfRepoTokens(uint256 face_) private returns (TermFinanceBalanceFuseHarness holder) {
+        bytes32[] memory subsHolder = new bytes32[](2);
+        subsHolder[0] = PlasmaVaultConfigLib.addressToBytes32(SERVICER);
+        subsHolder[1] = TermFinanceSubstrateLib.repoTokenHoldingKey(SERVICER);
+        holder = _newBalanceHarness(subsHolder);
+        deal(REPO_TOKEN, address(holder), face_);
+    }
 }
 
 // --------------------------------------------------------------------------

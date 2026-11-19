@@ -20,6 +20,7 @@ import {IContextClient} from "./IContextClient.sol";
  * - Signature expiration timestamps
  * - Chain ID verification
  * - Approved address whitelist
+ * - Context window: while a relayed call runs, the sender is visible to any caller of the client (see ContextClient.setupContext)
  * - Role-based access control via AccessManagedUpgradeable
  *
  * Role-based permissions:
@@ -38,6 +39,15 @@ import {IContextClient} from "./IContextClient.sol";
  * - ContextDataWithSender: Structure for signature-verified execution
  * - Storage management via ContextManagerStorageLib
  * - Integration with IContextClient for context setup/cleanup
+ *
+ * Context sender binding (IL-9533):
+ * - A client (ContextClient) returns the relayed sender only to the contract that called its setupContext, i.e. this
+ *   ContextManager. The relayed call itself runs as the sender because the client receives it from this contract;
+ *   delegatecalls inside the client keep that msg.sender.
+ * - Any other caller of the client during the relayed call, including re-entrant code reached through the call
+ *   (an ERC4626 venue of an instant-withdraw fuse, an Euler hook, a hooked token), acts as itself.
+ * - Clients deployed before this version return the sender to every caller while the call runs: on them, relay only
+ *   calls that cannot reach untrusted code.
  */
 
 /**
@@ -57,7 +67,7 @@ struct ExecuteData {
  * @notice Structure for signature-verified execution context
  * @param sender The original transaction sender to be impersonated
  * @param expirationTime Unix timestamp after which the signature becomes invalid
- * @param nonce Sequential number for replay attack prevention
+ * @param nonce Strictly increasing number for replay attack prevention (gaps allowed; a higher nonce invalidates every unused lower one)
  * @param target The approved contract address to be called
  * @param data The calldata to be executed on the target
  * @param signature ECDSA signature over keccak256(abi.encodePacked(contextManagerAddress, expirationTime, nonce, chainId, target, data)),
@@ -277,7 +287,12 @@ contract ContextManager is AccessManagedUpgradeable {
      * @dev Requirements:
      * - Signatures must not be expired (block.timestamp <= expirationTime)
      * - Signatures must be valid and match the claimed sender
-     * - Nonces must be sequential and not reused
+     * - Nonces must be strictly increasing (gaps allowed; a higher nonce invalidates every unused lower one)
+     * - Signed requests are independent: each is verified and executed on its own, so dependent steps must not rely on a batch executing together
+     * - The batch is atomic: one failing item (expired, bad signature, nonce too low) reverts the whole call. The signed
+     *   digest does not bind the submitter, so anyone can submit a single item of a pending batch first and make the
+     *   batch revert with a nonce error; the item runs exactly as its signer intended and the other items stay valid
+     *   and can be re-batched. Relayers should not mix signers in one call and can use private submission (IL-9662)
      * - Target addresses must be pre-approved
      * - Array must not be empty
      * - For each call:
@@ -327,7 +342,13 @@ contract ContextManager is AccessManagedUpgradeable {
      * @dev Requirements:
      * - Target must be an approved address
      * - Context must be set up before and cleared after execution
+     * @dev setupContext records this contract as the context setter of target_, so only calls made by this contract
+     *      (the relayed call) are resolved to sender_. Code reached through target_ that calls back into target_ acts as
+     *      itself on clients of this version (IL-9533); older clients return sender_ to any caller.
      * @custom:security Ensures proper context setup and cleanup
+     * @custom:security On clients deployed before IL-9533 the sender is returned to any caller of the client during
+     *                 the call, including re-entrant code reached through target_ (e.g. a hooked token or pool); on
+     *                 them relay only calls that cannot reach untrusted code
      * @custom:access Internal function - access controlled by public functions
      */
     function _executeWithinContext(

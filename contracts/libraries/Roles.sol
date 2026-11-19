@@ -5,7 +5,8 @@ pragma solidity 0.8.30;
  * @title Predefined roles used in the IPOR Fusion protocol
  * @notice For documentation purposes: When new roles are added by authorized property of PlasmaVault during runtime, they should be added and described here as well.
  * @dev Roles prefixed with 'TECH_' are special system roles that can only be assigned to and executed by contracts within the PlasmaVault ecosystem.
- * These technical roles are typically set during system initialization and cannot be reassigned during runtime.
+ * These technical roles are set during system initialization. The role gate is not an immutability guarantee: ADMIN_ROLE is the root
+ * role of the access manager and can grant and revoke any role, technical roles included, so the contracts rely on ADMIN_ROLE being trusted.
  */
 library Roles {
     /// @notice Account with this role has rights to manage the IporFusionAccessManager in general. The highest role, which could manage all roles including ADMIN_ROLE and OWNER_ROLE. It recommended to use MultiSig contract for this role.
@@ -18,7 +19,9 @@ library Roles {
 
     /// @notice Account with this role has rights to cancel time-locked operations, pause and unpause restricted methods in
     /// PlasmaVault contracts in case of emergency (updateTargetClosed in both directions)
-    /// @dev Managed by the Owner
+    /// @dev Managed by the Owner. Must be granted with execution delay 0 and must keep a minimal execution delay floor of 0:
+    /// a guardian with a non-zero delay cannot call `updateTargetClosed` (the access manager cannot schedule its own
+    /// custom selectors), so it could neither pause nor reopen a target (IL-8384, IL-8394, IL-9658)
     uint64 public constant GUARDIAN_ROLE = 2;
 
     /// @notice Technical role to limit access to methods only from the PlasmaVault contract
@@ -34,7 +37,7 @@ library Roles {
     uint64 public constant TECH_CONTEXT_MANAGER_ROLE = 5;
 
     /// @notice Technical role to limit access to methods only from the WithdrawManager contract
-    /// @dev System role that can only be assigned to WithdrawManager contract. Set during initialization and cannot be changed afterward
+    /// @dev System role intended for the WithdrawManager contract. Set during initialization; its admin is ADMIN_ROLE, so ADMIN_ROLE can still grant or revoke it
     uint64 public constant TECH_WITHDRAW_MANAGER_ROLE = 6;
 
     /// @notice Technical role for limit transfer and transferFrom methods in the Vault contract

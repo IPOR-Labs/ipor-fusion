@@ -82,10 +82,11 @@ contract EulerV2SupplyWETHVault is SupplyTest {
         Erc4626SupplyFuseExitData memory exitData = Erc4626SupplyFuseExitData({
             vault: EULER_VAULT,
             vaultAssetAmount: amount_,
-            maxSharesBurned: 0
+            maxSharesBurned: 0,
+            minAssetsOut: 0
         });
         data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("exit((address,uint256,uint256))", exitData);
+        data[0] = abi.encodeWithSignature("exit((address,uint256,uint256,uint256))", exitData);
         fusesSetup = fuses;
     }
 }

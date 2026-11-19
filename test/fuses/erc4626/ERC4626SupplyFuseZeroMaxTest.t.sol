@@ -482,10 +482,11 @@ contract Erc4626SupplyFuseZeroMaxTest is Test {
         uint256 requested = 250e18;
         uint256 expectedShares = zeroMaxVault.previewWithdraw(requested);
 
-        bytes32[] memory inputs = new bytes32[](3);
+        bytes32[] memory inputs = new bytes32[](4);
         inputs[0] = TypeConversionLib.toBytes32(address(zeroMaxVault));
         inputs[1] = TypeConversionLib.toBytes32(requested);
         inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
         vaultMock.setInputs(address(fuse), inputs);
 
         _expectExitEvent(address(zeroMaxVault), requested, expectedShares);
@@ -508,10 +509,11 @@ contract Erc4626SupplyFuseZeroMaxTest is Test {
         uint256 sharesBefore = _depositToZeroMaxVault(DEPOSIT_AMOUNT);
         uint256 positionValue = zeroMaxVault.previewRedeem(sharesBefore);
 
-        bytes32[] memory inputs = new bytes32[](3);
+        bytes32[] memory inputs = new bytes32[](4);
         inputs[0] = TypeConversionLib.toBytes32(address(zeroMaxVault));
         inputs[1] = TypeConversionLib.toBytes32(type(uint256).max);
         inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
         vaultMock.setInputs(address(fuse), inputs);
 
         _expectExitEvent(address(zeroMaxVault), positionValue, sharesBefore);
@@ -655,7 +657,12 @@ contract Erc4626SupplyFuseZeroMaxTest is Test {
     function _exit(address vault_, uint256 amount_, uint256 maxSharesBurned_) private returns (uint256) {
         return
             Erc4626SupplyFuse(address(vaultMock)).exit(
-                Erc4626SupplyFuseExitData({vault: vault_, vaultAssetAmount: amount_, maxSharesBurned: maxSharesBurned_})
+                Erc4626SupplyFuseExitData({
+                    vault: vault_,
+                    vaultAssetAmount: amount_,
+                    maxSharesBurned: maxSharesBurned_,
+                    minAssetsOut: 0
+                })
             );
     }
 

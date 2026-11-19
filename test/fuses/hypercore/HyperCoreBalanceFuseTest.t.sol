@@ -7,6 +7,7 @@ import {HyperCoreBalanceFuse} from "../../../contracts/fuses/hypercore/HyperCore
 import {HyperCoreLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreLib.sol";
 import {HyperCorePendingLib} from "../../../contracts/fuses/hypercore/lib/HyperCorePendingLib.sol";
 import {HyperCoreSubstrateLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreSubstrateLib.sol";
+import {NavJumpFloorFixture} from "./HyperCoreNavJumpFloorFixture.sol";
 import {HyperCoreValuationLib} from "../../../contracts/fuses/hypercore/lib/HyperCoreValuationLib.sol";
 import {IPriceOracleMiddleware} from "../../../contracts/price_oracle/IPriceOracleMiddleware.sol";
 import {Errors} from "../../../contracts/libraries/errors/Errors.sol";
@@ -65,6 +66,8 @@ contract HyperCoreBalanceFuseTest is Test {
         vault = new PlasmaVaultMock(address(pendingSetter), address(balanceFuse));
         vault.setPriceOracleMiddleware(address(oracle));
         spotAsset = makeAddr("spotAsset");
+        // IL-9597: market 55 valuation requires an explicit NavJumpFloorUsd6 (0 = purely relative breaker).
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(new bytes32[](0)));
     }
 
     function testUnactivatedVaultHasZeroValueWithoutReadingBalances() public {
@@ -140,17 +143,15 @@ contract HyperCoreBalanceFuseTest is Test {
         assertEq(vault.balanceOf(), 3e18);
     }
 
-    function testDuplicateSpotTokenSubstrateIsCountedOnlyOnce() public {
+    // IL-9642: a duplicated spot-token substrate is rejected at grant time (it can no longer reach the valuation).
+    function testDuplicateSpotTokenSubstrateIsRejectedAtGrant() public {
         _activate();
         bytes32 substrate = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
         bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = substrate;
         substrates[1] = substrate;
-        vault.grantMarketSubstrates(MARKET_ID, substrates);
-        _setSpotBalance(1e8, 0);
-        oracle.setAssetPriceWithDecimals(spotAsset, 1e8, 8);
-
-        assertEq(vault.balanceOf(), 1e18);
+        vm.expectRevert(abi.encodeWithSignature("MarketSubstrateDuplicate(uint256,bytes32)", MARKET_ID, substrate));
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function testSpotPrecompileFailureUsesTypedError() public {
@@ -209,7 +210,7 @@ contract HyperCoreBalanceFuseTest is Test {
         bytes32[] memory substrates = new bytes32[](2);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(1, otherAsset);
         substrates[1] = HyperCoreSubstrateLib.encodeSpotToken(USDC_INDEX, spotAsset);
-        vault.grantMarketSubstrates(MARKET_ID, substrates);
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
         oracle.setAssetPriceWithDecimals(otherAsset, 2e8, 8); // $2.00: must not price perp equity
         oracle.setAssetPriceWithDecimals(spotAsset, 9e7, 8); // USDC at $0.90
         _setAccountValue(100_000_000); // 100 USDC of perp equity
@@ -273,7 +274,7 @@ contract HyperCoreBalanceFuseTest is Test {
     function _grantSpotToken(uint64 tokenIndex, address evmAsset) private {
         bytes32[] memory substrates = new bytes32[](1);
         substrates[0] = HyperCoreSubstrateLib.encodeSpotToken(tokenIndex, evmAsset);
-        vault.grantMarketSubstrates(MARKET_ID, substrates);
+        vault.grantMarketSubstrates(MARKET_ID, NavJumpFloorFixture.withFloor(substrates));
     }
 
     function _setSpotBalance(uint64 total, uint64 hold) private {

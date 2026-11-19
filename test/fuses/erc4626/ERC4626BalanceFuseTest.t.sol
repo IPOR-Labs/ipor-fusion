@@ -39,6 +39,8 @@ contract ERC4646BalanceFuseTest is Test {
         Erc4626BalanceFuse balanceFuse = new Erc4626BalanceFuse(1);
         PlasmaVaultMock vault = new PlasmaVaultMock(address(supplyFuse), address(balanceFuse));
         vault.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
+        // PlasmaVaultMock has no asset(); the balance fuse reads the parent's underlying through it
+        vm.mockCall(address(vault), abi.encodeWithSignature("asset()"), abi.encode(DAI));
 
         address[] memory assets = new address[](1);
         assets[0] = SDAI;
@@ -75,6 +77,8 @@ contract ERC4646BalanceFuseTest is Test {
         Erc4626BalanceFuse balanceFuse = new Erc4626BalanceFuse(1);
         PlasmaVaultMock vault = new PlasmaVaultMock(address(supplyFuse), address(balanceFuse));
         vault.setPriceOracleMiddleware(address(priceOracleMiddlewareProxy));
+        // PlasmaVaultMock has no asset(); the balance fuse reads the parent's underlying through it
+        vm.mockCall(address(vault), abi.encodeWithSignature("asset()"), abi.encode(DAI));
 
         address[] memory assets = new address[](1);
         assets[0] = SDAI;
@@ -93,7 +97,8 @@ contract ERC4646BalanceFuseTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: SDAI,
                 vaultAssetAmount: IERC4626(SDAI).convertToAssets(balanceBeforeWithdraw),
-                maxSharesBurned: 0
+                maxSharesBurned: 0,
+                minAssetsOut: 0
             })
         );
 

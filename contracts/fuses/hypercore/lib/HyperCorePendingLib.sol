@@ -2,7 +2,10 @@
 pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {HyperCoreLib} from "./HyperCoreLib.sol";
+import {PlasmaVaultLib} from "../../../libraries/PlasmaVaultLib.sol";
+import {IRewardsClaimManager, VestingData} from "../../../interfaces/IRewardsClaimManager.sol";
 
 /// @title HyperCorePendingLib
 /// @notice Per-vault pending-action state for HyperCore CoreWriter interactions.
@@ -23,11 +26,19 @@ library HyperCorePendingLib {
     ///      the IL-8526 in-transit mispricing.
     uint64 internal constant MIN_TRANSFER_TIMEOUT_SECONDS = 60;
 
+    /// @dev Lower bound for `Config{WindowTransferSeconds}`, enforced by every fuse that reads it (send, deposit,
+    ///      margin, builder fee): a smaller value reverts with the fuse's `<Fuse>InvalidWindow` error; unset = 2.
+    ///      A window of 1 s could pass the time gate in the EVM block in which a Core debit is already visible while
+    ///      its Core -> EVM credit is still queued for the next block (IL-8927, IL-9529).
+    uint64 internal constant MIN_WINDOW_TRANSFER_SECONDS = 2;
+
     /// @dev Transfer without a cross-domain effect to wait for (time-based settlement only).
     uint8 internal constant EFFECT_NONE = 0;
     /// @dev Settles only once the vault's Core spot balance of `effectTokenIndex` reaches `expectedBalance`.
     uint8 internal constant EFFECT_CORE_SPOT = 1;
-    /// @dev Settles only once the vault's EVM balance of `effectEvmAsset` reaches `expectedBalance`.
+    /// @dev Settles only once the vault's EVM balance of `effectEvmAsset` reaches `expectedBalance` (plus, for a record
+    ///      bound to the rewards manager by `bindRewardsEffect`, the manager's pushes since the send) and both rewards
+    ///      sums reach their thresholds (see `isEffectObserved`).
     uint8 internal constant EFFECT_EVM_BALANCE = 2;
 
     /// @dev keccak256(abi.encode(uint256(keccak256("io.ipor.hypercore.pending")) - 1)) & ~bytes32(uint256(0xff))
@@ -58,6 +69,21 @@ library HyperCorePendingLib {
         uint256 expectedBalance;
         // TIMING order mini-gate (appended; persistent: never reset by enqueue/clear).
         uint64 lastOrderL1Block;
+        // Rewards-manager binding of an `EFFECT_EVM_BALANCE` record (appended, IL-9529; new in this release, so its
+        // order is set here once: `effectRewardsUpdateBalanceTimestamp` fills the last 4 bytes of the
+        // `lastOrderL1Block` + `effectRewardsManager` slot, the two counter fields share one new slot). Zeroed by
+        // every enqueue, written only by `bindRewardsEffect`, deleted by `_clearRecord`. Both sums are thresholds
+        // like `expectedBalance`, read before the action is sent and including the bridged amount A:
+        // `expectedRewardsRawSum = vault balance + manager's token balance + A` and
+        // `expectedRewardsVestedSum = vault balance + IRewardsClaimManager.balanceOf() + A`.
+        // The three `effectRewards*` vesting fields are the manager's `getVestingData()` at send:
+        // `updateBalanceTimestamp`, `transferredTokens` (the push counter) and `lastUpdateBalance`.
+        address effectRewardsManager;
+        uint32 effectRewardsUpdateBalanceTimestamp;
+        uint256 expectedRewardsRawSum;
+        uint256 expectedRewardsVestedSum;
+        uint128 effectRewardsTransferredTokens;
+        uint128 effectRewardsLastUpdateBalance;
     }
 
     error HyperCoreActionPending(uint64 pendingUntil);
@@ -154,13 +180,37 @@ library HyperCorePendingLib {
     ///      hold) the gate opens without reading the effect, so neither a rejected transfer nor a reverting effect
     ///      token can hold it shut beyond the timeout (it cannot freeze the vault); if Core merely lags beyond
     ///      the timeout, NAV is read live without the in-transit amount and the GUARDIAN must pause the vault.
-    ///      The `EFFECT_EVM_BALANCE` effect is only a balance threshold (`balanceOf(vault) >= expectedBalance`); it is
-    ///      not bound to the credit of the bridged amount. Before `timeoutAt`, any inflow of that token satisfies it,
-    ///      including one that is free and already counted in NAV, for example the PUBLIC_ROLE
-    ///      `RewardsClaimManager.transferVestedTokensToVault` or the keeper's `RewardsClaimManager.updateBalance`
-    ///      releasing vested underlying. Pricing safety while Core lags therefore also rests on Hyperliquid crediting
-    ///      the EVM side in the block in which the Core debit becomes visible, and on a `WindowTransferSeconds` of at
-    ///      least 2 (the default; the fuses accept 1, only 0 reverts) (IL-8927).
+    ///      `EFFECT_EVM_BALANCE` first requires `balanceOf(vault) >= expectedBalance`. When the bridged token is the
+    ///      vault's underlying and a rewards manager was set at send time, the record is bound to that manager
+    ///      (`effectRewardsManager != address(0)`, IL-9529) and holds its `getVestingData()` at send. The
+    ///      manager's pushes into the vault (PUBLIC_ROLE `transferVestedTokensToVault`, and the push inside the
+    ///      keeper's `updateBalance` or an ATOMIST reschedule) move underlying that NAV already counts, and the
+    ///      manager adds every PUBLIC push to `transferredTokens`. The bound record is observed only when all of:
+    ///      - the vault's rewards manager is still `effectRewardsManager` (a change inside the window waits for
+    ///        `timeoutAt`);
+    ///      - the schedule was not re-anchored: `updateBalanceTimestamp` and `lastUpdateBalance` are unchanged and
+    ///        `transferredTokens` did not go down (`updateBalance` and `rescheduleVesting` re-anchor; keeper and
+    ///        ATOMIST only, the wait for `timeoutAt` is the exit);
+    ///      - `balanceOf(vault) >= expectedBalance + (transferredTokens - effectRewardsTransferredTokens)`: the vault
+    ///        balance minus the counted pushes grew by A;
+    ///      - `balanceOf(vault) + balanceOf(manager) >= expectedRewardsRawSum` and
+    ///        `balanceOf(vault) + IRewardsClaimManager(manager).balanceOf() >= expectedRewardsVestedSum` (D-004).
+    ///      So before `timeoutAt` neither a push, nor vesting accrual, nor underlying sent to the manager (a donation
+    ///      or a keeper claim), nor any combination of them can stand in for the credit: they move the manager's
+    ///      balance or the counted pushes, not the vault balance net of pushes. What still opens the gate early is the
+    ///      credit or underlying sent straight to the vault (a donation, priced in NAV, so the donor pays at least
+    ///      what the early opening is worth). The two sums are implied by the counter rule for a standard
+    ///      RewardsClaimManager; they stay as defence in depth for a push the counter does not see (a non-standard
+    ///      manager, or the same-second re-anchor with `vestingTime == 0`, where only underlying new to the manager
+    ///      can then pass them).
+    ///      An unbound record of the vault's underlying (no rewards manager at send) is not observed while a rewards
+    ///      manager is set, so a manager set inside the window also waits for `timeoutAt`. Without a rewards manager,
+    ///      or for another token, the effect is the plain vault-balance threshold.
+    ///      The manager reads (`getVestingData()`, the token's `balanceOf(manager)`, `balanceOf()`) are not guarded:
+    ///      a reverting manager reverts the predicate like a reverting effect token (until `timeoutAt`). An ATOMIST
+    ///      vesting change that lowers `balanceOf()` can hold the vested sum short until `timeoutAt`. Pricing safety
+    ///      while Core lags still rests on the time and L1-block gates and on
+    ///      `WindowTransferSeconds >= MIN_WINDOW_TRANSFER_SECONDS` (2, enforced by the fuses).
     function isEffectObserved() internal view returns (bool) {
         PendingAction storage pending = get();
         if (pending.effectKind == EFFECT_CORE_SPOT) {
@@ -169,9 +219,47 @@ library HyperCorePendingLib {
                 HyperCoreLib.spotBalance(address(this), pending.effectTokenIndex).total >= pending.expectedBalance;
         }
         if (pending.effectKind == EFFECT_EVM_BALANCE) {
-            return IERC20(pending.effectEvmAsset).balanceOf(address(this)) >= pending.expectedBalance;
+            uint256 vaultBalance = IERC20(pending.effectEvmAsset).balanceOf(address(this));
+            if (vaultBalance < pending.expectedBalance) return false;
+            address rewardsManager = pending.effectRewardsManager;
+            if (rewardsManager == address(0)) {
+                // Unbound: a rewards manager set inside the window could push underlying NAV already counts.
+                return
+                    PlasmaVaultLib.getRewardsClaimManagerAddress() == address(0) ||
+                    pending.effectEvmAsset != IERC4626(address(this)).asset();
+            }
+            return _isRewardsEffectObserved(pending, rewardsManager, vaultBalance);
         }
         return false;
+    }
+
+    /// @dev The bound part of `isEffectObserved` (IL-9529, D-034): same manager, same anchor, the vault balance net of
+    ///      the counted pushes reached `expectedBalance`, and both D-004 sums reached their thresholds.
+    function _isRewardsEffectObserved(
+        PendingAction storage pending_,
+        address rewardsManager_,
+        uint256 vaultBalance_
+    ) private view returns (bool) {
+        if (PlasmaVaultLib.getRewardsClaimManagerAddress() != rewardsManager_) return false;
+        VestingData memory vesting = IRewardsClaimManager(rewardsManager_).getVestingData();
+        if (
+            vesting.updateBalanceTimestamp != pending_.effectRewardsUpdateBalanceTimestamp ||
+            vesting.lastUpdateBalance != pending_.effectRewardsLastUpdateBalance ||
+            vesting.transferredTokens < pending_.effectRewardsTransferredTokens
+        ) {
+            return false;
+        }
+        if (
+            vaultBalance_ <
+            pending_.expectedBalance + uint256(vesting.transferredTokens - pending_.effectRewardsTransferredTokens)
+        ) {
+            return false;
+        }
+        // Raw sum: flat under a push and under accrual. Vested sum: flat under a push and under unvested inflows.
+        return
+            vaultBalance_ + IERC20(pending_.effectEvmAsset).balanceOf(rewardsManager_) >=
+                pending_.expectedRewardsRawSum &&
+            vaultBalance_ + IRewardsClaimManager(rewardsManager_).balanceOf() >= pending_.expectedRewardsVestedSum;
     }
 
     function requireNotPendingAction() internal view {
@@ -217,7 +305,8 @@ library HyperCorePendingLib {
 
     /// @notice Record an in-flight Transfer whose settlement additionally waits for its cross-domain effect.
     /// @dev Settles once the time window and L1 block gates pass AND the effect is observed (see
-    ///      `isEffectObserved`), or unconditionally once `pendingUntil + timeoutSeconds_` has passed.
+    ///      `isEffectObserved`), or unconditionally once `pendingUntil + timeoutSeconds_` has passed. Zeroes the
+    ///      rewards-manager binding; a Core -> EVM bridge of the underlying binds it afterwards (`bindRewardsEffect`).
     /// @param effectKind_ `EFFECT_CORE_SPOT` or `EFFECT_EVM_BALANCE`
     /// @param tokenIndex_ Core token index (CoreSpot only)
     /// @param evmAsset_ ERC20 whose vault balance is observed (EvmBalance only)
@@ -245,6 +334,34 @@ library HyperCorePendingLib {
         _emitEnqueued();
     }
 
+    /// @notice Binds the pending `EFFECT_EVM_BALANCE` record to the vault's rewards manager (IL-9529).
+    /// @dev Called only by `HyperCoreSendFuse` right after `enqueueTransferWithEffect`, when the bridged token is the
+    ///      vault's underlying and a rewards manager is set. Both sums are thresholds read before the action is sent
+    ///      and include the bridged amount A; `vesting_` is the manager's `getVestingData()` read at the same time, so
+    ///      the gate can subtract the manager's pushes and see a re-anchor (see `isEffectObserved`).
+    /// @param rewardsManager_ Rewards manager whose pushes move already-counted underlying into the vault
+    /// @param expectedRawSum_ Vault balance + the manager's balance of the effect token + A
+    /// @param expectedVestedSum_ Vault balance + `IRewardsClaimManager.balanceOf()` + A
+    /// @param vesting_ The manager's vesting data at send (`updateBalanceTimestamp`, `transferredTokens`,
+    ///        `lastUpdateBalance` are stored; `vestingTime` is not needed: it changes no push and no anchor)
+    function bindRewardsEffect(
+        address rewardsManager_,
+        uint256 expectedRawSum_,
+        uint256 expectedVestedSum_,
+        VestingData memory vesting_
+    ) internal {
+        PendingAction storage pending = get();
+        if (pending.effectKind != EFFECT_EVM_BALANCE) revert HyperCorePendingEffectInvalid(pending.effectKind);
+        pending.effectRewardsManager = rewardsManager_;
+        pending.effectRewardsUpdateBalanceTimestamp = vesting_.updateBalanceTimestamp;
+        pending.expectedRewardsRawSum = expectedRawSum_;
+        pending.expectedRewardsVestedSum = expectedVestedSum_;
+        pending.effectRewardsTransferredTokens = vesting_.transferredTokens;
+        pending.effectRewardsLastUpdateBalance = vesting_.lastUpdateBalance;
+    }
+
+    /// @dev Writes the effect fields of a new record and zeroes the rewards-manager binding, so a settled but not yet
+    ///      cleared record can never leave a binding behind for the next enqueue.
     function _setEffect(
         uint8 effectKind_,
         uint64 tokenIndex_,
@@ -258,6 +375,12 @@ library HyperCorePendingLib {
         pending.effectEvmAsset = evmAsset_;
         pending.expectedBalance = expectedBalance_;
         pending.timeoutAt = timeoutAt_;
+        pending.effectRewardsManager = address(0);
+        pending.effectRewardsUpdateBalanceTimestamp = 0;
+        pending.expectedRewardsRawSum = 0;
+        pending.expectedRewardsVestedSum = 0;
+        pending.effectRewardsTransferredTokens = 0;
+        pending.effectRewardsLastUpdateBalance = 0;
     }
 
     function _enqueue(
@@ -317,8 +440,9 @@ library HyperCorePendingLib {
     /// @notice Latches settlement: clears the record once an action is observed settled.
     /// @dev Does not revert by itself, but propagates reverts of the reads behind the settlement predicate: a failed
     ///      precompile read (`HyperCorePrecompileFailed`, fail-closed by design) and, before `timeoutAt`, the effect
-    ///      token's `balanceOf`. Does nothing (returns false) when there is no record or the settlement condition does
-    ///      not hold.
+    ///      token's `balanceOf` and, for a record bound to the rewards manager, the manager reads (`getVestingData()`,
+    ///      `balanceOf()`). Does nothing (returns false) when there is no record or the settlement condition does not
+    ///      hold.
     ///      Called first by the pre-hooks so that a later balance change (e.g. a user redeem lowering the EVM
     ///      balance after a Core -> EVM bridge settled) cannot re-open the pending state of a settled transfer.
     ///      Emits `HyperCoreActionSettled` exactly once per settled action.
@@ -353,6 +477,12 @@ library HyperCorePendingLib {
         delete pending.effectEvmAsset;
         delete pending.timeoutAt;
         delete pending.expectedBalance;
+        delete pending.effectRewardsManager;
+        delete pending.effectRewardsUpdateBalanceTimestamp;
+        delete pending.expectedRewardsRawSum;
+        delete pending.expectedRewardsVestedSum;
+        delete pending.effectRewardsTransferredTokens;
+        delete pending.effectRewardsLastUpdateBalance;
         emit HyperCoreActionSettled(nonce_);
     }
 }

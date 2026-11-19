@@ -397,6 +397,11 @@ contract StargateCrosschainFactory is StargateLzOAppBase, ICrosschainFactory, IS
         if (creationRestricted && !isAllowedCreator[msg.sender]) revert CreatorNotAllowed(msg.sender);
         AssetConfig memory cfg = assetConfig[params_.assetId];
         if (!cfg.enabled) revert CrosschainErrors.AssetConfigNotEnabled(params_.assetId);
+        // Migration gate (IL-8623, same as the ticket path): creating an executor freezes the asset, which would
+        // make a scheduled `executeAssetConfig` revert for good. A frozen asset cannot be migrated, so it is not gated.
+        if (!assetFrozen[params_.assetId] && scheduledAssetConfig[params_.assetId].exists) {
+            revert CrosschainErrors.DestinationAssetMigrationScheduled(params_.assetId);
+        }
         assetFrozen[params_.assetId] = true;
 
         // Creator-bound salt prevents address squatting/frontrunning of someone else's planned executor

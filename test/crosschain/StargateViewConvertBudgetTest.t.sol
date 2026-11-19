@@ -15,7 +15,8 @@ import {
     UpdateVaults,
     OutboundTransfer,
     ReturnAssetsRequest,
-    ReturnStarted
+    ReturnStarted,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {MockLzEndpoint} from "./mocks/MockLzEndpoint.sol";
 import {MockStargatePool, LzComposeBuilder} from "./mocks/MockStargatePool.sol";
@@ -95,7 +96,8 @@ contract StargateViewConvertBudgetTest is Test {
                     sequence: 0,
                     newConfigEpoch: 1,
                     minExecutionGas: DEFAULT_COMMAND_BUDGET,
-                    vaults: vaults
+                    vaults: vaults,
+                    floors: new SweepFloor[](0)
                 })
             )
         );

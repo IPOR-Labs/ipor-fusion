@@ -32,6 +32,12 @@ library FusionFactoryLogicLib {
     error InvalidDaoFeeRecipient();
     error DaoFeePackagesArrayEmpty();
     error DaoFeePackageIndexOutOfBounds(uint256 index, uint256 length);
+    /// @dev The DAO fee package currently stored at `index` differs from the package the caller expected (IL-9646)
+    error DaoFeePackageMismatch(
+        uint256 index,
+        FusionFactoryStorageLib.FeePackage expected,
+        FusionFactoryStorageLib.FeePackage actual
+    );
 
     struct FusionInstance {
         uint256 index;
@@ -72,6 +78,25 @@ library FusionFactoryLogicLib {
         if (length == 0) revert DaoFeePackagesArrayEmpty();
         if (index_ >= length) revert DaoFeePackageIndexOutOfBounds(index_, length);
         return FusionFactoryStorageLib.getDaoFeePackage(index_);
+    }
+
+    /// @notice Validates that the DAO fee package selected by index equals the package the caller expected (IL-9646)
+    /// @param index_ Index of the fee package
+    /// @param expected_ Fee package (management fee, performance fee, recipient) the caller read and agreed to
+    /// @dev Reverts with DaoFeePackageMismatch when the packages array was replaced between the caller's read and the
+    /// execution of the transaction, so the immutable fees and fee recipient of a new vault cannot be swapped under the caller
+    function _validateExpectedDaoFeePackage(
+        uint256 index_,
+        FusionFactoryStorageLib.FeePackage memory expected_
+    ) internal view {
+        FusionFactoryStorageLib.FeePackage memory actual = _validateAndGetDaoFeePackage(index_);
+        if (
+            actual.managementFee != expected_.managementFee ||
+            actual.performanceFee != expected_.performanceFee ||
+            actual.feeRecipient != expected_.feeRecipient
+        ) {
+            revert DaoFeePackageMismatch(index_, expected_, actual);
+        }
     }
 
     /// @notice Clones a Fusion instance
@@ -289,6 +314,16 @@ library FusionFactoryLogicLib {
         );
 
         FeeManager(fusionAddresses.feeManager).initialize();
+
+        // IL-9634: a third party can start the redemption lock of any receiver by depositing dust on its behalf, which
+        // would block fee harvesting and fee updates (both harvest first) for the whole redemption delay. The FeeManager
+        // and its two fee accounts never act on behalf of users, so they are exempt from the delay from the start. The
+        // factory still holds the access manager admin role here (before `initialize`), so it calls the setter directly.
+        address[] memory feeAccounts = new address[](3);
+        feeAccounts[0] = fusionAddresses.feeManager;
+        feeAccounts[1] = FeeManager(fusionAddresses.feeManager).PERFORMANCE_FEE_ACCOUNT();
+        feeAccounts[2] = FeeManager(fusionAddresses.feeManager).MANAGEMENT_FEE_ACCOUNT();
+        IporFusionAccessManager(fusionAddresses.accessManager).setRedemptionDelayExemption(feeAccounts, true);
 
         DataForInitialization memory accessData;
         accessData.isPublic = false;

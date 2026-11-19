@@ -72,7 +72,11 @@ contract WrappedPlasmaVault is WrappedPlasmaVaultBase, Ownable2StepUpgradeable {
      * @custom:security Restricted to contract owner
      */
     function configureManagementFee(address feeAccount_, uint256 feeInPercentage_) external override onlyOwner {
+        // Settle the accrual at the old rate first, so a rate change never applies retroactively.
+        _realizeManagementFee();
         PlasmaVaultLib.configureManagementFee(feeAccount_, feeInPercentage_);
+        // Restart the accrual clock at the change (also when the old rate was 0 and nothing was minted).
+        PlasmaVaultLib.updateManagementFeeData();
     }
 
     /**

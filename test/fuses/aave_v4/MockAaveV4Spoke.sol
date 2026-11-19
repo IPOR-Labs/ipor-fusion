@@ -125,6 +125,8 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
         // Convert shares to assets for capping (1:1 in default mock)
         uint256 maxWithdrawAssets = (supplyShares * shareRateDenominator) / shareRateNumerator;
         uint256 capped = amount > maxWithdrawAssets ? maxWithdrawAssets : amount;
+        // Like the real Hub: a withdrawal above the Hub's liquidity fails as a whole
+        require(capped <= hubLiquidity, "MockAaveV4Spoke: above Hub liquidity");
         withdrawnAmount = (capped * withdrawRateNumerator) / withdrawRateDenominator;
 
         // Calculate shares to burn
@@ -244,6 +246,34 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
         data.borrowCount = hasDebt ? 1 : 0;
     }
 
+    // ============ Hub liquidity (the mock reports itself as the Hub of every reserve unless overridden) ============
+
+    /// @dev Hub liquidity returned by getAssetLiquidity; the default does not restrict anything
+    uint256 public hubLiquidity = type(uint256).max;
+    bool public hubLiquidityShouldRevert;
+    /// @dev Address reported as the Hub of every reserve; address(0) means this mock
+    address public hubOverride;
+
+    function setHubLiquidity(uint256 hubLiquidity_) external {
+        hubLiquidity = hubLiquidity_;
+    }
+
+    function setHubLiquidityShouldRevert(bool shouldRevert_) external {
+        hubLiquidityShouldRevert = shouldRevert_;
+    }
+
+    function setHubOverride(address hub_) external {
+        hubOverride = hub_;
+    }
+
+    /// @notice IAaveV4Hub view used by the instant withdraw cap (IL-9559)
+    function getAssetLiquidity(uint256) external view returns (uint256) {
+        if (hubLiquidityShouldRevert) {
+            revert("MockAaveV4Spoke: getAssetLiquidity reverted");
+        }
+        return hubLiquidity;
+    }
+
     // ============ Reserve Queries ============
 
     function getReserveCount() external view returns (uint256) {
@@ -255,7 +285,7 @@ contract MockAaveV4Spoke is IAaveV4Spoke {
         return
             Reserve({
                 underlying: r.asset,
-                hub: address(0),
+                hub: hubOverride == address(0) ? address(this) : hubOverride,
                 assetId: uint16(reserveId),
                 decimals: IERC20Metadata(r.asset).decimals(),
                 collateralRisk: 0,

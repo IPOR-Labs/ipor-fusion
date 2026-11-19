@@ -58,6 +58,12 @@ struct SubstrateValidationResult {
 /// @dev Executes in PlasmaVault storage context via delegatecall.
 ///      CRITICAL: This contract MUST NOT contain storage variables.
 ///      Slippage is now configurable via substrate or defaults to DEFAULT_SLIPPAGE_WAD.
+///      Share-price views during a swap (IL-9743): when a granted target is a router or an aggregator, the pools, hooks and
+///      tokens on the path come with the calldata of each call, and a path that nobody reviewed runs third-party code in the
+///      middle of the vault's `execute`. The reentrancy guard then blocks the vault's `deposit`, `mint`, `withdraw`, `redeem`
+///      and `execute`, but not its share-price views, which can stay too low or too high until the final balance refresh of
+///      the batch. See
+///      "Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)" in contracts/vaults/README.md.
 contract UniversalTokenSwapperFuse is IFuseCommon {
     using SafeERC20 for ERC20;
 

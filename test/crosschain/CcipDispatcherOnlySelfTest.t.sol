@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {CcipCrosschainDispatcher} from "../../contracts/crosschain/ccip/CcipCrosschainDispatcher.sol";
 import {CcipMsgType} from "../../contracts/crosschain/ccip/lib/CcipMessages.sol";
 import {BusinessAction} from "../../contracts/crosschain/lib/CrosschainConstants.sol";
-import {Command} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
+import {Command, SweepFloor} from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CcipExecutorFixture} from "./CcipExecutorFixture.sol";
 
 /// @title CcipDispatcherOnlySelfTest
@@ -41,7 +41,11 @@ contract CcipDispatcherOnlySelfTest is CcipExecutorFixture {
 
         vm.expectRevert(CcipCrosschainDispatcher.OnlySelf.selector);
         vm.prank(ATTACKER);
-        dispatcher.runStoredCommand(CcipMsgType.UPDATE_VAULTS, command, abi.encode(vaults, true, true));
+        dispatcher.runStoredCommand(
+            CcipMsgType.UPDATE_VAULTS,
+            command,
+            abi.encode(vaults, true, true, new SweepFloor[](0))
+        );
 
         assertEq(dispatcher.commandConfigEpoch(), epochBefore, "epoch unchanged");
         assertEq(dispatcher.trackedIdle(), idleBefore, "idle unchanged");
@@ -78,5 +82,13 @@ contract CcipDispatcherOnlySelfTest is CcipExecutorFixture {
         dispatcher.dispatchResponseSelf(head);
 
         assertEq(dispatcher.responseQueueHead(), head, "queue head unchanged");
+    }
+
+    /// @dev IL-9629: `sweepRedeemSelf` is the self-call frame of the floored vault-removal sweep. Negative: `OnlySelf`
+    ///      check removed -> the foreign call reaches `redeemAtLeast` and fails differently (or redeems) -> fails.
+    function testShouldRejectSweepRedeemSelfFromForeignCallerWithOnlySelf() public {
+        vm.expectRevert(CcipCrosschainDispatcher.OnlySelf.selector);
+        vm.prank(ATTACKER);
+        dispatcher.sweepRedeemSelf(ATTACKER_VAULT, 1, 1);
     }
 }

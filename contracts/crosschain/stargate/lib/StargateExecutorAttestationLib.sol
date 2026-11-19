@@ -147,7 +147,7 @@ library StargateExecutorAttestationLib {
     /// @dev Approve a pending proposal, overwriting the settled bucket ONLY (never in-flight). Immutable
     ///      thresholds (`bigChangeBps_`, `minUpdateInterval_`) are passed by the executor.
     /// @dev In addition to the per-approval RELATIVE bound (`bigChangeBps_`), the approved value must sit
-    ///      within `CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS` of `self.anchorPrincipal[chainId]`
+    ///      within the executor's `self.anchorBandBps` (reference band `ATTESTATION_ANCHOR_BAND_BPS` = 2_000) of `self.anchorPrincipal[chainId]`
     ///      (IL-7967, audit `no_cumulative_bound_on_attested_balance_ratchet`): `bigChangeBps_` alone
     ///      bounds one step, not the number of steps, so `n` compliant approvals compound to
     ///      `(1 ± bigChangeBps_/10_000)^n` — unbounded given enough rounds. `anchorPrincipal` is credited
@@ -247,7 +247,7 @@ library StargateExecutorAttestationLib {
             // not a baseline, like `oldSettled == 0` (IL-8606), so the band alone bounds the approval. The
             // relative check returns after the first band approval. See `_outsideAnchorBand`.
             uint256 principal = self.anchorPrincipal[chainId];
-            if (principal == 0 || !_outsideAnchorBand(oldSettled, principal)) {
+            if (principal == 0 || !_outsideAnchorBand(oldSettled, principal, self.anchorBandBps)) {
                 uint256 diff = newSettled > oldSettled ? newSettled - oldSettled : oldSettled - newSettled;
                 if (diff * BPS_DENOMINATOR > oldSettled * bigChangeBps_) {
                     revert CrosschainErrors.BigChangeExceeded(oldSettled, newSettled, bigChangeBps_);
@@ -306,12 +306,12 @@ library StargateExecutorAttestationLib {
     ///      band-restoring value, which that induction bounds by the pre-debit principal, so it cannot be used
     ///      to walk the anchor upward.
     /// @dev IL-8792: the induction "the pair is band-legal after every paired write" missed an anchor CREDIT
-    ///      on a `(settled 0, anchor R)` pair. The credit floor keeps `settledAfter <= 1.2 * anchor` but
-    ///      nothing keeps `settledAfter >= 0.8 * anchor`: with `net > 0` the cap `min(R, net) + c` leaves
+    ///      on a `(settled 0, anchor R)` pair. The credit floor keeps `settledAfter <= (1 + b) * anchor` but
+    ///      nothing keeps `settledAfter >= (1 - b) * anchor` (`b = anchorBandBps / 10_000`; 1.2 and 0.8 at the reference band of 2_000): with `net > 0` the cap `min(R, net) + c` leaves
     ///      `settled = c` below the band iff `c < 4 * min(R, net)`, and the windows are disjoint (the pre-fix
     ///      freeze) iff `c * (1 + bigChangeBps / 10_000) < 0.8 * (min(R, net) + c)`. `approve` therefore skips the relative check
     ///      when `oldSettled` lies outside the band (only below is reachable: the credit floor keeps
-    ///      `settled <= 1.2 * anchor`, and approve, the rebase and the clamped debit keep an in-band pair in the band; an
+    ///      `settled <= (1 + b) * anchor`, and approve, the rebase and the clamped debit keep an in-band pair in the band; an
     ///      above-band `oldSettled` would skip it too; it is not a baseline, like zero) and this predicate alone
     ///      bounds the value, so an approvable value always exists. Approve and the rebase leave the pair in the
     ///      band and the clamped debit preserves band-legality of an in-band pair; a pair put below the band
@@ -322,20 +322,16 @@ library StargateExecutorAttestationLib {
         uint256 newSettled_
     ) private view {
         uint256 principal = self.anchorPrincipal[chainId_];
-        if (_outsideAnchorBand(newSettled_, principal)) {
-            revert CrosschainErrors.AttestationOutsideAnchorBand(
-                chainId_,
-                principal,
-                newSettled_,
-                CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS
-            );
+        uint256 bandBps = self.anchorBandBps;
+        if (_outsideAnchorBand(newSettled_, principal, bandBps)) {
+            revert CrosschainErrors.AttestationOutsideAnchorBand(chainId_, principal, newSettled_, bandBps);
         }
     }
 
-    /// @dev True when `value_` lies strictly outside `+-ATTESTATION_ANCHOR_BAND_BPS` of `anchor_`.
-    function _outsideAnchorBand(uint256 value_, uint256 anchor_) private pure returns (bool) {
+    /// @dev True when `value_` lies strictly outside `+-bandBps_` (the executor's `anchorBandBps`) of `anchor_`.
+    function _outsideAnchorBand(uint256 value_, uint256 anchor_, uint256 bandBps_) private pure returns (bool) {
         uint256 diff = value_ > anchor_ ? value_ - anchor_ : anchor_ - value_;
-        return diff * BPS_DENOMINATOR > anchor_ * CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS;
+        return diff * BPS_DENOMINATOR > anchor_ * bandBps_;
     }
 
     /// @dev Reject a pending proposal and block the chain (fail-closed NAV) until a timelocked unblock.

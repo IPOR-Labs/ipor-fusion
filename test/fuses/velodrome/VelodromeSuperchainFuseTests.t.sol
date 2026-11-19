@@ -160,9 +160,9 @@ contract VelodromeSuperchainFuseTests is Test {
         _plasmaVaultGovernance.addFuses(fuses);
         vm.stopPrank();
 
-        bytes32[] memory substrates = new bytes32[](2);
-        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_WETH);
-        substrates[1] = PlasmaVaultConfigLib.addressToBytes32(_UNDERLYING_TOKEN);
+        // IL-9642: _WETH == _UNDERLYING_TOKEN, and grants reject duplicates, so the asset is granted once.
+        bytes32[] memory substrates = new bytes32[](1);
+        substrates[0] = PlasmaVaultConfigLib.addressToBytes32(_UNDERLYING_TOKEN);
 
         bytes32[] memory aerodromeSubstrates = new bytes32[](2);
 

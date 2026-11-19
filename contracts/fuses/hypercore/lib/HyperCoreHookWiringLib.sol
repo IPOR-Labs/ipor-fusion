@@ -9,9 +9,12 @@ import {PreHooksLib} from "../../../handlers/pre_hooks/PreHooksLib.sol";
 ///         selector runs no HyperCore code, so hook code cannot detect it. The code that runs anyway checks it
 ///         instead: the action fuses, before creating Core exposure.
 /// @dev Runs in the vault context (fuses are delegatecalled), so PreHooksLib reads the vault's own config.
-///      Limitations: a later re-wiring after exposure exists is NOT detected by this check (the unhooked selector
-///      runs no HyperCore code); it only blocks the next exposure-creating action. Reduce-only orders, margin, send,
-///      cancel and builder-fee actions are not gated, so a mis-wired vault can still unwind.
+///      Since IL-9677 the governance setter `setPreHookImplementations` also calls `requireCapitalFlowWired` on a vault
+///      with the market-55 balance fuse, so a later re-wiring that breaks the wiring is refused there. Legacy vaults on
+///      an older PlasmaVaultBase have no such gate and still rely on this fuse-level check.
+///      Limitations: on such a legacy vault a later re-wiring after exposure exists is NOT detected by this check (the
+///      unhooked selector runs no HyperCore code); it only blocks the next exposure-creating action. Reduce-only
+///      orders, margin, send, cancel and builder-fee actions are not gated, so a mis-wired vault can still unwind.
 library HyperCoreHookWiringLib {
     /// @dev Returned by `HyperCoreCapitalFlowPreHook.HYPERCORE_CAPITAL_FLOW_PRE_HOOK_ID()`.
     bytes32 internal constant CAPITAL_FLOW_PRE_HOOK_ID = keccak256("ipor.fusion.hypercore.CapitalFlowPreHook");

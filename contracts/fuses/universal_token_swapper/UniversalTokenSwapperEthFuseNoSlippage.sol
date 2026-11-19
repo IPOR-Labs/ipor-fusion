@@ -21,6 +21,15 @@ struct UniversalTokenSwapperEthEnterDataNoSlippage {
     UniversalTokenSwapperEthDataNoSlippage data;
 }
 
+/// @title UniversalTokenSwapperEthFuseNoSlippage
+/// @notice Swaps tokens through a shared SwapExecutorEth without any slippage or price check
+/// @dev The executor is shared and its execute() is open to any caller, and this fuse has no loss bound at all: do not
+///      grant targets that hand control to untrusted code during a swap, because whatever such code takes from the
+///      executor mid-swap is not limited by a slippage check here.
+///      Such a target also runs third-party code in the middle of the vault's `execute`, when the reentrancy guard does not
+///      cover the vault's share-price views and they can stay too low or too high until the final balance refresh of the
+///      batch (IL-9743). See
+///      "Transient share-price views during `execute` and instant withdrawal (IL-9631, IL-9743)" in contracts/vaults/README.md.
 contract UniversalTokenSwapperEthFuseNoSlippage is IFuseCommon {
     using SafeERC20 for ERC20;
 

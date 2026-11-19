@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {PlasmaVaultCloneLib} from "../test_helpers/PlasmaVaultCloneLib.sol";
 import {Test} from "forge-std/Test.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {
@@ -254,7 +255,8 @@ contract PlasmaVaultManagementFeeMaxPreviewTest is Test {
         /// @dev 1 hour at 2% on 1 000 tokens is ~2.28 tokens, below one share at this inflated rate
         vm.warp(block.timestamp + 1 hours);
         assertGt(plasmaVault.getUnrealizedManagementFee(), 0, "fee accrued");
-        assertEq(plasmaVault.convertToShares(plasmaVault.getUnrealizedManagementFee()), 0, "fee below one share");
+        /// @dev IL-8870: the "below one share" condition is the D-002 formula, recomputed in the test
+        assertEq(_managementFeeShares(), 0, "fee below one share");
 
         uint256 userShares = plasmaVault.balanceOf(user);
         uint256 maxAssets = plasmaVault.maxWithdraw(user);
@@ -385,7 +387,8 @@ contract PlasmaVaultManagementFeeMaxPreviewTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: address(plasmaVault),
                 vaultAssetAmount: type(uint256).max,
-                maxSharesBurned: 0
+                maxSharesBurned: 0,
+                minAssetsOut: 0
             })
         );
 
@@ -585,9 +588,21 @@ contract PlasmaVaultManagementFeeMaxPreviewTest is Test {
         feeManager.setDepositFee(fee_);
     }
 
-    /// @dev Supply once the pending management fee is minted, the way realization does it (Floor on the raw supply)
+    /// @dev IL-8870 (D-002): management fee shares V = floor(min(F, G) * (S + scale) / (G - min(F, G) + 1)),
+    ///      recomputed here from the accrued fee F, the supply S and the gross assets G, not through the vault
+    function _managementFeeShares() internal view returns (uint256) {
+        uint256 gross = plasmaVault.totalAssets();
+        uint256 fee = plasmaVault.getUnrealizedManagementFee();
+        if (fee > gross) {
+            fee = gross;
+        }
+        uint256 scale = 10 ** (plasmaVault.decimals() - asset.decimals());
+        return Math.mulDiv(fee, plasmaVault.totalSupply() + scale, gross - fee + 1);
+    }
+
+    /// @dev Supply once the accrued management fee is minted: S + V (IL-8870, D-002 formula in the test)
     function _supplyAfterManagementFee() internal view returns (uint256) {
-        return plasmaVault.totalSupply() + plasmaVault.convertToShares(plasmaVault.getUnrealizedManagementFee());
+        return plasmaVault.totalSupply() + _managementFeeShares();
     }
 
     function _depositFeeShares(uint256 shares_) internal view returns (uint256) {
@@ -600,13 +615,17 @@ contract PlasmaVaultManagementFeeMaxPreviewTest is Test {
     }
 
     /// @dev maxDeposit as it was before IL-8490, priced against the raw total supply
+    /// @dev IL-8870: convertToAssets is now net of the virtual fee shares, so the old raw price is recomputed
+    ///      here on the raw supply, shares * (G + 1) / (S + scale), to keep the fixture on the old defect
     function _maxDepositBeforeIl8490() internal view returns (uint256) {
         uint256 cap = PlasmaVaultGovernance(address(plasmaVault)).getTotalSupplyCap();
         uint256 supply = plasmaVault.totalSupply();
         if (supply >= cap) {
             return 0;
         }
-        return plasmaVault.convertToAssets(cap - supply - _depositFeeShares(cap - supply));
+        uint256 scale = 10 ** (plasmaVault.decimals() - asset.decimals());
+        return
+            Math.mulDiv(cap - supply - _depositFeeShares(cap - supply), plasmaVault.totalAssets() + 1, supply + scale);
     }
 
     /// @dev maxMint as it was before IL-8490, priced against the raw total supply
@@ -636,11 +655,8 @@ contract PlasmaVaultManagementFeeMaxPreviewTest is Test {
     }
 
     function _assertFeeWouldMintShares() internal view {
-        assertGt(
-            plasmaVault.convertToShares(plasmaVault.getUnrealizedManagementFee()),
-            0,
-            "pending management fee mints shares"
-        );
+        /// @dev IL-8870: the D-002 formula recomputed in the test, not the vault's conversion
+        assertGt(_managementFeeShares(), 0, "pending management fee mints shares");
     }
 
     function _deposit(address user_, uint256 amount_) internal {

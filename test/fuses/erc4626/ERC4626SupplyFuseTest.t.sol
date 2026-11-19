@@ -125,7 +125,12 @@ contract Erc4626SupplyFuseTest is Test {
 
         // when
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2, maxSharesBurned: 0})
+            Erc4626SupplyFuseExitData({
+                vault: marketAddress,
+                vaultAssetAmount: amount / 2,
+                maxSharesBurned: 0,
+                minAssetsOut: 0
+            })
         );
 
         // then
@@ -160,10 +165,11 @@ contract Erc4626SupplyFuseTest is Test {
         uint256 balanceBefore = ERC20(vault.asset()).balanceOf(address(vaultMock));
         uint256 balanceOnMarketBefore = vault.balanceOf(address(vaultMock));
 
-        bytes32[] memory inputs = new bytes32[](3);
+        bytes32[] memory inputs = new bytes32[](4);
         inputs[0] = TypeConversionLib.toBytes32(marketAddress);
         inputs[1] = TypeConversionLib.toBytes32(amount / 2);
         inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
         vaultMock.setInputs(address(fuse), inputs);
 
         // when
@@ -206,10 +212,11 @@ contract Erc4626SupplyFuseTest is Test {
         Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(1);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(fuse));
 
-        bytes32[] memory inputs = new bytes32[](3);
+        bytes32[] memory inputs = new bytes32[](4);
         inputs[0] = TypeConversionLib.toBytes32(marketAddress);
         inputs[1] = TypeConversionLib.toBytes32(uint256(100));
         inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
         vaultMock.setInputs(address(fuse), inputs);
 
         // when
@@ -246,10 +253,11 @@ contract Erc4626SupplyFuseTest is Test {
         Erc4626SupplyFuse fuse = new Erc4626SupplyFuse(1);
         PlasmaVaultMock vaultMock = new PlasmaVaultMock(address(fuse), address(fuse));
 
-        bytes32[] memory inputs = new bytes32[](3);
+        bytes32[] memory inputs = new bytes32[](4);
         inputs[0] = TypeConversionLib.toBytes32(marketAddress);
         inputs[1] = TypeConversionLib.toBytes32(uint256(0));
         inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
         vaultMock.setInputs(address(fuse), inputs);
 
         // when
@@ -300,10 +308,11 @@ contract Erc4626SupplyFuseTest is Test {
 
         // Don't supply anything so balance in vault is 0
 
-        bytes32[] memory inputs = new bytes32[](3);
+        bytes32[] memory inputs = new bytes32[](4);
         inputs[0] = TypeConversionLib.toBytes32(marketAddress);
         inputs[1] = TypeConversionLib.toBytes32(uint256(100)); // Amount > 0 but balance in vault is 0
         inputs[2] = TypeConversionLib.toBytes32(uint256(0));
+        inputs[3] = TypeConversionLib.toBytes32(uint256(0));
         vaultMock.setInputs(address(fuse), inputs);
 
         // when
@@ -373,7 +382,12 @@ contract Erc4626SupplyFuseTest is Test {
 
         // when
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2, maxSharesBurned: 0})
+            Erc4626SupplyFuseExitData({
+                vault: marketAddress,
+                vaultAssetAmount: amount / 2,
+                maxSharesBurned: 0,
+                minAssetsOut: 0
+            })
         );
 
         // then
@@ -520,7 +534,12 @@ contract Erc4626SupplyFuseTest is Test {
             )
         );
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: marketAddress, vaultAssetAmount: amount / 2, maxSharesBurned: 1})
+            Erc4626SupplyFuseExitData({
+                vault: marketAddress,
+                vaultAssetAmount: amount / 2,
+                maxSharesBurned: 1,
+                minAssetsOut: 0
+            })
         );
     }
 
@@ -554,7 +573,8 @@ contract Erc4626SupplyFuseTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: marketAddress,
                 vaultAssetAmount: amount / 2,
-                maxSharesBurned: expectedShares
+                maxSharesBurned: expectedShares,
+                minAssetsOut: 0
             })
         );
 
@@ -636,7 +656,8 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: address(feeVault),
                 vaultAssetAmount: type(uint256).max,
-                maxSharesBurned: 0
+                maxSharesBurned: 0,
+                minAssetsOut: 0
             })
         );
 
@@ -661,7 +682,12 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
 
         // when
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: requestedAmount, maxSharesBurned: 0})
+            Erc4626SupplyFuseExitData({
+                vault: address(feeVault),
+                vaultAssetAmount: requestedAmount,
+                maxSharesBurned: 0,
+                minAssetsOut: 0
+            })
         );
 
         // then
@@ -686,7 +712,12 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
 
         // when
         vaultMock.exitErc4626Supply(
-            Erc4626SupplyFuseExitData({vault: address(feeVault), vaultAssetAmount: partialAmount, maxSharesBurned: 0})
+            Erc4626SupplyFuseExitData({
+                vault: address(feeVault),
+                vaultAssetAmount: partialAmount,
+                maxSharesBurned: 0,
+                minAssetsOut: 0
+            })
         );
 
         // then
@@ -723,7 +754,8 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: address(standardVault),
                 vaultAssetAmount: type(uint256).max,
-                maxSharesBurned: 0
+                maxSharesBurned: 0,
+                minAssetsOut: 0
             })
         );
 
@@ -754,7 +786,8 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: address(feeVault),
                 vaultAssetAmount: type(uint256).max,
-                maxSharesBurned: shares - 1
+                maxSharesBurned: shares - 1,
+                minAssetsOut: 0
             })
         );
     }
@@ -771,7 +804,8 @@ contract Erc4626SupplyFuseWithFeeTest is Test {
             Erc4626SupplyFuseExitData({
                 vault: address(feeVault),
                 vaultAssetAmount: type(uint256).max,
-                maxSharesBurned: shares
+                maxSharesBurned: shares,
+                minAssetsOut: 0
             })
         );
 

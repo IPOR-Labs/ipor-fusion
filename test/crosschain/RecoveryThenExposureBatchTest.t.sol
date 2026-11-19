@@ -410,6 +410,7 @@ contract CcipRecoveryThenExposureBatchTest is Test {
                 rescueDelay: 3 days,
                 balanceStalenessMax: 1 hours,
                 bigChangeBps: 2_000,
+                anchorBandBps: 2_000,
                 minUpdateInterval: 1 minutes,
                 transferStalenessMax: 1 days
             })

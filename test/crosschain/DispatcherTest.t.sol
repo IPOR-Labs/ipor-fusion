@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {IOAppCore} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppCore.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import {EnforcedOptionParam} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppOptionsType3.sol";
 
@@ -23,7 +24,8 @@ import {
     ReturnAssetsRequest,
     ReturnRejected,
     RetryCommand,
-    CancelCommand
+    CancelCommand,
+    SweepFloor
 } from "../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CrosschainErrors} from "../../contracts/crosschain/lib/CrosschainErrors.sol";
 import {ContextManager, ExecuteData} from "../../contracts/managers/context/ContextManager.sol";
@@ -72,6 +74,11 @@ contract DispatcherTest is Test {
     ///      -> `pendingShares`, now emitting the outstanding request read back from the manager, never a
     ///      delta). The topic is unchanged (`SharesRequested(address,uint256)` hashes on types, not names).
     event SharesRequested(address vault, uint256 pendingShares, uint256 feeShares);
+
+    /// @dev Local re-declarations of the business-action events (no indexed params, so the whole payload is data).
+    event DepositExecuted(address vault, uint256 assetSpentSD, uint256 sharesDelta);
+    event RedeemExecuted(address vault, uint256 sharesRedeemed, uint256 assetsDeltaSD);
+    event RedeemedFromRequest(address vault, uint256 sharesRedeemed, uint256 assetsDeltaSD);
 
     MockLzEndpoint internal endpoint;
     MockStargatePool internal pool;
@@ -291,7 +298,8 @@ contract DispatcherTest is Test {
                     sequence: sequence_,
                     newConfigEpoch: newEpoch_,
                     minExecutionGas: DEFAULT_COMMAND_BUDGET,
-                    vaults: vaults_
+                    vaults: vaults_,
+                    floors: new SweepFloor[](0)
                 })
             )
         );
@@ -876,6 +884,54 @@ contract DispatcherTest is Test {
         assertEq(dispatcher.trackedIdle(), idleBefore, "no assets credited");
     }
 
+    /// @dev IL-9531: shares the dispatcher redeems directly stop backing its outstanding request, also after a later
+    ///      deposit. REDEEM_FROM_REQUEST above the backed part NACKs and moves nothing; the backed part still exits
+    ///      (a new REQUEST_SHARES would restore the full request).
+    function testShouldNackRedeemFromRequestAboveSharesHeldSinceTheRequest() public {
+        (WithdrawManager wm, MockRemotePlasmaVault rv) = _realWm(0);
+        _allowVault(address(rv));
+        _compose(keccak256("t1"), 100e6);
+        _deposit(keccak256("dep"), 1, address(rv), 50e6, 0);
+        uint256 requestTs = block.timestamp;
+        _command(
+            keccak256("req"),
+            2,
+            uint8(BusinessAction.REQUEST_SHARES),
+            CrosschainMessages.encodeRequestSharesAction(address(wm), address(rv), 20e6, type(uint256).max)
+        );
+        _command(
+            keccak256("red"),
+            3,
+            uint8(BusinessAction.REDEEM),
+            CrosschainMessages.encodeRedeemAction(address(rv), 40e6, 0)
+        );
+        assertEq(rv.getRequestCap(address(dispatcher)), 10e6, "direct redeem lowered the backed part");
+        _deposit(keccak256("dep2"), 4, address(rv), 30e6, 0);
+        assertEq(rv.getRequestCap(address(dispatcher)), 10e6, "a later deposit does not raise it");
+
+        vm.warp(requestTs + 2);
+        vm.prank(address(dispatcher));
+        wm.releaseFunds(requestTs + 1, 20e6);
+
+        _command(
+            keccak256("rfr"),
+            5,
+            uint8(BusinessAction.REDEEM_FROM_REQUEST),
+            CrosschainMessages.encodeRedeemFromRequestAction(address(wm), address(rv), 20e6, 0, address(dispatcher))
+        );
+        assertEq(
+            uint8(dispatcher.commandStatus(keccak256("rfr"))),
+            uint8(CommandStatus.FAILED),
+            "above the backed part NACKed"
+        );
+        assertEq(wm.requestInfo(address(dispatcher)).shares, 20e6, "request unchanged");
+        assertEq(rv.balanceOf(address(dispatcher)), 40e6, "share balance unchanged");
+
+        vm.prank(address(dispatcher));
+        rv.redeemFromRequest(10e6, address(dispatcher), address(dispatcher));
+        assertEq(wm.requestInfo(address(dispatcher)).shares, 10e6, "the backed part exited");
+    }
+
     // ---------------------------------------------------------------------
     // IL-8117: the missing `isTrackedVault` guard on `_redeemFromRequest` (G1), and the self-attested
     // withdraw-manager check on `_requestShares` / `_redeemFromRequest` (G2, G3), replaced by an
@@ -1125,7 +1181,8 @@ contract DispatcherTest is Test {
                 sequence: 0,
                 newConfigEpoch: 1,
                 minExecutionGas: DEFAULT_COMMAND_BUDGET,
-                vaults: vaults
+                vaults: vaults,
+                floors: new SweepFloor[](0)
             })
         );
         vm.expectRevert(abi.encodeWithSelector(IOAppCore.NoPeer.selector, uint32(30999)));
@@ -1145,7 +1202,8 @@ contract DispatcherTest is Test {
                 sequence: 0,
                 newConfigEpoch: 1,
                 minExecutionGas: DEFAULT_COMMAND_BUDGET,
-                vaults: vaults
+                vaults: vaults,
+                floors: new SweepFloor[](0)
             })
         );
         vm.expectRevert(
@@ -1351,9 +1409,10 @@ contract DispatcherTest is Test {
     /// @notice A vault untracked at schedule time that becomes tracked during the timelock is rejected at
     ///         execute time.
     function testShouldBlockRescueOnVaultTrackedAfterSchedule() public {
-        bytes memory cd = abi.encodeCall(IERC20.approve, (admin, type(uint256).max));
+        // A recovery `redeem` (an allowed shape, IL-9654) on a vault that is neither allowlisted nor tracked: accepted.
+        bytes memory cd = abi.encodeCall(IERC4626.redeem, (1e6, admin, address(dispatcher)));
         vm.prank(admin);
-        uint256 id = dispatcher.scheduleRescue(address(vault), 0, cd); // neither allowlisted nor tracked: accepted
+        uint256 id = dispatcher.scheduleRescue(address(vault), 0, cd);
         _allowVault(address(vault));
         _compose(keccak256("t1"), 100e6);
         _deposit(keccak256("dep"), 1, address(vault), 50e6, 0);
@@ -1383,22 +1442,31 @@ contract DispatcherTest is Test {
         assertEq(vault.balanceOf(address(dispatcher)), 0, "shares redeemed");
         assertEq(dispatcher.trackedIdle(), idleBefore + 50e6, "redeemed assets credited to idle");
 
-        bytes memory cd = abi.encodeCall(IERC20.approve, (admin, type(uint256).max));
+        // No longer covered by the vault ban (neither allowlisted nor tracked): a recovery shape is accepted, but a
+        // grant is refused by the shape fence in every allowlist state (IL-9654, closes the IL-8844 residual).
+        bytes memory grant = abi.encodeCall(IERC20.approve, (admin, type(uint256).max));
         vm.prank(admin);
-        dispatcher.scheduleRescue(address(vault), 0, cd); // no longer fenced: neither allowlisted nor tracked
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CrosschainErrors.RescueCallShapeNotAllowed.selector,
+                address(vault),
+                IERC20.approve.selector
+            )
+        );
+        dispatcher.scheduleRescue(address(vault), 0, grant);
+        bytes memory cd = abi.encodeCall(IERC4626.redeem, (1e6, admin, address(dispatcher)));
+        vm.prank(admin);
+        dispatcher.scheduleRescue(address(vault), 0, cd);
     }
 
     /// @notice An indirect target spending a leftover share allowance passes the target fence; the share
     ///         snapshot catches the decrease.
     function testShouldBlockRescueThatReducesTrackedShares() public {
         _trackVaultWithShares();
-        MockSharePuller puller = new MockSharePuller();
+        MockSharePuller puller = new MockSharePuller(IERC20(address(vault)));
         vm.prank(address(dispatcher));
         vault.approve(address(puller), type(uint256).max);
-        bytes memory cd = abi.encodeCall(
-            MockSharePuller.pull,
-            (IERC20(address(vault)), address(dispatcher), admin, 10e6)
-        );
+        bytes memory cd = abi.encodeCall(MockSharePuller.transfer, (admin, 10e6));
 
         vm.prank(admin);
         uint256 id = dispatcher.scheduleRescue(address(puller), 0, cd);
@@ -1418,10 +1486,10 @@ contract DispatcherTest is Test {
 
     function testShouldStillAllowRescueLeavingTrackedSharesUnchanged() public {
         _trackVaultWithShares();
-        MockSharePuller puller = new MockSharePuller();
+        MockSharePuller puller = new MockSharePuller(IERC20(address(vault)));
         MockERC20 other = new MockERC20("Other", "OTH", 18);
         other.mint(address(dispatcher), 5e18);
-        bytes memory noopCd = abi.encodeCall(MockSharePuller.noop, ());
+        bytes memory noopCd = abi.encodeCall(MockSharePuller.transfer, (admin, 0));
         bytes memory otherCd = abi.encodeCall(IERC20.transfer, (admin, 5e18));
 
         vm.startPrank(admin);
@@ -1476,9 +1544,10 @@ contract DispatcherTest is Test {
 
     /// @notice A vault allowlisted AFTER schedule is refused at execute.
     function testShouldBlockRescueOnVaultAllowlistedAfterSchedule() public {
-        bytes memory cd = abi.encodeCall(IERC20.approve, (admin, type(uint256).max));
+        // A recovery `redeem` (an allowed shape, IL-9654) on a vault that is not allowlisted yet: accepted.
+        bytes memory cd = abi.encodeCall(IERC4626.redeem, (1e6, admin, address(dispatcher)));
         vm.prank(admin);
-        uint256 id = dispatcher.scheduleRescue(address(vault), 0, cd); // not allowlisted yet: accepted
+        uint256 id = dispatcher.scheduleRescue(address(vault), 0, cd);
         _allowVault(address(vault));
         assertFalse(dispatcher.isTrackedVault(address(vault)), "allowlisted but untracked");
 
@@ -1502,8 +1571,8 @@ contract DispatcherTest is Test {
         }
         assertEq(dispatcher.getTrackedVaults().length, cap, "cap reached");
 
-        MockSharePuller puller = new MockSharePuller();
-        bytes memory cd = abi.encodeCall(MockSharePuller.noop, ());
+        MockSharePuller puller = new MockSharePuller(IERC20(vaults[0]));
+        bytes memory cd = abi.encodeCall(MockSharePuller.transfer, (admin, 0));
         vm.prank(admin);
         uint256 id = dispatcher.scheduleRescue(address(puller), 0, cd);
         vm.warp(block.timestamp + RESCUE_DELAY);
@@ -1636,7 +1705,8 @@ contract DispatcherTest is Test {
             sequence: 1,
             newConfigEpoch: epochBefore + 1,
             minExecutionGas: DEFAULT_COMMAND_BUDGET,
-            vaults: vaults
+            vaults: vaults,
+            floors: new SweepFloor[](0)
         });
         vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.OnlySelf.selector, address(this)));
         dispatcher.runBusinessSelf(uv.commandId, uint8(MsgType.UPDATE_VAULTS), abi.encode(uv));
@@ -1644,5 +1714,140 @@ contract DispatcherTest is Test {
         assertEq(dispatcher.trackedIdle(), 100e6, "tracked idle untouched");
         assertTrue(dispatcher.isAllowedVault(address(vault)), "allowlist unchanged");
         assertFalse(dispatcher.isAllowedVault(address(0xBAD2)), "stranger vault not allowed");
+    }
+
+    // ---------------------------------------------------------------------
+    // IL-9590 CR: guards and events of the size-round moves, on the real dispatcher
+    // ---------------------------------------------------------------------
+
+    /// @dev Negative: `OnlySelf` check removed from `sweepRedeemSelf` -> the foreign call reaches `redeemAtLeast`
+    ///      and reverts differently (`SweepBelowMinimum`/vault error) -> the exact-selector expectRevert fails.
+    function testShouldRejectSweepRedeemSelfFromForeignCallerWithOnlySelf() public {
+        address stranger = address(0xBAD);
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.OnlySelf.selector, stranger));
+        vm.prank(stranger);
+        dispatcher.sweepRedeemSelf(address(vault), 1, 1);
+    }
+
+    /// @dev Negative: the cap check removed from `StargateDispatcherLib._deposit` -> the 33rd vault is tracked and the
+    ///      deposit SUCCEEDS -> status, tracked length and trackedIdle assertions fail.
+    ///      The 33rd tracked vault is only reachable through a position retained below a sweep floor: the allowlist
+    ///      holds 32 vaults, one of them leaves with a floor its sweep cannot meet and stays tracked, off the allowlist.
+    function testShouldNackDepositIntoThirtyThirdTrackedVaultWithVaultsCapReached() public {
+        uint256 cap = 32;
+        address[] memory all = new address[](cap);
+        for (uint256 i; i < cap; ++i) {
+            all[i] = address(new MockRemoteVault(IERC20(address(usdc)), "V", "V"));
+        }
+        _updateVaults(keccak256("uv"), 0, 1, all);
+        _compose(keccak256("t1"), 100e6);
+        for (uint256 i; i < cap; ++i) {
+            _deposit(keccak256(abi.encode("dep", i)), uint64(i + 1), all[i], 1e6, 0);
+        }
+        assertEq(dispatcher.getTrackedVaults().length, cap, "32 tracked");
+
+        // Replace allowlist[0] with a new vault; the removed vault is swept under a floor of 1000e6 SD it cannot meet
+        // (it holds 1e6), so the sweep is rolled back and the vault stays tracked.
+        MockRemoteVault extra = new MockRemoteVault(IERC20(address(usdc)), "X", "X");
+        address[] memory next = new address[](cap);
+        next[0] = address(extra);
+        for (uint256 i = 1; i < cap; ++i) {
+            next[i] = all[i];
+        }
+        SweepFloor[] memory floors = new SweepFloor[](1);
+        floors[0] = SweepFloor({vault: all[0], minAssets: 1000e6});
+        _deliver(
+            CrosschainMessages.encodeUpdateVaults(
+                UpdateVaults({
+                    commandId: keccak256("uv2"),
+                    sequence: dispatcher.nextCommandSequence(),
+                    newConfigEpoch: dispatcher.commandConfigEpoch() + 1,
+                    minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                    vaults: next,
+                    floors: floors
+                })
+            )
+        );
+        assertEq(dispatcher.getTrackedVaults().length, cap, "retained vault keeps its slot");
+        assertTrue(dispatcher.isTrackedVault(all[0]), "retained vault tracked");
+        assertFalse(dispatcher.isAllowedVault(all[0]), "retained vault off the allowlist");
+        assertTrue(dispatcher.isAllowedVault(address(extra)), "33rd vault allowlisted");
+
+        uint256 idleBefore = dispatcher.trackedIdle();
+        uint64 sequenceBefore = dispatcher.nextCommandSequence();
+        bytes32 id = keccak256("dep33");
+        _deposit(id, sequenceBefore, address(extra), 1e6, 0);
+
+        assertEq(uint8(dispatcher.commandStatus(id)), uint8(CommandStatus.FAILED), "deposit NACKed");
+        assertEq(dispatcher.trackedIdle(), idleBefore, "trackedIdle unchanged");
+        assertEq(dispatcher.getTrackedVaults().length, cap, "still 32 tracked");
+        assertFalse(dispatcher.isTrackedVault(address(extra)), "33rd vault not tracked");
+        assertEq(extra.balanceOf(address(dispatcher)), 0, "deposit rolled back");
+
+        // The exact reason: the self-call frame reverts VaultsCapReached(32) (retry re-runs it and NACKs again).
+        bytes memory data = abi.encode(
+            Command({
+                commandId: id,
+                sequence: sequenceBefore,
+                commandConfigEpoch: dispatcher.commandConfigEpoch(),
+                action: uint8(BusinessAction.DEPOSIT),
+                minExecutionGas: DEFAULT_COMMAND_BUDGET,
+                actionData: CrosschainMessages.encodeDepositAction(address(extra), 1e6, 0)
+            })
+        );
+        vm.expectRevert(abi.encodeWithSelector(CrosschainErrors.VaultsCapReached.selector, cap));
+        vm.prank(address(dispatcher));
+        dispatcher.runBusinessSelf(id, uint8(MsgType.COMMAND), data);
+    }
+
+    /// @dev Negative: `emit DepositExecuted` removed from the lib, or moved/renamed -> no matching log -> fails.
+    function testShouldEmitDepositExecutedWithExactArgs() public {
+        _allowVault(address(vault));
+        _compose(keccak256("t1"), 100e6);
+
+        vm.expectEmit(false, false, false, true, address(dispatcher));
+        emit DepositExecuted(address(vault), 50e6, 50e6);
+        _deposit(keccak256("dep"), 1, address(vault), 50e6, 0);
+    }
+
+    /// @dev Negative: `emit RedeemExecuted` removed from the lib -> no matching log -> fails.
+    function testShouldEmitRedeemExecutedWithExactArgs() public {
+        _allowVault(address(vault));
+        _compose(keccak256("t1"), 100e6);
+        _deposit(keccak256("dep"), 1, address(vault), 50e6, 0);
+
+        vm.expectEmit(false, false, false, true, address(dispatcher));
+        emit RedeemExecuted(address(vault), 20e6, 20e6);
+        _command(
+            keccak256("red"),
+            2,
+            uint8(BusinessAction.REDEEM),
+            CrosschainMessages.encodeRedeemAction(address(vault), 20e6, 0)
+        );
+        assertEq(uint8(dispatcher.commandStatus(keccak256("red"))), uint8(CommandStatus.SUCCEEDED), "redeem ran");
+    }
+
+    /// @dev Negative: `emit RedeemedFromRequest` removed -> no matching log -> fails.
+    function testShouldEmitRedeemedFromRequestWithExactArgs() public {
+        (MockWithdrawManager wm, MockRemotePlasmaVault rv) = _mockWm();
+        _allowVault(address(rv));
+        _compose(keccak256("t1"), 100e6);
+        _deposit(keccak256("dep"), 1, address(rv), 50e6, 0);
+        _command(
+            keccak256("req"),
+            2,
+            uint8(BusinessAction.REQUEST_SHARES),
+            CrosschainMessages.encodeRequestSharesAction(address(wm), address(rv), 10e6, type(uint256).max)
+        );
+
+        vm.expectEmit(false, false, false, true, address(dispatcher));
+        emit RedeemedFromRequest(address(rv), 10e6, 10e6);
+        _command(
+            keccak256("rfr"),
+            3,
+            uint8(BusinessAction.REDEEM_FROM_REQUEST),
+            CrosschainMessages.encodeRedeemFromRequestAction(address(wm), address(rv), 10e6, 0, address(dispatcher))
+        );
+        assertEq(uint8(dispatcher.commandStatus(keccak256("rfr"))), uint8(CommandStatus.SUCCEEDED), "ran");
     }
 }

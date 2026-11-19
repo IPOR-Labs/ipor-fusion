@@ -650,7 +650,9 @@ library StargateExecutorAccountingLib {
     ///      future, not older than `STALENESS_MAX`); it becomes `lastApprovedObservedAt`. NAV is stale right
     ///      after execute exactly when `executeTime - observedRemoteTimestamp_ > STALENESS_MAX` (`NavSettledStale`):
     ///      an observation older than `STALENESS_MAX - RESCUE_DELAY` at schedule is sufficient but not necessary,
-    ///      since a late execution also ages it, and every force-set is stale when `RESCUE_DELAY >= STALENESS_MAX`.
+    ///      since a late execution also ages it, and every non-zero force-set is stale when `RESCUE_DELAY >= STALENESS_MAX`.
+    ///      The freshness gate runs only for a non-zero settled bucket, so a force-set to exactly zero is never
+    ///      stale: it reopens NAV at execute under any settings, and the vault cache still holds the pre-block value.
     ///      An ordinary attestation restores freshness; the next ordinary observation must be at least this
     ///      timestamp (`ObservationOlderThanApproved`, IL-8648).
     /// @dev IL-8648 R1: the force-set must not move that clock backwards either. Unless `allowOlderThanApproved_`
@@ -847,6 +849,9 @@ library StargateExecutorAccountingLib {
             }
             uint64 newSequence = uint64(uint48(packed));
             uint64 newEpoch = uint64(uint48(packed >> 48));
+            // IL-9590 (D-074, reopens D-052): no epoch-0 guard. Epoch 0 can carry sequenced commands on Stargate (a
+            // FAILED first `UPDATE_VAULTS` rolls the epoch back and its CANCEL consumes sequence 0, giving
+            // (sequence 1, epoch 0)), so any (epoch, sequence) pair is a valid realign target.
             self.nextSequenceToSend[realignChainId] = newSequence;
             self.chainConfigEpoch[realignChainId] = newEpoch;
             _bumpAccountingEpoch(self, realignChainId);
@@ -1647,15 +1652,20 @@ library StargateExecutorAccountingLib {
     ///      anchor is at most `max(netPrincipal, the pre-recall anchor)`, up to one shared-decimal unit of
     ///      `Ceil` rounding per credit (a cycle costs two bridge round trips and an attestation to gain one
     ///      unit, so it is not economically exploitable). The floor keeps `settled` at or
-    ///      below the band ceiling (`settled <= 1.2 * anchor`); it is the same minimum raise `_applyReturnDebit`
+    ///      below the band ceiling (`settled <= (1 + b) * anchor`, 1.2 at the reference band); it is the same minimum raise `_applyReturnDebit`
     ///      uses. It does NOT bound `settled` from below (IL-8792): on a `(settled 0, anchor R, net N > 0)`
     ///      pair a top-up `c` gives `(c, min(R, N) + c)`, which is below the band iff
     ///      `c < 4 * min(R, N)`; the windows were disjoint (pre-fix freeze) iff
-    ///      `c * (1 + bigChangeBps / 10_000) < 0.8 * (min(R, N) + c)`, e.g. `c < 8/3 * min(R, N)` at 10%.
+    ///      `c * (1 + bigChangeBps / 10_000) < 0.8 * (min(R, N) + c)`, e.g. `c < 8/3 * min(R, N)` at 10% (never at `anchorBandBps >= 10_000`).
     ///      `approve` then treats that `settled` as no baseline (band alone, like zero, IL-8606), so an
     ///      approvable value always exists.
+    ///      IL-9625: a zero credit (a zero delivery) returns before any write or event. It adds no value, so the
+    ///      pair it finds stays as it is; the formula would cap the anchor at `netPrincipal` and wipe the residual
+    ///      anchor of a full recall (`settled 0, anchor R, net 0`, IL-8606), leaving R unattestable without
+    ///      `FORCE_SET_SETTLED`. A credit above zero is unchanged (the IL-8578 cap stays).
     ///      Inbound handler: no revert.
     function _creditAnchor(StargateExecutorState storage self, uint256 chainId_, uint256 credited_) private {
+        if (credited_ == 0) return;
         uint256 net = self.netPrincipal[chainId_] + credited_;
         self.netPrincipal[chainId_] = net;
         uint256 anchor = self.anchorPrincipal[chainId_] + credited_;
@@ -1663,7 +1673,7 @@ library StargateExecutorAccountingLib {
         uint256 floor_ = Math.mulDiv(
             self.settledRemoteBalance[chainId_],
             10_000,
-            10_000 + CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS,
+            10_000 + self.anchorBandBps,
             Math.Rounding.Ceil
         );
         if (anchor < floor_) anchor = floor_;
@@ -1716,13 +1726,13 @@ library StargateExecutorAccountingLib {
             // the band by the MINIMUM raise — the smallest anchor for which `settledAfter` sits inside it,
             // `ceil(settledAfter * 10_000 / (10_000 + bandBps))`. NOT `settledAfter` itself: that adopts
             // an ATTESTED figure as principal and lets a 1-unit recall from the top of the band carry the
-            // anchor to ~1.2x, compounding into the ratchet this ticket closes. The minimum
+            // anchor to ~(1 + b)x (1.2x at the reference band), compounding into the ratchet this ticket closes. The minimum
             // raise cannot: the pre-debit pair is band-legal, so `settledAfter <= settled <= principal *
             // (10_000 + bandBps) / 10_000` and the raised value is <= the pre-debit `principal` — the
             // anchor is non-increasing under debits (the residual rule below is capped to keep it so). It also
             // subsumes a floor at 1: with `remaining == 0` and `settledAfter != 0` the raise yields at least 1.
             // Inbound handler: clamp, never revert.
-            uint256 bandBps = CrosschainConstants.ATTESTATION_ANCHOR_BAND_BPS;
+            uint256 bandBps = self.anchorBandBps;
             if (settledAfter > remaining && (settledAfter - remaining) * 10_000 > remaining * bandBps) {
                 remaining = Math.mulDiv(settledAfter, 10_000, 10_000 + bandBps, Math.Rounding.Ceil);
             }

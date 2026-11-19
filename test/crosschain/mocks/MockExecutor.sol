@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Command} from "../../../contracts/crosschain/lib/CrosschainMessages.sol";
+import {Command, SweepFloor} from "../../../contracts/crosschain/lib/CrosschainMessages.sol";
 import {CrosschainErrors} from "../../../contracts/crosschain/lib/CrosschainErrors.sol";
 
 /// @title MockExecutor
@@ -175,6 +175,21 @@ contract MockExecutor {
 
     function updatePlasmaVaults(uint256 dstChainId_, address[] calldata) external {
         lastUpdateChainId = dstChainId_;
+    }
+
+    /// @dev IL-9629: records the floored update (chain, the number of floors and the first one).
+    uint256 public lastFlooredUpdateChainId;
+    uint256 public lastFloorCount;
+    SweepFloor public lastFirstFloor;
+
+    function updatePlasmaVaultsWithSweepFloors(
+        uint256 dstChainId_,
+        address[] calldata,
+        SweepFloor[] calldata floors_
+    ) external {
+        lastFlooredUpdateChainId = dstChainId_;
+        lastFloorCount = floors_.length;
+        if (floors_.length != 0) lastFirstFloor = floors_[0];
     }
 
     function sendCommandToDispatcher(uint256 dstChainId_, Command calldata) external {

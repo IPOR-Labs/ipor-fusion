@@ -454,6 +454,9 @@ library FusesLib {
      *
      * @param marketId_ The unique identifier of the market
      * @param fuse_ The address of the balance fuse contract to remove
+     * @dev Does not touch the instant withdrawal list or the dependency graphs. Remove the market from them first:
+     * a graph that still names the market makes each refresh that expands to it revert MarketWithoutBalanceFuse
+     * (IL-8312).
      * @custom:events Emits BalanceFuseRemoved when successful
      *
      * Security Considerations:

@@ -8,7 +8,8 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 struct WithdrawRequest {
     /// @dev The requested withdrawal shares
     uint128 shares;
-    /// @dev Timestamp when the withdraw window expires (requestTimeStamp + withdrawWindowInSeconds)
+    /// @dev Timestamp when the withdraw window expires (requestTimeStamp + withdrawWindowInSeconds). The request time
+    /// is the filing time, or the end of the requester's redemption lock when it was still locked at filing (IL-9531)
     uint32 endWithdrawWindowTimestamp;
 }
 
@@ -37,6 +38,9 @@ struct WithdrawFee {
 struct PlasmaVaultAddress {
     /// @dev The address of the plasma vault
     address plasmaVault;
+    /// @dev Whether the vault keeps request caps (PlasmaVault.getRequestCap, IL-9531). False for a vault deployed before
+    /// IL-9531 that got this WithdrawManager later (UpdateWithdrawManagerMaintenanceFuse). Same slot as the address
+    bool vaultKeepsRequestCaps;
 }
 
 /// @notice Tracks the timestamp of the last funds release
@@ -70,6 +74,10 @@ library WithdrawManagerStorageLib {
 
     /// @notice Thrown when attempting to set withdraw window length to zero
     error WithdrawWindowLengthCannotBeZero();
+    /// @notice Thrown when attempting to set withdraw window length above MAX_WITHDRAW_WINDOW
+    /// @param withdrawWindowLength Requested length of the withdraw window in seconds
+    /// @param maxWithdrawWindow Maximum allowed length of the withdraw window in seconds
+    error WithdrawWindowLengthAboveMaximum(uint256 withdrawWindowLength, uint256 maxWithdrawWindow);
     /// @notice Thrown when attempting to release funds with an invalid amount
     error WithdrawManagerInvalidSharesToRelease(uint256 amount_);
 
@@ -88,8 +96,16 @@ library WithdrawManagerStorageLib {
     /// @param plasmaVaultAddress New plasma vault address
     event PlasmaVaultAddressUpdated(address plasmaVaultAddress);
 
+    /// @notice Emitted with every plasma vault address update: whether that vault keeps request caps (IL-9531)
+    /// @param vaultKeepsRequestCaps False for a vault deployed before IL-9531 (no shares-held-since-request check)
+    event VaultRequestCapsSupportUpdated(bool vaultKeepsRequestCaps);
+
     /// @notice Thrown when attempting to release funds with an invalid timestamp
     error WithdrawManagerInvalidTimestamp(uint256 lastReleaseFundsTimestamp, uint256 newReleaseFundsTimestamp);
+
+    /// @notice Maximum allowed length of the withdraw window (IL-9675)
+    /// @dev A longer window is a configuration mistake that would otherwise surface later, as a revert in every request
+    uint256 internal constant MAX_WITHDRAW_WINDOW = 365 days;
 
     // Storage slot constants
     /// @dev Storage slot for withdraw window configuration
@@ -139,10 +155,13 @@ library WithdrawManagerStorageLib {
 
     /// @notice Updates the length of the withdraw window
     /// @param withdrawWindowLength_ New length of the withdraw window in seconds
-    /// @dev Reverts if the new window length is zero
+    /// @dev Reverts if the new window length is zero or greater than MAX_WITHDRAW_WINDOW (365 days inclusive)
     function updateWithdrawWindowLength(uint256 withdrawWindowLength_) internal {
         if (withdrawWindowLength_ == 0) {
             revert WithdrawWindowLengthCannotBeZero();
+        }
+        if (withdrawWindowLength_ > MAX_WITHDRAW_WINDOW) {
+            revert WithdrawWindowLengthAboveMaximum(withdrawWindowLength_, MAX_WITHDRAW_WINDOW);
         }
 
         WithdrawWindow storage withdrawWindow = _getWithdrawWindowLength();
@@ -167,12 +186,15 @@ library WithdrawManagerStorageLib {
     /// @notice Creates or updates a withdraw request for an account
     /// @param requester_ Address creating the withdraw request
     /// @param shares_ Shares to withdraw
-    /// @dev Sets endWithdrawWindowTimestamp based on current time plus window length
-    function updateWithdrawRequest(address requester_, uint256 shares_) internal {
+    /// @param lockEndTimestamp_ End of the requester's redemption lock at filing time, 0 if not locked (IL-9531)
+    /// @dev Sets endWithdrawWindowTimestamp to the request time plus window length. The request time is the current
+    /// time, or the lock end when it is later: a request filed during the lock starts when the lock ends (IL-9531)
+    function updateWithdrawRequest(address requester_, uint256 shares_, uint256 lockEndTimestamp_) internal {
         uint256 withdrawWindowLength = getWithdrawWindowInSeconds();
+        uint256 requestTimestamp = lockEndTimestamp_ > block.timestamp ? lockEndTimestamp_ : block.timestamp;
         WithdrawRequest memory request = WithdrawRequest({
             shares: shares_.toUint128(),
-            endWithdrawWindowTimestamp: block.timestamp.toUint32() + withdrawWindowLength.toUint32()
+            endWithdrawWindowTimestamp: requestTimestamp.toUint32() + withdrawWindowLength.toUint32()
         });
 
         _getWithdrawRequests().requests[requester_] = request;
@@ -242,19 +264,27 @@ library WithdrawManagerStorageLib {
         }
     }
 
-    function setPlasmaVaultAddress(address plasmaVaultAddress_) internal {
+    function setPlasmaVaultAddress(address plasmaVaultAddress_, bool vaultKeepsRequestCaps_) internal {
         if (plasmaVaultAddress_ == address(0)) {
             revert PlasmaVaultAddressCannotBeZero();
         }
 
         PlasmaVaultAddress storage plasmaVaultAddress = _getPlasmaVaultAddress();
         plasmaVaultAddress.plasmaVault = plasmaVaultAddress_;
+        plasmaVaultAddress.vaultKeepsRequestCaps = vaultKeepsRequestCaps_;
 
         emit PlasmaVaultAddressUpdated(plasmaVaultAddress_);
+        emit VaultRequestCapsSupportUpdated(vaultKeepsRequestCaps_);
     }
 
     function getPlasmaVaultAddress() internal view returns (address) {
         return _getPlasmaVaultAddress().plasmaVault;
+    }
+
+    /// @notice The plasma vault address and whether that vault keeps request caps, in one storage read (IL-9531)
+    function getPlasmaVault() internal view returns (address plasmaVault, bool vaultKeepsRequestCaps) {
+        PlasmaVaultAddress storage plasmaVaultAddress = _getPlasmaVaultAddress();
+        return (plasmaVaultAddress.plasmaVault, plasmaVaultAddress.vaultKeepsRequestCaps);
     }
 
     function _getRequestFee() private pure returns (RequestFee storage requestFee) {

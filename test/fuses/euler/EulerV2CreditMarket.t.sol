@@ -29,6 +29,7 @@ import {IporFusionAccessManager} from "../../../contracts/managers/access/IporFu
 import {FeeAccount} from "../../../contracts/managers/fee/FeeAccount.sol";
 import {IBorrowing} from "../../../contracts/fuses/euler/ext/IBorrowing.sol";
 import {FeeConfigHelper} from "../../test_helpers/FeeConfigHelper.sol";
+import {TransientStorageSetterFuse} from "../../test_helpers/TransientStorageSetterFuse.sol";
 import {IporFusionAccessManagerInitializerLibV1, InitializationData, DataForInitialization, PlasmaVaultAddress} from "../../../contracts/vaults/initializers/IporFusionAccessManagerInitializerLibV1.sol";
 
 import {IWETH9} from "./IWETH9.sol";
@@ -89,6 +90,8 @@ contract EulerCreditMarketTest is Test {
 
     uint256 private _errorDelta = 1e3;
 
+    event EulerV2SupplyEnterFuse(address version, address eulerVault, uint256 mintedShares, address subAccount);
+
     address private _plasmaVault;
     address private _priceOracle;
     address private _accessManager;
@@ -98,6 +101,7 @@ contract EulerCreditMarketTest is Test {
     address private _eulerControllerFuse;
     address private _eulerBorrowFuse;
     address private _transientStorageSetInputsFuse;
+    address private _transientStorageSetterFuse;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETHEREUM_PROVIDER_URL"), 20990348);
@@ -185,13 +189,15 @@ contract EulerCreditMarketTest is Test {
         _eulerControllerFuse = address(new EulerV2ControllerFuse(IporFusionMarkets.EULER_V2, _EVC));
         _eulerBorrowFuse = address(new EulerV2BorrowFuse(IporFusionMarkets.EULER_V2, _EVC));
         _transientStorageSetInputsFuse = address(new TransientStorageSetInputsFuse());
+        _transientStorageSetterFuse = address(new TransientStorageSetterFuse());
 
-        fuses = new address[](5);
+        fuses = new address[](6);
         fuses[0] = address(_eulerSupplyFuse);
         fuses[1] = address(_eulerCollateralFuse);
         fuses[2] = address(_eulerControllerFuse);
         fuses[3] = address(_eulerBorrowFuse);
         fuses[4] = address(_transientStorageSetInputsFuse);
+        fuses[5] = address(_transientStorageSetterFuse);
     }
 
     function _setupBalanceFuses() private returns (MarketBalanceFuseConfig[] memory balanceFuses_) {
@@ -571,86 +577,70 @@ contract EulerCreditMarketTest is Test {
         uint256 wethDepositAmount = 1e18;
         uint256 usdtDepositAmount = 100e6;
 
-        // Setup transient storage inputs for all 5 vaults
-        address[] memory fusesArray = new address[](5);
-        fusesArray[0] = _eulerSupplyFuse;
-        fusesArray[1] = _eulerSupplyFuse;
-        fusesArray[2] = _eulerSupplyFuse;
-        fusesArray[3] = _eulerSupplyFuse;
-        fusesArray[4] = _eulerSupplyFuse;
+        address[5] memory eulerVaults = [
+            EULER_VAULT_WETH,
+            EULER_VAULT_WSTETH,
+            EULER_VAULT_USDT,
+            EULER_VAULT_PRIME_WETH,
+            EULER_VAULT_PRIME_WSTETH
+        ];
+        uint256[5] memory amounts = [
+            wethDepositAmount,
+            wethDepositAmount,
+            usdtDepositAmount,
+            wethDepositAmount,
+            wethDepositAmount
+        ];
 
-        bytes32[][] memory inputsByFuse = new bytes32[][](5);
+        // Transient inputs are keyed by the fuse and overwritten by every setInputs call, so each supply
+        // action needs its own input-set action right before it.
+        // Every enterTransient is followed by a checkOutputs action: the next call overwrites the transient outputs.
+        FuseAction[] memory enterCalls = new FuseAction[](15);
+        uint256[5] memory expectedShares;
 
-        // Create inputs inline to save stack space
-        inputsByFuse[0] = new bytes32[](3);
-        inputsByFuse[0][0] = TypeConversionLib.toBytes32(EULER_VAULT_WETH);
-        inputsByFuse[0][1] = TypeConversionLib.toBytes32(wethDepositAmount);
-        inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+        for (uint256 i; i < 5; ++i) {
+            expectedShares[i] = ERC4626(eulerVaults[i]).previewDeposit(amounts[i]);
+            assertGt(expectedShares[i], 0, "expected shares");
 
-        inputsByFuse[1] = new bytes32[](3);
-        inputsByFuse[1][0] = TypeConversionLib.toBytes32(EULER_VAULT_WSTETH);
-        inputsByFuse[1][1] = TypeConversionLib.toBytes32(wethDepositAmount);
-        inputsByFuse[1][2] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+            address[] memory fusesArray = new address[](1);
+            fusesArray[0] = _eulerSupplyFuse;
 
-        inputsByFuse[2] = new bytes32[](3);
-        inputsByFuse[2][0] = TypeConversionLib.toBytes32(EULER_VAULT_USDT);
-        inputsByFuse[2][1] = TypeConversionLib.toBytes32(usdtDepositAmount);
-        inputsByFuse[2][2] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+            bytes32[][] memory inputsByFuse = new bytes32[][](1);
+            inputsByFuse[0] = new bytes32[](3);
+            inputsByFuse[0][0] = TypeConversionLib.toBytes32(eulerVaults[i]);
+            inputsByFuse[0][1] = TypeConversionLib.toBytes32(amounts[i]);
+            inputsByFuse[0][2] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
 
-        inputsByFuse[3] = new bytes32[](3);
-        inputsByFuse[3][0] = TypeConversionLib.toBytes32(EULER_VAULT_PRIME_WETH);
-        inputsByFuse[3][1] = TypeConversionLib.toBytes32(wethDepositAmount);
-        inputsByFuse[3][2] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+            bytes32[] memory expectedOutputs = new bytes32[](1);
+            expectedOutputs[0] = TypeConversionLib.toBytes32(expectedShares[i]);
 
-        inputsByFuse[4] = new bytes32[](3);
-        inputsByFuse[4][0] = TypeConversionLib.toBytes32(EULER_VAULT_PRIME_WSTETH);
-        inputsByFuse[4][1] = TypeConversionLib.toBytes32(wethDepositAmount);
-        inputsByFuse[4][2] = TypeConversionLib.toBytes32(uint256(uint8(_SUB_ACCOUNT_BYTE_ONE)));
+            enterCalls[3 * i] = FuseAction({
+                fuse: _transientStorageSetInputsFuse,
+                data: abi.encodeWithSignature(
+                    "enter((address[],bytes32[][]))",
+                    TransientStorageSetInputsFuseEnterData({fuse: fusesArray, inputsByFuse: inputsByFuse})
+                )
+            });
+            enterCalls[3 * i + 1] = FuseAction({
+                fuse: _eulerSupplyFuse,
+                data: abi.encodeWithSignature("enterTransient()")
+            });
+            enterCalls[3 * i + 2] = FuseAction({
+                fuse: _transientStorageSetterFuse,
+                data: abi.encodeWithSignature("checkOutputs(address,bytes32[])", _eulerSupplyFuse, expectedOutputs)
+            });
 
-        FuseAction[] memory enterCalls = new FuseAction[](6);
-
-        enterCalls[0] = FuseAction({
-            fuse: _transientStorageSetInputsFuse,
-            data: abi.encodeWithSignature(
-                "enter((address[],bytes32[][]))",
-                TransientStorageSetInputsFuseEnterData({fuse: fusesArray, inputsByFuse: inputsByFuse})
-            )
-        });
-
-        enterCalls[1] = FuseAction({fuse: _eulerSupplyFuse, data: abi.encodeWithSignature("enterTransient()")});
-
-        enterCalls[2] = FuseAction({fuse: _eulerSupplyFuse, data: abi.encodeWithSignature("enterTransient()")});
-
-        enterCalls[3] = FuseAction({fuse: _eulerSupplyFuse, data: abi.encodeWithSignature("enterTransient()")});
-
-        enterCalls[4] = FuseAction({fuse: _eulerSupplyFuse, data: abi.encodeWithSignature("enterTransient()")});
-
-        enterCalls[5] = FuseAction({fuse: _eulerSupplyFuse, data: abi.encodeWithSignature("enterTransient()")});
-
-        // Check balances before (inline to save stack space)
-        assertApproxEqAbs(ERC4626(EULER_VAULT_WETH).maxWithdraw(_subAccountOneAddress), 0, _errorDelta, "weth before");
-        assertApproxEqAbs(
-            ERC4626(EULER_VAULT_WSTETH).maxWithdraw(_subAccountOneAddress),
-            0,
-            _errorDelta,
-            "wsteth before"
-        );
-        assertApproxEqAbs(ERC4626(EULER_VAULT_USDT).maxWithdraw(_subAccountOneAddress), 0, _errorDelta, "usdt before");
-        assertApproxEqAbs(
-            ERC4626(EULER_VAULT_PRIME_WETH).maxWithdraw(_subAccountOneAddress),
-            0,
-            _errorDelta,
-            "primeWeth before"
-        );
-        assertApproxEqAbs(
-            ERC4626(EULER_VAULT_PRIME_WSTETH).maxWithdraw(_subAccountOneAddress),
-            0,
-            _errorDelta,
-            "primeWsteth before"
-        );
+            assertEq(ERC4626(eulerVaults[i]).balanceOf(_subAccountOneAddress), 0, "shares before");
+        }
 
         uint256 balanceInEulerMarketBefore = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
         uint256 plasmaVaultBalanceBefore = PlasmaVault(_plasmaVault).maxWithdraw(_USER);
+
+        // Each enterTransient emits the minted shares (the transient output) for its own vault, in order.
+        for (uint256 i; i < 5; ++i) {
+            vm.expectEmit(false, false, false, true, _plasmaVault);
+            emit EulerV2SupplyEnterFuse(_eulerSupplyFuse, eulerVaults[i], expectedShares[i], _subAccountOneAddress);
+        }
 
         //when
         vm.startPrank(_ALPHA);
@@ -658,8 +648,28 @@ contract EulerCreditMarketTest is Test {
         vm.stopPrank();
 
         //then
-
         assertApproxEqAbs(balanceInEulerMarketBefore, 0, _errorDelta, "balanceInEulerMarketBefore");
+
+        // every one of the five vaults received its own deposit on the sub-account
+        for (uint256 i; i < 5; ++i) {
+            assertEq(
+                ERC4626(eulerVaults[i]).balanceOf(_subAccountOneAddress),
+                expectedShares[i],
+                "sub-account shares in vault"
+            );
+            assertApproxEqAbs(
+                ERC4626(eulerVaults[i]).maxWithdraw(_subAccountOneAddress),
+                amounts[i],
+                _errorDelta * 1000,
+                "sub-account position in vault"
+            );
+        }
+
+        assertGt(
+            PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2),
+            balanceInEulerMarketBefore,
+            "market balance after"
+        );
         assertApproxEqAbs(
             plasmaVaultBalanceBefore,
             PlasmaVault(_plasmaVault).maxWithdraw(_USER),
@@ -1654,10 +1664,15 @@ contract EulerCreditMarketTest is Test {
 
         uint256 deptBalanceBefore = IBorrowing(EULER_VAULT_PRIME_USDC).debtOf(_subAccountOneAddress);
 
+        // the fuse must reset the approval to zero explicitly (not merely consume it)
+        vm.expectCall(_USDC, abi.encodeWithSelector(ERC20.approve.selector, EULER_VAULT_PRIME_USDC, uint256(0)));
+
         // when
         vm.startPrank(_ALPHA);
         PlasmaVault(_plasmaVault).execute(repayCalls);
         vm.stopPrank();
+
+        assertEq(ERC20(_USDC).allowance(_plasmaVault, EULER_VAULT_PRIME_USDC), 0, "allowance after repay");
 
         // then
 
@@ -1757,10 +1772,15 @@ contract EulerCreditMarketTest is Test {
 
         uint256 deptBalanceBefore = IBorrowing(EULER_VAULT_PRIME_USDC).debtOf(_subAccountOneAddress);
 
+        // the fuse must reset the approval to zero explicitly (not merely consume it)
+        vm.expectCall(_USDC, abi.encodeWithSelector(ERC20.approve.selector, EULER_VAULT_PRIME_USDC, uint256(0)));
+
         // when
         vm.startPrank(_ALPHA);
         PlasmaVault(_plasmaVault).execute(repayCalls);
         vm.stopPrank();
+
+        assertEq(ERC20(_USDC).allowance(_plasmaVault, EULER_VAULT_PRIME_USDC), 0, "allowance after repay");
 
         // then
         uint256 balanceInEulerMarketAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
@@ -1943,10 +1963,15 @@ contract EulerCreditMarketTest is Test {
 
         uint256 deptBalanceBefore = IBorrowing(EULER_VAULT_PRIME_USDC).debtOf(_subAccountOneAddress);
 
+        // the fuse must reset the approval to zero explicitly (not merely consume it)
+        vm.expectCall(_USDC, abi.encodeWithSelector(ERC20.approve.selector, EULER_VAULT_PRIME_USDC, uint256(0)));
+
         // when
         vm.startPrank(_ALPHA);
         PlasmaVault(_plasmaVault).execute(repayCalls);
         vm.stopPrank();
+
+        assertEq(ERC20(_USDC).allowance(_plasmaVault, EULER_VAULT_PRIME_USDC), 0, "allowance after repay");
 
         // then
         uint256 balanceInEulerMarketAfter = PlasmaVault(_plasmaVault).totalAssetsInMarket(IporFusionMarkets.EULER_V2);
