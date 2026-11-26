@@ -417,6 +417,21 @@ library IporFusionMarkets {
     ///      timelock; see contracts/fuses/compound_v3/README.md.
     uint256 public constant COMPOUND_V3_INSTITUTIONAL_USDC = 57;
 
+    /// @dev Reserve vault market, used in the reserve vault (the lender) that deposits into its member vaults and
+    ///      records the principal per member vault. Market IDs 56 and 58 to 60 are reserved.
+    /// @dev Substrates: member vault addresses as bytes32 (PlasmaVaultConfigLib).
+    /// @dev Fuses: ReserveVaultSupplyFuse (enter, exit) and ReserveVaultBalanceFuse (balance = recorded principal).
+    /// @dev See contracts/fuses/reserve_vault/README.md.
+    uint256 public constant RESERVE_VAULT = 61;
+
+    /// @dev Reserve vault boost market, used in the member vaults. It reads the transient valuation boost that the
+    ///      reserve vault sets while exiting at a loss, so that the reserve vault gets its recorded principal back.
+    /// @dev Substrates: reserve vault addresses as bytes32 (PlasmaVaultConfigLib).
+    /// @dev Fuses: ReserveVaultBoostBalanceFuse only. Market 62 has no action fuse and must not have dependency graph
+    ///      edges.
+    /// @dev See contracts/fuses/reserve_vault/README.md.
+    uint256 public constant RESERVE_VAULT_BOOST = 62;
+
     /// @dev Market 1 for ERC4626 Vault
     uint256 public constant ERC4626_0001 = 100_001;
 
